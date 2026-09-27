@@ -62,15 +62,18 @@ DST = ROOT / "models/black_description.xml"
 TRUNK_OLD = '<body name="trunk" pos="0 0 0">'
 
 # 目录软链接：真实 mesh 只在 assets/urdf/meshes 存一份，每个**会用到 meshdir="meshes/" 的
-# 目录**各自链接过去，这样所有 XML 里的 meshdir 都能保持原样。
+# 目录**各自链接过去，这样 XML 里的 meshdir 都能保持原样。
 #
-# 为什么 scenes/ 也要一个：`meshdir` 的解析规则是「相对顶层（main）文件所在目录」
-# 而不是相对它自己 —— 结论与复现见 docs/learn/mujoco.md §6.1。所以 scenes/flat_scene.xml
-# 去 include models/ 或 assets/ 里的模型时，meshes/ 会在 scenes/ 下找。
+# 为什么不再需要 scenes/meshes：`meshdir` 的解析规则是「相对顶层（main）文件所在目录」而不是
+# 相对它自己（结论与复现见 docs/learn/mujoco.md §6.1），所以场景曾经也得上一个软链接才能
+# include models/ 里的模型。现在改成在**每个顶层场景里显式写一行**
+#     <compiler meshdir="../models/meshes"/>      （必须在 <include> 之后，后写的覆盖前面的）
+# 于是 scenes/ 下不需要软链接了（实测：去掉那一行再去掉软链接，报错去找
+# meshes/@20260927_motor/models/trunk.STL）。下面两个仍然保留：安装/直接加载模型时
+# 顶层的可能是 models/ 或 assets/black_description/ 里的那份 XML，而不是场景。
 MESH_LINKS = {
     ROOT / "assets/black_description/meshes": "../urdf/meshes",
     ROOT / "models/meshes": "../assets/urdf/meshes",
-    ROOT / "scenes/meshes": "../assets/urdf/meshes",
 }
 
 HEADER = """  <!--

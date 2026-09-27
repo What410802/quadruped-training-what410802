@@ -127,7 +127,7 @@ curl -s -o /dev/null -m 10 -w '%{http_code} %{speed_download}\n' "$FILE_URL"
 3. **同一份 mesh 被复制了 3 份**（原始 URDF、网站导出、旧导出），每份 34 MB 且 md5 完全相同。处理：模型用 `meshdir` 指向 `assets/urdf/meshes` 这一份，其余在 `.gitignore` 里排除。
 4. **`.gitignore` 对已经 `git add` 过的文件无效**。重复的 meshes 与已删除的旧 skeleton 仍然留在索引里，必须 `git rm -r --cached <path>` 才能真正排除（磁盘文件不受影响）。
 5. **导出模型的默认位形穿模**。urdf.enkeebot.com 把根 body 放在原点，而零位形下脚底在基座下方约 0.58 m ⇒ 任何“建完 `MjData` 直接 `mj_step`”的脚本都会看到求解器把狗弹到空中（场景里的 `<keyframe>` 不会被自动加载）。两条修法：把模型基座默认高度抬到“脚底刚好触地”（推荐，模型自洽），或在脚本里`mj_resetDataKeyframe(model, data, 0)` / 显式设 `data.qpos[2]`。
-6. **`<include>` 之后 `meshdir` 是相对顶层文件解析的**。scene 与模型分目录时，模型里的`meshdir="meshes/"` 会去 scene 所在目录找 `meshes/`，而同一模型单独加载却正常。做法：每个会用到它的目录各放一个 `meshes` 目录软链接指向唯一一份实际在存储的 mesh （git 也能直接存软链接）；当然，直接在xml中改引用路径也可以。
+6. **`<include>` 之后 `meshdir` 是相对顶层文件解析的**。scene 与模型分目录时，模型里的`meshdir="meshes/"` 会去 scene 所在目录找 `meshes/`（删掉软链接后的报错原文：`Error opening file 'meshes/@20260927_motor/models/trunk.STL'`），而同一模型单独加载却正常。做法：**顶层场景**自己在 `<include>` 之后写一行 `<compiler meshdir="../models/meshes"/>`（多个 `<compiler>` 里后写的覆盖先写的，所以写在 include 之前会被模型那份盖回去）；被直接当顶层加载的模型目录（`models/`、`assets/black_description/`）仍各留一个 `meshes` 目录软链接。`scenes/meshes` 两个软链接已按此删除（2026-09-27），复现与规则见 [`../learn/mujoco.md`](../learn/mujoco.md) §6.1。
 
 > MuJoCo 知识点（`geom` 的 `type` 取值、`friction` / `condim` 语法与默认值、接触参数速查） 见 [`../learn/mujoco.md`](../learn/mujoco.md)。
 

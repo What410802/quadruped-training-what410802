@@ -3,7 +3,24 @@
        复用方式与 MuJoCo 官方示例一致：<include> 会在解析阶段把被包含文件的元素合并进来。 -->
   <include file="../models/black_description.xml"/>
 
+  <!-- meshdir 必须在 include **之后**显式写成相对"本场景目录"的路径：MuJoCo 里 `meshdir` 是相对
+       **顶层（main）文件**解析的，而不是相对它自己（模型）所在的目录；模型里的 `meshdir="meshes/"`
+       到了这里会去 `scenes/meshes/` 找。写上这一行后，`scenes/` 下就不需要那个 `meshes` 目录软链接了
+       （实测：去掉这一行、再去掉软链接，报错去找 `meshes/@20260927_motor/models/trunk.STL`）。
+       规则与复现见 [../../docs/learn/mujoco.md](../../docs/learn/mujoco.md) §6.1。 -->
+  <compiler meshdir="../models/meshes"/>
+
   <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast"/>
+
+  <asset>
+    <!-- 棋盘格地面纹理：**默认不用**（平的、无限大、又没纹理的地面，从"重力水平"的相机看过去
+         与倾斜地面在画面上几乎一样，坡度看不出来）。程序里只在 --pitch/--roll ≠ 0 时把它挂到
+         floor 上（cpp/src/ground.h），所以默认画面与加这个 asset 之前完全一致。
+         builtin=checker 是 MuJoCo 自带的程序化纹理，不需要外部图片。 -->
+    <texture name="floor_grid" type="2d" builtin="checker" width="256" height="256"
+             rgb1="0.85 0.85 0.85" rgb2="0.62 0.62 0.64"/>
+    <material name="floor_grid_mat" texture="floor_grid" texrepeat="4 4" rgba="1 1 1 1"/>
+  </asset>
 
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
@@ -12,7 +29,10 @@
 
   <worldbody>
     <light name="top" pos="0 0 3" dir="0 0 -1" directional="true"/>
-    <!-- 平坦地形：type=plane 是无限大平面，size 只影响显示；放在 z=0 -->
+    <!-- 平坦地形：type=plane 是无限大平面，size 只影响显示；放在 z=0。
+         friction = 滑动/自旋/滚动三系数（condim=3 只用第 1 个）；运行时可用
+         --floor-friction / --floor-condim 覆盖（会连 4 个足底碰撞球一起设：MuJoCo 的接触摩擦是
+         两个 geom 逐元素取较大者，只改地面不生效）。倾角用 --pitch/--roll。 -->
     <geom name="floor" type="plane" size="5 5 0.1" rgba="0.8 0.8 0.8 1"
           condim="3" friction="1 0.005 0.0001"/>
   </worldbody>

@@ -41,21 +41,50 @@ inline std::vector<double> JointAngles(const mjModel *m, const mjData *d) {
 
 struct Metrics {
     int feet = 0;        // 四足触地数（只认 4 个脚底球，见 Measure）
-    double z = 0.0;      // 基座高度 [m]
-    double tilt_deg = 0; // 机身 z 轴与世界 z 轴的夹角 [°]
-    double xy = 0.0;     // 基座相对参考点的水平位移 [m]
+    double z = 0.0;      // 基座沿**地面法向**的高度 [m]（水平地面时就是世界 z）
+    double tilt_deg = 0; // 机身 z 轴与**地面法向**的夹角 [°]（水平地面时就是与原竖直度）
+    double xy = 0.0;     // 基座相对参考点的**切向**（沿地面）位移 [m]
+};
+
+// 地面：法向 + 平面上一点。默认水平（法向 +z、过原点）——此时下面三个量退化成
+// “基座 z”“机身 z 轴与世界 z 轴夹角”“水平位移”，与做倾斜地面之前逐位相同。
+// 为什么能量测要跟着法向走：地面倾斜 15° 而狗“相对地面竖直”时，机身在**世界系**里就是歪了
+// 15°，拿世界 z 去比会把站得好好的狗判成“没站住”。
+struct Plane {
+    double up[3] = {0.0, 0.0, 1.0};
+    double pt[3] = {0.0, 0.0, 0.0};
+    double quat[4] = {1.0, 0.0, 0.0, 0.0}; // 水平系 → 地面系的旋转；水平时是单位四元数
+
+    // 点（世界系）沿法向到平面的有向距离；代入基座位置就是“离地多高”
+    double height(const double *pos) const {
+        return (pos[0] - pt[0]) * up[0] + (pos[1] - pt[1]) * up[1] + (pos[2] - pt[2]) * up[2];
+    }
+    // 机身 z 轴（世界系）与地面法向的夹角
+    double tilt_deg(const double *quat) const {
+        double rot[9];
+        mju_quat2Mat(rot, quat);
+        const double d = rot[2] * up[0] + rot[5] * up[1] + rot[8] * up[2];
+        return std::acos(std::clamp(d, -1.0, 1.0)) * 180.0 / M_PI;
+    }
+    // 相对参考点的切向位移：法向分量不算“漂”，只有沿地面滑走才算
+    double drift(const double *pos, const double *ref) const {
+        double v[3] = {pos[0] - ref[0], pos[1] - ref[1], pos[2] - ref[2]};
+        const double n = v[0] * up[0] + v[1] * up[1] + v[2] * up[2];
+        for (int k = 0; k < 3; ++k)
+            v[k] -= n * up[k];
+        return std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    }
+    bool level() const { return up[0] == 0.0 && up[1] == 0.0 && up[2] == 1.0; }
 };
 
 // "四足触地"只认那 4 个脚底球：趴卧时躯干/小腿也压在地面上，那些接触不能算"足"，
-// 否则"没站起来"也会被数成四足触地。
-inline Metrics Measure(const mjModel *m, const mjData *d, const std::vector<int> &feet, double ref_x,
-                       double ref_y) {
+// 否则"没站起来"也会被数成四足触地。ref = 参考点（起点基座位置，可为 nullptr = 不算漂移）。
+inline Metrics Measure(const mjModel *m, const mjData *d, const std::vector<int> &feet,
+                       const double *ref = nullptr, const Plane &ground = Plane{}) {
     Metrics s;
-    s.z = d->qpos[2];
-    double rot[9];
-    mju_quat2Mat(rot, d->qpos + 3);
-    s.tilt_deg = std::acos(std::clamp(rot[8], -1.0, 1.0)) * 180.0 / M_PI;
-    s.xy = std::hypot(d->qpos[0] - ref_x, d->qpos[1] - ref_y);
+    s.z = ground.height(d->qpos);
+    s.tilt_deg = ground.tilt_deg(d->qpos + 3);
+    s.xy = ref == nullptr ? 0.0 : ground.drift(d->qpos, ref);
     std::vector<int> hit;
     for (int c = 0; c < d->ncon; ++c) {
         const int g1 = d->contact[c].geom[0], g2 = d->contact[c].geom[1];
@@ -167,12 +196,12 @@ inline Target Search(const mjModel *m, mjData *d, const std::vector<int> &feet, 
         d->qpos[m->jnt_qposadr[m->actuator_trnid[2 * i]]] = best.q[static_cast<size_t>(i)];
     d->qpos[2] = best.z;
     mj_forward(m, d);
-    for (int press = 0; press < 5 && Measure(m, d, feet, 0.0, 0.0).feet < 4; ++press) {
+    for (int press = 0; press < 5 && Measure(m, d, feet).feet < 4; ++press) {
         d->qpos[2] -= 0.001;
         mj_forward(m, d);
     }
     best.z = d->qpos[2];
-    best.feet = Measure(m, d, feet, 0.0, 0.0).feet;
+    best.feet = Measure(m, d, feet).feet;
     best.ok = true;
     return best;
 }

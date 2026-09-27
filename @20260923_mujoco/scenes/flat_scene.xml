@@ -3,6 +3,12 @@
        复用方式与 MuJoCo 官方示例一致：<include> 会在解析阶段把被包含文件的元素合并进来。 -->
   <include file="../models/black_description.xml"/>
 
+  <!-- meshdir 必须在 include **之后**显式写成相对"本场景目录"的路径：MuJoCo 里 `meshdir` 是相对
+       **顶层（main）文件**解析的，而不是相对它自己（模型）所在的目录；模型里的 `meshdir="meshes/"`
+       到了这里会去 `scenes/meshes/` 找。写上这一行，`scenes/` 下就不需要那个 `meshes` 目录软链接了。
+       规则与复现见 [../../docs/learn/mujoco.md](../../docs/learn/mujoco.md) §6.1。 -->
+  <compiler meshdir="../models/meshes"/>
+
   <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast"/>
 
   <visual>

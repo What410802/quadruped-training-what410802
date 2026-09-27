@@ -1,6 +1,6 @@
 # 第三次培训 · 第一部分（仿真）：关节电机 + 状态机
 
-> 任务书：[`../../../ReadOnly.d/Downloaded.d/第三次培训任务.pdf.md`](../../../ReadOnly.d/Downloaded.d/第三次培训任务.pdf.md)；讲义：[`../../../ReadOnly.d/Downloaded.d/motor.pdf.md`](../../../ReadOnly.d/Downloaded.d/motor.pdf.md)（§1 控制方式与仿真模拟、§2 零点与减速比）。
+> 任务书：[`teaching-materials/第三次培训任务.pdf.md`](teaching-materials/第三次培训任务.pdf.md)；讲义：[`teaching-materials/motor.pdf.md`](teaching-materials/motor.pdf.md)（§1 控制方式与仿真模拟、§2 零点与减速比）。两份都在本任务目录下、随 git 同步。
 > 本文只写**只对本任务成立**的东西（这份模型、这组数）；通用的 MuJoCo 知识与坑点在仓库 [`../../docs/`](../../docs/) 下，这里只放指针。
 
 ## 1 任务要求 → 实现
@@ -132,6 +132,69 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 ② 从趴卧 keyframe 起身（自动选 1.5 s 斜坡，起身 1.39 s）。HUD 里能直接看到 `state: DAMPING / STANDING`
 与 `feet on ground`、`base z` 的变化。
 
+### 2.5 倾斜地面与摩擦（`--pitch/--roll`、`--floor-friction`、`--floor-condim`）
+
+从第二次培训的斜面 demo（[`@20260923_mujoco/cpp_slope/`](../../@20260923_mujoco/cpp_slope/)）**移植进来**，
+不新建 demo、不加新场景：默认倾角 0（= 平滑地面），此时整条路径与加这个功能之前**逐位相同**
+（A/B 做法与结果见 §3.4）。两个旋钮：
+
+| 开关 | 作用 | 默认 |
+|---|---|---|
+| `--pitch DEG` / `--roll DEG` | 把**平面地面**绕 y / x 轴转这么多度；狗跟着转同一个旋转、**重力不动** ⇒ 越陡越站不住 | 0 / 0（水平） |
+| `--floor-friction "S [SPIN ROLL]"` | 地面与足底的摩擦系数（1 个或 3 个数） | 场景 XML 里的 `1 0.005 0.0001` |
+| `--floor-condim N` | 接触维度（1~6） | 场景 XML 里的 3 |
+
+三件必须知道的事：
+
+1. **量测全部改成"相对地面法向"**（`stance::Plane` 提供的 `height / tilt_deg / drift`）：高度 = 基座到斜面的
+   法向距离、倾斜 = 机身 z 轴与**地面法向**的夹角、漂移 = 只算沿地面的**切向**分量。否则"在 15° 斜面上站得
+   好好的一条狗"会被拿世界 z 一比、判成"歪了 15°，没站住"。水平地面时这三条退化成原来的 z / 竖直度 / 水平位移。
+2. **地面转了还不够，必须清 `geom_sameframe`**。平面 geom 的局部位姿本来是零/单位四元数，编译时
+   `m->geom_sameframe[floor]` 被标成 1，`mj_kinematics` 看到它就**直接抄世界体位姿**、根本不读 `geom_quat`
+   （源码：`engine_core_smooth.c` 的 `mj_kinematics → mj_local2Global(..., sameframe)`）。只写 `geom_quat`
+   的后果：碰撞面与渲染出来的地面都不动，只有我们自己以为地面斜了。代码里清了 `sameframe`，并拿
+   `d->geom_xmat` 的第三列（地面法向）与算出来的法向**对拍**，不一致就报错退出（见 §4 踩坑 12）。
+3. **摩擦要两边一起设**：MuJoCo 里一对接触的摩擦系数是**两个 geom 逐元素取最大**，实测（`mj_forward` 后读
+   `d->contact[].friction`）：
+
+   | 地面 | 足底 | 实际接触摩擦 |
+   |---|---|---|
+   | 1 | 1 | `[1, 1, 0.005]` |
+   | **0.05** | 1（默认） | `[1, 1, 0.005]` ← 只改地面**不生效** |
+   | 0.05 | 0.05 | `[0.05, 0.05, 0.005]` |
+
+   所以 `--floor-friction` 同时写地面与 4 个足底碰撞球。另外 `condim=3`（默认）**只用第 1 个系数**，
+   自旋/滚动那两个只有 `condim ≥ 4/6` 时才进求解（程序里会提示这一点）。
+   非 0 倾角时程序还会把场景里备好的**棋盘格纹理**挂到地面上：又平、又无限、又没纹理的地面，从
+   "重力水平"的相机看过去与斜面几乎一样，坡度看不出来（这条坑在 `@20260923_mujoco/docs/stand.md` 里踩过）。
+
+顺序上还有一条约束：**站姿搜索必须在水平地面下做**（搜索里"把基座平移到最低脚底面贴地"是水平地面的算法），
+所以程序先搜站姿、再把地面和狗一起转（相对几何不变 ⇒ 搜出来的站姿照旧成立）、最后按 `--start` 摆起点。
+
+### 2.6 限幅一览（仿真侧 ↔ 讲义/实机）
+
+任务书与讲义里**明确写出来的**限幅只有一条是数值：**输出侧力矩上限 33.5 N·m**（讲义 §1.4 第 2 条，
+"队内 `r1_sar` 的 `black` 配置 kp=80、kd=3、力矩上限 33.5 N·m"），其余是"按需补"的定性要求
+（死区、饱和、高速降额）。本仿真**保留**的所有限幅与换算：
+
+| 限幅 | 仿真里在哪 | 值 | 换算到转子侧（×/÷N，N = 6.33） |
+|---|---|---|---|
+| 力矩饱和 | 模型 `<motor ctrlrange>` + `--tau-max` 覆盖 | 关节侧 ±20 N·m（默认）/ ±33.5（实机配置） | 转子侧 ±3.16 / ±5.29 N·m（`cmd.T = τ/N`） |
+| 死区（静摩擦） | `--deadzone N`（默认 0，不建） | 关节侧 N·m | 转子侧 ÷N |
+| 指令延迟 / 编码器噪声 | `--delay-cycles N` / `--noise N`（默认 0） | 控制周期 / N·m | 同量纲 |
+| 位置限位 | 模型 `jnt_range`（MuJoCo 强制） | hip ±0.50、thigh ±1.2/1.6、calf ±0.85/2.5 rad | `cmd.Pos = N·q_des`（实机还要减 `offset`） |
+| 期望位置的变化率 | `--ramp auto\|SEC`（讲义 §1.3：位置目标要插值、不能给阶跃） | 0.1 s / 1.5 s | 同一条斜坡推到转子侧 |
+| 刚度/阻尼 | `--kp/--kd`（默认 80 / 3，输出侧） | 输出侧 N·m/rad、N·m·s/rad | `cmd.K_P = kp/N²`、`cmd.K_W = kd/N²`（≈1.997 / 0.0749） |
+
+**没建的两类**：讲义 §1.1 的"高速段力矩随转速下降（电压/反电动势）"——本模型的关节转速远低于电机基速
+（实测末段 `max|q̇|` ≈ 0.03 rad/s，量级 1% 基速），建了也不改变结论；以及实机侧的**温度保护 90 °C**
+（那是驱动板固件行为，SDK 只在反馈里给 `temp` 与 `MError` 位）。见 §4 踩坑 13 里"限幅到底有没有生效"的实测。
+
+实机侧（第二部分）还有一层仿真里没有的限幅：**报文的定点标度**。这次用"假电机 dry run"把它实测清楚了——
+命令帧的力矩/速度/位置/刚度四个字段的物理标度、CRC 算法，以及**刚度超量程会被 SDK 静默截断**
+（K_P ≥ 25.6 一律变 32766，对应关节侧 kp 上限 ≈ 1026）——表与复现见
+[`../README.md`](../README.md) 的「SDK 侧明确写出来的"限幅"」与 [`../cpp_part2/README.md`](../cpp_part2/README.md)。
+
 ## 3 实测（本机 i5-1035G1，MuJoCo 3.12.0）
 
 默认参数：`kp=80 kd=3 kd_damp=0.5 ramp=auto`、起点 = 模型原姿态、无窗口（`--mode sim`，全速跑）。
@@ -173,17 +236,78 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 
 ### 3.3 切回阻尼 + 非理想项
 
-`--script "0.05:stand,5:damp"`：站立段 ✓（z 0.4864、四足触地 4），5 s 切阻尼后 ✓ 塌回趴卧（z 0.1450、末段 max\|q̇\| 0.000）。
+`--script "0.05:stand,5:damp"`（起点 = 默认 `raw`）：站立段 ✓（z 0.4864、四足触地 4），5 s 切阻尼后
+✓ 塌回趴卧（z 0.1450、末段 max|q̇| 0.000）。
 
-| 配置 | 站立段 | 切回阻尼后 | 电机统计 |
+| 配置 | 站立段末（t=5 s） | 切回阻尼后（t=10 s） | 电机统计（60000 电机·步） |
 |---|---|---|---|
-| 理想（默认） | ✓ z=0.4864、max\|q̇\| 0.001 | ✓ z=0.1450 | 撞限幅 **0** 次 / 48000 电机·步，\|τ\| 峰值 4.47、均值 ~2.5 N·m |
-| `--deadzone 0.5 --delay-cycles 2 --noise 0.2` | ✓ z=0.4864、max\|q̇\| 0.049 | ✓ z=0.1450（末段 max\|τ\| 0.52，死区在起作用） | 撞限幅 0 次，\|τ\| 峰值 4.66 |
-| `--tau-max 33.5`（讲义说的实机限幅） | ✓ 同上 | ✓ | 与默认（±20）逐渐位相同 |
+| 理想（默认 ±20 N·m） | ✓ z=0.4864、max\|q̇\| 0.001、max\|τ\| 4.49 | ✓ z=0.1450、max\|τ\| 0.00 | 撞限幅 **4** 次（0.007%）/ 落死区 0 / \|τ\| 峰值 **20.00**、均值 1.23 N·m |
+| `--deadzone 0.5 --delay-cycles 2 --noise 0.2` | ✓ z=0.4864、max\|q̇\| 0.049、max\|τ\| 4.66 | ✓ z=0.1450（末段 max\|τ\| 0.52，死区在削小力矩） | 撞限幅 4 次 / 落死区 **32246** 次 / 峰值 20.21、均值 1.31 N·m |
+| `--tau-max 33.5`（讲义说的实机限幅） | ✓ 上面那几个末值逐位相同 | ✓ 同左 | 撞限幅 **0** 次 / 峰值 **23.03**、均值 1.23 N·m |
 
-结论：这组任务（软瘫 / 起身 / 站住）**用不到限幅**——|τ| 峰值 4.5 N·m 离 ±20 还远；限幅只在侧躺那种
-"顶不回来"的场景里出现（52 次打满）。死区 0.5 N·m 会削掉阻尼模式下的小力矩（末段 max|τ| 0.52），
-但不足以改变结果。
+**限幅到底有没有生效**：有，但只在这一个瞬间——从 `raw`（直腿原姿态）起按 S，自动选中的 0.1 s 快斜坡
+开头几毫秒，PD 要的力矩超过 ±20，**4 个步长（8 ms）被削到 20.00**；如果按实机的 33.5 N·m，那一下要的是
+23.03 N·m，**一次也不削**。段末指标（5 s 时）两边一样，因为那点差异早就收敛掉了。
+从 `stance` 起（峰 8.63）、从 `rest` 起（峰 10.53）都**一次都没打满**，所以"软瘫 / 起身 / 站住"这组动作
+基本不碰限幅；真正把力矩顶满的是侧躺那种"顶不回来"的场景（`--start side`：52 次打满，见 §3.2）。
+
+### 3.4 水平地面：新功能没动老结论（A/B 逐位对比）
+
+`--pitch/--roll` 默认 0、摩擦不传时，代码走的是与加功能之前**完全相同的分支**（水平地面不做任何
+`ApplyTilt`、`Plane` 三个量退化成 z / 竖直度 / 水平位移）。为证明这一点，把**改动前的源码**从 git 暂存区
+捞出来单独编一个二进制，同一组命令对拍（差异只允许出现在墙钟计时行）：
+
+```bash
+mkdir -p /tmp/old_src && for f in args.h motor.h recorder.h stance.h state.h viewer.h main.cpp; do
+    git show ":@20260927_motor/cpp/src/$f" > /tmp/old_src/$f; done
+pixi run g++ -O2 -std=c++17 -I/tmp/old_src -I"$CONDA_PREFIX/include" -L"$CONDA_PREFIX/lib" \
+    /tmp/old_src/main.cpp -lmujoco -lglfw -Wl,-rpath,"$CONDA_PREFIX/lib" -o /tmp/motor_sim_old
+# 逐条对拍（旧二进制要显式给场景路径：它靠可执行文件位置找不到任务目录）
+for a in "--seconds 10 --script 0.05:stand,5:damp" "--seconds 8 --start raw --script 0.05:stand" \
+         "--seconds 5" "--seconds 6 --start raw --script 3:stand" "--seconds 6 --start rest --script 1:stand" \
+         "--seconds 10 --deadzone 0.5 --delay-cycles 2 --noise 0.2 --script 0.05:stand,5:damp" \
+         "--seconds 10 --tau-max 33.5 --script 0.05:stand,5:damp"; do
+    pixi run /tmp/motor_sim_old @20260927_motor/scenes/flat_scene.xml --mode sim ${=a} > /tmp/a.txt 2>&1
+    pixi run @20260927_motor/cpp/build/motor_sim --mode sim ${=a} > /tmp/b.txt 2>&1
+    diff <(grep -v "^场景\|^地面\|^摩擦\|wall" /tmp/a.txt) <(grep -v "^场景\|^地面\|^摩擦\|wall" /tmp/b.txt) \
+        && echo "逐字相同: $a"
+done
+```
+
+7 组命令（含阻尼塌平、三种起点起身、非理想项、限幅覆盖）**全部只差"仿真 N s（wall …）"那一行**，
+即物理结果逐位相同；新增的只有 `地面：…` 与 `摩擦：…` 两行日志。
+
+### 3.5 倾斜地面：多陡站不住、摩擦多小会滑走
+
+`--start stance --script "0.05:stand"`、`--seconds 6`、摩擦默认（1）：
+
+| `--pitch` | 基座 z（目标 0.4973） | 竖直度（相对地面法向） | 末段 max\|q̇\| | 沿坡漂移 | 判定 |
+|---|---|---|---|---|---|
+| 0°（水平） | 0.4864 m | 0.24° | 0.000 | 0.0149 m | ✓ |
+| 5° | 0.4876 m | 0.70° | 0.009 | 0.0551 m | ✓ |
+| 10° | 0.4880 m | 1.50° | 0.017 | 0.1233 m | ✓ |
+| 15° | 0.4878 m | 2.28° | 0.030 | 0.2348 m | ✓ |
+| 18° | 0.0161 m | 178.56° | 0.002 | 1.2114 m | ✗ 翻倒（0 足触地） |
+
+几点读法：重力不动 ⇒ 坡度越大越难过，**本任务这组增益在 15° 还挺得住、18° 翻**；
+"竖直度"只有 2° 是因为它量的是**相对地面法向**（拿世界 z 去量会是 15°——这正是 §2.5 第 1 条的由来）；
+漂移（沿坡的切向位移）随坡度单调增大，表明狗在坡上是"站稳但缓慢下滑"的（不是静止）。
+`--roll` 方向同理（5°/10° ✓，15° ✗，因为横滚方向支撑更窄）。
+
+固定 `--pitch 15`、改摩擦：
+
+| `--floor-friction` | 末段 max\|q̇\| | 沿坡漂移 | 四足触地 | 判定 |
+|---|---|---|---|---|
+| 1（默认） | 0.030 | 0.2348 m | 4 | ✓ |
+| 0.6 | 0.027 | 0.2176 m | 4 | ✓ |
+| 0.3 | 0.085 | 0.6511 m | 4 | ✓（但一路在滑） |
+| 0.15 | 6.566 | **20.6 m** | 1 | ✗ 滑走 |
+| 0.1 | 9.265 | **28.9 m** | 2 | ✗ 滑走 |
+| 0.02 | 13.615 | **42.3 m** | 4 | ✗ 滑走 |
+
+`0.15` 那档的漂移时间线：1 s 时 0.64 m → 2 s 2.40 m → 4 s 9.27 m → 6 s 20.61 m（越滑越快），
+`max|τ|` 一直只有 4–8 N·m——PD 已经拉不住，说明这个坡的**静摩擦**才是"站得住"的关键，
+这也正是把摩擦做成开关的用处：想演示"地面滑了会怎样"就调它。
 
 ## 4 踩坑
 
@@ -251,6 +375,22 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 
    四个起点都验过：`raw` 回模型原姿态（z 0.5786）、`rest` 回趴卧（z 0.1449）、`stance` 回站姿
    （z 0.4973）、`side` 回侧躺（竖直度 90°）。
+12. **只改 `geom_quat` 地面不会真的转**。平面 geom 的局部位姿本来是零/单位四元数，编译时
+   `m->geom_sameframe[floor]` 被标成 1，`mj_kinematics` 看到这个标记就**直接拄世界体位姿**、
+   根本不读 `geom_quat`（源码 `engine_core_smooth.c` 的 `mj_kinematics → mj_local2Global(..., sameframe)`）。
+   症状很阴险：程序自己算的法向、高度、判定全都按斜面走，但**碰撞面与渲染出来的地面还是平的**，
+   看上去就是“狗自己歪了 15°”。修法：改 `geom_quat` 的同时把 `sameframe` 置 0，并且拿
+   `d->geom_xmat` 的第三列（地面在世界系里的实际法向）与自己的法向**对拍**，不一致就报错退出。
+   这条在第二次培训的斜面 demo 里已经踩过一次（[`../../@20260923_mujoco/docs/stand.md`](../../@20260923_mujoco/docs/stand.md)）。
+13. **调小地面摩擦不生效**：一对接触的摩擦系数是**两个 geom 逐元素取较大者**（实测：地面 0.05 +
+   足底默认 1 → 接触仍是 `[1, 1, 0.005]`；两边都 0.05 才是 `[0.05, 0.05, 0.005]`）。
+   所以 `--floor-friction` 同时写地面与 4 个足底碰撞球；另外 `condim=3`（默认）只用第 1 个系数，
+   自旋/滚动要 `--floor-condim 4/6` 才进求解。
+14. **量测必须跟着地面法向走**。倾斜 15° 而狗“相对地面竖直”时，机身在**世界系**里就是歪了 15°：
+   如果高度/竖直度/漂移还拿世界 z 算，站得好好的狗会被判成“歪了 15°、没站住”，
+   而且 `--ramp auto` 的“还在站姿附近吗”也会误判（它会去选 1.5 s 慢斜坡）。所以
+   `stance::Plane` 也提供 `height / tilt_deg / drift`，量测与自动斜坡全部换成相对地面法向；
+   水平地面时这三个量退化成原来的 z / 竖直度 / 水平位移（§3.4 的逐位对拍就是这一点的证据）。
 
 ## 5 复现命令
 
@@ -271,6 +411,11 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 8 --start rest
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 8 --start side --script "1:stand"  # 已知边界：起不来（退出码 2）
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 10 --deadzone 0.5 --delay-cycles 2 --noise 0.2 --script "0.05:stand,5:damp"
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 5 --kd-damp 3            # 对比：kd 太大 → 侧翻
+
+# 倾斜地面与摩擦（§2.5 / §3.5）
+pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 6 --pitch 10 --start stance --script "0.05:stand"   # 10° 斜面：站得住
+pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 6 --pitch 18 --start stance --script "0.05:stand"   # 18°：翻倒（退出码 2）
+pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 6 --pitch 15 --floor-friction 0.1 --start stance --script "0.05:stand"  # 摩擦小 → 沿坡滑走（退出码 2）
 
 # 录像（别人看不了实时时的备用视频，§2.4）
 pixi run @20260927_motor/cpp/build/motor_sim --mode record --script "0.05:stand,5:damp" --seconds 8 --out @20260927_motor/output/cpp/damp_stand_damp.mp4

@@ -7,6 +7,10 @@
        注意本场景里没有 keyframe —— 原始导出本来就没有。 -->
   <include file="../assets/black_description/black_description.xml"/>
 
+  <!-- 同 flat_scene.xml：`meshdir` 是相对**顶层文件**解析的，所以必须在 include 之后显式写清。
+       这里指向导出目录自己的 meshes/（它是指向 assets/urdf/meshes 的目录软链接）。 -->
+  <compiler meshdir="../assets/black_description/meshes"/>
+
   <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast"/>
 
   <worldbody>

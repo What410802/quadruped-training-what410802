@@ -66,6 +66,7 @@ struct Config {
     double z_stand = 0.5;  // 站姿的基座高度（auto 判断"还在站姿附近"用）
     bool auto_ramp = true; // 默认按姿态自动选斜坡
     bool gravity_comp = false;
+    stance::Plane ground;  // 地面（默认水平）；高度/倾斜都相对它算，倾斜地面时才不是水平
 };
 
 class StateMachine {
@@ -166,12 +167,11 @@ class StateMachine {
     }
 
   private:
-    // "还在站姿附近"：基座没怎么降、机身也没歪 —— 这时必须快收腿（raw 起点实测）
+    // "还在站姿附近"：基座没怎么降、机身也没歪 —— 这时必须快收腿（raw 起点实测）。
+    // 高度/倾斜都相对**地面法向**：倾斜地面上"站得好好的"照样算"在站姿附近"。
     bool NearStance(const mjData *d) const {
-        double rot[9];
-        mju_quat2Mat(rot, d->qpos + 3);
-        const double tilt = std::acos(std::clamp(rot[8], -1.0, 1.0)) * 180.0 / M_PI;
-        return d->qpos[2] >= 0.9 * cfg_.z_stand && tilt <= 30.0;
+        return cfg_.ground.height(d->qpos) >= 0.9 * cfg_.z_stand &&
+               cfg_.ground.tilt_deg(d->qpos + 3) <= 30.0;
     }
 
     const mjModel *m_ = nullptr;

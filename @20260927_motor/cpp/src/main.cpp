@@ -14,6 +14,7 @@
 // 退出码：0 = 判定通过（含 --help）、1 = 参数错误、2 = 判定不通过。
 
 #include "args.h"
+#include "ground.h"
 #include "motor.h"
 #include "recorder.h"
 #include "stance.h"
@@ -47,6 +48,7 @@ const char *kUsage =
     "                 [--seconds N] [--script \"t:mode,...\"] [--width N] [--height N]\n"
     "                 [--out FILE] [--fps N] [--tau-max N] [--deadzone N]\n"
     "                 [--delay-cycles N] [--noise N] [--gear N]\n"
+    "                 [--pitch DEG] [--roll DEG] [--floor-friction \"S [SPIN ROLL]\"] [--floor-condim N]\n"
     "\n"
     "第三次培训·第一部分（仿真）：关节电机 = MIT 混合控制器（讲义 §1.2），\n"
     "控制程序是两状态的**状态机**——阻尼模式 / 站立模式，窗口里按键实时切换。\n"
@@ -71,6 +73,14 @@ const char *kUsage =
     "  --delay-cycles N  指令延迟 N 个控制周期（默认 0）\n"
     "  --noise N       力矩噪声 [N·m]（默认 0；固定种子，可复现）\n"
     "  --gear N        减速比（默认 6.33）：只用于打印转子侧命令的换算，不影响仿真\n"
+    "  --pitch/--roll DEG  把**平面地面**绕 y / x 轴转这么多度（默认 0 = 水平）。狗跟着转同一个\n"
+    "                  旋转、**重力不动**，所以越陡越站不住；高度/倾斜/漂移都改成相对地面法向\n"
+    "                  算（水平时退化成 z / 竖直度 / 水平位移，结果与不开这个功能逐位相同）。\n"
+    "                  非 0 时地面自动换棋盘格纹理，否则坡度在画面上看不出来。\n"
+    "  --floor-friction \"S [SPIN ROLL]\"  地面与足底的摩擦系数（默认用场景 XML 里的\n"
+    "                  1 0.005 0.0001）。两边一起设：MuJoCo 的接触摩擦取两个 geom **逐元素最大**，\n"
+    "                  只把地面调小不生效（足底球的 1 仍然压着）——实测见 docs/sim.md\n"
+    "  --floor-condim N 接触维度（默认用场景里的 3；自旋/滚动摩擦只要 condim ≥ 4/6 才进求解）\n"
     "  --width/--height  窗口尺寸（默认 1280x720）\n"
     "\n"
     "退出码：0 = 判定通过（或 --help）、1 = 参数错误、2 = 判定不通过。\n";
@@ -82,7 +92,8 @@ const std::vector<OptionDef> kOptionDefs = {
     {"--width", true},        {"--height", true},       {"--out", true},
     {"--fps", true},          {"--tau-max", true},
     {"--deadzone", true},     {"--delay-cycles", true}, {"--noise", true},
-    {"--gear", true},
+    {"--gear", true},         {"--pitch", true},        {"--roll", true},
+    {"--floor-friction", true}, {"--floor-condim", true},
 };
 
 // 脚本动作：切状态，或者“回到起点”（= 窗口里按 R）
@@ -117,6 +128,11 @@ struct Options {
     int delay_cycles = 0;
     double noise = 0.0;
     double gear = 6.33;         // 宇树 GO-8010-6 的减速比（讲义 §2.1）
+    double pitch = 0.0;         // --pitch DEG：地面绕 y 轴倾角（0 = 水平）
+    double roll = 0.0;          // --roll DEG：地面绕 x 轴倾角
+    bool friction_set = false;  // 是否显式给了 --floor-friction
+    double friction[3] = {0.0, 0.0, 0.0};
+    int condim = 0;             // >0 才覆盖场景里的值
 };
 
 // 解析 "1:stand,5:damp,6:reset" 这类脚本
@@ -163,8 +179,42 @@ bool ParseScript(const std::string &text, std::vector<std::pair<double, Action>>
     return true;
 }
 
+// 解析 --floor-friction："0.6" 或 "0.6 0.005 0.0001"（滑动 [自旋 滚动]，空格或逗号分隔）
+bool ParseFriction(const std::string &text, double out[3]) {
+    std::vector<double> v;
+    const char *p = text.c_str();
+    while (*p != '\0') {
+        while (*p == ' ' || *p == '\t' || *p == ',')
+            ++p;
+        if (*p == '\0')
+            break;
+        char *end = nullptr;
+        const double d = std::strtod(p, &end);
+        if (end == p) {
+            std::fprintf(stderr, "--floor-friction 里不是数字：%s\n", text.c_str());
+            return false;
+        }
+        v.push_back(d);
+        p = end;
+    }
+    if (v.size() != 1 && v.size() != 3) {
+        std::fprintf(stderr, "--floor-friction 要 1 个或 3 个数（滑动 [自旋 滚动]）：%s\n",
+                     text.c_str());
+        return false;
+    }
+    out[0] = v[0];
+    out[1] = v.size() == 3 ? v[1] : 0.005;
+    out[2] = v.size() == 3 ? v[2] : 0.0001;
+    if (out[0] < 0.0 || out[1] < 0.0 || out[2] < 0.0) {
+        std::fprintf(stderr, "--floor-friction 不能为负：%s\n", text.c_str());
+        return false;
+    }
+    return true;
+}
+
 // 把狗摆到 --start 指定的起点（搜索会改 qpos，所以每次复位都调用它）
-bool SetStart(const mjModel *m, mjData *d, const std::string &start, const stance::Target &target) {
+bool SetStart(const mjModel *m, mjData *d, const std::string &start, const stance::Target &target,
+              const std::vector<int> &feet, double foot_radius, const stance::Plane &plane) {
     // 复位姿态但**保留仿真时间轴**：斜坡进度、脚本时刻、录像出帧都按 d->time 走，
     // mj_resetData 会把 time 清零，那样"按 R 之后"的目标斜坡就卡在起点（实测：狗塌下去再也起不来）。
     const double t_keep = d->time;
@@ -196,22 +246,48 @@ bool SetStart(const mjModel *m, mjData *d, const std::string &start, const stanc
         std::fprintf(stderr, "未知起点：%s\n", start.c_str());
         return false;
     }
+    if (!plane.level()) {
+        // 倾斜地面：上面几支给的都是"水平地面"下的姿态，这里统一把狗旋到与地面同一朝向。
+        // raw / stance：旋转后沿新法向落到斜面上（相对几何不变 ⇒ 站姿搜索结果照旧成立）；
+        // rest：把趴卧位形**刚体旋转**（偏移与朝向一起转）—— 用"基座到平面的法向距离"算会得到
+        //       0.1449·cos(pitch)（15° 时差 5 mm），反而把狗往平面里压；
+        // side：只转朝向，z 已经在上面按"悬空 0.25 m"抬过了（侧躺本来就不着地）。
+        if (start == "rest") {
+            double offset[3], rotated[3], q_rest[4];
+            mju_sub3(offset, d->qpos, plane.pt);
+            mju_copy4(q_rest, d->qpos + 3);
+            mju_mulQuat(d->qpos + 3, plane.quat, q_rest); // R ∘ q_rest
+            mju_rotVecQuat(rotated, offset, plane.quat);  // 偏移也跟着转
+            mju_add3(d->qpos, rotated, plane.pt);
+            mj_forward(m, d);
+        } else if (start == "side") {
+            double q_side[4];
+            mju_copy4(q_side, d->qpos + 3);
+            mju_mulQuat(d->qpos + 3, plane.quat, q_side);
+            mj_forward(m, d);
+        } else { // raw / stance
+            mju_copy4(d->qpos + 3, plane.quat);
+            mj_forward(m, d);
+            ground::GroundFeet(m, d, feet, foot_radius, plane);
+        }
+    }
     mj_forward(m, d);
     d->time = t_keep;
     return true;
 }
 
-// 一行指标：四足触地数、基座高度、竖直度、水平位移、最大关节速度、最大力矩
+// 一行指标：四足触地数、基座高度、竖直度、漂移、最大关节速度、最大力矩
+// （高度/竖直度/漂移都相对地面法向：水平地面时就是 z / 竖直度 / 水平位移）
 struct Snapshot {
     double t = 0, z = 0, tilt = 0, xy = 0, qvel_max = 0, ctrl_max = 0;
     int feet = 0;
 };
 
-Snapshot Sample(const mjModel *m, const mjData *d, const std::vector<int> &feet, double ref_x,
-                double ref_y) {
+Snapshot Sample(const mjModel *m, const mjData *d, const std::vector<int> &feet, const double *ref,
+                const stance::Plane &ground) {
     Snapshot s;
     s.t = d->time;
-    const stance::Metrics mm = stance::Measure(m, d, feet, ref_x, ref_y);
+    const stance::Metrics mm = stance::Measure(m, d, feet, ref, ground);
     s.feet = mm.feet;
     s.z = mm.z;
     s.tilt = mm.tilt_deg;
@@ -239,13 +315,14 @@ bool StoodUp(const Snapshot &s, const stance::Target &target) {
 // 并打印一行日志“回到了哪、姿态变化多少”。**注意**：切回阻尼后狗会再次自然塌下（这正是上电后的样子），
 // 想从起点重新站起来就接着按 S（或脚本里再给一个 stand）。
 void ResetToStart(const mjModel *m, mjData *d, const std::string &start, const stance::Target &target,
-                  ctrl::StateMachine *sm, const std::vector<int> &feet, double ref_x, double ref_y) {
-    const Snapshot before = Sample(m, d, feet, ref_x, ref_y);
-    if (!SetStart(m, d, start, target)) {
+                  const std::vector<int> &feet, double foot_radius, const stance::Plane &ground,
+                  ctrl::StateMachine *sm, const double *ref) {
+    const Snapshot before = Sample(m, d, feet, ref, ground);
+    if (!SetStart(m, d, start, target, feet, foot_radius, ground)) {
         std::printf("重置失败（--start %s）\n", start.c_str());
         return;
     }
-    const Snapshot after = Sample(m, d, feet, ref_x, ref_y);
+    const Snapshot after = Sample(m, d, feet, ref, ground);
     sm->Request(ctrl::State::Damping, d);
     std::printf("重置：回到 --start %s（t=%.3f s 保留）；基座 z %.4f → %.4f m、竖直度 %.2f° → "
                 "%.2f°；状态 → %s（会自然塌下，接着按 S 就能从起点重新起身）\n",
@@ -306,10 +383,24 @@ int main(int argc, char **argv) {
     opt.delay_cycles = args.integer("--delay-cycles", opt.delay_cycles, kUsage);
     opt.noise = args.number("--noise", opt.noise, kUsage);
     opt.gear = args.number("--gear", opt.gear, kUsage);
+    opt.pitch = args.number("--pitch", opt.pitch, kUsage);
+    opt.roll = args.number("--roll", opt.roll, kUsage);
+    if (args.has("--floor-friction")) {
+        opt.friction_set = true;
+        if (!ParseFriction(args.value("--floor-friction"), opt.friction))
+            return 1;
+    }
+    opt.condim = args.integer("--floor-condim", opt.condim, kUsage);
     if (opt.ramp < 0.0 || opt.kp < 0.0 || opt.kd < 0.0 || opt.kd_damp < 0.0 || opt.seconds <= 0.0 ||
         opt.tau_max < 0.0 || opt.deadzone < 0.0 || opt.delay_cycles < 0 || opt.noise < 0.0 ||
         opt.gear <= 0.0 || opt.fps <= 0.0 || opt.width <= 0 || opt.height <= 0) {
         std::fprintf(stderr, "参数取值不合法（时长/增益/限幅等不能为负）：见用法\n%s", kUsage);
+        return 1;
+    }
+    if (std::fabs(opt.pitch) >= 90.0 || std::fabs(opt.roll) >= 90.0 || opt.condim < 0 ||
+        opt.condim > 6) {
+        std::fprintf(stderr, "--pitch/--roll 要 |角度| < 90°，--floor-condim 要在 0~6：见用法\n%s",
+                     kUsage);
         return 1;
     }
     if (args.has("--script") && !ParseScript(args.value("--script"), &opt.script))
@@ -346,6 +437,9 @@ int main(int argc, char **argv) {
                 static_cast<long>(m->nq), static_cast<long>(m->nv), static_cast<long>(m->nu),
                 m->opt.timestep, mass, m->actuator_ctrlrange[1]);
 
+    // 地面：平面 geom（场景里的 floor）。摩擦/接触维度可覆盖，倾角可调（默认都不动）
+    const int floor_geom = mj_name2id(m, mjOBJ_GEOM, "floor");
+
     // 脚（4 个足底碰撞球）+ 站姿搜索
     double foot_radius = 0.0;
     const std::vector<int> feet = stance::FindFeet(m, &foot_radius);
@@ -355,6 +449,20 @@ int main(int argc, char **argv) {
         mj_deleteData(d);
         mj_deleteModel(m);
         return 1;
+    }
+    // 摩擦/接触维度：给了才改（不给就用场景 XML 里的值，结果与加这个开关之前逐位相同）
+    if (opt.friction_set || opt.condim > 0) {
+        ground::SetFriction(m, floor_geom, feet, opt.friction_set ? opt.friction : nullptr,
+                            opt.condim);
+        const char *src = opt.friction_set ? "--floor-friction" : "场景 XML";
+        std::printf("摩擦（%s）：地面/足底 %.4g %.4g %.4g、condim %d", src,
+                    floor_geom >= 0 ? m->geom_friction[3 * floor_geom] : 0.0,
+                    floor_geom >= 0 ? m->geom_friction[3 * floor_geom + 1] : 0.0,
+                    floor_geom >= 0 ? m->geom_friction[3 * floor_geom + 2] : 0.0,
+                    floor_geom >= 0 ? m->geom_condim[floor_geom] : 0);
+        if (opt.condim == 3 || (opt.condim == 0 && floor_geom >= 0 && m->geom_condim[floor_geom] == 3))
+            std::printf("（condim=3 只用滑动摩擦，后面两个数不参与求解）");
+        std::printf("\n");
     }
     const stance::Target target = stance::Search(m, d, feet, foot_radius);
     if (!target.ok) {
@@ -367,12 +475,42 @@ int main(int argc, char **argv) {
                 "质心离四足中心 %.4f m、四足触地 %d\n",
                 target.bend, target.frac, target.z, target.com_err, target.feet);
 
-    if (!SetStart(m, d, opt.start, target)) {
+    // 地面倾角：站姿搜索必须在**水平**地面下做（搜索里的"基座平移到最低脚底面贴地"是水平地面
+    // 的算法），所以先搜、再转地面+狗（相对几何不变，搜出来的站姿照旧成立）。
+    stance::Plane ground_plane;
+    {
+        char err[256] = "";
+        if (!ground::ApplyTilt(m, d, floor_geom, opt.pitch, opt.roll, &ground_plane, err,
+                               sizeof(err))) {
+            std::fprintf(stderr, "%s\n", err);
+            mj_deleteData(d);
+            mj_deleteModel(m);
+            return 1;
+        }
+        if (ground_plane.level()) {
+            std::printf("地面：水平（--pitch/--roll 都是 0），重力不动\n");
+        } else {
+            // 地面转了之后，"又平、又无限、又没纹理"的地面从重力水平的相机看过去看不出坡度，
+            // 把场景里备好的棋盘格材质挂上去（材质默认不用，见 scenes/flat_scene.xml）
+            const int mat = mj_name2id(m, mjOBJ_MATERIAL, "floor_grid_mat");
+            if (floor_geom >= 0 && mat >= 0)
+                m->geom_matid[floor_geom] = mat;
+            const double *xmat = d->geom_xmat + 9 * floor_geom;
+            std::printf("地面：倾角 %.2f°（pitch %.1f° / roll %.1f°），法向 (%.3f, %.3f, %.3f)；"
+                        "地面 geom 实测法向 (%.3f, %.3f, %.3f)；**重力不动**（越陡越站不住）；"
+                        "棋盘格纹理已挂上\n",
+                        std::acos(std::clamp(ground_plane.up[2], -1.0, 1.0)) * 180.0 / M_PI,
+                        opt.pitch, opt.roll, ground_plane.up[0], ground_plane.up[1],
+                        ground_plane.up[2], xmat[2], xmat[5], xmat[8]);
+        }
+    }
+
+    if (!SetStart(m, d, opt.start, target, feet, foot_radius, ground_plane)) {
         mj_deleteData(d);
         mj_deleteModel(m);
         return 1;
     }
-    const double ref_x = d->qpos[0], ref_y = d->qpos[1]; // 水平位移的参考点 = 起点
+    const double ref[3] = {d->qpos[0], d->qpos[1], d->qpos[2]}; // 漂移参考点 = 起点基座位置
 
     motor::JointMotors motors(m, opt.tau_max, opt.deadzone, opt.delay_cycles, opt.noise);
     ctrl::Config cfg;
@@ -384,6 +522,7 @@ int main(int argc, char **argv) {
     cfg.z_stand = target.z;
     cfg.auto_ramp = opt.auto_ramp;
     cfg.gravity_comp = opt.gravity_comp;
+    cfg.ground = ground_plane;
     ctrl::StateMachine sm(m, &motors, target.q, cfg);
     std::printf("电机模型：%s\n",
                 (opt.tau_max > 0.0 || opt.deadzone > 0.0 || opt.delay_cycles > 0 || opt.noise > 0.0)
@@ -404,7 +543,7 @@ int main(int argc, char **argv) {
                     opt.gear, opt.kp, opt.kd, c.pos, r.K_P, r.K_W, r.Pos);
     }
 
-    const Snapshot start_row = Sample(m, d, feet, ref_x, ref_y);
+    const Snapshot start_row = Sample(m, d, feet, ref, ground_plane);
     PrintSnapshot("起点", start_row);
 
     if (opt.mode == "view") {
@@ -427,7 +566,8 @@ int main(int argc, char **argv) {
                 } else if (key == GLFW_KEY_D) {
                     sm.Request(ctrl::State::Damping, d);
                 } else if (key == GLFW_KEY_R) {
-                    ResetToStart(m, d, opt.start, target, &sm, feet, ref_x, ref_y); // 回到起点，重新演示
+                    // 回到起点，重新演示
+                    ResetToStart(m, d, opt.start, target, feet, foot_radius, ground_plane, &sm, ref);
                     t_stand_start = t_stand_done = -1.0;
                 } else if (key == GLFW_KEY_Q || key == GLFW_KEY_ESCAPE) {
                     quit = true;
@@ -446,10 +586,10 @@ int main(int argc, char **argv) {
                 ++steps;
                 if (sm.state() == ctrl::State::Standing && t_stand_start >= 0.0 &&
                     t_stand_done < 0.0 &&
-                    StoodUp(Sample(m, d, feet, ref_x, ref_y), target))
+                    StoodUp(Sample(m, d, feet, ref, ground_plane), target))
                     t_stand_done = d->time;
             }
-            const Snapshot now = Sample(m, d, feet, ref_x, ref_y);
+            const Snapshot now = Sample(m, d, feet, ref, ground_plane);
             // HUD 全用 ASCII：MuJoCo 内置位图字体不含中文/希腊字母，画出来是乱码块（终端日志仍用中文）
             char up[64] = "";
             if (sm.state() == ctrl::State::Standing && t_stand_done >= 0.0)
@@ -462,12 +602,13 @@ int main(int argc, char **argv) {
                           ctrl::NameAscii(sm.state()), up, sm.last_event_ascii());
             std::snprintf(hud_right, sizeof(hud_right),
                           "t = %.2f s\nfeet on ground: %d\nbase z = %.4f m\ntilt = %.2f deg\n"
-                          "switches: %d\n|tau| peak = %.1f N*m",
-                          now.t, now.feet, now.z, now.tilt, sm.switches(),
-                          motors.stats().tau_peak);
+                          "ground tilt = %.1f deg\nswitches: %d\n|tau| peak = %.1f N*m",
+                          now.t, now.feet, now.z, now.tilt,
+                          std::acos(std::clamp(ground_plane.up[2], -1.0, 1.0)) * 180.0 / M_PI,
+                          sm.switches(), motors.stats().tau_peak);
             win.Draw(m, d, hud_left, hud_right);
         }
-        const Snapshot end = Sample(m, d, feet, ref_x, ref_y);
+        const Snapshot end = Sample(m, d, feet, ref, ground_plane);
         PrintSnapshot("收工", end);
         std::printf("窗口：物理 %ld 步 / 仿真 %.3f s，状态切换 %d 次\n", steps, end.t,
                     sm.switches());
@@ -522,14 +663,14 @@ int main(int argc, char **argv) {
     char hud_left[512], hud_right[384];
     while (d->time < opt.seconds - 1e-12) {
         while (next_event < opt.script.size() && d->time >= opt.script[next_event].first - 1e-12) {
-            const Snapshot before = Sample(m, d, feet, ref_x, ref_y);
+            const Snapshot before = Sample(m, d, feet, ref, ground_plane);
             PrintSnapshot(ctrl::Name(sm.state()), before); // 上一段的末态
             if (sm.state() == ctrl::State::Standing && t_stand_start >= 0.0)
                 std::printf("    上一段（站立）：起身用时 %.2f s（斜坡 %.2f s）\n",
                             (t_stand_done >= 0.0 ? t_stand_done : before.t) - t_stand_start,
                             sm.chosen_ramp());
             if (opt.script[next_event].second == Action::Reset) {
-                ResetToStart(m, d, opt.start, target, &sm, feet, ref_x, ref_y);
+                ResetToStart(m, d, opt.start, target, feet, foot_radius, ground_plane, &sm, ref);
                 t_stand_start = t_stand_done = -1.0;
             } else if (sm.Request(ToState(opt.script[next_event].second), d)) {
                 std::printf("--- t=%.3f s 切换 → %s\n", d->time, ctrl::Name(sm.state()));
@@ -545,10 +686,10 @@ int main(int argc, char **argv) {
         mj_step(m, d);
         ++steps;
         if (sm.state() == ctrl::State::Standing && t_stand_start >= 0.0 && t_stand_done < 0.0 &&
-            StoodUp(Sample(m, d, feet, ref_x, ref_y), target))
+            StoodUp(Sample(m, d, feet, ref, ground_plane), target))
             t_stand_done = d->time;
         if (rec) {
-            const Snapshot now = Sample(m, d, feet, ref_x, ref_y);
+            const Snapshot now = Sample(m, d, feet, ref, ground_plane);
             char up[64] = "";
             if (sm.state() == ctrl::State::Standing && t_stand_done >= 0.0)
                 std::snprintf(up, sizeof(up), "  (up in %.2f s, ramp %.2f s)",
@@ -559,15 +700,17 @@ int main(int argc, char **argv) {
                           ctrl::NameAscii(sm.state()), up, script_text);
             std::snprintf(hud_right, sizeof(hud_right),
                           "t = %.2f s\nfeet on ground: %d\nbase z = %.4f m\ntilt = %.2f deg\n"
-                          "|tau| peak = %.1f N*m",
-                          now.t, now.feet, now.z, now.tilt, motors.stats().tau_peak);
+                          "ground tilt = %.1f deg\n|tau| peak = %.1f N*m",
+                          now.t, now.feet, now.z, now.tilt,
+                          std::acos(std::clamp(ground_plane.up[2], -1.0, 1.0)) * 180.0 / M_PI,
+                          motors.stats().tau_peak);
             rec->Capture(m, d, hud_left, hud_right);
         }
     }
     const double wall_ms =
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_start).count();
 
-    const Snapshot end = Sample(m, d, feet, ref_x, ref_y);
+    const Snapshot end = Sample(m, d, feet, ref, ground_plane);
     PrintSnapshot(ctrl::Name(sm.state()), end);
     std::printf("仿真 %.3f s（%ld 步，wall %.1f ms，单步 %.4f ms，%.1fx 实时）\n", end.t, steps,
                 wall_ms, wall_ms / std::max(1L, steps), 1000.0 * end.t / std::max(1e-9, wall_ms));

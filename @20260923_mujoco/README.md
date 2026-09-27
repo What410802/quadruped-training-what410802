@@ -76,10 +76,9 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/physics_pacing.py    # �
 │   ├── black_description.xml     # 整理后的机器人模型（freejoint + 12 个力矩电机），唯一能跑的本体
 │   └── meshes -> ../assets/urdf/meshes
 ├── scenes/
-│   ├── flat_scene.xml            # 正常：include 上面的模型 + 地面 + 灯光 + 静止 keyframe
+│   ├── flat_scene.xml            # 正常：include 上面的模型 + 地面 + 灯光 + 静止 keyframe（自己写 <compiler meshdir>）
 │   ├── slope_scene.xml           # 斜面 demo 用：include flat_scene.xml + 一张棋盘格地面材质
-│   ├── flat_scene_raw.xml        # 对照：直接 include 原始导出，用于复现弹飞
-│   └── meshes -> ../assets/urdf/meshes
+│   └── flat_scene_raw.xml        # 对照：直接 include 原始导出，用于复现弹飞
 ├── output/                       # 任务结果（按语言分；文档在仓库根的 docs/）
 │   ├── python/                   # Python 侧：rest_down.mp4、rest_preview_{iso,side}.png（两个 example 脚本的产物与 rest_down.mp4 重复或只是演示，未入库）
 │   └── cpp/                      # C++ 侧：rest_down.mp4、stand.mp4、stand_up.mp4、slope_stand.mp4、slope_stand_up_1080p{60,120}fps.mp4（同名对应关系见 docs/task2.md，产出命令见 docs/task2.md 与 docs/stand.md）
@@ -218,3 +217,5 @@ pixi run @20260923_mujoco/cpp_slope/build/slope --mode sim --start raw --pitch 1
 - [x] 额外 demo（非验收项）：平地站稳与可调倾斜地面（[`cpp_stand/`](cpp_stand/)、[`cpp_slope/`](cpp_slope/)，结果与踩坑见 [`docs/stand.md`](docs/stand.md)）
 
 任务 3/4 的推进顺序：① C++ 工具链可行性验证（已完成）→ ② 研读 `unitree_mujoco`、写 `docs/learn/unitree-mujoco.md`（已完成）→ ③ Python 侧按新结构重构（**已完成**：`python/`，`scripts/` 里的旧脚本暂留作对照）→ ④ C++ 侧验证（**已完成**：`cpp_task2 --mode view` 接官方 `Simulate` 界面，实测 1.00x 且流畅，结论是不必再手写一份双缓冲）。
+
+目前仿真、控制、渲染窗口/录制视频的逻辑以及场景物体概念、MJCF/URDF及其基本语法与使用已学会，由agent编写的主要代码（`cpp/` `python/` `scripts/{simulate.py, simulate_record.py, visualization/}`）已理解，`docs/` 内讲解的C++进阶语法还在深化理解中。

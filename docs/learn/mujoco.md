@@ -247,9 +247,19 @@ mjtNum  o_friction[5];   // friction
 
 ### 6.1 `<include>` 之后 `meshdir` 是相对**顶层文件**解析的
 
-场景与机器人分目录时，模型里的 `meshdir="meshes/"` **不会**相对模型自己解析，而是相对 顶层（scene）文件所在目录。**实测**：`scenes/flat_scene.xml` include `models/xxx.xml`， 模型写 `meshdir="meshes/"` → 报错去找 `scenes/meshes/...`；同一个模型**单独**加载却正常。
+场景与机器人分目录时，模型里的 `meshdir="meshes/"` **不会**相对模型自己解析，而是相对 顶层（scene）文件所在目录。**实测**：`scenes/flat_scene.xml` include `models/xxx.xml`， 模型写 `meshdir="meshes/"` → 报错去找 `scenes/meshes/...`（去掉 `scenes/meshes` 软链接后 的错误原文：`Error opening file 'meshes/@20260927_motor/models/trunk.STL'`）；同一个模型**单独** 加载却正常。
 
-**做法**：给每个会用到 `meshdir="meshes/"` 的目录各放一个 `meshes` **目录软链接**， 指向唯一一份真实 mesh。详见 `@20260923_mujoco/scripts/onetime_tools/measure_and_fix_base_height.py` 里的 `MESH_LINKS`。
+**做法（2026-09-27 改）**：每个**顶层场景**在 `<include>` **之后**显式写一行
+
+```xml
+<compiler meshdir="../models/meshes"/>
+```
+
+（放在 include 之后很要紧：多个 `<compiler>` 元素里**后写的覆盖先写的**，写在前面会被 模型自己那份 `meshdir="meshes/"` 又盖回去。）
+
+于是 `scenes/` 下**不再需要** `meshes` 目录软链接；`models/meshes`、`assets/black_description/meshes`
+仍然保留，因为可能被当顶层加载的是那两份 XML（见 `@20260923_mujoco/scripts/onetime_tools/measure_and_fix_base_height.py` 的 `MESH_LINKS`）。
+以前的统一做法是"跑到哪个目录就放一个软链接"，现在顶层场景自己说清楚用哪个 mesh 目录。
 
 ### 6.2 网站导出的模型「默认位形就穿模」，求解器会把狗弹飞
 
@@ -475,8 +485,9 @@ update_scene → render()（GPU 画进离屏 FBO）→ tobytes()
 | 实时节流用“目标墙钟 = 起点 + `data.time`”自我纠偏 | `example_with_viewer.py` 的 `--pacing deadline`（默认）| §7.2（`sleep(dt − 本步耗时)` 会累积误差）|
 | 离线录制不加 sleep、跑满 CPU | `example_attach.py` | §7.5（帧率与墙钟无关，慢机器只是录得久）|
 | 用 libx264 软件编码，不换硬件编码 | `visualization/mujoco_video.py` 的 ffmpeg 参数 | §7.4（编码只占一小部分）|
-| `meshdir` 不改，改用目录软链接 | `onetime_tools/measure_and_fix_base_height.py` 的 `MESH_LINKS` | §6.1 |
-| 场景/模型/导出目录各放一个 `meshes` 软链接 | `scenes/`、`models/`、`assets/black_description/` | §6.1（`meshdir` 相对顶层文件解析）|
+| 模型 XML 里的 `meshdir` 不改 | `onetime_tools/measure_and_fix_base_height.py` | §6.1 |
+| **顶层场景**在 `<include>` 之后写一行 `<compiler meshdir="../models/meshes"/>` | `scenes/flat_scene.xml`（两个任务）、`scenes/flat_scene_raw.xml` | §6.1（`meshdir` 相对顶层文件解析；后写的 `<compiler>` 覆盖先写的）|
+| `models/meshes`、`assets/black_description/meshes` 两个目录软链接保留，`scenes/meshes` **已删** | `onetime_tools/measure_and_fix_base_height.py` 的 `MESH_LINKS` | §6.1（被当顶层加载的是模型 XML 时才需要软链接）|
 | 模型里把基座抬到触地高度；不改 `inertiafromgeom` | `onetime_tools/measure_and_fix_base_height.py` | §6.2 |
 
 上面这些落点都在 `@20260923_mujoco/scripts/` 下：录像库核心是 `visualization/mujoco_video.py`，包入口 `visualization/__init__.py` 负责导出 `VideoRecorder`（脚本里直接 `from visualization import VideoRecorder`）。

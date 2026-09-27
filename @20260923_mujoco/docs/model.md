@@ -63,7 +63,12 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/urdf_to_mjcf.py \
 1. 基座默认高度 `pos="0 0 0"` → `pos="0 0 0.578580"`（本模型的具体数字），理由见下面的穿模；
    这个高度**不是硬编码常数**：脚本用脚底球体几何实时算出（算式见 [`../../docs/learn/mujoco.md`](../../docs/learn/mujoco.md) §6.2），最后重新加载产物断言“默认状态脚底 z ≥ 0”。
 
-**`meshdir` 不改**：导出自带 `meshdir="meshes/"`，网格重复问题用**目录软链接**解决：真实 STL 只在 `assets/urdf/meshes` 存一份，每个会用到它的目录（`assets/black_description/`、`models/`、`scenes/`）各放一个 `meshes` 软链接；`measure_and_fix_base_height.py` 会把这三个链接建好（缺失就补，指向不对就报错）。为什么 `scenes/` 也要一个，见下面那条坑。
+**`meshdir` 不改**：导出自带 `meshdir="meshes/"`，网格重复问题用**目录软链接**解决：真实 STL 只在 `assets/urdf/meshes` 存一份，会被**直接当顶层加载**的目录（`assets/black_description/`、`models/`）各放一个 `meshes` 软链接；`measure_and_fix_base_height.py` 会把这两个链接建好（缺失就补，指向不对就报错）。
+
+**顶层场景自己声明 meshdir**（2026-09-27 改）：`scenes/` 下的三个场景各自在 `<include>` **之后**写一行
+`<compiler meshdir="../models/meshes"/>`（`flat_scene_raw.xml` 写 `../assets/black_description/meshes`），
+于是 `scenes/meshes` 这个软链接不再需要、已删；为什么以前不得不有、以及“后写的 `<compiler>` 覆盖先写的”这条规则，
+见 [`../../docs/learn/mujoco.md`](../../docs/learn/mujoco.md) §6.1。
 
 场景（地面/灯光）仍需自己写 —— 见 `../scenes/flat_scene.xml`（正常仿真）与 `../scenes/flat_scene_raw.xml`（对照用，直接 include 原始导出）。
 
@@ -71,7 +76,8 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/urdf_to_mjcf.py \
 
 ### 1. `<include>` 之后 `meshdir` 是相对**顶层文件**解析的
 
-通用规则与实测见 [`../../docs/learn/mujoco.md`](../../docs/learn/mujoco.md) §6.1。落到本模型：`scenes/flat_scene.xml` 去 include 模型、模型写 `meshdir="meshes/"` 时，会去找 `scenes/meshes/...` 而报错；同一个模型单独加载却正常。**所以 `scenes/` 旁也必须有一个 `meshes` 软链接**（这就是为什么三个目录都有）。
+通用规则与实测见 [`../../docs/learn/mujoco.md`](../../docs/learn/mujoco.md) §6.1。落到本模型：`scenes/flat_scene.xml` 去 include 模型、模型写 `meshdir="meshes/"` 时，会去找 `scenes/meshes/...` 而报错（去掉软链接后的原文：`Error opening file 'meshes/@20260927_motor/models/trunk.STL'`）；同一个模型单独加载却正常。
+**所以以前 `scenes/` 旁也必须有一个 `meshes` 软链接**；现在改成在每个顶层场景里显式写一行 `<compiler meshdir="../models/meshes"/>`（必须放在 `<include>` 之后），`scenes/meshes` 已删。
 
 ### 2. 默认位形就穿模，求解器会把狗弹飞
 
