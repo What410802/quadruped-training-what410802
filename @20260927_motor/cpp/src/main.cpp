@@ -10,7 +10,7 @@
 //   pixi run @20260927_motor/cpp/build/motor_sim                                   # 开窗口，键盘切换
 //   pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 8 --script "1:stand,5:damp"
 //
-// 细节（为什么这么建模、实测数字、与实机的对应关系）见 ../docs/sim.md。
+// 细节（为什么这么建模、实测数字、与实机的对应关系）见 ../docs/sim.md（= 任务目录下的 cpp/docs/sim.md）。
 // 退出码：0 = 判定通过（含 --help）、1 = 参数错误、2 = 判定不通过。
 
 #include "args.h"
@@ -66,7 +66,7 @@ const char *kUsage =
     "                  还在站姿附近用 0.1 s（必须快收腿），已经趴下用 1.5 s（慢慢起）\n"
     "  --kp/--kd       站立模式的输出侧刚度/阻尼（默认 80 / 3，取讲义 §1.4 的实机配置）\n"
     "  --kd-damp       阻尼模式的阻尼（默认 0.5；这组增益决定了“软瘫”后落在什么姿势，\n"
-    "                  越大腿越撑得住、越大越容易侧翻，实测见 ../docs/sim.md）\n"
+    "                  越大腿越撑得住、越大越容易侧翻，实测见 cpp/docs/sim.md）\n"
     "  --gravity-comp  站立模式叠加 qfrc_bias 前馈（试验用；实机拿不到这个量）\n"
     "  --tau-max N     覆盖执行器限幅（默认用模型 ctrlrange ±20；实机 black 配置是 33.5）\n"
     "  --deadzone N    静摩擦死区：|τ| < N 时输出 0（默认 0 = 不建死区）\n"
@@ -79,7 +79,7 @@ const char *kUsage =
     "                  非 0 时地面自动换棋盘格纹理，否则坡度在画面上看不出来。\n"
     "  --floor-friction \"S [SPIN ROLL]\"  地面与足底的摩擦系数（默认用场景 XML 里的\n"
     "                  1 0.005 0.0001）。两边一起设：MuJoCo 的接触摩擦取两个 geom **逐元素最大**，\n"
-    "                  只把地面调小不生效（足底球的 1 仍然压着）——实测见 docs/sim.md\n"
+    "                  只把地面调小不生效（足底球的 1 仍然压着）——实测见 cpp/docs/sim.md\n"
     "  --floor-condim N 接触维度（默认用场景里的 3；自旋/滚动摩擦只要 condim ≥ 4/6 才进求解）\n"
     "  --width/--height  窗口尺寸（默认 1280x720）\n"
     "\n"
@@ -115,7 +115,7 @@ struct Options {
     std::string start = "raw";  // raw / stance / rest / side
     double kp = 80.0;           // 站立模式的位置刚度（关节侧）
     double kd = 3.0;            // 站立模式的阻尼
-    double kd_damp = 0.5;       // 阻尼模式的阻尼（小阻尼才像真狗那样“软瘫”趴下，见 docs/sim.md）
+    double kd_damp = 0.5;       // 阻尼模式的阻尼（小阻尼才像真狗那样“软瘫”趴下，见 cpp/docs/sim.md）
     bool auto_ramp = true;      // --ramp auto（默认）：按按下那一刻的姿态选斜坡
     double ramp = 1.5;          // --ramp SEC 时用（也是 auto 分支里“已经趴下”那支）
     double ramp_fast = 0.1;     // auto 分支里“还在站姿附近”用的快斜坡

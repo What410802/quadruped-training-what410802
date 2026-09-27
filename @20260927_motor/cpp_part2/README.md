@@ -1,15 +1,42 @@
-# 第三部分（实机）预备：不接电机也能跑的 dry run
+# 第二部分（实机）：程序与工具
 
-第三部分要控制真实电机（GO-8010-6）。实机不在手边时也要能把**上位机 ↔ 官方 SDK ↔ 报文**这条链路
-跑通、把标度（定点标度、减速比、CRC）确定下来，于是有了这个 dry run：进程自己造一对 PTY，
-一边交给官方 `SerialPort`（与实机同一套代码），另一边当"假电机"，按 GO-8010-6 的报文格式收命令、回反馈。
+真实电机是宇树 **GO-8010-6**，走官方 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../ReadOnly.d/unitree_actuator_sdk)）。
+本目录放四件东西：
+
+| 程序 | 干什么 | 需要硬件吗 |
+|---|---|---|
+| `src/sim/fake_motor.h` | **假电机**：一阶速度响应 + 库仑摩擦 + 力矩限幅；报文与全部定点标度按实测值收发 | 不要 |
+| `src/sim/fake_motor_dryrun.cpp` | dry run：PTY + 假电机，跑通"上位机 → SDK → 报文 → 反馈" | 不要 |
+| `src/serial_probe.cpp` | **实机探针**：只开端口/零力矩读反馈（默认一个字节都不发） | 要（`sudo`） |
+| `src/spin_test.cpp` | **S1**：带斜坡与限幅地让电机慢慢转起来，并打印每帧到底发了什么 | 要（`sudo`） |
+
+> `src/sim/` 里是**不用于控制实机**的代码（PTY 垫片 + 假电机 + dry run），`src/` 下其余文件都要接实机。
+>
+> 硬件现状（转接头型号/驱动/权限）、成熟度评估、**S0–S5 的完整计划与验收标准**、实机实测记录都在
+> [`docs/real.md`](docs/real.md)；缩写（TTY/PTY、Mbaud、LSB、CRC…）见 [`docs/glossary.md`](docs/glossary.md)。
 
 ```
-上位机（我们的控制律）          官方 SDK                            假电机（本目录）
-关节侧 τ/q/dq/kp/kd  ──ToRotor()──▶  MotorCmd  ──打包+CRC──▶  PTY  ──▶ 解帧/回帧
+上位机（我们的控制律）          官方 SDK                            假电机 / 真电机
+关节侧 τ/q/dq/kp/kd  ──ToRotor()──▶  MotorCmd  ──打包+CRC──▶  串口  ──▶ 解帧/回帧
    ▲                                                                       │
    └───────── q = data.q/N + offset  ◀── MotorData ◀──解包 ◀──────────────┘
 ```
+
+## 0. 怎么建（比手写 g++ 省事，还顺带生成 `compile_commands.json`）
+
+```bash
+cd ..                       # 仓库根目录（有 pixi.toml；ReadOnly.d 与它同级）
+pixi run cmake -S @20260927_motor/cpp_part2 -B @20260927_motor/cpp_part2/build
+pixi run cmake --build @20260927_motor/cpp_part2/build
+```
+
+（这一半只用 g++ / cmake 与 SDK 预编译的 `.so`，用不到 MuJoCo，所以不用传 `-DCMAKE_PREFIX_PATH`——
+传了 CMake 会警告 `Manually-specified variables were not used`。第一部分 `cpp/` 才需要。）
+
+`CMAKE_EXPORT_COMPILE_COMMANDS` 打开后会在 `build/compile_commands.json` 写入每个源文件的
+编译命令（含 SDK 的 `-I`），**编辑器（clangd / VS Code C++）靠它才知道 `serialPort/SerialPort.h` 在哪**——
+不建一次就会"代码标红"。SDK 目录可用 `-DUNITREE_SDK_DIR=<路径>` 覆盖（默认按"与本仓库根同级的
+`ReadOnly.d/unitree_actuator_sdk`"算绝对路径）。
 
 ## 1. 不接电机直接跑官方例程会怎样（实测）
 
@@ -38,7 +65,7 @@ g++ ... /tmp/pty_probe.cpp -o /tmp/pty_probe && /tmp/pty_probe
 这两个 ioctl 只有真串口驱动支持，PTY 一律回 `ENOTTY`。**与波特率无关**：115200 / 1 M / 2 M / 4 M 都在同一行炸
 （所以"换个标准波特率就行"是不成立的）。
 
-修法：`src/pty_serial_shim.c` 把这两个 ioctl 拦下来（`TIOCGSERIAL` 回一份 `PORT_16550A` +
+修法：`src/sim/pty_serial_shim.c` 把这两个 ioctl 拦下来（`TIOCGSERIAL` 回一份 `PORT_16550A` +
 `baud_base=4000000` 的 `serial_struct`，`TIOCSSERIAL` 直接回成功），其余 ioctl 透传。不需要 root、
 不需要内核模块，`LD_PRELOAD` 即可。
 
@@ -47,8 +74,8 @@ g++ ... /tmp/pty_probe.cpp -o /tmp/pty_probe && /tmp/pty_probe
 ```bash
 cd ..                                          # 仓库根目录（MyMonoRepo.d/，与 ReadOnly.d 同级）
 S=../ReadOnly.d/unitree_actuator_sdk
-gcc -O2 -fPIC -shared -o /tmp/pty_serial_shim.so @20260927_motor/cpp_part2/src/pty_serial_shim.c -ldl
-g++ -O2 -std=c++14 -I$S/include -I$S/include/unitreeMotor @20260927_motor/cpp_part2/src/fake_motor_dryrun.cpp \
+gcc -O2 -fPIC -shared -o /tmp/pty_serial_shim.so @20260927_motor/cpp_part2/src/sim/pty_serial_shim.c -ldl
+g++ -O2 -std=c++14 -I$S/include -I$S/include/unitreeMotor @20260927_motor/cpp_part2/src/sim/fake_motor_dryrun.cpp \
     -L$S/lib -lUnitreeMotorSDK_Linux64 -Wl,-rpath,"$PWD/$S/lib" -pthread -o /tmp/fake_motor_dryrun
 LD_PRELOAD=/tmp/pty_serial_shim.so /tmp/fake_motor_dryrun
 ```
@@ -91,8 +118,18 @@ gear ratio = 6.330000（queryGearRatio），mode = 1（queryMotorMode）
 
 ## 5. 下一步（第二部分真正要做的）
 
-1. 把假电机那条线程换成**一台虚拟电机**（可以只是一个一阶惯性 + 摩擦 + 限幅的模型），
+**硬件现状、成熟度评估与分阶段计划（含验收标准）已经单独成文：[`docs/real.md`](docs/real.md)。**
+这里只留结论：
+
+| 层 | 状态 |
+|---|---|
+| 报文 / CRC / 定点标度 / 关节↔转子换算 / 反馈解码 | ✅ 已实测证明（本文件 §4） |
+| 真串口链路（4 Mbaud、半双工、时序/抖动） | ❌ 未验证（`serial_probe` 的"端口探针"就是测它） |
+| 零点标定（`offset`）与零点跳变处理 | ❌ 还没写代码 |
+| 安全层（看门狗、斜率/速度/力矩上限、温度与错误处理） | ❌ 还没写代码 |
+
+1. 把假电机那条线程换成**一台虚拟电机**（一阶惯性 + 摩擦 + 限幅），
    这样"回归零点 → 插值到目标角 → 标记零点 → 偏移 +30° → 零点跳变"整套逻辑都能先在这里验证；
 2. 用 dry run 把 `offset` 标定流程走一遍（`q = data.q/N + offset`、`cmd.Pos = (q_des − offset)·N`），
    包括人工制造"认错零点"（把回帧的 pos 加上 `1/6.33` 圈）来看跳变检测是否报警；
-3. 再接实机：`sudo`、确认串口设备（`/dev/ttyUSB0` 看实际枚举）与电机 ID、先用小角度 + 插值缓慢动。
+3. 再接实机：`sudo`（或加进 `dialout`）、确认串口设备与电机 ID、先用小角度 + 插值缓慢动。

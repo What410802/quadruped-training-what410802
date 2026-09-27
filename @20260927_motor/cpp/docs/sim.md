@@ -1,7 +1,7 @@
 # 第三次培训 · 第一部分（仿真）：关节电机 + 状态机
 
-> 任务书：[`teaching-materials/第三次培训任务.pdf.md`](teaching-materials/第三次培训任务.pdf.md)；讲义：[`teaching-materials/motor.pdf.md`](teaching-materials/motor.pdf.md)（§1 控制方式与仿真模拟、§2 零点与减速比）。两份都在本任务目录下、随 git 同步。
-> 本文只写**只对本任务成立**的东西（这份模型、这组数）；通用的 MuJoCo 知识与坑点在仓库 [`../../docs/`](../../docs/) 下，这里只放指针。
+> 任务书：[`docs/teaching-materials/第三次培训任务.pdf.md`](../../docs/teaching-materials/第三次培训任务.pdf.md)；讲义：[`docs/teaching-materials/motor.pdf.md`](../../docs/teaching-materials/motor.pdf.md)（§1 控制方式与仿真模拟、§2 零点与减速比）。两份都在任务根目录 `docs/` 下、随 git 同步。
+> 本文只写**只对本任务成立**的东西（这份模型、这组数）；通用的 MuJoCo 知识与坑点在仓库 [`../../docs/`](../../../docs/) 下，这里只放指针。
 
 ## 1 任务要求 → 实现
 
@@ -55,7 +55,7 @@ $k_d(\dot q_{des}-\dot q)$ 是 $\mathrm{N\,m\,s/rad}\times\mathrm{rad/s}=\mathrm
     换成转子侧要 **÷N**（20/6.33 = 3.16 N·m）；反之实机 `data.tau` 是转子侧，换成关节侧要 **×N**；
 3. `--gravity-comp` 叠加的 `qfrc_bias` 也是 N·m，所以能直接加到 τ 上。
 
-**与官方 SDK 对得上**：Unitree 官方电机 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../ReadOnly.d/unitree_actuator_sdk)，
+**与官方 SDK 对得上**：Unitree 官方电机 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../../ReadOnly.d/unitree_actuator_sdk)，
 `unitreerobotics/unitree_actuator_sdk`，commit `5b79a42`）的 `MotorCmd{tau, dq, q, kp, kd}` / `MotorData{tau, dq, q}`
 就是同一套量（全部**转子侧**），README 还专门写了 $kp_{rotor}=kp_{output}/r^2$、$kd_{rotor}=kd_{output}/r^2$
 （`unitree_actuator_sdk/README.md` 第 53–57 行），与讲义 §2.3 一字不差；减速比用 `queryGearRatio(MotorType)` 查（`unitreeMotor.h:73`）。
@@ -100,11 +100,11 @@ $k_d(\dot q_{des}-\dot q)$ 是 $\mathrm{N\,m\,s/rad}\times\mathrm{rad/s}=\mathrm
 `--ramp 1.5` 可以改成固定值（这时两个分支都用它）。
 
 ### 2.3 站姿（控制目标）
-沿用第二次培训额外 demo（[`@20260923_mujoco/cpp_stand/`](../../@20260923_mujoco/cpp_stand/)）的**搜索**：
+沿用第二次培训额外 demo（[`@20260923_mujoco/cpp_stand/`](../../../@20260923_mujoco/cpp_stand/)）的**搜索**：
 膝取 `{0.9, 1.1, 1.3}`、大腿按膝的 `0.1…1.0` 倍扫，每次把基座平移到"最低那只脚刚好贴地"，取
 "质心水平投影离四足中心最近"的一组。本模型搜到：膝 **1.10 rad**、大腿 **0.55×膝**、基座 z **0.4973 m**、
 质心离四足中心 **0.0009 m**、四足触地 4。为什么不拿模型默认位形当目标见
-[`@20260923_mujoco/docs/stand.md`](../../@20260923_mujoco/docs/stand.md)（膝越界 0.85 rad + 质心在足后 0.18 m）。
+[`@20260923_mujoco/docs/stand.md`](../../../@20260923_mujoco/docs/stand.md)（膝越界 0.85 rad + 质心在足后 0.18 m）。
 
 ### 2.4 录像（`--mode record`）：给别人看的备用视频
 
@@ -117,8 +117,8 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
     --out @20260927_motor/output/cpp/damp_stand_damp.mp4
 ```
 
-- 渲染走**隐藏窗口 + 离屏 framebuffer**（[`../cpp/src/recorder.h`](../cpp/src/recorder.h)）→ ffmpeg 管道 `libx264`；
-  做法与 [`@20260923_mujoco/cpp_task2/src/record.h`](../../@20260923_mujoco/cpp_task2/src/record.h) 相同，那边的坑都带上了：
+- 渲染走**隐藏窗口 + 离屏 framebuffer**（[`../cpp/src/recorder.h`](../../cpp/src/recorder.h)）→ ffmpeg 管道 `libx264`；
+  做法与 [`@20260923_mujoco/cpp_task2/src/record.h`](../../../@20260923_mujoco/cpp_task2/src/record.h) 相同，那边的坑都带上了：
   离屏尺寸按 `--width/--height` 改（必须在 `mjr_makeContext` **之前**）、出帧按**仿真时间的严格网格** $k/fps$
   （帧数 ≈ 时长×fps）、行序自下而上交给 `-vf vflip`、**不调 `glfwTerminate()`**、HUD 只用 ASCII。
 - 视频里也画 HUD（ASCII）：左边是当前状态 + 本次脚本，右边是 t / 四足触地 / 基座高度 / 竖直度 / \|τ\| 峰值 ——
@@ -137,7 +137,7 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 
 ### 2.5 倾斜地面与摩擦（`--pitch/--roll`、`--floor-friction`、`--floor-condim`）
 
-从第二次培训的斜面 demo（[`@20260923_mujoco/cpp_slope/`](../../@20260923_mujoco/cpp_slope/)）**移植进来**，
+从第二次培训的斜面 demo（[`@20260923_mujoco/cpp_slope/`](../../../@20260923_mujoco/cpp_slope/)）**移植进来**，
 不新建 demo、不加新场景：默认倾角 0（= 平滑地面），此时整条路径与加这个功能之前**逐位相同**
 （A/B 做法与结果见 §3.4）。两个旋钮：
 
@@ -195,8 +195,8 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 
 实机侧（第二部分）还有一层仿真里没有的限幅：**报文的定点标度**。这次用"假电机 dry run"把它实测清楚了——
 命令帧的力矩/速度/位置/刚度四个字段的物理标度、CRC 算法，以及**刚度超量程会被 SDK 静默截断**
-（K_P ≥ 25.6 一律变 32766，对应关节侧 kp 上限 ≈ 1026）——表与复现见
-[`../README.md`](../README.md) 的「SDK 侧明确写出来的"限幅"」与 [`../cpp_part2/README.md`](../cpp_part2/README.md)。
+（K_P ≥ 25.6 一律变 32766，对应关节侧 kp 上限 ≈ 1026）——标度表与复现步骤见
+[`../cpp_part2/README.md`](../../cpp_part2/README.md) §4（“截断”那两行），程序里就是 `sim/fake_motor.h`。
 
 ## 3 实测（本机 i5-1035G1，MuJoCo 3.12.0）
 
@@ -337,7 +337,7 @@ done
 5. **窗口为什么自己写**：任务要用键盘切模式，而官方 `Simulate` 界面（`mj::GlfwAdapter`）的按键属于它自己
     的 UI，挂不上自定义回调。所以这次用 GLFW 自己开窗口：渲染仍是 `mjv_updateScene` + `mjr_render`，
     相机用 `mjv_moveCamera`（调用惯例照官方 `sample/basic.cc`：像素位移除以窗口高度、y 取负，滚轮 5% 高度）。
-6. **不要调 `glfwTerminate()`**：本机驱动上收尾会崩（与 [`@20260923_mujoco/cpp_task2/src/record.h`](../../@20260923_mujoco/cpp_task2/src/record.h)
+6. **不要调 `glfwTerminate()`**：本机驱动上收尾会崩（与 [`@20260923_mujoco/cpp_task2/src/record.h`](../../../@20260923_mujoco/cpp_task2/src/record.h)
     同一条结论），只销毁窗口，进程退出时由系统回收。
 7. **日志要设成行缓冲**：窗口模式是长时间运行的交互程序，stdout 被重定向时是块缓冲，中途被 `Ctrl-C`/信号
     打断会丢掉全部日志（第一次冒烟测试就什么都没看到）。`main()` 开头 `setvbuf(stdout, nullptr, _IOLBF, 0)`。
@@ -393,7 +393,7 @@ done
     症状很阴险：程序自己算的法向、高度、判定全都按斜面走，但**碰撞面与渲染出来的地面还是平的**，
     看上去就是“狗自己歪了 15°”。修法：改 `geom_quat` 的同时把 `sameframe` 置 0，并且拿
     `d->geom_xmat` 的第三列（地面在世界系里的实际法向）与自己的法向**对拍**，不一致就报错退出。
-    这条在第二次培训的斜面 demo 里已经踩过一次（[`../../@20260923_mujoco/docs/stand.md`](../../@20260923_mujoco/docs/stand.md)）。
+    这条在第二次培训的斜面 demo 里已经踩过一次（[`../../@20260923_mujoco/docs/stand.md`](../../../@20260923_mujoco/docs/stand.md)）。
 13. **调小地面摩擦不生效**：一对接触的摩擦系数是**两个 geom 逐元素取较大者**（实测：地面 0.05 +
     足底默认 1 → 接触仍是 `[1, 1, 0.005]`；两边都 0.05 才是 `[0.05, 0.05, 0.005]`）。
     所以 `--floor-friction` 同时写地面与 4 个足底碰撞球；另外 `condim=3`（默认）只用第 1 个系数，
@@ -453,7 +453,7 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 ## 6 与第二次培训站立控制的区别
 
 模型、场景、站姿搜索（`stance.h` 的 `Search`）、指标（四足触地/基座高度/竖直度/漂移）这几样是**直接沿用**
-[`@20260923_mujoco/cpp_stand/`](../../@20260923_mujoco/cpp_stand/) 的；**控制程序本身重写了**，因为它要满足的是
+[`@20260923_mujoco/cpp_stand/`](../../../@20260923_mujoco/cpp_stand/) 的；**控制程序本身重写了**，因为它要满足的是
 另一条要求（状态机 + 按键切换）。逐条对照：
 
 | 方面 | 第二次培训 `cpp_stand`（`stand::StanceController`） | 本次 `cpp/src`（`motor::JointMotors` + `ctrl::StateMachine`） |
@@ -465,7 +465,7 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 | 斜坡（`q_des` 怎么到站姿） | 启动时按 `--start` 定死：`raw`→0.1 s、其余→1.5 s | 按**按下那一刻的姿态**自动选：还在站姿附近→0.1 s、已经趴下→1.5 s（`--ramp auto`，可写死） |
 | 增益那一组数 | `kp=200 kd=5`（自己扫出来的经验值；`kp=50 kd=1` ✗、`kp=300 kd=6` ✗） | `kp=80 kd=3`（讲义 §1.4 说的**实机 `r1_sar` black 配置**，为了"仿真与实机同一组值"） |
 | 电机不再是理想了吗 | 直接把 $\tau$ 写进 `d->ctrl`，限幅靠 MuJoCo 内部按 `ctrlrange` 钳（所以打印的 `max\|ctrl\|` 能看到 237 这种超出 ±20 的数） | 电机层显式做**限幅 → 死区 → 延迟 → 噪声**，并统计"撞限幅/落死区"次数；打印的 `max\|τ\|` 是**真正生效**的力矩 |
-| 转子侧换算 / 与实机的关系 | 没有这个概念（纯仿真） | `motor::ToRotor()`（×N / ÷N / ÷N²）+ `--gear`，并为第二部分做了 dry run（[`../cpp_part2/`](../cpp_part2/README.md)） |
+| 转子侧换算 / 与实机的关系 | 没有这个概念（纯仿真） | `motor::ToRotor()`（×N / ÷N / ÷N²）+ `--gear`，并为第二部分做了 dry run（[`../cpp_part2/`](../../cpp_part2/README.md)） |
 | 地面 | 平地（斜面另起一个 demo `cpp_slope`） | 平地 + 可调倾角/摩擦，合并进同一个程序（§2.5，默认 0° = 与以前逐位相同） |
 | 窗口 | 官方 `Simulate` 界面（`mujoco::libmujoco_simulate`），按键是它自己的 | 自己写的 GLFW 窗口：键盘能挂自定义回调（这是"按键切模式"的前提） |
 | 判定 | 只看"四足站稳"（+ 斜面版看"没翻倒"） | 站立模式：四足触地 + 高度到位 + 竖直度 + 末段低速 **且真的起身过**；阻尼模式：四足触地 + 明显低于站姿 + 末段低速 |
@@ -487,7 +487,7 @@ z 与竖直度**逐位相同**，说明站立状态下两边的控制律是同�
 ### 6.2 两次踩的坑是同一类：低增益/非法位形
 
 旧程序最贵的一课是"**调增益没用的故障**"：`qpos0`（直腿）对膝是越界的，一开场被限位力踢出去，kp 从 100
-加到 1500 末态几乎逐位相同（见 [`@20260923_mujoco/docs/stand.md`](../../@20260923_mujoco/docs/stand.md)）。
+加到 1500 末态几乎逐位相同（见 [`@20260923_mujoco/docs/stand.md`](../../../@20260923_mujoco/docs/stand.md)）。
 本次把这课带过来成两条设计：
 
 * 站姿仍然**靠搜索**得到（不读 keyframe、不用默认位形）；
