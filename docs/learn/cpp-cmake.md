@@ -165,6 +165,67 @@
 	- `DMMotor : public Motor` 实现三个函数后，`DMMotor` 的 vtable 槽位被替换成自己的地址，`DMMotor` 可实例化
 	- 继承必须是 `public`：写成 `class DMMotor : Motor` 默认是 `private` 继承，外部无法把 `DMMotor*` 转成 `Motor*`，多态就废了
 
+- *Q:* [`@20260927_motor/cpp/src/viewer.h`](../../@20260927_motor/cpp/src/viewer.h) 里 `Window(const Window &) = delete;` 和 `Window &operator=(const Window &) = delete;` 是什么意思、为什么非要写？（前面表格里出现过 `= 0` / `= default`，这三者是同一处语法；该头文件的注释已回指本条）
+
+	*A:*
+
+	**1）`= delete` 是什么**
+
+	它叫**删除的定义**（deleted definition）：函数名照常声明、照常参与重载解析，但一旦重载解析选中了它，**编译期**直接报错（GCC/Clang 会说 `use of deleted function`、`call to deleted constructor of 'viewer::Window'`）。它不是运行期检查，而是把"这个操作不存在"写进类型系统。
+
+	它和 `= 0` / `= default` 是**互斥**的三种函数定义形式，同一个函数只能选一种：
+
+	| 写法 | 含义 | 能用在哪 |
+	|---|---|---|
+	| `= delete` | 声明它、但禁止使用，调到就编译错误 | **任意**函数：特殊成员函数、普通成员、非成员、`operator new`、模板特化 |
+	| `= default` | 要求编译器生成默认实现 | 只有编译器**能**生成的特殊成员函数（构造/析构/赋值/比较） |
+	| `= 0` | 纯虚说明符：类变抽象，派生类必须实现 | 只有虚函数 |
+
+	所以别把 `= delete` 当成"另一种 `= 0`"：`= 0` 管的是"谁来提供实现"，`= delete` 管的是"这个调用被禁止"，与被删函数有没有函数体无关。
+
+	和 C++03 的老写法（把拷贝构造声明成 `private` 且不给定义）相比：
+
+	| | `private` + 不定义（C++03） | `= delete`（C++11 起） |
+	|---|---|---|
+	| 报错时机 | 链接期（`undefined reference`），离调用现场很远 | 编译期，直接指到出错那一行 |
+	| 类内、友元里的调用 | 能编过，要拖到链接时才炸 | 一样是编译错误 |
+	| 放在哪 | 必须藏进 `private`，靠"访问不到"间接实现 | 一般写在 `public`：语义是"看得见，但不许用" |
+	| 通用性 | 只能玩这一个技巧 | 通用工具，可以删任意重载、`operator new` |
+
+	**2）这个类为什么必须删掉拷贝**
+
+	`Window` 是**资源拥有者**（RAII）：成员里有 `GLFWwindow *win_` 这样的裸句柄，还有 `mjvScene scn_`、`mjrContext con_`（后者内部挂着 GPU 上的上下文资源）；析构函数干的事是 `mjr_freeContext()` + `glfwDestroyWindow()`。
+
+	不删拷贝的话，编译器默认生成的拷贝构造是**逐成员浅拷贝**——指针照抄：
+
+	```cpp
+	viewer::Window a(m, "a", 1200, 900);
+	viewer::Window b = a;   // 没写 = delete 时，这一行能编过
+	// 于是 a.win_ 与 b.win_ 是同一个窗口，a.con_ 与 b.con_ 共用同一份 GPU 上下文；
+	// 两个对象各自析构一次 → 同一份资源被释放两次（double free / use-after-free）→ 崩溃
+	```
+
+	这就是 **Rule of Three / Rule of Five**：类一旦自己管理资源（写了析构，或持有裸句柄、裸指针），拷贝与移动就必须**显式表态**，不能靠默认生成糊过去。这里的表态是"都不许"。
+
+	**3）为什么两行都要写**
+
+	- 只删拷贝构造、不删拷贝赋值：拷贝赋值**仍会被隐式生成**（标准里只是把它标记为 deprecated，即"不推荐但存在"），`a = b;` 照样编过并逐成员浅拷贝 → 又变成两个所有者。所以拷贝构造与拷贝赋值必须**成对**删除。实测（g++ 14 / `-std=c++17 -Wall`）：只删拷贝构造时 `a = b` 静默编过，连 warning 都不给——只能靠人记得写第二行。
+	- 两行都写了还有个**连带效果**（很关键）：一旦用户自己声明了拷贝构造或拷贝赋值，编译器就**不再隐式生成移动构造/移动赋值**。于是 `Window` 既不可拷贝也不可移动，`Window b = std::move(a);` 同样编译错误。这正是想要的语义——对象只能按引用或指针传（代码里到处是 `Window &w`、`Window *`），绝不出现"两个对象拥有同一份资源"。
+	- 反过来也成立：只想删移动、保留拷贝时也得显式写（`Window(Window &&) = delete;`），否则拷贝会作为兜底悄悄顶上。
+	- 老办法是继承一个"删好拷贝"的空基类（例如 `boost::noncopyable`），派生类的隐式拷贝构造因基类不可拷贝而报错；C++11 起一句 `= delete` 更直白。
+
+	**4）`= delete` 的其他常见用法**
+
+	本质是**精确开关某个重载**，常用来封杀隐式转换或某类调用：
+
+	```cpp
+	void f(int);
+	void f(double) = delete;    // f(3.14) 直接编译错误，而且不会退化成 f(int)：封杀隐式转换
+	struct NoHeap { void *operator new(std::size_t) = delete; };   // 禁止 new，只能用栈上/静态对象
+	```
+
+	两条写法规则：`= delete` 要写在函数的**第一次声明**处（写成"先声明、以后再删"是 ill-formed，g++ 只给一句 `warning: deleted definition of 'S::f()' is not first declaration`）；被删的函数不能被 ODR-use（例如取它的地址传出去），否则同样是编译错误。
+
 - *Q:* 一个function用const修饰意味着什么？例如下面的`getPosition`。
 	```cpp
 	class Motor{

@@ -67,6 +67,9 @@ class Window {
         }
     }
 
+    // 不可拷贝、也不可移动：Window 持有 GLFWwindow* 与 mjrContext，编译器默认生成的拷贝是
+    // 逐成员浅拷贝，两个对象会共用同一份资源、析构时各释放一次（double free）。两行为什么都要写、
+    // 与 = default / = 0 的区别：见 docs/learn/cpp-cmake.md 的「= delete」那条问答。
     Window(const Window &) = delete;
     Window &operator=(const Window &) = delete;
 
