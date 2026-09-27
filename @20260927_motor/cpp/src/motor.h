@@ -110,6 +110,7 @@ class JointMotors {
         }
         delay_ = std::max(0, delay_cycles);
         hist_.assign(static_cast<size_t>(nu) * static_cast<size_t>(delay_ + 1), Cmd{});
+        in_dead_.assign(static_cast<size_t>(nu), false);
     }
 
     int size() const { return static_cast<int>(qadr_.size()); }
@@ -124,15 +125,30 @@ class JointMotors {
     const Cmd &command(int i) const { return cmd_[i]; }
 
     // 每步调用一次：τ = τ_ff + kp·(q_des − q) + kd·(q̇_des − q̇) → 死区 → 限幅 → 噪声 → d->ctrl
+    //
+    // 死区这里有两个容易搞错的细节（实测踩过，见 docs/sim.md §4 踩坑 15）：
+    //   * **本来就正好是 0 的力矩不算“落死区”**：阻尼模式下狗停下来后 q̇ = 0 ⇒ τ = −kd·0 = 0，
+    //     旧写法（|τ| < 死区 就 +1）会把“没在输出的每一个电机·步”都算进来 —— 5 s 的仿真能报出
+    //     三万多次；现在只统计真的“被削掉”的那部分（0 < |τ| < 死区）；
+    //   * `dead` 是**采样计数**（电机·步），不是“穿越次数”：一次穿越若在死区里停留多步就按步数累加。
+    //     要按“次”看用 `dead_events`：每个关节从死区外进入死区内记一次（上升沿）。
     void Apply(mjData *d) {
         const Cmd *c = EffectiveCommand();
         for (int i = 0; i < size(); ++i) {
             const double q = d->qpos[qadr_[i]];
             const double dq = d->qvel[vadr_[i]];
             double tau = c[i].ff + c[i].kp * (c[i].pos - q) + c[i].kd * (c[i].vel - dq);
-            if (deadzone_ > 0.0 && std::fabs(tau) < deadzone_) {
-                tau = 0.0; // 静摩擦死区：这么小的力矩推不动电机
-                ++stats_.dead;
+            const double a = std::fabs(tau);
+            if (deadzone_ > 0.0) {
+                // “在死区里”包含 a == 0（完全没指令），这样狗停着不动时不会反复记“进入”
+                const bool inside = a < deadzone_;
+                if (inside && a > 0.0) {
+                    tau = 0.0; // 静摩擦死区：这么小的力矩推不动电机
+                    ++stats_.dead;
+                    if (!in_dead_[static_cast<size_t>(i)])
+                        ++stats_.dead_events;
+                }
+                in_dead_[static_cast<size_t>(i)] = inside;
             }
             if (tau > limit_[i]) {
                 tau = limit_[i];
@@ -145,17 +161,18 @@ class JointMotors {
                 tau += noise_ * normal_(rng_); // 编码器/电流环噪声（固定种子，可复现）
             d->ctrl[i] = tau;
             stats_.steps++;
-            const double a = std::fabs(tau);
-            stats_.tau_peak = std::max(stats_.tau_peak, a);
-            stats_.tau_abs_sum += a;
+            const double mag = std::fabs(tau);
+            stats_.tau_peak = std::max(stats_.tau_peak, mag);
+            stats_.tau_abs_sum += mag;
         }
     }
 
     // 统计（写进摘要，用来说明"非理想项到底起没起作用"）
     struct Stats {
         long steps = 0;        // 累计"电机·步"
-        long sat = 0;          // 撞限幅的次数
-        long dead = 0;         // 落进死区、被当成 0 的次数
+        long sat = 0;          // 撞限幅的电机·步
+        long dead = 0;         // 落进死区、被当成 0 的电机·步（**不含**本来就正好是 0 的力矩）
+        long dead_events = 0;  // 进入死区的次数（每个关节一次上升沿算一次）
         double tau_peak = 0.0; // |τ| 峰值
         double tau_abs_sum = 0.0;
         double tau_mean_abs() const {
@@ -187,7 +204,8 @@ class JointMotors {
     std::vector<int> qadr_, vadr_;
     std::vector<double> limit_;
     std::vector<Cmd> cmd_;
-    std::vector<Cmd> hist_; // [步][关节] 摊平存放，长度 = size()×(delay_+1)
+    std::vector<Cmd> hist_;  // [步][关节] 摊平存放，长度 = size()×(delay_+1)
+    std::vector<bool> in_dead_; // 每个关节上一拍是否在死区里（用来数“进入死区”的上升沿）
     std::mt19937 rng_;
     std::normal_distribution<double> normal_{0.0, 1.0};
     Stats stats_;

@@ -64,7 +64,8 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 
 关键参数：`--start raw|stance|rest|side`（起点）、`--kp/--kd`（站立模式，默认 80/3 = 讲义 §1.4 的实机配置）、
 `--kd-damp`（阻尼模式，默认 0.5）、`--ramp auto|SEC`（起身斜坡）、`--deadzone/--delay-cycles/--noise/--tau-max`
-（非理想项）、`--script`（sim/record 模式的脚本，动作 `stand` / `damp` / `reset`；`reset` = 回到 `--start` 起点并回阻尼模式，
+（非理想项；`--deadzone N` 会分别报"落死区 N 电机·步（占比）"与"进出死区 M 次"两个数，原因见
+[`docs/sim.md`](docs/sim.md) §4 踩坑 15）、`--script`（sim/record 模式的脚本，动作 `stand` / `damp` / `reset`；`reset` = 回到 `--start` 起点并回阻尼模式，
 与窗口里的 `R` 键一致，保留仿真时间轴）、`--out/--fps`（录像）、
 `--pitch/--roll/--floor-friction/--floor-condim`（倾斜地面与摩擦，默认全不生效；
 量测自动改成相对地面法向，见 [`docs/sim.md`](docs/sim.md) §2.5）。
@@ -79,7 +80,7 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 | 站立模式，按下时**已经趴平**（3 s） | 自动选 1.5 s 斜坡 → 站住（z 0.4862），**起身 1.40 s** ✓ |
 | 从趴卧 keyframe 起 | ✓ 起身 1.41 s；从站姿上起 ✓ 0.00 s |
 | **侧躺（绕 x 转 90°）起** | ✗ 起不来（竖直度 89.53°、0 足触地）——纯 PD 到站姿没有"翻身"这一步，是已知边界 |
-| 非理想项（死区 0.5 N·m + 延迟 2 周期 + 噪声 0.2 N·m） | 站立 ✓ / 切回阻尼 ✓，结论不变（死区削掉 32246 个电机·步的小力矩） |
+| 非理想项（死区 0.5 N·m + 延迟 2 周期 + 噪声 0.2 N·m） | 站立 ✓ / 切回阻尼 ✓，结论不变（落死区 **32222 电机·步（53.7%）**、进出死区 755 次，见 §4 踩坑 15） |
 | 倾斜地面（`--pitch`，摩擦默认 1） | 5° / 10° / 15° 均 ✓（漂移 0.06 / 0.12 / 0.23 m），**18° 翻倒** ✗ |
 | 摩擦可调（`--pitch 15`） | μ ≥ 0.3 ✓（μ=0.3 时一路在滑，漂移 0.65 m）；μ ≤ 0.15 ✗ 滑走（6 s 漂 20.6 m） |
 | 无窗口速度 | 2500 步 / 5 仿真秒 wall 107.6 ms（单步 0.0431 ms、**46.5x 实时**） |

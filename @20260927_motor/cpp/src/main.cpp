@@ -330,11 +330,15 @@ void ResetToStart(const mjModel *m, mjData *d, const std::string &start, const s
                 ctrl::Name(sm->state()));
 }
 
-void PrintMotorStats(const motor::JointMotors &motors) {    const motor::JointMotors::Stats &st = motors.stats();
-    std::printf("电机：累计 %ld 电机·步，撞限幅 %ld 次（%.3f%%），落死区 %ld 次，"
-                "|τ| 峰值 %.2f N·m、均值 %.2f N·m（延迟 %d 周期）\n",
+void PrintMotorStats(const motor::JointMotors &motors) {
+    const motor::JointMotors::Stats &st = motors.stats();
+    // 死区的两个数分开报（见 motor.h 的注释）：`dead` 是**电机·步**（被削掉的采样点），
+    // `dead_events` 才是“进出死区几次”。不给死区时两个都是 0。
+    std::printf("电机：累计 %ld 电机·步，撞限幅 %ld 次（%.3f%%），落死区 %ld 电机·步（%.3f%%，"
+                "进出死区 %ld 次），|τ| 峰值 %.2f N·m、均值 %.2f N·m（延迟 %d 周期）\n",
                 st.steps, st.sat, 100.0 * static_cast<double>(st.sat) / std::max(1L, st.steps),
-                st.dead, st.tau_peak, st.tau_mean_abs(), motors.delay_cycles());
+                st.dead, 100.0 * static_cast<double>(st.dead) / std::max(1L, st.steps),
+                st.dead_events, st.tau_peak, st.tau_mean_abs(), motors.delay_cycles());
 }
 
 } // namespace
