@@ -12,7 +12,9 @@
    smoothstep 推到站姿，控制器不变）；按 **`D`** 切回阻尼，狗在重力下自己塌回去。
 
 窗口是自己写的（GLFW + `mjv/mjr`），因为要用键盘切模式——官方 `Simulate` 界面的按键挂不上自定义回调。
-另有 `--mode sim` 无窗口回归模式：`--script "1:stand,5:damp"` 按仿真时刻切状态，跑完打印指标与判定（退出码 0/2）。
+另有两种无窗口模式：`--mode sim`（回归：`--script "1:stand,5:damp,6:reset"` 按仿真时刻切状态，`reset` = 回到
+`--start` 起点并回阻尼模式，跑完打印指标与判定，退出码 0/2/1）与 `--mode record`（**录像**：隐藏窗口离屏渲染 → ffmpeg，配合 `--script` 能直接做出
+固定脚本的演示视频，不需要人按键；产物在 `output/cpp/`）。
 
 电机不是"理想力矩源"一句话带过：限幅 / 死区 / 指令延迟 / 噪声四个开关都有，默认全关 = 理想；
 并按讲义 §2.3 把"关节侧参数 ↔ 电机**转子侧**命令"的换算写在代码里（`motor::ToRotor`，默认减速比 6.33），
@@ -43,11 +45,17 @@ pixi run @20260927_motor/cpp/build/motor_sim --help                # 全部参�
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 5                        # ①阻尼模式：松手塌回趴卧
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 6 --script "0.05:stand"  # ②按 S 起身
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 10 --script "0.05:stand,5:damp"  # ③切回阻尼
+pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 8 --start raw --script "0.05:stand,3:reset,4:stand"  # ④复位后再起身（= 窗口里按 R）
+
+# 录像（无窗口 + 脚本切换，给别人看的备用视频）
+pixi run @20260927_motor/cpp/build/motor_sim --mode record --script "0.05:stand,5:damp" --seconds 8 --out @20260927_motor/output/cpp/damp_stand_damp.mp4
+pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script "1:stand" --seconds 6 --out @20260927_motor/output/cpp/stand_up_from_rest.mp4
 ```
 
 关键参数：`--start raw|stance|rest|side`（起点）、`--kp/--kd`（站立模式，默认 80/3 = 讲义 §1.4 的实机配置）、
 `--kd-damp`（阻尼模式，默认 0.5）、`--ramp auto|SEC`（起身斜坡）、`--deadzone/--delay-cycles/--noise/--tau-max`
-（非理想项）、`--script`（sim 模式的切状态脚本）。
+（非理想项）、`--script`（sim/record 模式的脚本，动作 `stand` / `damp` / `reset`；`reset` = 回到 `--start` 起点并回阻尼模式，
+与窗口里的 `R` 键一致，保留仿真时间轴）、`--out/--fps`（录像）。
 
 ## 实测摘要（本机，详见 [`docs/sim.md`](docs/sim.md)）
 
@@ -61,6 +69,7 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 10 --script "0
 | **侧躺（绕 x 转 90°）起** | ✗ 起不来（竖直度 89.53°、0 足触地）——纯 PD 到站姿没有"翻身"这一步，是已知边界 |
 | 非理想项（死区 0.5 N·m + 延迟 2 周期 + 噪声 0.2 N·m） | 站立 ✓ / 切回阻尼 ✓，结论不变；撞限幅 **0** 次，\|τ\| 峰值 4.66 N·m（限幅 ±20 用不到） |
 | 无窗口速度 | 2500 步 / 5 仿真秒 wall 107.6 ms（单步 0.0431 ms、**46.5x 实时**） |
+| 录像（`--mode record`，1280×720 @50 fps） | 8 仿真秒 → **401 帧 / 8.020 s / 724 KiB**（录制 wall 10.9 s）；6 仿真秒 → **301 帧 / 6.020 s**（`output/cpp/` 两段片子，见 [`docs/sim.md`](docs/sim.md) §2.4） |
 
 ## 目录
 
@@ -70,16 +79,44 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 10 --script "0
 ├── docs/sim.md          # 第一部分的实现与实测（只对本任务成立的内容）
 ├── models/              # black_description.xml（从 @20260923_mujoco 复制）+ meshes 软链接
 ├── scenes/              # flat_scene.xml（同源复制）+ meshes 软链接
+├── output/cpp/          # 产物：录像（`--mode record`）
 └── cpp/
     ├── CMakeLists.txt   # 只链 mujoco + glfw（不链官方界面库：窗口是我们自己写的）
     └── src/
-        ├── motor.h      # 关节电机：MIT 公式、转子侧换算、限幅/死区/延迟/噪声
+        ├── motor.h      # 关节电机：MIT 公式（含量纲说明）、转子侧换算、限幅/死区/延迟/噪声
         ├── stance.h     # 站姿搜索与量测（四足触地、高度、竖直度）
         ├── state.h      # 状态机：阻尼 / 站立 + 自动斜坡
         ├── viewer.h     # 自己写的窗口（键盘、鼠标相机、HUD）
+        ├── recorder.h   # 无窗口录像（隐藏窗口 + 离屏 framebuffer → ffmpeg）
         ├── args.h       # 命令行解析（从 @20260923_mujoco/cpp_task2 复制，让本任务自包含）
-        └── main.cpp     # 组装：两种模式（view / sim）与判定
+        └── main.cpp     # 组装：三种模式（view / sim / record）与判定
 ```
 
-**下一步（第二部分）**：实机 SDK 侧要用的换算（`N`、`offset`）已经在 `motor.h` 里备好；
-本任务目前只有仿真，第二部分（实体电机）待做。
+## 第二部分（实机）预备：官方 SDK
+
+任务书第二部分（实体电机）要用的就是宇树官方电机 SDK：
+[`../../ReadOnly.d/unitree_actuator_sdk`](../../ReadOnly.d/unitree_actuator_sdk)
+（`unitreerobotics/unitree_actuator_sdk`，clone 到本机的是 commit `5b79a42`）。核对结果：
+
+| 讲义/任务书里的说法 | SDK 里的对应物 |
+|---|---|
+| 电机型号 GO-8010-6，减速比 6.33 | `MotorType::GO_M8010_6`（`include/unitreeMotor/unitreeMotor.h:9-13`）+ `queryGearRatio(MotorType)`（同文件 `:73`，减速比从 SDK 查，不用自己写 6.33） |
+| 5 个命令 $T_{ff}, p_{des}, \omega_{des}, K_P, K_W$ | `MotorCmd{ tau, q, dq, kp, kd }`（`unitreeMotor.h:21-41`，**全部是转子侧**） |
+| 反馈 `data.Pos/W` | `MotorData{ tau, dq, q, temp, merror, correct }`（`unitreeMotor.h:43-66`） |
+| `mode = 0` 刹车、`mode = 1` FOC | `MotorMode{BRAKE, FOC, CALIBRATE}` + `queryMotorMode(type, mode)`（`unitreeMotor.h:15-19`、`:72`） |
+| 官方例程让电机先转起来 | `example/example_goM8010_6_motor.cpp`（`SerialPort "/dev/ttyUSB0"`、`cmd.mode = queryMotorMode(GO_M8010_6, FOC)`、`serial.sendRecv(&cmd,&data)`、循环里打 `data.q/dq/temp/merror`）；A1 例子里用 `cmd.dq = -6.28*queryGearRatio(...)` 让它空转 |
+| 零点标定/偏移（第二部分 3、4） | `MotorMode::CALIBRATE`；另有官方 GUI 工具 `motor_tools/Unitree_MotorTools_v1.2.4_x86_64_Linux` |
+
+两个实际注意点：
+
+1. **用例程的 C++ 版**。仓库里预编译的 Python 绑定是 `lib/unitree_actuator_sdk.cpython-38-x86_64-linux-gnu.so`
+   （**Python 3.8**），而本仓库 pixi 环境的 Python 是 **3.12**，直接 `import` 会失败；要跑 Python 例程得自己重编 wrapper
+   （仓库带 `thirdparty/python_wrapper`）。
+2. 例程要 `sudo` 且要先确认串口设备（`/dev/ttyUSB0`，看实际枚举）与电机 ID；开环转动请像任务书说的那样
+   用插值缓慢变化，先小角度试。
+
+仿真与实机的对齐方式已经在 `motor.h` 里备好：仿真算关节侧“$\tau = \tau_{ff} + k_p(q_{des}-q) + k_d(\dot q_{des}-\dot q)$”，
+在实机上下发前用 `motor::ToRotor()` 换成转子侧（$\times N$ / $\div N$ / $\div N^2$），反馈用 $q = data.q/N + offset$。
+
+**下一步（第二部分）**：SDK 已核对完成（见上一节），实机侧要用的换算（`N`、`offset`）已经在 `motor.h` 里备好；
+第二部分（实体电机：例程转起来 → 回归零点 → 偏移零点 → 处理零点跳变）待做。

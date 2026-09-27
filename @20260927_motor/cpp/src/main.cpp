@@ -15,6 +15,7 @@
 
 #include "args.h"
 #include "motor.h"
+#include "recorder.h"
 #include "stance.h"
 #include "state.h"
 #include "viewer.h"
@@ -27,7 +28,9 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -39,19 +42,24 @@ namespace fs = std::filesystem;
 namespace {
 
 const char *kUsage =
-    "用法：motor_sim [scene.xml] [--mode view|sim] [--start raw|stance|rest|side]\n"
-    "                 [--kp N] [--kd N] [--kd-damp N] [--ramp SEC] [--gravity-comp]\n"
+    "用法：motor_sim [scene.xml] [--mode view|sim|record] [--start raw|stance|rest|side]\n"
+    "                 [--kp N] [--kd N] [--kd-damp N] [--ramp auto|SEC] [--gravity-comp]\n"
     "                 [--seconds N] [--script \"t:mode,...\"] [--width N] [--height N]\n"
-    "                 [--tau-max N] [--deadzone N] [--delay-cycles N] [--noise N] [--gear N]\n"
+    "                 [--out FILE] [--fps N] [--tau-max N] [--deadzone N]\n"
+    "                 [--delay-cycles N] [--noise N] [--gear N]\n"
     "\n"
     "第三次培训·第一部分（仿真）：关节电机 = MIT 混合控制器（讲义 §1.2），\n"
     "控制程序是两状态的**状态机**——阻尼模式 / 站立模式，窗口里按键实时切换。\n"
     "\n"
     "  --mode view     开窗口（自己写的窗口，才有键盘切换）；默认\n"
     "  --mode sim      无窗口只仿真，跑完 --seconds 打印指标与判定（回归用）\n"
+    "  --mode record   无窗口 + 录像：隐藏窗口离屏渲染 → ffmpeg；配合 --script 可做出\n"
+    "                  固定脚本的演示视频（默认 output/cpp/state_machine.mp4）\n"
     "  --start …       起点：raw = 模型原姿态（默认）、stance = 搜出来的站姿、\n"
     "                  rest = 场景自带的趴卧 keyframe、side = 侧躺（绕 x 转 90° 再抬高）\n"
-    "  --script …      仅 --mode sim：形如 \"1:stand,5:damp\"（到该仿真时刻切状态）\n"
+    "  --script …      仅 sim / record：形如 \"1:stand,5:damp,6:reset\"（到该仿真时刻切换；reset = 回起点）\n"
+    "  --out FILE      仅 record：输出 MP4（相对当前目录；不给就用默认路径）\n"
+    "  --fps N         仅 record：输出帧率（默认 50；出帧按仿真时间的严格网格）\n"
     "  --ramp auto|SEC  站立模式下 q_des 的斜坡：auto（默认）按按下那一刻的姿态选——\n"
     "                  还在站姿附近用 0.1 s（必须快收腿），已经趴下用 1.5 s（慢慢起）\n"
     "  --kp/--kd       站立模式的输出侧刚度/阻尼（默认 80 / 3，取讲义 §1.4 的实机配置）\n"
@@ -71,14 +79,28 @@ const std::vector<OptionDef> kOptionDefs = {
     {"--mode", true},         {"--start", true},        {"--kp", true},
     {"--kd", true},           {"--kd-damp", true},      {"--ramp", true},
     {"--gravity-comp", false}, {"--seconds", true},     {"--script", true},
-    {"--width", true},        {"--height", true},       {"--tau-max", true},
+    {"--width", true},        {"--height", true},       {"--out", true},
+    {"--fps", true},          {"--tau-max", true},
     {"--deadzone", true},     {"--delay-cycles", true}, {"--noise", true},
     {"--gear", true},
 };
 
+// 脚本动作：切状态，或者“回到起点”（= 窗口里按 R）
+enum class Action { Damping, Standing, Reset };
+
+inline ctrl::State ToState(Action a) {
+    return a == Action::Standing ? ctrl::State::Standing : ctrl::State::Damping;
+}
+
+inline const char *NameAscii(Action a) {
+    return a == Action::Standing ? "stand" : (a == Action::Damping ? "damp" : "reset");
+}
+
 struct Options {
-    std::string mode = "view";  // view / sim
+    std::string mode = "view";  // view / sim / record
     fs::path scene;             // 空 = <任务目录>/scenes/flat_scene.xml
+    fs::path out;               // 仅 record：空 = <任务目录>/output/cpp/state_machine.mp4
+    double fps = 50.0;          // 仅 record
     std::string start = "raw";  // raw / stance / rest / side
     double kp = 80.0;           // 站立模式的位置刚度（关节侧）
     double kd = 3.0;            // 站立模式的阻尼
@@ -88,7 +110,7 @@ struct Options {
     double ramp_fast = 0.1;     // auto 分支里“还在站姿附近”用的快斜坡
     bool gravity_comp = false;
     double seconds = 8.0;       // sim 模式的仿真时长
-    std::vector<std::pair<double, ctrl::State>> script;
+    std::vector<std::pair<double, Action>> script;
     int width = 1280, height = 720;
     double tau_max = 0.0;       // 0 = 用模型 ctrlrange
     double deadzone = 0.0;
@@ -97,8 +119,8 @@ struct Options {
     double gear = 6.33;         // 宇树 GO-8010-6 的减速比（讲义 §2.1）
 };
 
-// 解析 "1:stand,5:damp" 这类脚本
-bool ParseScript(const std::string &text, std::vector<std::pair<double, ctrl::State>> *out) {
+// 解析 "1:stand,5:damp,6:reset" 这类脚本
+bool ParseScript(const std::string &text, std::vector<std::pair<double, Action>> *out) {
     size_t pos = 0;
     while (pos <= text.size()) {
         const size_t comma = text.find(',', pos);
@@ -121,13 +143,16 @@ bool ParseScript(const std::string &text, std::vector<std::pair<double, ctrl::St
                 std::fprintf(stderr, "--script 里的时刻不是数字：%s\n", t_text.c_str());
                 return false;
             }
+            const std::string what = item.substr(colon + 1);
             ctrl::State s;
-            if (!ctrl::ParseState(item.substr(colon + 1), &s)) {
-                std::fprintf(stderr, "--script 里的状态只能是 stand / damp：%s\n",
-                             item.substr(colon + 1).c_str());
+            if (ctrl::ParseState(what, &s))
+                out->emplace_back(t, s == ctrl::State::Standing ? Action::Standing : Action::Damping);
+            else if (what == "reset")
+                out->emplace_back(t, Action::Reset);
+            else {
+                std::fprintf(stderr, "--script 里的动作只能是 stand / damp / reset：%s\n", what.c_str());
                 return false;
             }
-            out->emplace_back(t, s);
         }
         if (comma == std::string::npos)
             break;
@@ -140,6 +165,9 @@ bool ParseScript(const std::string &text, std::vector<std::pair<double, ctrl::St
 
 // 把狗摆到 --start 指定的起点（搜索会改 qpos，所以每次复位都调用它）
 bool SetStart(const mjModel *m, mjData *d, const std::string &start, const stance::Target &target) {
+    // 复位姿态但**保留仿真时间轴**：斜坡进度、脚本时刻、录像出帧都按 d->time 走，
+    // mj_resetData 会把 time 清零，那样"按 R 之后"的目标斜坡就卡在起点（实测：狗塌下去再也起不来）。
+    const double t_keep = d->time;
     if (start == "raw") {
         mj_resetData(m, d); // 模型原姿态：直立直腿、脚底刚好触地
     } else if (start == "stance") {
@@ -169,6 +197,7 @@ bool SetStart(const mjModel *m, mjData *d, const std::string &start, const stanc
         return false;
     }
     mj_forward(m, d);
+    d->time = t_keep;
     return true;
 }
 
@@ -206,8 +235,25 @@ bool StoodUp(const Snapshot &s, const stance::Target &target) {
     return s.feet == 4 && std::fabs(s.z - target.z) <= 0.03 && s.tilt <= 10.0;
 }
 
-void PrintMotorStats(const motor::JointMotors &motors) {
-    const motor::JointMotors::Stats &st = motors.stats();
+// 回到起点（= 窗口里按 R / 脚本里的 reset）：姿态复位到 --start，状态切回上电默认的阻尼模式，
+// 并打印一行日志“回到了哪、姿态变化多少”。**注意**：切回阻尼后狗会再次自然塌下（这正是上电后的样子），
+// 想从起点重新站起来就接着按 S（或脚本里再给一个 stand）。
+void ResetToStart(const mjModel *m, mjData *d, const std::string &start, const stance::Target &target,
+                  ctrl::StateMachine *sm, const std::vector<int> &feet, double ref_x, double ref_y) {
+    const Snapshot before = Sample(m, d, feet, ref_x, ref_y);
+    if (!SetStart(m, d, start, target)) {
+        std::printf("重置失败（--start %s）\n", start.c_str());
+        return;
+    }
+    const Snapshot after = Sample(m, d, feet, ref_x, ref_y);
+    sm->Request(ctrl::State::Damping, d);
+    std::printf("重置：回到 --start %s（t=%.3f s 保留）；基座 z %.4f → %.4f m、竖直度 %.2f° → "
+                "%.2f°；状态 → %s（会自然塌下，接着按 S 就能从起点重新起身）\n",
+                start.c_str(), d->time, before.z, after.z, before.tilt, after.tilt,
+                ctrl::Name(sm->state()));
+}
+
+void PrintMotorStats(const motor::JointMotors &motors) {    const motor::JointMotors::Stats &st = motors.stats();
     std::printf("电机：累计 %ld 电机·步，撞限幅 %ld 次（%.3f%%），落死区 %ld 次，"
                 "|τ| 峰值 %.2f N·m、均值 %.2f N·m（延迟 %d 周期）\n",
                 st.steps, st.sat, 100.0 * static_cast<double>(st.sat) / std::max(1L, st.steps),
@@ -224,8 +270,8 @@ int main(int argc, char **argv) {
 
     Options opt;
     opt.mode = args.value("--mode", opt.mode);
-    if (args.has("--mode") && opt.mode != "view" && opt.mode != "sim") {
-        std::fprintf(stderr, "--mode 只能是 view / sim：%s\n%s", opt.mode.c_str(), kUsage);
+    if (args.has("--mode") && opt.mode != "view" && opt.mode != "sim" && opt.mode != "record") {
+        std::fprintf(stderr, "--mode 只能是 view / sim / record：%s\n%s", opt.mode.c_str(), kUsage);
         return 1;
     }
     if (!args.positional.empty())
@@ -252,6 +298,9 @@ int main(int argc, char **argv) {
     opt.seconds = args.number("--seconds", opt.seconds, kUsage);
     opt.width = args.integer("--width", opt.width, kUsage);
     opt.height = args.integer("--height", opt.height, kUsage);
+    opt.fps = args.number("--fps", opt.fps, kUsage);
+    if (args.has("--out"))
+        opt.out = args.value("--out");
     opt.tau_max = args.number("--tau-max", opt.tau_max, kUsage);
     opt.deadzone = args.number("--deadzone", opt.deadzone, kUsage);
     opt.delay_cycles = args.integer("--delay-cycles", opt.delay_cycles, kUsage);
@@ -259,7 +308,7 @@ int main(int argc, char **argv) {
     opt.gear = args.number("--gear", opt.gear, kUsage);
     if (opt.ramp < 0.0 || opt.kp < 0.0 || opt.kd < 0.0 || opt.kd_damp < 0.0 || opt.seconds <= 0.0 ||
         opt.tau_max < 0.0 || opt.deadzone < 0.0 || opt.delay_cycles < 0 || opt.noise < 0.0 ||
-        opt.gear <= 0.0) {
+        opt.gear <= 0.0 || opt.fps <= 0.0 || opt.width <= 0 || opt.height <= 0) {
         std::fprintf(stderr, "参数取值不合法（时长/增益/限幅等不能为负）：见用法\n%s", kUsage);
         return 1;
     }
@@ -378,8 +427,7 @@ int main(int argc, char **argv) {
                 } else if (key == GLFW_KEY_D) {
                     sm.Request(ctrl::State::Damping, d);
                 } else if (key == GLFW_KEY_R) {
-                    SetStart(m, d, opt.start, target); // 回到起点，重新演示
-                    sm.Request(ctrl::State::Damping, d);
+                    ResetToStart(m, d, opt.start, target, &sm, feet, ref_x, ref_y); // 回到起点，重新演示
                     t_stand_start = t_stand_done = -1.0;
                 } else if (key == GLFW_KEY_Q || key == GLFW_KEY_ESCAPE) {
                     quit = true;
@@ -432,19 +480,46 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // ---------------------------------------------------------------- 无窗口模式（回归用）
-    std::printf("只仿真：无窗口，全速跑 %.3f 仿真秒", opt.seconds);
+    // ---------------------------------------------------------------- 无窗口（只仿真 / 录像）
+    std::unique_ptr<FrameRecorder> rec;
+    if (opt.mode == "record") {
+        const fs::path out = opt.out.empty() ? root / "output/cpp/state_machine.mp4" : opt.out;
+        fs::create_directories(out.parent_path());
+        rec = std::make_unique<FrameRecorder>(m, out.string(), opt.width, opt.height, opt.fps);
+        char off[96];
+        if (rec->scaled())
+            std::snprintf(off, sizeof(off), "离屏缓冲 %dx%d → 缩放输出 %dx%d", rec->viewport_width(),
+                          rec->viewport_height(), opt.width, opt.height);
+        else
+            std::snprintf(off, sizeof(off), "离屏缓冲 = 输出 %dx%d", rec->viewport_width(),
+                          rec->viewport_height());
+        std::printf("录像：%.0f fps → %s（%s）\n", opt.fps, rec->path().c_str(), off);
+    }
+    std::printf("%s：无窗口，全速跑 %.3f 仿真秒", opt.mode == "record" ? "录像 + 仿真" : "只仿真",
+                opt.seconds);
     if (!opt.script.empty()) {
         std::printf("，脚本 ");
         for (const auto &e : opt.script)
-            std::printf("%.2f s→%s ", e.first, ctrl::Name(e.second));
+            std::printf("%.2f s→%s ", e.first,
+                        e.second == Action::Reset ? "重置" : ctrl::Name(ToState(e.second)));
     }
     std::printf("\n");
+
+    // 视频里也画 HUD（ASCII）；左侧把脚本写出来，方便看视频的人知道在演什么
+    char script_text[256] = "no script (pure damping)";
+    if (!opt.script.empty()) {
+        script_text[0] = '\0';
+        for (const auto &e : opt.script)
+            std::snprintf(script_text + std::strlen(script_text),
+                          sizeof(script_text) - std::strlen(script_text), "%.2f s -> %s   ", e.first,
+                          NameAscii(e.second));
+    }
 
     const auto t_start = std::chrono::steady_clock::now();
     size_t next_event = 0;
     long steps = 0;
     double t_stand_start = -1.0, t_stand_done = -1.0;
+    char hud_left[512], hud_right[384];
     while (d->time < opt.seconds - 1e-12) {
         while (next_event < opt.script.size() && d->time >= opt.script[next_event].first - 1e-12) {
             const Snapshot before = Sample(m, d, feet, ref_x, ref_y);
@@ -453,7 +528,10 @@ int main(int argc, char **argv) {
                 std::printf("    上一段（站立）：起身用时 %.2f s（斜坡 %.2f s）\n",
                             (t_stand_done >= 0.0 ? t_stand_done : before.t) - t_stand_start,
                             sm.chosen_ramp());
-            if (sm.Request(opt.script[next_event].second, d)) {
+            if (opt.script[next_event].second == Action::Reset) {
+                ResetToStart(m, d, opt.start, target, &sm, feet, ref_x, ref_y);
+                t_stand_start = t_stand_done = -1.0;
+            } else if (sm.Request(ToState(opt.script[next_event].second), d)) {
                 std::printf("--- t=%.3f s 切换 → %s\n", d->time, ctrl::Name(sm.state()));
                 if (sm.state() == ctrl::State::Standing) {
                     t_stand_start = d->time;
@@ -469,6 +547,22 @@ int main(int argc, char **argv) {
         if (sm.state() == ctrl::State::Standing && t_stand_start >= 0.0 && t_stand_done < 0.0 &&
             StoodUp(Sample(m, d, feet, ref_x, ref_y), target))
             t_stand_done = d->time;
+        if (rec) {
+            const Snapshot now = Sample(m, d, feet, ref_x, ref_y);
+            char up[64] = "";
+            if (sm.state() == ctrl::State::Standing && t_stand_done >= 0.0)
+                std::snprintf(up, sizeof(up), "  (up in %.2f s, ramp %.2f s)",
+                              t_stand_done - t_stand_start, sm.chosen_ramp());
+            std::snprintf(hud_left, sizeof(hud_left),
+                          "3rd training, part 1: joint-motor state machine\n"
+                          "state: %s%s\nscript: %s",
+                          ctrl::NameAscii(sm.state()), up, script_text);
+            std::snprintf(hud_right, sizeof(hud_right),
+                          "t = %.2f s\nfeet on ground: %d\nbase z = %.4f m\ntilt = %.2f deg\n"
+                          "|tau| peak = %.1f N*m",
+                          now.t, now.feet, now.z, now.tilt, motors.stats().tau_peak);
+            rec->Capture(m, d, hud_left, hud_right);
+        }
     }
     const double wall_ms =
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_start).count();
@@ -477,6 +571,11 @@ int main(int argc, char **argv) {
     PrintSnapshot(ctrl::Name(sm.state()), end);
     std::printf("仿真 %.3f s（%ld 步，wall %.1f ms，单步 %.4f ms，%.1fx 实时）\n", end.t, steps,
                 wall_ms, wall_ms / std::max(1L, steps), 1000.0 * end.t / std::max(1e-9, wall_ms));
+    if (rec) {
+        // 计时已经按下：Close() 要等 ffmpeg 写完 moov，不该算进“单步耗时/实时率”
+        std::printf("录像：%d 帧 → %s（wall 不含 ffmpeg 收尾）\n", rec->frames(), rec->path().c_str());
+        rec->Close();
+    }
     if (t_stand_done >= 0.0)
         std::printf("起身：从按下站立键到四足站定共用 %.2f s（斜坡 %.2f s，q_des 是连续的）\n",
                     t_stand_done - t_stand_start, sm.chosen_ramp());

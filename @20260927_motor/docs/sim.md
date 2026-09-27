@@ -13,7 +13,9 @@
 | ② 站立模式：阻尼模式下按某个键站起来（从任意初始位置、连续地） | 按 `S`：位置项目标 q_des 从"按下那一刻的关节角"用 smoothstep 推到站姿，控制器不变 ⇒ 连续起身；斜坡时长按姿态自动选 | §3.2 各起点实测；窗口里按 `S`/`D` 实时切换 |
 | 另一个键切回阻尼 | 按 `D`：位置项目标撤掉，只剩 −kd·q̇，狗在重力下自己塌回去 | §3.3（`--script "0.05:stand,5:damp"`） |
 
-窗口按键：`S` 站立、`D` 阻尼、`R` 回到起点（重新演示）、`Q`/`Esc` 退出；鼠标左键转（+Shift 水平转）、右键平移（+Shift 水平平移）、中键/滚轮缩放。
+窗口按键：`S` 站立、`D` 阻尼、`R` 回到起点、`Q`/`Esc` 退出；鼠标左键转（+Shift 水平转）、右键平移（+Shift 水平平移）、中键/滚轮缩放。
+
+`R` = 把基座、关节角、速度都恢复成 `--start` 指定的**起点**（不是固定的趴卧），同时把状态切回上电默认的**阻尼模式**、并保留仿真时间轴；所以按 `R` 之后会看到狗从起点姿态自然塌下（阻尼模式的正常行为），紧接着按 `S` 就能再从起点起身。`--start rest` 时按 `R` 回到趴卧（起点本来就是趴卧），`--start stance` / `raw` / `side` 则分别回到站姿 / 模型原姿态 / 侧躺。
 
 ## 2 怎么实现
 
@@ -25,13 +27,43 @@
 
 $$\tau = \tau_{ff} + k_p(q_{des}-q) + k_d(\dot q_{des}-\dot q)$$
 
+**量纲（全量纲说明）** —— 两侧（转子/关节）的量纲完全一样，减速比 $N$ 只是**无量纲**的圈数比，
+换算只改数值、不改量纲（讲义 §2.3 的 `×N / ÷N / ÷N²`）：
+
+| 量 | 符号 | 量纲 | 单位（本任务） | 典型值 |
+|---|---|---|---|---|
+| 输出力矩 / 前馈力矩 | $\tau$, $\tau_{ff}$ | $\mathrm{M L^2 T^{-2}}$ | N·m | 站立时 \|τ\| 峰值 4.5 N·m |
+| 位置刚度 | $k_p$（转子侧 $K_P$） | $\mathrm{M L^2 T^{-2}}$（每弧度） | N·m/rad | 80（实机配置） |
+| 速度刚度（阻尼） | $k_d$（转子侧 $K_W$） | $\mathrm{M L^2 T^{-2} T}$（每 rad/s） | N·m·s/rad | 3（站立）/ 0.5（阻尼模式） |
+| 角度 / 目标角度 | $q$, $q_{des}$（转子侧 $p$, $Pos$） | 无量纲（弧度） | rad | 站姿膝 1.10 rad |
+| 角速度 / 目标角速度 | $\dot q$, $\dot q_{des}$（转子侧 $\omega$, $W$） | $\mathrm{T^{-1}}$ | rad/s | 起身段 \|q̇\| 峰值 ~10 rad/s |
+| 减速比 | $N$ | 无量纲（圈数比） | – | 6.33（GO-8010-6，$N^2 \approx 40.07$） |
+| 转子侧力矩 | $\tau_{rotor}$ | 同 $\tau$ | N·m | $\tau_{out}/N$，例：33.5 N·m → 5.29 N·m |
+
+代进公式就能看出为什么只有这一种写法：$k_p(q_{des}-q)$ 是 $\mathrm{N\,m/rad}\times\mathrm{rad}=\mathrm{N\,m}$，
+$k_d(\dot q_{des}-\dot q)$ 是 $\mathrm{N\,m\,s/rad}\times\mathrm{rad/s}=\mathrm{N\,m}$，两项与 $\tau_{ff}$ 同量纲、可以相加；
+`data.ctrl`（我们写的）/ 实机的 `cmd.tau`（转子侧）也都是 N·m。**数值直觉**：$k_p=80$ 时 10°（0.1745 rad）偏差
+产生 **14.0 N·m**；$k_d=3$ 时 1 rad/s 产生 **3 N·m**；$k_d$ 的量纲里带一个“秒”，所以换单位（deg、rpm）必须先换算。
+
+三个容易踩的单位点：
+
+1. MuJoCo 的 `qpos/qvel` 是 **rad / rad/s**，日志/HUD 里的 `deg` 只是给人看的；
+2. 限幅是**输出端**的：本模型 `ctrlrange` 是 ±20 N·m、讲义说实机 black 配置是 33.5 N·m —— 这两个都是关节侧，
+   换成转子侧要 **÷N**（20/6.33 = 3.16 N·m）；反之实机 `data.tau` 是转子侧，换成关节侧要 **×N**；
+3. `--gravity-comp` 叠加的 `qfrc_bias` 也是 N·m，所以能直接加到 τ 上。
+
+**与官方 SDK 对得上**：Unitree 官方电机 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../ReadOnly.d/unitree_actuator_sdk)，
+`unitreerobotics/unitree_actuator_sdk`，commit `5b79a42`）的 `MotorCmd{tau, dq, q, kp, kd}` / `MotorData{tau, dq, q}`
+就是同一套量（全部**转子侧**），README 还专门写了 $kp_{rotor}=kp_{output}/r^2$、$kd_{rotor}=kd_{output}/r^2$
+（`unitree_actuator_sdk/README.md` 第 53–57 行），与讲义 §2.3 一字不差；减速比用 `queryGearRatio(MotorType)` 查（`unitreeMotor.h:73`）。
+
 代码里两条都留了：`motor::Cmd`（关节侧，仿真真正算的）与 `motor::RotorCmd`（转子侧 SDK 字段），
 `motor::ToRotor(cmd, gear)` 做换算。启动时会打印一次换算结果作为对照（默认 `N = 6.33`，$N^2 \approx 40.07$）：
 
 | 关节侧（我们思考用的） | 转子侧（下发给电机的） | 本任务默认值下 |
 |---|---|---|
-| `kp = 80` | `K_P = kp/N²` | 1.997 |
-| `kd = 3` | `K_W = kd/N²` | 0.07487 |
+| `kp = 80` N·m/rad | `K_P = kp/N²` | 1.997 N·m/rad |
+| `kd = 3` N·m·s/rad | `K_W = kd/N²` | 0.07487 N·m·s/rad |
 | `q_des` | `Pos = N·q_des` | 目标 0.5 rad → 3.165 |
 
 反馈方向同理：`q = data.Pos/N + offset`（`offset` 就是第二部分的标定值，讲义 §2.5）。
@@ -65,12 +97,40 @@ $$\tau = \tau_{ff} + k_p(q_{des}-q) + k_d(\dot q_{des}-\dot q)$$
 `--ramp 1.5` 可以改成固定值（这时两个分支都用它）。
 
 ### 2.3 站姿（控制目标）
-
 沿用第二次培训额外 demo（[`@20260923_mujoco/cpp_stand/`](../../@20260923_mujoco/cpp_stand/)）的**搜索**：
 膝取 `{0.9, 1.1, 1.3}`、大腿按膝的 `0.1…1.0` 倍扫，每次把基座平移到"最低那只脚刚好贴地"，取
 "质心水平投影离四足中心最近"的一组。本模型搜到：膝 **1.10 rad**、大腿 **0.55×膝**、基座 z **0.4973 m**、
 质心离四足中心 **0.0009 m**、四足触地 4。为什么不拿模型默认位形当目标见
 [`@20260923_mujoco/docs/stand.md`](../../@20260923_mujoco/docs/stand.md)（膝越界 0.85 rad + 质心在足后 0.18 m）。
+
+### 2.4 录像（`--mode record`）：给别人看的备用视频
+
+窗口需要人按键、还得有显示服务；演示给别人看更省事的是**固定脚本 + 录像**：无窗口、全速跑，
+每次得到同一段片子（与机器快慢无关）。
+
+```bash
+pixi run @20260927_motor/cpp/build/motor_sim --mode record \
+    --script "0.05:stand,5:damp" --seconds 8 \
+    --out @20260927_motor/output/cpp/damp_stand_damp.mp4
+```
+
+- 渲染走**隐藏窗口 + 离屏 framebuffer**（[`../cpp/src/recorder.h`](../cpp/src/recorder.h)）→ ffmpeg 管道 `libx264`；
+  做法与 [`@20260923_mujoco/cpp_task2/src/record.h`](../../@20260923_mujoco/cpp_task2/src/record.h) 相同，那边的坑都带上了：
+  离屏尺寸按 `--width/--height` 改（必须在 `mjr_makeContext` **之前**）、出帧按**仿真时间的严格网格** $k/fps$
+  （帧数 ≈ 时长×fps）、行序自下而上交给 `-vf vflip`、**不调 `glfwTerminate()`**、HUD 只用 ASCII。
+- 视频里也画 HUD（ASCII）：左边是当前状态 + 本次脚本，右边是 t / 四足触地 / 基座高度 / 竖直度 / \|τ\| 峰值 ——
+  看视频的人不用猜“这是在演什么”。
+- 仍需要能连上显示服务/EGL（隐藏窗口也要 GL 上下文），与 Python 侧的 `MUJOCO_GL` 无关。
+- **录像不是实时的**：1280×720 下每帧 ~27–38 ms，8 仿真秒的片子录了 ~11 s；不影响产物（时间轴按仿真时间）。
+
+| 产物 | 产出命令 | 实测 |
+|---|---|---|
+| `output/cpp/damp_stand_damp.mp4` | `pixi run @20260927_motor/cpp/build/motor_sim --mode record --script "0.05:stand,5:damp" --seconds 8 --out @20260927_motor/output/cpp/damp_stand_damp.mp4` | 1280×720 @50 fps、**401 帧 / 8.020 s**、724 KiB，录制 wall 10.9 s |
+| `output/cpp/stand_up_from_rest.mp4` | `pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script "1:stand" --seconds 6 --out @20260927_motor/output/cpp/stand_up_from_rest.mp4` | 1280×720 @50 fps、**301 帧 / 6.020 s**、668 KiB，录制 wall 11.5 s |
+
+两段片子演的是任务书要求的那两件事：① 阻尼模式（软瘫趴在）→ 按 S 起身 → 按 D 切回阻尼（又塌回去）；
+② 从趴卧 keyframe 起身（自动选 1.5 s 斜坡，起身 1.39 s）。HUD 里能直接看到 `state: DAMPING / STANDING`
+与 `feet on ground`、`base z` 的变化。
 
 ## 3 实测（本机 i5-1035G1，MuJoCo 3.12.0）
 
@@ -177,6 +237,20 @@ $$\tau = \tau_{ff} + k_p(q_{des}-q) + k_d(\dot q_{des}-\dot q)$$
    `feet on ground`、`base z`、`tilt ... deg`、`\|tau\| peak ... N*m`），**终端日志照旧用中文**（终端字体没问题）；
    另外在 `viewer::Window::Draw()` 里加了一道检查：HUD 里一旦出现非 ASCII 字节就在终端报一次警告。
    窗口标题是桌面（compositor）画的，不受这个字体限制，可以继续用中文。
+11. **`R`（复位）不能只调 `mj_resetData`**。`mj_resetData` 会把 `d->time` 一起清零，而站立模式的
+   斜坡与 `--script` 都是按**仿真时间**排的：复位后时间轴跳回 0，已经算好的斜坡目标（或脚本剩余时刻）
+   就永远等不到，现象是"按 R 后狗塌下去再也起不来"（早期版本还顺手固定切回阻尼模式，看起来就像
+   "R 永远 reset 到趴卧"）。修法：复位时记下 `t_keep = d->time`，`mj_resetData` + 重设起点姿态 +
+   `mj_forward` 之后再写回 `d->time = t_keep`；同时让 `R` 复用状态机的 `Request(Damping)`，保证"复位 =
+   回到 `--start` 起点 + 回阻尼模式"。复现：
+
+   ```bash
+   pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 8 --start raw \
+       --script "0.05:stand,3:reset,4:stand"     # 站住 → t=3 复位（日志里 z 0.4865 → 0.5786，t 保留）→ 再站住 ✓
+   ```
+
+   四个起点都验过：`raw` 回模型原姿态（z 0.5786）、`rest` 回趴卧（z 0.1449）、`stance` 回站姿
+   （z 0.4973）、`side` 回侧躺（竖直度 90°）。
 
 ## 5 复现命令
 
@@ -197,4 +271,8 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 8 --start rest
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 8 --start side --script "1:stand"  # 已知边界：起不来（退出码 2）
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 10 --deadzone 0.5 --delay-cycles 2 --noise 0.2 --script "0.05:stand,5:damp"
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 5 --kd-damp 3            # 对比：kd 太大 → 侧翻
+
+# 录像（别人看不了实时时的备用视频，§2.4）
+pixi run @20260927_motor/cpp/build/motor_sim --mode record --script "0.05:stand,5:damp" --seconds 8 --out @20260927_motor/output/cpp/damp_stand_damp.mp4
+pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script "1:stand" --seconds 6 --out @20260927_motor/output/cpp/stand_up_from_rest.mp4
 ```
