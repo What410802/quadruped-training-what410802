@@ -31,7 +31,7 @@ PY
 
 好处：**Python、MuJoCo（C 库 + Python 绑定）与 C++ 工具链都装在同一个 pixi 环境里**，不用系统 apt 包，也不用单独的 venv。
 
-- **跨语言共用同一份 MuJoCo**：任务 4 要写 C++，而 C++ 需要的是 `libmujoco`（头文件 + 库 + CMake 配置）；conda-forge 的 `mujoco` 包同时提供 C 库与 Python 绑定，两边**就是同一个 3.12.0**，行为一致、数字可比（C++/Python 对照正是任务 4 的验收方式）。pip/venv 只能拿到 Python 轮子，拿不到配套头文件与 CMake 配置。
+- **跨语言共用同一份 MuJoCo**：C++ 侧（`cpp_task2/`、`cpp_stand/`、`cpp_slope/`）需要的是 `libmujoco`（头文件 + 库 + CMake 配置）；conda-forge 的 `mujoco` 包同时提供 C 库与 Python 绑定，两边**就是同一个 3.12.0**，行为一致、数字可比（C++/Python 逐项对照就是 C++ 侧的验收方式）。pip/venv 只能拿到 Python 轮子，拿不到配套头文件与 CMake 配置。
 - **一次装齐 C++ 工具链**：`cxx-compiler` / `cmake` / `ninja` 都在 conda-forge，与 `libmujoco` 出自同一条工具链，避免“系统 gcc 编、conda 库链接”的 ABI / libstdc++ 错配。
 - **可复现**：`pixi.lock` 锁死确切版本与哈希，别人 clone 后 `pixi install` 得到同一个环境，“在我机器上能跑”这件事有据可查。
 - **不污染系统**：一切装在仓库内的 `.pixi/`（已 gitignore），不需要 sudo，删掉目录即回滚；系统只负责显卡驱动这类必须由系统管的东西。

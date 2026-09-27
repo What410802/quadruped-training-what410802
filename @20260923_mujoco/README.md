@@ -32,7 +32,7 @@ pixi run @20260923_mujoco/cpp_task2/build/rest_check                       # C++
 pixi run @20260923_mujoco/cpp_task2/build/dog_sim                          # C++ 版：最小仿真（默认开官方 Simulate 窗口）
 ```
 
-### 任务 4（新结构：Python 侧已在 `python/` 落地，C++ 侧复刻在 `cpp/`）
+### 任务 4（新结构：Python 侧落在 `python/`；C++ 侧的结论见 `cpp/`）
 
 开窗口要临时把图形后端换回 `glfw`（仓库默认是 `egl`，无窗口）：
 
@@ -113,7 +113,7 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/physics_pacing.py    # �
 ├── cpp_slope/                    # 额外 demo：可调倾斜地面（重力不动）
 │   ├── CMakeLists.txt
 │   └── src/                      # slope.cpp = stand.cpp 副本 + --pitch/--roll/自检
-└── cpp/                          # 任务 4 的落点：把 python/ 的双缓冲结构用 C++ 复刻（目前只有占位说明）
+└── cpp/                          # 任务 4 的结论与落点：官方 Simulate 界面本来就 1.00x、不必手写双缓冲（见 cpp/README.md）
     └── README.md
 ```
 
@@ -205,16 +205,16 @@ pixi run @20260923_mujoco/cpp_slope/build/slope --mode sim --start raw --pitch 1
 
 ### 任务 4 的落点（`cpp/`）
 
-`cpp/` 只放任务 4 的实现：把 [`python/`](python/) 的双缓冲结构用 C++ 复刻（物理线程独占 `mjData`、渲染只读快照副本、锁只罩 memcpy），之后再接官方 `Simulate` 界面或自带渲染循环。目前那里只有一份 `README.md` 占位。
+任务 4 原计划是把 [`python/`](python/) 的双缓冲结构用 C++ 复刻（物理线程独占 `mjData`、渲染只读快照副本、锁只罩 memcpy）。**实测下来结论是“不必复刻”**：我们自己的物理线程 + MuJoCo 官方 `Simulate` 界面（`cpp_task2 --mode view`）本来就是非阻塞的——官方 `RenderLoop` 在 `Render()` 之前就放锁（源码注释 `// MutexLock (unblocks simulation thread)`），渲染在锁外、物理照常推进，实测 **1.00x 实时**（1 仿真秒 = wall 1.00 s）而且画面流畅；Python 侧那 0.14x 的缺口来自 GIL，C++ 里不存在这个问题。所以 `cpp/` 目前只留一份结论说明（[`cpp/README.md`](cpp/README.md)）：真要自己写渲染循环（不依赖官方 UI）时再在这里落 `CMakeLists.txt` 与 `src/`，构建目录用 `cpp/build/`。
 
 **为什么做 C++**：不是为了更快——`mj_step` 两边调用的是同一份 C 库，单步耗时几乎一样（实测数据见 [`../docs/pitfalls/environment.md`](../docs/pitfalls/environment.md) 的「C++ 工具链」一节），渲染开销也只由 GPU 决定；意义在**工程结构与 sim-to-real**（真实机器人上的控制程序是 C++）。工具链选择（为什么用 pixi 的编译器、编辑器提示怎么配）同样记在那一节。
 
 ## 进度
 
-- [ ] 任务 1：认识 MuJoCo（作用、Python 接口、MJCF 结构）
+- [x] 任务 1：认识 MuJoCo（作用、Python 接口、MJCF 结构）
 - [x] 任务 2：URDF→MJCF、平地场景、零力矩静止趴卧、力矩执行器（结果见 [`docs/task2.md`](docs/task2.md)；C++ 侧 `cpp_task2/` 同判据）
-- [ ] 任务 3：参考 unitree_mujoco 优化代码结构与线程设计（研读笔记 → [`../docs/learn/unitree-mujoco.md`](../docs/learn/unitree-mujoco.md)，线程/通信细节与五种方案的每帧阻滞对比 → [`../docs/learn/runtime-timing.md`](../docs/learn/runtime-timing.md)；**Python 侧已落地**：[`python/`](python/) 用双缓冲把渲染与物理拆开。实测（`scripts/agent_scripts/physics_pacing.py`）：同等 20 ms/次渲染下，无窗口我们 499 步/秒（实时 0.998x，复测 0.997–0.999x）、上游式单锁写法 271 步/秒（0.542x），且物理结果与单线程裸循环逐位相同；开窗口时降到 0.93x（复测 0.929–0.935x；早期一次测得 0.863x，随窗口/viewer 开销浮动）——那是 Python 的 GIL 争用（渲染那一步在 Python 里），不是锁，留给任务 4 用 C++ 解决。**起点默认是模型原姿态**（`--start default`，与 `simulate.py`/`example_attach.py` 一致；`--start rest` 可切成趴卧 keyframe，见 `python/simulator.py` 里的 `keyframe=` 参数）
-- [ ] 任务 4（选做）：用 C++ 重做（任务 2 的 C++ 版已落到 [`cpp_task2/`](cpp_task2/)；任务 4 的双缓冲结构待在 [`cpp/`](cpp/) 实现，对齐 [`python/`](python/)）
+- [x] 任务 3：参考 unitree_mujoco 优化代码结构与线程设计（研读笔记 → [`../docs/learn/unitree-mujoco.md`](../docs/learn/unitree-mujoco.md)，线程/通信细节与五种方案的每帧阻滞对比 → [`../docs/learn/runtime-timing.md`](../docs/learn/runtime-timing.md)；**Python 侧已落地**：[`python/`](python/) 用双缓冲把渲染与物理拆开。实测（`scripts/agent_scripts/physics_pacing.py`）：同等 20 ms/次渲染下，无窗口我们 499 步/秒（实时 0.998x，复测 0.997–0.999x）、上游式单锁写法 271 步/秒（0.542x），且物理结果与单线程裸循环逐位相同；开窗口时降到 0.93x（复测 0.929–0.935x；早期一次测得 0.863x，随窗口/viewer 开销浮动）——那是 Python 的 GIL 争用（渲染那一步在 Python 里），不是锁；C++ 侧用 MuJoCo 官方 `Simulate` 界面实测 **1.00x**，确认这个缺口只是 GIL。**起点默认是模型原姿态**（`--start default`，与 `simulate.py`/`example_attach.py` 一致；`--start rest` 可切成趴卧 keyframe，见 `python/simulator.py` 里的 `keyframe=` 参数）
+- [x] 任务 4（选做）：用 C++ 重做——**结论是“不用重做”**：把 `cpp_task2` 接上 MuJoCo 官方 `Simulate` 界面（`--mode view`）实测就是 **1.00x 实时、画面流畅**（官方 `RenderLoop` 在 `Render()` 之前就放锁，渲染不在锁里），所以没有再手写一份 C++ 双缓冲；[`cpp/`](cpp/) 保留为结论与后续落点说明
 - [x] 额外 demo（非验收项）：平地站稳与可调倾斜地面（[`cpp_stand/`](cpp_stand/)、[`cpp_slope/`](cpp_slope/)，结果与踩坑见 [`docs/stand.md`](docs/stand.md)）
 
-任务 3/4 的推进顺序：① C++ 工具链可行性验证（已完成）→ ② 研读 `unitree_mujoco`、写 `docs/learn/unitree-mujoco.md`（已完成）→ ③ Python 侧按新结构重构（**已完成**：`python/`，`scripts/` 里的旧脚本暂留作对照）→ ④ C++ 复刻同一结构（先无窗口 + 录制，再接官方 `Simulate` 界面）。
+任务 3/4 的推进顺序：① C++ 工具链可行性验证（已完成）→ ② 研读 `unitree_mujoco`、写 `docs/learn/unitree-mujoco.md`（已完成）→ ③ Python 侧按新结构重构（**已完成**：`python/`，`scripts/` 里的旧脚本暂留作对照）→ ④ C++ 侧验证（**已完成**：`cpp_task2 --mode view` 接官方 `Simulate` 界面，实测 1.00x 且流畅，结论是不必再手写一份双缓冲）。
