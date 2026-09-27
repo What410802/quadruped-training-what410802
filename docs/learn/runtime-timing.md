@@ -381,7 +381,7 @@ sequenceDiagram
 | ① | unitree_mujoco C++ | 官方 `Simulate` 的 `simulate.cc` / `glfw_adapter.cc` **原样复用**（`simulate/CMakeLists.txt` 只排除官方的 `main.cc`），自己写 `PhysicsLoop` + SDK 桥线程 | **能**——官方 `RenderLoop` 在 `Render()` 之前就放锁 | 一个 step 批次（≤ `refreshTime` ≈ 11.7 ms） | 与官方样机同构：按 `percentRealTime` 自定速，机器跟得上就 ≈1x |
 | ② | unitree_mujoco Python | 两个线程共用一把 `locker`；`SIMULATE_DT = 0.005`、`VIEWER_DT = 0.02`（50 fps） | **不能**——`PhysicsViewerThread` 把整个 `viewer.sync()` 放在锁内 | 一步（0.04 ms） | 同结构实测 **0.542x**（`physics_pacing.py` 用例 3，渲染 20 ms）；换成真机 `sync≈23 ms` 后结构上不变，且每周 43 ms 里有 23 ms 物理完全停摆 |
 | ③ | 我们 C++（`cpp_task2 --mode view`） | 我们的物理线程 + 官方 `RenderLoop`（渲染在锁外）+ 自写墙钟节流（≤1x） | **能** | 一步的临界区（0.04 ms） | **1.00x 实测**（1 仿真秒 = wall 1.00 s） |
-| ④ | 我们 Python（`python/` 双缓冲） | 物理线程独占 `mjData`，渲染读快照副本，锁只罩 memcpy | **能** | 一次 memcpy（µs 级） | **0.998x**（开窗口 ≈0.86x——那 0.14 是 GIL，不是锁） |
+| ④ | 我们 Python（`python/` 双缓冲） | 物理线程独占 `mjData`，渲染读快照副本，锁只罩 memcpy | **能** | 一次 memcpy（µs 级） | **0.998x**（复测 0.997–0.999x；开窗口 ≈0.93x，复测 0.929–0.935x——那点差距是 GIL，不是锁；起点用模型原姿态还是 `rest` keyframe 都不影响这几个数） |
 | ⑤ | 我们 Python baseline（`scripts/simulate.py`） | 单线程：一圈 = `mj_step` + `viewer.sync()` | 天然不能（同一线程串行） | 一整圈 | **0.089x**（23.1 ms/圈，只推进 2 ms） |
 
 ### 11.1 先把「那把锁」讲清：`sim.mtx` 罩着什么

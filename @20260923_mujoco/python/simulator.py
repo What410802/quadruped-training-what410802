@@ -11,6 +11,9 @@
 - **实时性用 deadline pacing**：按"第 n 步应在何时"的绝对时刻排程，睡眠误差不累积；
   落后太多（被抢占）时重新对齐，不做追赶。
 
+起点默认是**模型原姿态**（`keyframe=None`，等价于 `mj_resetData`：直腿站立、脚底刚好触地，零力矩
+下自然塌成趴卧）；要直接站在趴卧 keyframe 上就传 `keyframe=0`（本场景 index 0 = `rest`）。
+
 线程只有两条：`physics` + 主线程（渲染线程，`use_viewer=False` 时主线程只按渲染节奏消费快照）。
 """
 
@@ -28,7 +31,8 @@ STATE_FIELDS = ("qpos", "qvel", "act", "ctrl")
 
 
 class Simulator:
-    def __init__(self, model, control, *, realtime=True, use_viewer=True, seconds=None, keyframe=0, viewer_fps=60.0):
+    def __init__(self, model, control, *, realtime=True, use_viewer=True, seconds=None,
+                 keyframe=None, viewer_fps=60.0):
         self.model = model
         self.control = control
         self.realtime = realtime
@@ -48,6 +52,9 @@ class Simulator:
         self._wall_start = 0.0
         self._wall_seconds = 0.0
 
+        # 起点：默认**不加载 keyframe**（= `mj_resetData`，模型原姿态：直立直腿、脚底刚好触地，
+        # 零力矩下自然塌成趴卧）。传整数就加载该 keyframe（本场景 index 0 = `rest` 趴卧）。
+        # 场景里的 `<keyframe>` 不会自动加载，不写这几行就一直是原姿态（见仓库 docs/learn/mujoco.md §6.2）。
         if keyframe is not None:
             mujoco.mj_resetDataKeyframe(model, self.physics_data, keyframe)
             mujoco.mj_resetDataKeyframe(model, self.render_data, keyframe)

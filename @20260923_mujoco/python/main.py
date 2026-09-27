@@ -6,11 +6,13 @@
     pixi run env MUJOCO_GL=glfw python @20260923_mujoco/python/main.py          # 仓库默认是 egl，开窗口要临时换回 glfw
     pixi run python @20260923_mujoco/python/main.py --no-viewer --seconds 8     # 无窗口跑 8 仿真秒（看吞吐/取数）
     pixi run python @20260923_mujoco/python/main.py --fast                      # 不按真实时间节流，全速跑
+    pixi run python @20260923_mujoco/python/main.py --start rest                # 起点换成趴卧 keyframe（默认是模型原姿态）
 """
 
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import mujoco
@@ -29,17 +31,28 @@ def main() -> int:
     parser.add_argument("--seconds", type=float, default=None, help="跑这么多仿真秒后退出；默认一直跑")
     parser.add_argument("--fast", action="store_true", help="不按真实时间节流，全速跑")
     parser.add_argument("--no-viewer", action="store_true", help="不开窗口")
+    parser.add_argument("--start", choices=("default", "rest"), default="default",
+                        help="起点：default=模型原姿态（mj_resetData，零力矩下自然塌成趴卧）、"
+                             "rest=场景里的趴卧 keyframe")
     args = parser.parse_args()
 
     model = mujoco.MjModel.from_xml_path(args.scene)
+    keyframe = None                                  # None = 不加载 keyframe（模型原姿态）
+    if args.start == "rest":
+        if model.nkey == 0:                          # 场景里没有 keyframe 时早点报错，别默默跑错起点
+            print(f"!! {args.scene} 里没有 keyframe，无法用 --start rest", file=sys.stderr)
+            return 1
+        keyframe = 0                                 # 本场景 index 0 = <key name="rest">
     sim = Simulator(
         model,
         ZeroTorque(),
         realtime=not args.fast,
         use_viewer=not args.no_viewer,
         seconds=args.seconds,
+        keyframe=keyframe,
     )
-    print(f"model: nq={model.nq} nv={model.nv} nu={model.nu} dt={model.opt.timestep} control={sim.control.name}")
+    print(f"model: nq={model.nq} nv={model.nv} nu={model.nu} dt={model.opt.timestep} "
+          f"control={sim.control.name} start={args.start}")
 
     try:
         sim.run()

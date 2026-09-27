@@ -254,7 +254,7 @@ mjtNum  o_friction[5];   // friction
 ### 6.2 网站导出的模型「默认位形就穿模」，求解器会把狗弹飞
 
 `urdf.enkeebot.com` 把根 body 放在原点，而零位形下脚底在基座下方 0.5786 m ⇒ 默认状态整只 狗沉进地面。**症状与修法**：不修的话，第一步就会看到狗被弹到几米高（本任务的实测数字与 A/B 脚本见 [`../../@20260923_mujoco/docs/task2.md`](../../@20260923_mujoco/docs/task2.md)）。修法：把基座默认高度抬到「脚底刚好触地」；或在脚本里 `mj_resetDataKeyframe(model, data, 0)` / 显式设 `data.qpos[2]`。
-注意**场景里的 `<keyframe>` 不会自动加载**，最简 `viewer.launch_passive` 循环就会踩到。
+注意**场景里的 `<keyframe>` 不会自动加载**，最简 `viewer.launch_passive` 循环就 会踩到（本仓库谁在显式加载它、谁默认不加载，见 [`../../@20260923_mujoco/docs/model.md`](../../@20260923_mujoco/docs/model.md)）。
 
 **“脚底刚好触地”的高度怎么求**（本模型足底是球体，所以有闭式解）：`mj_forward()` 之后遍历足底 geom，
 取 `基座高度 = -min(球心世界坐标 z − size[0])`，即“基座到最低足底点的距离”；把基座默认 z 设成它即可。

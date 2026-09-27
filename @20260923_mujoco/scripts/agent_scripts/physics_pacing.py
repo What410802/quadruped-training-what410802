@@ -4,7 +4,9 @@
 四组对照，全部用真实模型与真实 `mj_step`，只把"渲染"这一步换成可控开销：
 
 0. **物理一致性**：单线程裸循环（无锁无线程）跑 N 步，与 `Simulator` 跑同样步数逐项对比 `qpos`，
-   要求**完全一致**（确定性物理不该被线程化改变）；
+   要求**完全一致**（确定性物理不该被线程化改变）。两边都从**模型原姿态**（`mj_resetData`，与
+   `python/main.py` 默认起点一致）起：狗先塌下去（落地那一下基座 xy 会蹭出 cm 量级，确定性），
+   步数跑完时高度已经落到 `rest` keyframe 那一档；
 1. **基线**：`Simulator` 无窗口实时跑，渲染开销≈0；
 2. **我们的设计**：把 `Simulator._render_once` 换成"搬快照 + mj_forward + 睡 20 ms"
    （20 ms ≈ 本机 `viewer.sync()` 的量级，见 docs/pitfalls/environment.md 的图形后端一节），再看每秒步数；
@@ -49,7 +51,7 @@ def load_model() -> mujoco.MjModel:
 def run_plain(model: mujoco.MjModel, steps: int) -> np.ndarray:
     """单线程裸循环：没有任何锁和线程，作为物理结果的参照物。"""
     data = mujoco.MjData(model)
-    mujoco.mj_resetDataKeyframe(model, data, 0)
+    mujoco.mj_resetData(model, data)          # 起点跟 Simulator 默认（keyframe=None）一致
     for _ in range(steps):
         data.ctrl[:] = 0.0
         mujoco.mj_step(model, data)
@@ -87,7 +89,7 @@ def slow_render(render_ms: float):
 def run_upstream_style(model: mujoco.MjModel, seconds: float, render_ms: float, viewer_dt: float = 0.02) -> tuple[int, float]:
     """上游写法：物理与渲染共用一把锁，锁跨住整个 `mj_step`。"""
     data = mujoco.MjData(model)
-    mujoco.mj_resetDataKeyframe(model, data, 0)
+    mujoco.mj_resetData(model, data)          # 同上：与 Simulator 默认起点一致
     dt = model.opt.timestep
     locker = threading.Lock()
     stop = threading.Event()
@@ -142,8 +144,13 @@ def main() -> int:
     sim.run()
     reference = run_plain(model, sim.steps)
     same = np.array_equal(reference, sim.physics_data.qpos)
-    drift = float(np.abs(sim.physics_data.qpos[:2] - model.key_qpos[0, :2]).max())
-    print(f"[0] 物理一致性: steps={sim.steps} 与单线程裸循环逐位相同={same} 基座 xy 偏移={drift:.3e} m")
+    # 从原姿态起，狗会先塌下去：落地那一下基座 xy 蹭出 cm 量级（确定性、每次一样），
+    # 跑到结束时**高度**已经落到与 `rest` keyframe 相同的位置——所以这里比高度，不比 xy。
+    height_error = abs(float(sim.physics_data.qpos[2]) - float(model.key_qpos[0, 2]))
+    x_shift = float(np.abs(sim.physics_data.qpos[:2] - model.qpos0[:2]).max())
+    print(f"[0] 物理一致性: steps={sim.steps} 与单线程裸循环逐位相同={same} "
+          f"基座 z={sim.physics_data.qpos[2]:.4f}（rest {model.key_qpos[0, 2]:.4f}，差 {height_error:.1e} m）"
+          f" 塌下时蹭出 xy={x_shift:.3e} m")
 
     # 1~3. 渲染开销的对照
     base_steps, base_wall = run_ours(model, args.seconds, render_ms=0.0)
@@ -157,11 +164,11 @@ def main() -> int:
     for label, steps, wall in rows:
         print(f"{label}: steps={steps:5d} 步/秒={steps / wall:7.1f} 实时率={steps * dt / wall:.3f}x")
 
-    # 零力矩 4 s 后基座只挪 µm 量级（接触求解器的正常残差）；这里只做粗筛，
-    # 严格的"静止趴卧"判据在 scripts/agent_scripts/rest_check.py
+    # 从原姿态跑完 4 s：高度已落到 `rest` 那一档（差 < 1 mm）；xy 那 ~7 cm 是塌下去的过程中蹭出来的，
+    # 这里只做粗筛。严格的"静止趴卧"判据在 scripts/agent_scripts/rest_check.py
     ok = (
         same
-        and drift < 1e-4
+        and height_error < 1e-3
         and slow_steps >= 0.9 * base_steps
         and ups_steps <= 0.6 * base_steps
     )

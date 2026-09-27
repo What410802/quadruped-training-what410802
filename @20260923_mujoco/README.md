@@ -37,10 +37,13 @@ pixi run @20260923_mujoco/cpp_task2/build/dog_sim                          # C++
 开窗口要临时把图形后端换回 `glfw`（仓库默认是 `egl`，无窗口）：
 
 ```bash
-pixi run env MUJOCO_GL=glfw python @20260923_mujoco/python/main.py          # 开窗口，零力矩跑
+pixi run env MUJOCO_GL=glfw python @20260923_mujoco/python/main.py          # 开窗口，零力矩跑（起点 = 模型原姿态）
 pixi run python @20260923_mujoco/python/main.py --no-viewer --seconds 8     # 无窗口跑 8 仿真秒
+pixi run python @20260923_mujoco/python/main.py --start rest                # 起点换成趴卧 keyframe（默认原姿态：直腿→自然塌下）
 pixi run python @20260923_mujoco/scripts/agent_scripts/physics_pacing.py    # 检查：渲染不顶住物理
 ```
+
+注意一个**开窗**才有的旧问题：“开窗 + `--seconds N` 自动退出”会在解释器收尾时**段错误**（退出码 139；`python -X faulthandler` 指到 `mujoco/viewer.py` 的 `_launch_internal`——viewer 自己的线程还在跑 GLFW，而主线程已经在收尾。旧代码同样崩，与本任务这次改动无关，属于 Python 侧 MuJoCo viewer 与 C++ 侧“不能调 `glfwTerminate`”一脉的收尾问题）。所以：**要数字用 `--no-viewer`**，要开窗就直接靠关窗退出（那条路径是干净的，退出码 0）。
 
 **为什么非阻塞（双缓冲）是必要的**：`scripts/simulate.py` 是最朴素的单线程写法——一圈里 `mj_step` 之后紧跟 `viewer.sync()`，而 `viewer.sync()` 要等一个刷新周期（本机实测中位 **23.1 ms**）≫ `timestep`（0.002 s），一圈只推进 0.002 s 仿真，整个循环被显示刷新钉住。实测（本机 i5-1035G1、960×540、`MUJOCO_GL=glfw`）：
 
@@ -48,7 +51,7 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/physics_pacing.py    # �
 |---|---|---|
 | 纯 `mj_step`（无窗口） | 0.0432 ms/步（C++ 侧 0.0404 ms） | — |
 | `scripts/simulate.py`：`mj_step` + `viewer.sync()` 同线程、**每步都 sync** | 23.1 ms/圈，一圈才走 0.002 s | **0.089x** |
-| `python/main.py`：物理线程 + 渲染线程、锁只罩快照 memcpy、deadline pacing | 渲染 20 ms/次也不顶住物理 | **0.998x**（开窗口约 0.86x，GIL 限制） |
+| `python/main.py`：物理线程 + 渲染线程、锁只罩快照 memcpy、deadline pacing | 渲染 20 ms/次也不顶住物理 | **0.998x**（复测 0.997–0.999x，与起点姿态无关；开窗口约 0.93x，复测 0.929–0.935x，GIL 限制） |
 | `cpp_task2 --mode view`：物理线程 + 官方 `Simulate` 界面 | 官方 `RenderLoop` 在 `Render()` **之前**就放锁（源码注释 `// MutexLock (unblocks simulation thread)`） | **1.00x** |
 
 也正因为如此，`scripts/simulate.py` 里那句被注释掉的 `[WARN] Simulation speed decreased.` 在本机是常态（每圈都会触发）；上游把 `SIMULATE_DT` 放大到 0.005 s 正是在迁就这件事（`config.py:13` 的注释明说）。**结论：要一边按墙钟实时看、一边推进物理，非阻塞（快照 + 双缓冲）不是可选优化，而是必要条件**——纯物理本身就够快（0.04 ms/步），问题全在「谁在等谁」。
@@ -210,7 +213,7 @@ pixi run @20260923_mujoco/cpp_slope/build/slope --mode sim --start raw --pitch 1
 
 - [ ] 任务 1：认识 MuJoCo（作用、Python 接口、MJCF 结构）
 - [x] 任务 2：URDF→MJCF、平地场景、零力矩静止趴卧、力矩执行器（结果见 [`docs/task2.md`](docs/task2.md)；C++ 侧 `cpp_task2/` 同判据）
-- [ ] 任务 3：参考 unitree_mujoco 优化代码结构与线程设计（研读笔记 → [`../docs/learn/unitree-mujoco.md`](../docs/learn/unitree-mujoco.md)，线程/通信细节与五种方案的每帧阻滞对比 → [`../docs/learn/runtime-timing.md`](../docs/learn/runtime-timing.md)；**Python 侧已落地**：[`python/`](python/) 用双缓冲把渲染与物理拆开。实测（`scripts/agent_scripts/physics_pacing.py`）：同等 20 ms/次渲染下，无窗口我们 499 步/秒（实时 0.998x）、上游式单锁写法 271 步/秒（0.542x），且物理结果与单线程裸循环逐位相同；开窗口时降到 0.863x——那是 Python 的 GIL 争用（渲染那一步在 Python 里），不是锁，留给任务 4 用 C++ 解决）
+- [ ] 任务 3：参考 unitree_mujoco 优化代码结构与线程设计（研读笔记 → [`../docs/learn/unitree-mujoco.md`](../docs/learn/unitree-mujoco.md)，线程/通信细节与五种方案的每帧阻滞对比 → [`../docs/learn/runtime-timing.md`](../docs/learn/runtime-timing.md)；**Python 侧已落地**：[`python/`](python/) 用双缓冲把渲染与物理拆开。实测（`scripts/agent_scripts/physics_pacing.py`）：同等 20 ms/次渲染下，无窗口我们 499 步/秒（实时 0.998x，复测 0.997–0.999x）、上游式单锁写法 271 步/秒（0.542x），且物理结果与单线程裸循环逐位相同；开窗口时降到 0.93x（复测 0.929–0.935x；早期一次测得 0.863x，随窗口/viewer 开销浮动）——那是 Python 的 GIL 争用（渲染那一步在 Python 里），不是锁，留给任务 4 用 C++ 解决。**起点默认是模型原姿态**（`--start default`，与 `simulate.py`/`example_attach.py` 一致；`--start rest` 可切成趴卧 keyframe，见 `python/simulator.py` 里的 `keyframe=` 参数）
 - [ ] 任务 4（选做）：用 C++ 重做（任务 2 的 C++ 版已落到 [`cpp_task2/`](cpp_task2/)；任务 4 的双缓冲结构待在 [`cpp/`](cpp/) 实现，对齐 [`python/`](python/)）
 - [x] 额外 demo（非验收项）：平地站稳与可调倾斜地面（[`cpp_stand/`](cpp_stand/)、[`cpp_slope/`](cpp_slope/)，结果与踩坑见 [`docs/stand.md`](docs/stand.md)）
 

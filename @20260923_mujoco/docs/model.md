@@ -79,9 +79,9 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/urdf_to_mjcf.py \
 
 修好之后两种起手方式都可用（模型已把基座抬到触地高度）：
 
-* 默认位形 → 四脚站在地面上，零力矩下**自然塌成趴卧**（`../scripts/visualization/examples/example_attach.py` 默认录的就是这一段，C++ 侧 `../cpp_task2/src/main.cpp` 同理）；
-* 想一开始就是静止趴卧 → `mujoco.mj_resetDataKeyframe(model, data, 0)`（对应 `scenes/flat_scene.xml` 里的 `<keyframe name="rest">`）。
+* 默认位形 → 四脚站在地面上，零力矩下**自然塌成趴卧**（`../python/main.py` 默认就是这个起点，`../scripts/visualization/examples/example_attach.py` 默认录的也是这一段，C++ 侧 `../cpp_task2/src/main.cpp` 同理）；塌下过程中基座 xy 会蹭出 **7.06 cm**（实测、确定性），高度落到 0.1449 m；
+* 想一开始就是静止趴卧 → `mujoco.mj_resetDataKeyframe(model, data, 0)`（对应 `scenes/flat_scene.xml` 里的 `<keyframe name="rest">`；`python/main.py --start rest` 走的就是这条）。
 
-**关于 `rest` keyframe**（2026-09-25 复核）：它还在、也还有用——`rest_check.py` 默认模式、`example_attach.py --start rest`、`render_preview.py` 都在读它；重跑一次自由落体（`rest_check.py --mode drop`）得到的 qpos 与它**逐位一致**，说明没有过期。它只写了 `qpos`（`qvel` 默认 0），且 xy 清零（平面上平移等价）。**什么时候要重做**：改了模型的惯性/几何/执行器，或动了 `timestep`/`solver` 导致平衡位形变化时，重跑 `--mode drop` 把新 qpos 粘回去；默认模式（`keyframe`）就是它的回归测试（要求末段 max|qvel| < 1e-3 且漂移 < 1 mm）。
+**关于 `rest` keyframe**（2026-09-25 复核）：它还在、也还有用——`rest_check.py` 默认模式、`example_attach.py --start rest`、`render_preview.py`、`../python/main.py --start rest` 都在读它（任务 3 的循环**默认不读**，默认起点是模型原姿态）；重跑一次自由落体（`rest_check.py --mode drop`）得到的 qpos 与它**逐位一致**，说明没有过期。它只写了 `qpos`（`qvel` 默认 0），且 xy 清零（平面上平移等价）。**什么时候要重做**：改了模型的惯性/几何/执行器，或动了 `timestep`/`solver` 导致平衡位形变化时，重跑 `--mode drop` 把新 qpos 粘回去；默认模式（`keyframe`）就是它的回归测试（要求末段 max|qvel| < 1e-3 且漂移 < 1 mm）。
 
 另外，`inertiafromgeom="auto"` 这里**刻意不改**：它只在 body 没有显式 `<inertial>` 时才生效，而本模型 20 个 body 全都有 ⇒ 改了也不会有任何行为差异，属于纯防御性改动，只会让补丁清单变长、diff 变脏。
