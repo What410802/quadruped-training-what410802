@@ -1,0 +1,17 @@
+# C++ 构建目录与编译产物
+build/
+build_test/
+*.o
+
+# MuJoCo 运行产物
+*.mjb
+*.mjz
+*.log
+
+# 说明：models/meshes 与 scenes/meshes 都是**目录软链接**，指向唯一一份真实 mesh
+# （@20260923_mujoco/assets/urdf/meshes，34 MB）。软链接本身要入库（几十字节），
+# 所以这里不做排除。
+
+# 编辑器 / 系统
+.DS_Store
+.vscode/

@@ -10,6 +10,7 @@
 |---|---|---|---|
 | 2026-09-22 | C++ / OOP / CMake 基础 | [`@20260922_robot_cpp_training/robot_cpp_oop_cmake_training/`](@20260922_robot_cpp_training/robot_cpp_oop_cmake_training/) | [`验收.md`](@20260922_robot_cpp_training/验收.md) |
 | 2026-09-23 | URDF 转换、MuJoCo 仿真（含 C++ 复刻） | [`@20260923_mujoco/`](@20260923_mujoco/) | [`README.md`](@20260923_mujoco/README.md) |
+| 2026-09-27 | 关节电机：MIT 混合控制 + 状态机（阻尼/站立）仿真 | [`@20260927_motor/`](@20260927_motor/) | [`README.md`](@20260927_motor/README.md) |
 
 ## 快速开始
 
