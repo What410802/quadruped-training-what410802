@@ -174,6 +174,11 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 顺序上还有一条约束：**站姿搜索必须在水平地面下做**（搜索里"把基座平移到最低脚底面贴地"是水平地面的算法），
 所以程序先搜站姿、再把地面和狗一起转（相对几何不变 ⇒ 搜出来的站姿照旧成立）、最后按 `--start` 摆起点。
 
+站姿只由**模型**决定（与场景/控制参数无关），所以每次搜出来的结果都一样——可以把一次搜索的结果存下来：
+`motor_sim --dump-stance <文件>` 写出一份文本（指纹 = 自由度/实体数/几何数/总质量 + 足底球个数/半径，
+不符就拒绝加载），仓库里那份在 [`../../models/stance.txt`](../../models/stance.txt)。最简版
+[`../essential/`](../essential/README.md) 就只**加载**这份文件、不再带搜索代码（这是那个版本能删掉 Search 的原因）。
+
 ### 2.6 限幅一览（仿真侧 ↔ 讲义/实机）
 
 任务书与讲义里**明确写出来的**限幅只有一条是数值：**输出侧力矩上限 33.5 N·m**（讲义 §1.4 第 2 条，
@@ -270,7 +275,9 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 捞出来单独编一个二进制，同一组命令对拍（差异只允许出现在墙钟计时行）：
 
 ```bash
-mkdir -p /tmp/old_src && for f in args.h motor.h recorder.h stance.h state.h viewer.h main.cpp; do
+# 文件表要跟 `src/` 的现状一致（`git show` 找不到的路径会直接失败；加了新头文件就顺手加进来）
+mkdir -p /tmp/old_src && for f in args.h cli.h ground.h motor.h observation.h recorder.h \
+        scene_setup.h stance.h start.h state.h viewer.h main.cpp; do
     git show ":@20260927_motor/cpp/src/$f" > /tmp/old_src/$f; done
 pixi run g++ -O2 -std=c++17 -I/tmp/old_src -I"$CONDA_PREFIX/include" -L"$CONDA_PREFIX/lib" \
     /tmp/old_src/main.cpp -lmujoco -lglfw -Wl,-rpath,"$CONDA_PREFIX/lib" -o /tmp/motor_sim_old
@@ -429,6 +436,9 @@ pixi run cmake --build @20260927_motor/cpp/build
 
 # 窗口（交付形态）：按 S 站立、D 阻尼、R 回到起点、Q/Esc 退出
 pixi run @20260927_motor/cpp/build/motor_sim
+
+# 把搜出来的站姿存成文件（供最简版 ../essential/ 加载；它会校验指纹，不符就拒绝加载）
+pixi run @20260927_motor/cpp/build/motor_sim --dump-stance @20260927_motor/models/stance.txt
 
 # 无窗口回归（退出码：0 = 判定通过、2 = 不通过、1 = 参数错误）
 pixi run @20260927_motor/cpp/build/motor_sim --mode sim --seconds 5                        # ①阻尼模式：松手塌回趴卧
