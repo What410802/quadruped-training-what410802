@@ -207,6 +207,8 @@
 
 	这就是 **Rule of Three / Rule of Five**：类一旦自己管理资源（写了析构，或持有裸句柄、裸指针），拷贝与移动就必须**显式表态**，不能靠默认生成糊过去。这里的表态是"都不许"。
 
+	同一套写法在本仓库里还有两处可以对照：[`@20260927_motor/cpp/src/scene_setup.h`](../../@20260927_motor/cpp/src/scene_setup.h) 的 `setup::Scene`（自己持有 `mjModel*` / `mjData*`，析构里 `mj_deleteData` + `mj_deleteModel`，同样删掉拷贝）——把"资源拥有者不许拷贝"从窗口推广到了仿真现场；以及最简版 [`@20260927_motor/cpp/essential/src/tty.h`](../../@20260927_motor/cpp/essential/src/tty.h) 的 `tty::RawKeys`（持有终端的 termios 设置，析构里恢复，也正是靠 RAII 才不会留下一个"不回显"的终端）。
+
 	**3）为什么两行都要写**
 
 	- 只删拷贝构造、不删拷贝赋值：拷贝赋值**仍会被隐式生成**（标准里只是把它标记为 deprecated，即"不推荐但存在"），`a = b;` 照样编过并逐成员浅拷贝 → 又变成两个所有者。所以拷贝构造与拷贝赋值必须**成对**删除。实测（g++ 14 / `-std=c++17 -Wall`）：只删拷贝构造时 `a = b` 静默编过，连 warning 都不给——只能靠人记得写第二行。

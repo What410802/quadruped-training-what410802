@@ -65,7 +65,9 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 [`docs/sim.md`](docs/sim.md) §4 踩坑 15）、`--script`（sim/record 模式的脚本，动作
 `stand` / `damp` / `reset`；`reset` = 回到 `--start` 起点并回阻尼模式，与窗口里的 `R` 键一致，保留仿真时间轴）、
 `--out/--fps`（录像）、`--pitch/--roll/--floor-friction/--floor-condim`（倾斜地面与摩擦，默认全不生效；
-量测自动改成相对地面法向，见 [`docs/sim.md`](docs/sim.md) §2.5）。
+量测自动改成相对地面法向，见 [`docs/sim.md`](docs/sim.md) §2.5）、`--dump-stance FILE`（把搜出来的站姿
+写进 `../models/stance.txt` 这类文件后退出；最简版 [`essential/`](essential/README.md) 直接加载它，格式与指纹见
+[`src/stance_file.h`](src/stance_file.h)）。
 
 ## 实测摘要
 
@@ -93,16 +95,25 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 │   ├── CMakeLists.txt   # 只链 mujoco + glfw（不链官方界面库：窗口是我们自己写的）
 │   ├── README.md        # 本文件：怎么建、怎么跑、参数、实测摘要
 │   ├── docs/sim.md      # 实现细节、全部实测数字、踩坑；§6 与第二次培训控制程序对照
-│   └── src/
-│       ├── motor.h      # 关节电机：MIT 公式（含量纲说明）、转子侧换算、限幅/死区/延迟/噪声
-│       ├── stance.h     # 站姿搜索与量测（四足触地、高度、竖直度、漂移）
-│       ├── state.h      # 状态机：阻尼 / 站立 + 自动斜坡
-│       ├── viewer.h     # 自己写的窗口（键盘、鼠标相机、HUD）
-│       ├── recorder.h   # 无窗口录像（隐藏窗口 + 离屏 framebuffer → ffmpeg）
-│       ├── ground.h     # 倾斜地面与摩擦（默认 0° / 不生效）
-│       ├── args.h       # 命令行解析（从 @20260923_mujoco/cpp_task2 复制，让本任务自包含）
-│       └── main.cpp     # 组装：三种模式（view / sim / record）与判定
-├── models/ + scenes/    # 模型与场景（从 @20260923_mujoco 复制）
+│   ├── src/             # 完整版：三种模式（view/sim/record）+ 倾斜地面/摩擦 + 电机非理想项
+│   │   ├── main.cpp        # 只做编排：解析参数 → 装配现场 → 三种模式与判定
+│   │   ├── cli.h           # 命令行面：用法文本、选项表、取值与全部校验
+│   │   ├── scene_setup.h   # 现场装配：场景 XML → 地面/脚 → 站姿搜索 → 地面倾角 → 摆到起点
+│   │   │                   #   （setup::Scene 持有 model/data，失败时自动释放）
+│   │   ├── motor.h         # 关节电机：MIT 公式（含量纲说明）、转子侧换算、限幅/死区/延迟/噪声、统计
+│   │   ├── stance.h        # 站姿搜索与量测口径（四足触地、高度、竖直度、漂移）
+│   │   ├── state.h         # 状态机：阻尼 / 站立 + 自动斜坡
+│   │   ├── observation.h   # 观测：Snapshot/Sample + “算不算起身完成”
+│   │   ├── start.h         # 起点：摆位（raw/stance/rest/side）与“回到起点”（R / reset）
+│   │   ├── viewer.h        # 自己写的窗口（键盘、鼠标相机、HUD）
+│   │   ├── recorder.h      # 无窗口录像（隐藏窗口 + 离屏 framebuffer → ffmpeg）
+│   │   ├── ground.h        # 倾斜地面与摩擦（默认 0° / 不生效）
+│   │   ├── stance_file.h   # 站姿文件：格式/指纹 + 写（把搜出来的站姿存给最简版用）
+│   │   └── args.h          # 命令行语法（从 @20260923_mujoco/cpp_task2 复制，让本任务自包含）
+│   └── essential/       # 最简版：窗口用 MuJoCo **官方** Simulate 界面，按键从**终端**读（src/tty.h），
+│       ├── README.md    #   一次读懂用；含三个踩坑与验证方法
+│       └── src/         #   按需精简的同名头文件（无 Search/无倾斜/无录像）+ stance_file.h（只读那一半）+ main.cpp
+├── models/ + scenes/    # 模型与场景（从 @20260923_mujoco 复制）；另有搜好存下的 models/stance.txt
 └── ../output/cpp/       # 录像产物（damp_stand_damp.mp4、stand_up_from_rest.mp4）
 ```
 

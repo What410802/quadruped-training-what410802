@@ -1,0 +1,13 @@
+# 站姿（stance）：站立模式的控制目标 q_des 与该姿态下的基座高度。
+#
+# 它是**搜索结果**：由 cpp/src 版（含 stance::Search）生成一次，cpp/essential 版直接加载。
+# 生成/更新（换了模型、或改了搜索参数就重跑这一条）：
+#   pixi run @20260927_motor/cpp/build/motor_sim --dump-stance @20260927_motor/models/stance.txt
+# 加载时会逐字比对 model / feet 两行指纹，不一致就拒绝加载。
+# 格式说明见 cpp/src/stance_file.h。
+version 1
+model nq=19 nv=18 nu=12 nbody=20 ngeom=50 mass=13.247180
+feet count=4 radius=0.020000
+search bend=1.100000 frac=0.550000 com_err=0.000947 feet=4
+z 0.49732141739988184
+q 0 0.60499999999999998 -1.1000000000000001 0 -0.60499999999999998 1.1000000000000001 0 -0.60499999999999998 1.1000000000000001 0 0.60499999999999998 -1.1000000000000001
