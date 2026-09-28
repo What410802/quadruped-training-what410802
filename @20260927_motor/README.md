@@ -23,8 +23,8 @@
 | 第一部分附加：倾斜地面、可调摩擦、与第二次培训控制程序的对照 | ✅ 完成（同上 §2.5 / §2.6 / §6） |
 | 第二部分 S0：端口探针（转接头能不能配 4 Mbaud、SDK 能不能开端口） | ✅ 通过（FT232H + `ftdi_sio`，4 Mbaud 整除） |
 | 第二部分 S1：让电机转起来（带斜坡与限幅） | ✅ 通过（6 次实跑：0 丢帧、温度 30–31 °C、`merror=0`） |
-| 第二部分 S2：零力矩手转找零点 + 定“里程计/锯齿” + kd 扫描 + 量断链行为 | 🔧 **工具与手册已就绪**（[`cpp_part2/docs/real.md`](cpp_part2/docs/real.md) §3.7 的 S2a–S2e），待实机执行 |
-| 第二部分 S3–S5：回归 0 + 键盘给角度 / 标零点 + 偏移 30° / 零点跳变 | ⏳ 计划、验收标准与已知问题见 [`cpp_part2/docs/real.md`](cpp_part2/docs/real.md) §3；标定符号约定见 §5 |
+| 第二部分 S2：零力矩手转找零点 + 定“里程计/锯齿” + kd 扫描 + 量断链行为 + 上电基准 | 🔧 **工具与手册已就绪**（[`cpp_part2/docs/real.md`](cpp_part2/docs/real.md) §3.7 的 S2a–S2f），待实机执行 |
+| 第二部分 S3–S5：回归 0 + 键盘给角度 / 标零点 + 偏移 30° / 零点跳变 | 🔧 **程序已就绪**（[`cpp_part2/src/motor_ctl.cpp`](cpp_part2/src/motor_ctl.cpp)；离线自检四种情形都跑通，见 [README §6](cpp_part2/README.md) 与 [real.md §3.8](cpp_part2/docs/real.md)），待实机执行 |
 
 ## 目录结构
 
@@ -39,11 +39,11 @@
 │   │                          #   / observation.h / start.h / viewer.h / recorder.h / ground.h / args.h
 │   └── essential/             # 最简版（官方 Simulate 窗口 + 终端按键，站姿从 models/stance.txt 加载）
 ├── cpp_part2/                 # 第二部分（实机）的程序与工具
-│   ├── CMakeLists.txt         # 生成 compile_commands.json（编辑器智能提示）
-│   ├── README.md              # 报文/定点标度实测、四个程序、怎么建怎么跑
-│   ├── docs/                  # real.md（硬件现状、成熟度、S0–S5 计划）、glossary.md（缩写表）
-│   └── src/                   # serial_probe.cpp / spin_test.cpp（要接实机）
-│       └── sim/               # 不控制实机的代码：pty_serial_shim.c / fake_motor.h / fake_motor_dryrun.cpp
+│   ├── CMakeLists.txt         # 四个可执行 + PTY 垫片；生成 compile_commands.json（编辑器智能提示）
+│   ├── README.md              # 报文/定点标度实测、五个程序、怎么建怎么跑、S3–S5 怎么用（§6）
+│   ├── docs/                  # real.md（硬件现状、成熟度、S0–S5 计划与手册）、glossary.md（缩写表）
+│   └── src/                   # serial_probe.cpp（S2）/ spin_test.cpp（S1）/ motor_ctl.cpp（S3–S5）
+│       └── sim/               # 不控制实机的代码：pty_serial_shim.c / fake_motor.h（含假驱动板）/ fake_motor_dryrun.cpp
 ├── docs/                      # 两部分共用的资料（子工程的文档已移到各自的 docs/）
 │   └── teaching-materials/    # 讲义与任务书
 ├── scripts/
