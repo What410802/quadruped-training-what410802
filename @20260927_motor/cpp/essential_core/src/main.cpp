@@ -15,6 +15,15 @@
 //   pixi run cmake --build @20260927_motor/cpp/essential_core/build
 //   pixi run @20260927_motor/cpp/essential_core/build/essential_core
 //
+// 位置参数（都可省；写 "/" 表示"这一位用默认值"，或者干脆不写后面的位）：
+//   essential_core [场景.xml] [斜坡s] [kp] [kd] [kd_damp]
+//     场景    默认：从可执行文件往上找带 scenes/ 的那一层里的 scenes/flat_scene.xml
+//     斜坡    q_des 从按下那一刻的关节角推到站姿的时长 [s]，默认 1.0（固定值，不做自适应）
+//     kp/kd   站立模式的位置刚度/阻尼，默认 80 / 3（讲义 §1.4 提到的实机输出侧那一组）
+//     kd_damp 阻尼模式的阻尼，默认 0.5
+//   例：essential_core / 0.5 120 6    （默认场景、斜坡 0.5 s、kp=120、kd=6）
+//   命令行只有这 5 个位置参数，没有 --help：用法就写在这里与 [`README.md`](../README.md) 里。
+//
 // 两个线程（官方 `simulate` 的既定形状）：
 //   * 主线程：`RenderLoop()` —— 窗口与渲染（GLFW 要求"谁建窗口谁用它"，窗口只能在主线程跑）；
 //   * 控制线程：装配现场 → `sim.Load()` 把模型交给界面 → 一步一循环（按键 / 状态机 / mj_step）。
@@ -33,6 +42,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -82,9 +92,48 @@ struct Scene {
     }
 };
 
+// 命令行：只有位置参数，没有开关也没有 --help（用法在文件头与 README 里）。
+// 位置：1 场景 XML、2 斜坡时长、3..5 kp / kd / kd_damp；某一位写 "/" = 用默认值，
+// 后面的位不写也是默认值。
+struct Options {
+    fs::path scene;    // 空 = 往上找 scenes/flat_scene.xml
+    ctrl::Param param; // 默认就是 state.h 里的那几个常数
+};
+
+bool ParsePositional(int argc, char **argv, Options *out) {
+    for (int i = 1; i < argc; ++i) {
+        const std::string a = argv[i];
+        if (a == "/")
+            continue; // 这一位用默认值
+        if (i > 5) {
+            std::fprintf(stderr, "参数太多：最多 [场景] [斜坡] [kp] [kd] [kd_damp]（用法见 README）\n");
+            return false;
+        }
+        if (i == 1) {
+            out->scene = a;
+            continue;
+        }
+        char *end = nullptr;
+        const double v = std::strtod(a.c_str(), &end);
+        if (end == a.c_str() || *end != '\0') {
+            std::fprintf(stderr, "第 %d 个参数不是数字：%s（用法见 README）\n", i, a.c_str());
+            return false;
+        }
+        if (i == 2)
+            out->param.ramp = v;
+        if (i == 3)
+            out->param.kp = v;
+        if (i == 4)
+            out->param.kd = v;
+        if (i == 5)
+            out->param.kd_damp = v;
+    }
+    return true;
+}
+
 // 加载场景：从**可执行文件所在目录往上找**带 scenes/ 的那一层（比"往上数两层"健壮，
-// build/ 放在仓库根还是放在本项目下都适用）。核心版没有命令行，所以只有这一种定位方式。
-bool LoadScene(Scene *out) {
+// build/ 放在仓库根还是放在本项目下都适用）。场景也可以由第一个位置参数显式给。
+bool LoadScene(Scene *out, const Options &opt) {
     const fs::path exe_dir = fs::read_symlink("/proc/self/exe").parent_path();
     fs::path root;
     for (fs::path p = exe_dir; p != p.parent_path(); p = p.parent_path()) {
@@ -93,13 +142,13 @@ bool LoadScene(Scene *out) {
             break;
         }
     }
-    if (root.empty()) {
+    if (opt.scene.empty() && root.empty()) {
         std::fprintf(stderr, "从可执行文件所在目录往上找不到带 scenes/ 的任务目录：%s\n"
-                             "请按 README 的构建命令重新构建。\n",
+                             "把场景 XML 作为第一个位置参数传进来，或按 README 的构建命令重新构建。\n",
                      exe_dir.c_str());
         return false;
     }
-    out->path = root / "scenes/flat_scene.xml";
+    out->path = opt.scene.empty() ? root / "scenes/flat_scene.xml" : opt.scene;
 
     std::printf("MuJoCo %s\n", mj_versionString());
     out->m = mj_loadXML(out->path.c_str(), nullptr, nullptr, 0);
@@ -113,9 +162,9 @@ bool LoadScene(Scene *out) {
 }
 
 // 控制线程：装现场 → 交给界面 → 一步一循环。返回值 = 进程退出码（0 正常 / 1 装配失败）。
-int ControlThread(mujoco::Simulate *sim, ClosableAdapter *adapter) {
+int ControlThread(mujoco::Simulate *sim, ClosableAdapter *adapter, const Options &opt) {
     Scene scene;
-    if (!LoadScene(&scene)) {
+    if (!LoadScene(&scene, opt)) {
         adapter->RequestClose(); // 让主线程的 RenderLoop 收工（它只看窗口该不该关）
         sim->exitrequest = 1;
         return 1;
@@ -139,8 +188,10 @@ int ControlThread(mujoco::Simulate *sim, ClosableAdapter *adapter) {
         mj_forward(m, d); // 与官方一致：先算一遍派生量，窗口第一帧才不是空的
     }
 
-    ctrl::StateMachine sm(m);
-    std::printf("站姿：z=%.4f m、12 个关节角内联在 state.h；状态 = %s（上电默认）\n", kStanceZ,
+    ctrl::StateMachine sm(m, kStanceQ, opt.param);
+    std::printf("站姿：z=%.4f m（12 个关节角内联在 state.h）；阻尼 kd=%.3g；站立 kp=%.3g kd=%.3g、"
+                "斜坡 %.2f s；状态 = %s（上电默认）\n",
+                kStanceZ, opt.param.kd_damp, opt.param.kp, opt.param.kd, opt.param.ramp,
                 ctrl::Name(sm.state()));
 
     tty::RawKeys keys;
@@ -204,10 +255,11 @@ int ControlThread(mujoco::Simulate *sim, ClosableAdapter *adapter) {
 } // namespace
 
 int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
     // 交互式运行：日志要立刻可见（不重定向时 stdout 是块缓冲，被 Ctrl-C/信号打断就全丢了）
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
+    Options opt;
+    if (!ParsePositional(argc, argv, &opt))
+        return 1;
 
     // 官方界面的相机/选项/扰动：给默认值即可（之后都在窗口里改）
     mjvCamera cam;
@@ -225,7 +277,7 @@ int main(int argc, char **argv) {
 
     // 顺序要紧：控制线程里的 Load() 在等渲染线程，所以主线程先跑 RenderLoop，再起控制线程
     std::atomic<int> rc{0};
-    std::thread control([&] { rc = ControlThread(sim.get(), adapter_raw); });
+    std::thread control([&] { rc = ControlThread(sim.get(), adapter_raw, opt); });
     sim->RenderLoop();    // 阻塞：直到窗口被关（用户点掉，或控制线程收到 q 后 RequestClose）
     sim->exitrequest = 1; // 通知控制线程收工
     control.join();

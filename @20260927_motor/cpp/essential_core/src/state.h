@@ -32,17 +32,35 @@
 // ---------------------------------------------------------------- 站姿（控制目标）
 
 // 12 个关节的目标角 [rad]，**按执行器顺序**（不是模型里的关节名顺序），以及该姿态下的基座高度 [m]。
-// 这张表就是完整版 `stance::Search` 搜出来的结果，与 `models/stance.txt` 里的 `q` / `z` 两行逐位相同。
-// 换模型（或改了搜索参数）要重新生成并同步到下面：
-//   pixi run @20260927_motor/cpp/build/motor_sim --dump-stance @20260927_motor/models/stance.txt
+//
+// 这份站姿比完整版 `models/stance.txt` 那份**低**（膝 1.689 vs 1.100 rad、基座 0.400 vs 0.497 m），
+// 是重新搜出来的，两个实测理由（本机、固定斜坡 1.0 s、从模型原姿态起）：
+//
+//   * **上电后任意时刻按 S 都站得住**。原姿态是“直腿高站”，阻尼模式下塌得很快：按下 S 的时刻若落在
+//     上电后 0.1–0.35 s 这段“正在下落”的窗口里，原站姿无论怎么调斜坡都会向后倒（实测：0.2 s 时
+//     连 20 s 斜坡也站不起来）。低站姿离塌落中的狗更近（少抬 8–10 cm），窗口整段消失：
+//     0.05 / 0.1 / 0.2 / 0.3 / 0.4 / 0.5 / 1 / 3 s 全部 ✓。
+//   * **四足受力均匀**。理想站姿的质心比四足中心再前移 1.0 cm（就是下面 12 个角里那“整条腿后移
+//     0.011 rad”），稳态下四脚法向力实测 32.5 / 32.5 / 32.5 / 32.5 N（原站姿前 30.7 / 后 34.3，
+//     差 11%，因为 PD 稳态下沉把质心带到了脚中心后面 ~1.2 cm）。
+//
+// 代价很小：稳态峰值 |τ| 9.9 N·m（原 11.2）、下沉 1.6 cm（原 1.1）、竖直度 0.00°（原 0.24°）。
+// 怎么来的：在完整版搜索的几何口径上多一个“整条腿绕髋旋转”的自由度——膝 1.7 rad、大腿 = 0.55×膝、
+// 整条腿后移 0.011 rad、基座降到“最低那只脚底面刚好贴地”（等价写法：大腿 0.946 rad、膝 1.689 rad）。
+// 换模型要重新生成（完整版那份膝 1.1 的来历见 models/stance.txt）。
 //
 // 为什么不能直接用模型默认位形（所有关节 = 0）：膝关节会**越界**（本模型 calf 约 ±[0.85, 2.5] rad），
-// 一开场就被限位力踢出去，症状是"与增益无关的崩溃"；即使把膝掰进合法区间，质心也落在四足中心
+// 一开场就被限位力踢出去，症状是“与增益无关的崩溃”；即使把膝掰进合法区间，质心也落在四足中心
 // 后面 0.18 m。实测与成因见 @20260923_mujoco/docs/stand.md 的「控制律与站姿」。
 // 站姿只由**模型**决定（与场景、摩擦、控制增益都无关），所以搜一次就能一直用。
-inline constexpr double kStanceZ = 0.49732141739988184;
-inline constexpr double kStanceQ[12] = {0.0,  0.605, -1.1,  0.0, -0.605, 1.1,
-                                        0.0, -0.605, 1.1,  0.0,  0.605, -1.1};
+inline constexpr double kStanceZ = 0.4000802544414247;
+// 大腿 / 膝各写一个名字：数值是“0.55×1.7 − 0.011”与“1.7 − 0.011”**按浮点算出来**的结果
+// （大腿那个比字面量 0.946 高 1 ulp——直接写计算结果，才能与搜索工具生成的站姿逐位相同）。
+inline constexpr double kStanceThigh = 0.94600000000000006;
+inline constexpr double kStanceCalf = 1.6890000000000001;
+inline constexpr double kStanceQ[12] = {0.0,          kStanceThigh, -kStanceCalf,  0.0,
+                                        -kStanceThigh, kStanceCalf,  0.0,          -kStanceThigh,
+                                        kStanceCalf,   0.0,          kStanceThigh, -kStanceCalf};
 
 namespace motor {
 
@@ -91,6 +109,15 @@ inline constexpr double kKdDamp = 0.5; // 阻尼模式：阻尼
 // 取中间的 1.0 s：既不会像 0.1 s 那样把还在站着的狗硬拽，也不会慢到让它先倒下去。
 inline constexpr double kRamp = 1.0;
 
+// 控制参数：默认就是上面那几个常数（= main 不给参数时的行为）。
+// 想让它们可改（位置参数或实验脚本）就构造一份 Param 传进去，状态机自己不读命令行。
+struct Param {
+    double kp = kKp;
+    double kd = kKd;
+    double kd_damp = kKdDamp;
+    double ramp = kRamp;
+};
+
 enum class State { Damping, Standing };
 
 inline const char *Name(State s) { return s == State::Damping ? "阻尼模式" : "站立模式"; }
@@ -104,9 +131,13 @@ inline double Smoothstep(double u) {
 class StateMachine {
   public:
     // 从模型里现查"每个执行器作用在哪根关节上"，不写死关节名：换模型这里不用改
-    // （`kStanceQ` 的长度要与 m->nu 一致，12，见 main 里的检查）。
-    explicit StateMachine(const mjModel *m) : m_(m) {
-        target_.assign(kStanceQ, kStanceQ + 12);
+    // （目标站姿的长度要与 m->nu 一致，12，见 main 里的检查）。
+    // `q_stand` 默认就是内联的 `kStanceQ`（站姿内联是核心版的既定做法）；
+    // 想试别的站姿（例如搜索出来的新姿态）就传一个 12 个数的数组进来。
+    explicit StateMachine(const mjModel *m, const double *q_stand = kStanceQ,
+                          const Param &p = Param{})
+        : m_(m), p_(p) {
+        target_.assign(q_stand, q_stand + m->nu);
         q_from_ = target_;
         qa_.resize(static_cast<size_t>(m->nu));
         va_.resize(static_cast<size_t>(m->nu));
@@ -137,23 +168,24 @@ class StateMachine {
     // 每步调用一次：按当前状态算好 12 个关节的力矩，写进 d->ctrl
     void Apply(const mjData *d) const {
         if (state_ == State::Damping) {
-            const motor::Cmd c = motor::Damping(kKdDamp);
+            const motor::Cmd c = motor::Damping(p_.kd_damp);
             for (int i = 0; i < m_->nu; ++i)
                 d->ctrl[i] = motor::Torque(c, d->qpos[qa_[static_cast<size_t>(i)]],
                                            d->qvel[va_[static_cast<size_t>(i)]]);
             return;
         }
-        const double a = Smoothstep((d->time - ramp_t0_) / kRamp);
+        const double a = Smoothstep((d->time - ramp_t0_) / p_.ramp);
         for (int i = 0; i < m_->nu; ++i) {
             const size_t k = static_cast<size_t>(i);
             const double q_des = q_from_[k] + (target_[k] - q_from_[k]) * a; // 目标逐帧插值
-            const motor::Cmd c = motor::Mit(q_des, kKp, kKd);
+            const motor::Cmd c = motor::Mit(q_des, p_.kp, p_.kd);
             d->ctrl[i] = motor::Torque(c, d->qpos[qa_[k]], d->qvel[va_[k]]);
         }
     }
 
   private:
     const mjModel *m_ = nullptr;
+    Param p_;
     State state_ = State::Damping; // 任务要求：上电 = 阻尼模式
     std::vector<double> target_, q_from_;
     std::vector<int> qa_, va_; // 每个执行器对应的 qpos / qvel 下标
