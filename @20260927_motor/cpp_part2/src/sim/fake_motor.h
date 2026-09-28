@@ -7,6 +7,15 @@
 //
 // 模型（转子侧）：τ = K_P·(Pos_des − p) + K_W·(W_des − ω)，|τ| ≤ τ_max；库仑摩擦 |ω| 大于阈值时
 // 减去 τ_fric·sign(ω)；ω 以一阶时间常数跟随（简化掉真实转动惯量），p 积分 ω。
+//
+// 第二层是**驱动板的上报层**（`Encoder`，讲义 §2.4–2.6）：真实转子位置 `p` 与"板子报出来的位置"
+// 不是一回事 —— 板子用的是单圈绝对值编码器，所以
+//   * `mode = 里程计`：读数连续累计（S1 实测就是这种，见 ../docs/real.md §3.6）；
+//   * `mode = 锯齿`  ：只报"相对最近零点"的角度，0…1 圈（讲义 §2.4）；
+//   * `datum`：上电时落在哪个候选零点（整数个转子圈；转子 1 圈 = 输出端 1/N 圈 = 一个零点区间）
+//     —— 这就是"认错零点"，S3–S5 的 `offset` / 启动检查 / 跳变检测全靠它来复现；
+//   * `jump_frame/jump_turns`：运行中注入一次"读数整体跳 k 个区间"（= 板子中途换基准）。
+// 位置环读的是**板子自己那份**角度（所以 datum 一移、物理目标就动一个区间 —— 这正是要防的事）。
 #pragma once
 
 #include <cstdint>
@@ -39,9 +48,19 @@ inline std::string MakePty(int *master) {
     return std::string(ptsname(fd));
 }
 
+// 驱动板的上报层：单圈绝对值编码器 + 上电基准（讲义 §2.4–2.6）。
+// 这是**故意可注入**的：`datum`（上电认错零点）与 `jump_frame`（运行中换基准）都是实机上偶发、
+// 又必须在软件里处理掉的事件，所以让它们能在 dry run 里精确复现。
+struct Encoder {
+    int mode = 0;          // 0 = 里程计（连续累计，S1 实测）；1 = 锯齿（只报 0…1 圈，讲义 §2.4）
+    int datum = 0;         // 上电基准：读数整体平移 datum 个**转子整圈**（正负都行）= "认错零点"
+    long jump_frame = -1;  // >0：在第 N 帧注入一次"中途换基准"（实机上是跨零点/上电时才可能发生）
+    int jump_turns = 1;    // 注入的方向与大小（转子整圈数）
+};
+
 // 假电机的状态与参数
 struct Model {
-    double p = 0.0;         // 转子位置 [rad]
+    double p = 0.0;         // 真实转子位置 [rad]
     double w = 0.0;         // 转子角速度 [rad/s]
     double tau = 0.0;       // 上一次算出的转子力矩 [N·m]（回帧要用）
     double tau_max = 20.0;  // 力矩限幅（转子侧；默认与仿真模型 ±20 N·m 一致，GO 铭牌值待确认）
@@ -50,6 +69,30 @@ struct Model {
     double tau_lag = 0.02;  // 速度一阶时间常数 [s]（代替转动惯量，简化）
     double temp = 30.0;     // 温度 [°C]
     uint8_t merror = 0;     // 0 正常 / 1 过热 / 2 过流 / 3 过压 / 4 编码器故障
+
+    Encoder enc;            // 上报层（上电基准 / 里程计还是锯齿 / 中途换基准）
+    long frame = 0;         // 已处理的帧数（跳变注入的计次用）
+    bool jump_fired = false; // 注入过跳变没有（自检的汇总里要报）
+
+    // 板子**对外报**的角度（转子侧 rad）：里程计 = 真实位置 + 基准；锯齿 = 再折回 0…2π
+    double Reported() const {
+        const double p_rep = p + enc.datum * 2.0 * M_PI;
+        if (enc.mode != 1)
+            return p_rep;
+        double r = std::fmod(p_rep, 2.0 * M_PI);
+        if (r < 0.0)
+            r += 2.0 * M_PI;
+        return r;
+    }
+
+    // 板子位置环用的角度：锯齿模式下板子自己知道圈数（对外只报一个区间），所以把上报值按
+    // **最短有环差**折到 Pos_des 附近（|差| < 半圈）；采样足够密时成立（一帧最多转 2π 的半圈以内）。
+    double LoopPosition(double p_des) const {
+        const double rep = Reported();
+        if (enc.mode != 1)
+            return rep;
+        return rep + 2.0 * M_PI * std::floor((p_des - rep) / (2.0 * M_PI) + 0.5);
+    }
 
     // 解一帧命令（raw → 物理量）；标度用实测值
     static void Decode(const ControlData_t &c, double *tau_des, double *w_des, double *p_des,
@@ -65,9 +108,18 @@ struct Model {
     // 在 5 ms 步长下稳定：K_W=0.0125（输出端 kd=0.5）时 80 ms，K_W=0.0749（输出端 kd=3）时 13 ms。
     void Step(const ControlData_t &c, double dt) {
         constexpr double kJ = 1e-3; // 转子等效惯量 [kg·m²]（假模型的旋钮，不改标度那部分）
+        ++frame;
+        // 中途换基准（实机上是跨零点/上电才可能发生，见 docs/real.md §5.4 的第二种跨零点）。
+        // 约定：jump_turns > 0 = 读数**往前**跳 k 个区间（报出来的 = 真值 + 基准，所以要 +）
+        if (enc.mode != 1 && enc.jump_frame > 0 && !jump_fired &&
+            static_cast<long>(frame) >= enc.jump_frame) {
+            jump_fired = true;
+            enc.datum += enc.jump_turns;
+        }
         double tau_des = 0, w_des = 0, p_des = 0, k_pos = 0, k_spd = 0;
         Decode(c, &tau_des, &w_des, &p_des, &k_pos, &k_spd);
-        double tau_cmd = tau_des + k_pos * (p_des - p) + k_spd * (w_des - w);
+        // 位置环量的是"板子报出来的角度"（所以上电认错零点 = 物理目标整段移一个区间，正好用来验证 S3–S5）
+        double tau_cmd = tau_des + k_pos * (p_des - LoopPosition(p_des)) + k_spd * (w_des - w);
         if (tau_cmd > tau_max)
             tau_cmd = tau_max;
         else if (tau_cmd < -tau_max)
@@ -105,7 +157,7 @@ struct Model {
         r->mode.status = 1; // FOC
         r->fbk.torque = static_cast<int16_t>(std::lround(tau * 256.0));
         r->fbk.speed = static_cast<int16_t>(std::lround(w * 128.0 / M_PI));
-        r->fbk.pos = static_cast<int32_t>(std::lround(p * 32768.0 / (2.0 * M_PI)));
+        r->fbk.pos = static_cast<int32_t>(std::lround(Reported() * 32768.0 / (2.0 * M_PI)));
         r->fbk.temp = static_cast<int8_t>(std::lround(temp));
         r->fbk.MError = merror;
         const uint16_t crc =

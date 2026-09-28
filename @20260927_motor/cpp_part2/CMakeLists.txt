@@ -63,11 +63,15 @@ target_link_libraries(serial_probe PRIVATE "${UNITREE_SDK_LIB}" Threads::Threads
 add_executable(spin_test src/spin_test.cpp)
 target_link_libraries(spin_test PRIVATE "${UNITREE_SDK_LIB}" Threads::Threads)
 
-foreach(t fake_motor_dryrun serial_probe spin_test)
+# S3–S5：回归 0 + 键盘给角度 + 零点标定（offset）+ 零点跳变处理
+add_executable(motor_ctl src/motor_ctl.cpp)
+target_link_libraries(motor_ctl PRIVATE "${UNITREE_SDK_LIB}" Threads::Threads)
+
+foreach(t fake_motor_dryrun serial_probe spin_test motor_ctl)
     target_compile_options(${t} PRIVATE -Wall -Wextra)
 endforeach()
 
 # 运行时的 .so 搜索路径（不设的话要自己 export LD_LIBRARY_PATH，而且用 sudo 时会被清掉）
-set_target_properties(fake_motor_dryrun serial_probe spin_test PROPERTIES
+set_target_properties(fake_motor_dryrun serial_probe spin_test motor_ctl PROPERTIES
     BUILD_RPATH "${UNITREE_SDK_LIB_DIR}"
     INSTALL_RPATH "${UNITREE_SDK_LIB_DIR}")
