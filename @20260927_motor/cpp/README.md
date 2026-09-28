@@ -66,7 +66,8 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 `stand` / `damp` / `reset`；`reset` = 回到 `--start` 起点并回阻尼模式，与窗口里的 `R` 键一致，保留仿真时间轴）、
 `--out/--fps`（录像）、`--pitch/--roll/--floor-friction/--floor-condim`（倾斜地面与摩擦，默认全不生效；
 量测自动改成相对地面法向，见 [`docs/sim.md`](docs/sim.md) §2.5）、`--dump-stance FILE`（把搜出来的站姿
-写进 `../models/stance.txt` 这类文件后退出；最简版 [`essential/`](essential/README.md) 直接加载它，格式与指纹见
+写进 `../models/stance.txt` 这类文件后退出；最简版 [`essential/`](essential/README.md) 直接加载它，核心版
+[`essential_core/`](essential_core/README.md) 则把结果内联成常量；格式与指纹见
 [`src/stance_file.h`](src/stance_file.h)）。
 
 ## 实测摘要
@@ -110,9 +111,12 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 │   │   ├── ground.h        # 倾斜地面与摩擦（默认 0° / 不生效）
 │   │   ├── stance_file.h   # 站姿文件：格式/指纹 + 写（把搜出来的站姿存给最简版用）
 │   │   └── args.h          # 命令行语法（从 @20260923_mujoco/cpp_task2 复制，让本任务自包含）
-│   └── essential/       # 最简版：窗口用 MuJoCo **官方** Simulate 界面，按键从**终端**读（src/tty.h），
-│       ├── README.md    #   一次读懂用；含三个踩坑与验证方法
-│       └── src/         #   按需精简的同名头文件（无 Search/无倾斜/无录像）+ stance_file.h（只读那一半）+ main.cpp
+│   ├── essential/       # 最简版：窗口用 MuJoCo **官方** Simulate 界面，按键从**终端**读（src/tty.h），
+│   │   ├── README.md    #   一次读懂用；含三个踩坑与验证方法
+│   │   └── src/         #   按需精简的同名头文件（无 Search/无倾斜/无录像）+ stance_file.h（只读那一半）+ main.cpp
+│   └── essential_core/  # 核心版：只留两个状态 + 一条 MIT 公式 + 一个站姿（无 CLI / 无量测 / 无站姿文件）
+│       ├── README.md    #   与 essential/ 的差别、固定斜坡 1.0 s 的实测依据、行为对拍
+│       └── src/         #   共 3 个文件：state.h（站姿常量 + MIT + 状态机）/ main.cpp / tty.h
 ├── models/ + scenes/    # 模型与场景（从 @20260923_mujoco 复制）；另有搜好存下的 models/stance.txt
 └── ../output/cpp/       # 录像产物（damp_stand_damp.mp4、stand_up_from_rest.mp4）
 ```
