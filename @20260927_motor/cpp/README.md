@@ -114,9 +114,10 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record --start rest --script
 │   ├── essential/       # 最简版：窗口用 MuJoCo **官方** Simulate 界面，按键从**终端**读（src/tty.h），
 │   │   ├── README.md    #   一次读懂用；含三个踩坑与验证方法
 │   │   └── src/         #   按需精简的同名头文件（无 Search/无倾斜/无录像）+ stance_file.h（只读那一半）+ main.cpp
-│   └── essential_core/  # 核心版：只留两个状态 + 一条 MIT 公式 + 一个站姿（无 CLI / 无量测 / 无站姿文件）
-│       ├── README.md    #   与 essential/ 的差别、固定斜坡 1.0 s 的实测依据、行为对拍
-│       └── src/         #   共 3 个文件：state.h（站姿常量 + MIT + 状态机）/ main.cpp / tty.h
+│   ├── essential_core/  # 核心版：只留两个状态 + 一条 MIT 公式 + 一个站姿（无量测 / 无站姿文件）
+│   │   ├── README.md    #   与 essential/ 的差别、固定斜坡 1.0 s 的实测依据、行为对拍
+│   │   └── src/         #   共 3 个文件：state.h（站姿常量 + MIT + 状态机）/ main.cpp / tty.h
+│   └── agent_scripts/   # 一次性/诊断工具（不进 CMake，用法写在各自文件头）：search_stance.cpp（重新搜站姿）
 ├── models/ + scenes/    # 模型与场景（从 @20260923_mujoco 复制）；另有搜好存下的 models/stance.txt
 └── ../output/cpp/       # 录像产物（damp_stand_damp.mp4、stand_up_from_rest.mp4）
 ```

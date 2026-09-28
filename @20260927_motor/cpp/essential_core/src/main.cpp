@@ -1,14 +1,7 @@
 // 核心版：把本次任务（第一部分·仿真）的控制程序压到最小 —— 两个状态、一条 MIT 公式、一个站姿。
 //
-// 与 [`../essential/`](../essential/README.md) 的差别：这里**没有量测与遥测**（不算四足触地/
-// 高度/竖直度/漂移，不打摘要，不做判定）、没有命令行选项（场景路径自己往上找，参数写死在 state.h）、
-// 没有自适应斜坡与电机统计、也没有站姿文件（站姿内联成常量）。
-// 终端只在你切换状态时打一行，其余交给官方窗口自己显示：
-//
-//   窗口：MuJoCo **官方**的 Simulate 界面 —— 相机、暂停/单步/调速、关节与执行器面板都是现成的
-//   按键：在**运行它的这个终端**里按，不用回车、不回显
-//         S = 站立模式   D = 阻尼模式   R = 回到起点   Q / Ctrl-C = 退出
-//         （窗口里空格 = 暂停/继续；直接关掉窗口同样正常收工）
+// 与 [`../essential/`](../essential/README.md) 的差别（少了量测与遥测、命令行、站姿文件、自适应斜坡、
+// 电机统计）、位置参数的含义与默认值、以及实测数据，都写在 [`README.md`](../README.md) 里，这里不重复。
 //
 // 用法：
 //   pixi run cmake -S @20260927_motor/cpp/essential_core -B @20260927_motor/cpp/essential_core/build -G Ninja -DCMAKE_PREFIX_PATH="$CONDA_PREFIX"
@@ -222,7 +215,7 @@ int ControlThread(mujoco::Simulate *sim, ClosableAdapter *adapter, const Options
                 mj_resetData(m, d);
                 d->time = t_keep;
                 sm.Request(ctrl::State::Damping, d);
-                std::printf("按键 → 回到起点（模型原姿态）、切回 %s\n", ctrl::Name(sm.state()));
+                std::printf("按键 → 回到起点（模型原姿态），切回%s\n", ctrl::Name(sm.state()));
             } else if (key == 'q') {
                 quit = true;
             }
