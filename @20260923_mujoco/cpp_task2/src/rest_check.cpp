@@ -1,6 +1,7 @@
 // 零力矩静止判定：读场景自带的 rest keyframe，零力矩跑 N 秒，打印基座漂移、末段 max|qvel|
 // 与接触点数；静止则退出码 0、否则 2（数字与 Python 侧 scripts/agent_scripts/rest_check.py 逐项对照）。
-// 只管判定、不录像——要录像用同目录的 main.cpp（可执行文件 dog_sim）。任务 4 的落点在 ../cpp/。
+// 只管判定、不录像——要录像用同目录的 main.cpp（可执行文件 dog_sim）。任务 4 的结论（不必再手写一份
+// C++ 双缓冲）见 ../README.md 的「任务 4 的结论」一节。
 //
 // 用法：rest_check [scene.xml] [seconds]
 //   省略时用 ../scenes/flat_scene.xml（按可执行文件位置往上固定两层），跑 8 s（ctrl=0）。

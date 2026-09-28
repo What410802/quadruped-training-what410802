@@ -32,7 +32,7 @@ pixi run @20260923_mujoco/cpp_task2/build/rest_check                       # C++
 pixi run @20260923_mujoco/cpp_task2/build/dog_sim                          # C++ 版：最小仿真（默认开官方 Simulate 窗口）
 ```
 
-### 任务 4（新结构：Python 侧落在 `python/`；C++ 侧的结论见 `cpp/`）
+### 任务 4（新结构：Python 侧落在 `python/`；C++ 侧的结论是“不必复刻”，见下文 `## C++ 程序` 的「任务 4 的结论」）
 
 开窗口要临时把图形后端换回 `glfw`（仓库默认是 `egl`，无窗口）：
 
@@ -109,11 +109,9 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/physics_pacing.py    # �
 ├── cpp_stand/                    # 额外 demo：搜站姿 + 关节 PD 顶住（平地）
 │   ├── CMakeLists.txt
 │   └── src/                      # control.h（站姿控制器）、stand.cpp（= main.cpp 副本 + 控制钩子）
-├── cpp_slope/                    # 额外 demo：可调倾斜地面（重力不动）
-│   ├── CMakeLists.txt
-│   └── src/                      # slope.cpp = stand.cpp 副本 + --pitch/--roll/自检
-└── cpp/                          # 任务 4 的结论与落点：官方 Simulate 界面本来就 1.00x、不必手写双缓冲（见 cpp/README.md）
-    └── README.md
+└── cpp_slope/                    # 额外 demo：可调倾斜地面（重力不动）
+    ├── CMakeLists.txt
+    └── src/                      # slope.cpp = stand.cpp 副本 + --pitch/--roll/自检
 ```
 
 ## 环境与版本
@@ -202,20 +200,20 @@ pixi run @20260923_mujoco/cpp_slope/build/slope --mode sim --start raw --pitch 1
 
 实测（`--mode sim`）：默认起点（`stand` = 原姿态 `raw`，0.1 s 斜坡）下 5 s / 30 s 都是「四足站稳 ✓」（起始 z=0.5786 的直腿原姿态 → 末态 z=0.4928、竖直度 0.02°、四足触地 4、末 1 s 位移 0.0135 m，退出码 0）；`--start stance` / `--start rest`（趴卧）也都能站住（末 1 s 位移 0.0045 / 0.0022 m）；增益窗口窄且与起点无关（kp 150–200 ✓、kp 300–500 会滑走 ✗）；斜面默认起点 `stance`：≤15° 能撑住（15° 时 5 s 滑 0.1524 m 且四足不离地），≥20° 滑走翻倒（退出码 2）；斜面上也能从趴卧起身（≤15° ✓、≥20° 起不来）。站姿是初始化时**搜**出来的（不读 keyframe），增益窗口、限位/穿模、「原姿态必须快收腿」、「地面一直没真的转」与「触地计数只认足底球」那些坑都写在 [`docs/stand.md`](docs/stand.md)。
 
-### 任务 4 的落点（`cpp/`）
+### 任务 4 的结论（实测目前不必再复现 C++ 版 Unitree 官方实现）
 
-任务 4 原计划是把 [`python/`](python/) 的双缓冲结构用 C++ 复刻（物理线程独占 `mjData`、渲染只读快照副本、锁只罩 memcpy）。**实测下来结论是“不必复刻”**：我们自己的物理线程 + MuJoCo 官方 `Simulate` 界面（`cpp_task2 --mode view`）本来就是非阻塞的——官方 `RenderLoop` 在 `Render()` 之前就放锁（源码注释 `// MutexLock (unblocks simulation thread)`），渲染在锁外、物理照常推进，实测 **1.00x 实时**（1 仿真秒 = wall 1.00 s）而且画面流畅；Python 侧那 0.14x 的缺口来自 GIL，C++ 里不存在这个问题。所以 `cpp/` 目前只留一份结论说明（[`cpp/README.md`](cpp/README.md)）：真要自己写渲染循环（不依赖官方 UI）时再在这里落 `CMakeLists.txt` 与 `src/`，构建目录用 `cpp/build/`。
+任务 4 原计划是把 [`python/`](python/) 的双缓冲结构用 C++ 复刻一遍（物理线程独占 `mjData`、渲染只读快照副本、锁只罩 memcpy）。实测结论是“不必复刻”：我们自己的物理线程 + MuJoCo 官方 `Simulate` 界面（`cpp_task2 --mode view`）本来就是非阻塞的——官方 `RenderLoop` 在 `Render()` 之前就放锁（源码注释 `// MutexLock (unblocks simulation thread)`），渲染在锁外、物理照常推进，实测 **1.00x 实时**（1 仿真秒 = wall 1.00 s）而且画面流畅；Python 侧那 0.14x 的缺口来自 GIL，C++ 里不存在这个问题。逐帧对比见 [`../docs/learn/runtime-timing.md`](../docs/learn/runtime-timing.md) §11 的方案 ③，线程与通道结构的研读见 [`../docs/learn/unitree-mujoco.md`](../docs/learn/unitree-mujoco.md)。
 
-**为什么做 C++**：不是为了更快——`mj_step` 两边调用的是同一份 C 库，单步耗时几乎一样（实测数据见 [`../docs/pitfalls/environment.md`](../docs/pitfalls/environment.md) 的「C++ 工具链」一节），渲染开销也只由 GPU 决定；意义在**工程结构与 sim-to-real**（真实机器人上的控制程序是 C++）。工具链选择（为什么用 pixi 的编译器、编辑器提示怎么配）同样记在那一节。
+另外发现 `mj_step` 两边调用的是同一份 C 库，单步耗时几乎一样（实测数据见 [`../docs/pitfalls/environment.md`](../docs/pitfalls/environment.md) 的「C++ 工具链」一节），渲染开销也只由 GPU 决定。
 
 ## 进度
 
 - [x] 任务 1：认识 MuJoCo（作用、Python 接口、MJCF 结构）
 - [x] 任务 2：URDF→MJCF、平地场景、零力矩静止趴卧、力矩执行器（结果见 [`docs/task2.md`](docs/task2.md)；C++ 侧 `cpp_task2/` 同判据）
 - [x] 任务 3：参考 unitree_mujoco 优化代码结构与线程设计（研读笔记 → [`../docs/learn/unitree-mujoco.md`](../docs/learn/unitree-mujoco.md)，线程/通信细节与五种方案的每帧阻滞对比 → [`../docs/learn/runtime-timing.md`](../docs/learn/runtime-timing.md)；**Python 侧已落地**：[`python/`](python/) 用双缓冲把渲染与物理拆开。实测（`scripts/agent_scripts/physics_pacing.py`）：同等 20 ms/次渲染下，无窗口我们 499 步/秒（实时 0.998x，复测 0.997–0.999x）、上游式单锁写法 271 步/秒（0.542x），且物理结果与单线程裸循环逐位相同；开窗口时降到 0.93x（复测 0.929–0.935x；早期一次测得 0.863x，随窗口/viewer 开销浮动）——那是 Python 的 GIL 争用（渲染那一步在 Python 里），不是锁；C++ 侧用 MuJoCo 官方 `Simulate` 界面实测 **1.00x**，确认这个缺口只是 GIL。**起点默认是模型原姿态**（`--start default`，与 `simulate.py`/`example_attach.py` 一致；`--start rest` 可切成趴卧 keyframe，见 `python/simulator.py` 里的 `keyframe=` 参数）
-- [x] 任务 4（选做）：用 C++ 重做——**结论是“不用重做”**：把 `cpp_task2` 接上 MuJoCo 官方 `Simulate` 界面（`--mode view`）实测就是 **1.00x 实时、画面流畅**（官方 `RenderLoop` 在 `Render()` 之前就放锁，渲染不在锁里），所以没有再手写一份 C++ 双缓冲；[`cpp/`](cpp/) 保留为结论与后续落点说明
+- [x] 任务 4（选做）：用 C++ 重做——**结论是“不用重做”**：把 `cpp_task2` 接上 MuJoCo 官方 `Simulate` 界面（`--mode view`）实测就是 **1.00x 实时、画面流畅**（官方 `RenderLoop` 在 `Render()` 之前就放锁，渲染不在锁里），所以没有再手写一份 C++ 双缓冲（原来只留一份结论说明的 `cpp/` 目录已删，内容并进本 README 的「任务 4 的结论」一节）
 - [x] 额外 demo（非验收项）：平地站稳与可调倾斜地面（[`cpp_stand/`](cpp_stand/)、[`cpp_slope/`](cpp_slope/)，结果与踩坑见 [`docs/stand.md`](docs/stand.md)）
 
 任务 3/4 的推进顺序：① C++ 工具链可行性验证（已完成）→ ② 研读 `unitree_mujoco`、写 `docs/learn/unitree-mujoco.md`（已完成）→ ③ Python 侧按新结构重构（**已完成**：`python/`，`scripts/` 里的旧脚本暂留作对照）→ ④ C++ 侧验证（**已完成**：`cpp_task2 --mode view` 接官方 `Simulate` 界面，实测 1.00x 且流畅，结论是不必再手写一份双缓冲）。
 
-目前仿真、控制、渲染窗口/录制视频的逻辑以及场景物体概念、MJCF/URDF及其基本语法与使用已学会，由agent编写的主要代码（`cpp/` `python/` `scripts/{simulate.py, simulate_record.py, visualization/}`）已理解，`docs/` 内讲解的C++进阶语法还在深化理解中。
+目前仿真、控制、渲染窗口/录制视频的逻辑以及场景物体概念、MJCF/URDF及其基本语法与使用已学会，由agent编写的主要代码（`cpp_task2/` `cpp_stand/` `cpp_slope/` `python/` `scripts/{simulate.py, simulate_record.py, visualization/}`）已理解，`docs/` 内讲解的C++进阶语法还在深化理解中。

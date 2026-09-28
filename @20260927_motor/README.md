@@ -23,7 +23,8 @@
 | 第一部分附加：倾斜地面、可调摩擦、与第二次培训控制程序的对照 | ✅ 完成（同上 §2.5 / §2.6 / §6） |
 | 第二部分 S0：端口探针（转接头能不能配 4 Mbaud、SDK 能不能开端口） | ✅ 通过（FT232H + `ftdi_sio`，4 Mbaud 整除） |
 | 第二部分 S1：让电机转起来（带斜坡与限幅） | ✅ 通过（6 次实跑：0 丢帧、温度 30–31 °C、`merror=0`） |
-| 第二部分 S2–S5：找零点 / 回归 0 + 键盘给角度 / 标零点 + 偏移 30° / 零点跳变 | ⏳ 计划、验收标准与已知问题见 [`cpp_part2/docs/real.md`](cpp_part2/docs/real.md) §3 |
+| 第二部分 S2：零力矩手转找零点 + 定“里程计/锯齿” + kd 扫描 + 量断链行为 | 🔧 **工具与手册已就绪**（[`cpp_part2/docs/real.md`](cpp_part2/docs/real.md) §3.7 的 S2a–S2e），待实机执行 |
+| 第二部分 S3–S5：回归 0 + 键盘给角度 / 标零点 + 偏移 30° / 零点跳变 | ⏳ 计划、验收标准与已知问题见 [`cpp_part2/docs/real.md`](cpp_part2/docs/real.md) §3；标定符号约定见 §5 |
 
 ## 目录结构
 
@@ -34,7 +35,9 @@
 │   ├── CMakeLists.txt
 │   ├── README.md              # 怎么建、怎么跑、实测摘要、参数
 │   ├── docs/sim.md            # 实现、全部实测数字、踩坑；§6 与第二次培训控制程序的对照
-│   └── src/                   # motor.h / stance.h / state.h / viewer.h / recorder.h / ground.h / args.h / main.cpp
+│   ├── src/                   # 完整版：main.cpp（只做编排）+ cli.h / scene_setup.h / motor.h / stance.h / state.h
+│   │                          #   / observation.h / start.h / viewer.h / recorder.h / ground.h / args.h
+│   └── essential/             # 最简版（官方 Simulate 窗口 + 终端按键，站姿从 models/stance.txt 加载）
 ├── cpp_part2/                 # 第二部分（实机）的程序与工具
 │   ├── CMakeLists.txt         # 生成 compile_commands.json（编辑器智能提示）
 │   ├── README.md              # 报文/定点标度实测、四个程序、怎么建怎么跑
@@ -44,8 +47,8 @@
 ├── docs/                      # 两部分共用的资料（子工程的文档已移到各自的 docs/）
 │   └── teaching-materials/    # 讲义与任务书
 ├── scripts/
-│   └── agent_scripts/         # AI 用来分析/诊断的脚本：analyse_spin_log.py（不阻塞任务主线）
-├── models/ + scenes/          # 两部分共用：模型与场景（从 @20260923_mujoco 复制）
+│   └── agent_scripts/         # AI 用来分析/诊断的脚本（不阻塞任务主线）：analyse_spin_log.py / analyse_watch_log.py / check_md_links.py
+├── models/ + scenes/          # 两部分共用：模型与场景（从 @20260923_mujoco 复制）+ 搜好存下的 stance.txt
 └── output/                    # 产物：cpp/（录像）、terminal/（实机终端日志）
 ```
 
