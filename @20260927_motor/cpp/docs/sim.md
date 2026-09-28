@@ -179,6 +179,11 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 不符就拒绝加载），仓库里那份在 [`../../models/stance.txt`](../../models/stance.txt)。最简版
 [`../essential/`](../essential/README.md) 就只**加载**这份文件、不再带搜索代码（这是那个版本能删掉 Search 的原因）。
 
+**注意**：仓库里那份 `models/stance.txt` 现在**不是**上面这条命令写的 —— 它是用
+`cpp/agent_scripts/search_stance.cpp` 重新搜出来的**低站姿**（膝 1.7、整条腿后移 0.011 rad；理由与实测见
+[`../essential/README.md`](../essential/README.md)）。本页这条 `--dump-stance`（只扫膝 0.9/1.1/1.3、取"质心
+离四足中心最近"）会把它覆盖回旧的高站姿。
+
 ### 2.6 限幅一览（仿真侧 ↔ 讲义/实机）
 
 任务书与讲义里**明确写出来的**限幅只有一条是数值：**输出侧力矩上限 33.5 N·m**（讲义 §1.4 第 2 条，

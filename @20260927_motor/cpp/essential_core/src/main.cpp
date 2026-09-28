@@ -8,14 +8,15 @@
 //   pixi run cmake --build @20260927_motor/cpp/essential_core/build
 //   pixi run @20260927_motor/cpp/essential_core/build/essential_core
 //
-// 位置参数（都可省；写 "/" 表示"这一位用默认值"，或者干脆不写后面的位）：
+// 位置参数（都可省；写 "/" 表示"这一位用默认值"，或者干脆不写后面的位；没有 --help）：
 //   essential_core [场景.xml] [斜坡s] [kp] [kd] [kd_damp]
-//     场景    默认：从可执行文件往上找带 scenes/ 的那一层里的 scenes/flat_scene.xml
-//     斜坡    q_des 从按下那一刻的关节角推到站姿的时长 [s]，默认 1.0（固定值，不做自适应）
-//     kp/kd   站立模式的位置刚度/阻尼，默认 80 / 3（讲义 §1.4 提到的实机输出侧那一组）
-//     kd_damp 阻尼模式的阻尼，默认 0.5
+//     1 场景    默认：从可执行文件往上找带 scenes/ 的那一层里的 scenes/flat_scene.xml
+//     2 斜坡    q_des 从按下那一刻的关节角推到站姿的时长 [s]，默认 1.0（固定一档，不做自适应）
+//     3/4       站立模式 kp / kd，默认 80 / 3（讲义 §1.4 提到的实机输出侧那一组）
+//     5        阻尼模式 kd_damp，默认 0.5
 //   例：essential_core / 0.5 120 6    （默认场景、斜坡 0.5 s、kp=120、kd=6）
-//   命令行只有这 5 个位置参数，没有 --help：用法就写在这里与 [`README.md`](../README.md) 里。
+//   本版**没有 README**：与 `../essential/` 的区别、共用那份站姿的实测数据，都在
+//   [`../essential/README.md`](../essential/README.md) 里。
 //
 // 两个线程（官方 `simulate` 的既定形状）：
 //   * 主线程：`RenderLoop()` —— 窗口与渲染（GLFW 要求"谁建窗口谁用它"，窗口只能在主线程跑）；

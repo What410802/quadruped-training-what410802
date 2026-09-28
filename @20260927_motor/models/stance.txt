@@ -1,13 +1,21 @@
 # 站姿（stance）：站立模式的控制目标 q_des 与该姿态下的基座高度。
 #
-# 它是**搜索结果**：由 cpp/src 版（含 stance::Search）生成一次，cpp/essential 版直接加载。
-# 生成/更新（换了模型、或改了搜索参数就重跑这一条）：
-#   pixi run @20260927_motor/cpp/build/motor_sim --dump-stance @20260927_motor/models/stance.txt
+# 它是**重新搜出来的结果**：由 cpp/agent_scripts/search_stance.cpp 生成（在 cpp/src 那份搜索的几何
+# 口径上多一个“整条腿绕髋旋转”的自由度：膝 1.7、大腿 = 0.55×膝、整条腿后移 0.011 rad）。为什么换成
+# 低站姿、以及旧站姿“上电后 0.1–0.35 s 按 S 会向后倒”那组实测，见 cpp/essential_core/README.md。
+# 重新生成（换了模型、或想再调站姿参数）：
+#   pixi run bash -c 'g++ -O2 -std=c++17 -I$CONDA_PREFIX/include -o /tmp/search_stance \
+#       @20260927_motor/cpp/agent_scripts/search_stance.cpp -L$CONDA_PREFIX/lib \
+#       -Wl,-rpath,$CONDA_PREFIX/lib -lmujoco -lpthread'
+#   /tmp/search_stance @20260927_motor/scenes/flat_scene.xml 1.7 0.55 -0.011 /tmp/stance_new.txt
+#   然后把 /tmp/stance_new.txt 的 search / z / q 三行替换进本文件的同名三行（保留本说明）
+# 注意：cpp/src 的 `motor_sim --dump-stance`（只扫膝 0.9/1.1/1.3、取“质心离四足中心最近”那组）写出的
+# 是**旧的高站姿**，用它会把下面两行覆盖回去；要拿旧站姿对拍就用 git 里的历史版本，别覆盖本文件。
 # 加载时会逐字比对 model / feet 两行指纹，不一致就拒绝加载。
 # 格式说明见 cpp/src/stance_file.h。
 version 1
 model nq=19 nv=18 nu=12 nbody=20 ngeom=50 mass=13.247180
 feet count=4 radius=0.020000
-search bend=1.100000 frac=0.550000 com_err=0.000947 feet=4
-z 0.49732141739988184
-q 0 0.60499999999999998 -1.1000000000000001 0 -0.60499999999999998 1.1000000000000001 0 -0.60499999999999998 1.1000000000000001 0 0.60499999999999998 -1.1000000000000001
+search bend=1.700000 frac=0.550000 com_err=0.010126 feet=4
+z 0.4000802544414247
+q 0 0.94600000000000006 -1.6890000000000001 0 -0.94600000000000006 1.6890000000000001 0 -0.94600000000000006 1.6890000000000001 0 0.94600000000000006 -1.6890000000000001
