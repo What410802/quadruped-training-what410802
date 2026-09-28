@@ -18,7 +18,11 @@
 //   sudo /tmp/spin_test ... --no-send        # 只打印"将要下发什么"，一个字节都不发
 //   LD_PRELOAD=/tmp/pty_serial_shim.so /tmp/spin_test --self-test   # 无硬件自检：PTY + 假电机，看真转速
 //
-// 退出码：0 正常；3 一帧回复都没收到；4 电机报错/温度高；5 中途掉线；1 参数错。
+// 退出码：0 正常；3 一帧回复都没收到；4 电机报错/温度高；5 中途掉线；7 --drop-after 到了（**故意**断链，见下）。
+//
+// `--drop-after SEC`（S2 用）：跑到 SEC 秒时**故意**直接退出（不发收尾零速度、不做任何善后），
+// 用来量“驱动板收不到指令时会怎样”（保持最后一条指令 / 自己卸力）——这个行为 S3 的“到位后保持”要靠它，
+// 所以先在低速（≤0.1 圈/s）下测一次。真正拔 USB 线比这更彻底，两种都可以试。
 
 #include <cstdint>
 #include <cstdio>
@@ -49,6 +53,7 @@ struct Options {
     double kd_out = 0.5;     // 输出端速度刚度 [N·m·s/rad]（转子侧 = kd_out/N²）
     double ramp = 2.0;       // 升/降速各用多少秒
     double hold = 3.0;       // 目标速度保持多少秒
+    double drop_after = 0.0; // >0：跑到这个时刻就“假掉线”（直接退出，不发收尾指令）
     bool no_send = false;
     bool self_test = false;  // 用 PTY + 假电机自检（需要 LD_PRELOAD=pty_serial_shim.so）
 };
@@ -58,6 +63,7 @@ void Usage(const char *prog) {
                 "  --rev-per-s  输出端目标转速，圈/秒（默认 0.25 = 90°/s；负号反向；|R|>1 会被拒）\n"
                 "  --kd-out     输出端速度刚度（默认 0.5 N·m·s/rad；转子侧自动 ÷N²）\n"
                 "  --ramp/--hold  升/降速各 SEC 秒、目标保持 SEC 秒\n"
+                "  --drop-after SEC  跑到 SEC 秒就故意直接退出（不发收尾零速度）= 模拟掉线，量驱动板的行为\n"
                 "  --no-send    只打印将要下发的指令，不打开串口、不发字节\n"
                 "  --self-test  无硬件自检：自己开一对 PTY、另一头放假电机（需要 LD_PRELOAD=pty_serial_shim.so）\n",
                 prog);
@@ -85,6 +91,8 @@ bool Parse(int argc, char **argv, Options *o) {
             o->ramp = std::atof(argv[++i]);
         else if (a == "--hold" && next)
             o->hold = std::atof(argv[++i]);
+        else if (a == "--drop-after" && next)
+            o->drop_after = std::atof(argv[++i]);
         else {
             std::fprintf(stderr, "未知参数：%s\n", a.c_str());
             return false;
@@ -97,6 +105,10 @@ bool Parse(int argc, char **argv, Options *o) {
     }
     if (o->ramp < 0.0 || o->hold < 0.0 || o->kd_out < 0.0) {
         std::fprintf(stderr, "--ramp/--hold/--kd-out 不能为负\n");
+        return false;
+    }
+    if (o->drop_after < 0.0) {
+        std::fprintf(stderr, "--drop-after 不能为负（0 = 正常跑完）\n");
         return false;
     }
     return true;
@@ -279,6 +291,15 @@ int main(int argc, char **argv) {
             std::printf("**温度 %d °C 偏高**（90 °C 触发保护）：收速度退出。\n", data.temp);
             exit_code = 4;
             break;
+        }
+        // --drop-after：到这里就“假掉线”——不发收尾指令、不拆对象，直接退出。
+        // 驱动板接下来收到的就是“什么都不来”，它自己的行为（保持 / 卸力）就是我们要测的东西。
+        if (opt.drop_after > 0.0 && t >= opt.drop_after) {
+            std::printf("\n**--drop-after 到了（t=%.3f s、已发 %d 帧）：现在起不再发任何字节，直接退出**\n"
+                        "（上一帧的 cmd.dq = %.4f rad/s 转子）——请观察：电机会继续转（保持最后指令）还是停下（自己卸力）？\n",
+                        t, frames, cmd.dq);
+            std::fflush(stdout);
+            std::exit(7);
         }
         usleep(static_cast<useconds_t>(dt * 1e6));
     }
