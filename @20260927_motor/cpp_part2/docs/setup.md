@@ -14,8 +14,8 @@ cpp_part2/
 │   ├── trajectory.hpp            # 梯形/三次插值（限速限加速度）
 │   ├── console.hpp               # 键盘命令解析（`0` / `30` / `mark` / `o+30` …）
 │   └── sim/fake_motor.hpp        # 假电机 + 假驱动板（**不用于控制实机**）
-├── src/                          # 实现（.cpp）+ pty_serial_shim.c（PTY 垫片）
-├── apps/                         # 可执行入口：motor_ctl / spin_test / serial_probe / sim_fake_motor_dryrun
+├── src/                          # 没有 main() 的：库实现（进 motor_bench_core）+ PTY 垫片（编成 .so）
+├── apps/                         # 有 main() 的：motor_ctl / spin_test / serial_probe / sim_fake_motor_dryrun
 └── docs/                         # 本子任务项的文档（本文件所在处）
 ```
 
@@ -25,6 +25,29 @@ cpp_part2/
 `motor_bench_core` 是一个静态库目标（`src/*.cpp`），四个可执行文件都链它——这样"控制律 / 账本 / 插值"
 只有一份实现，dry run 与实机跑的是同一份代码，只差 `--self-test` 有没有打开（见
 [`fake_motor.md`](fake_motor.md) §2）。
+
+### 1.1 `apps/` 与 `src/` 的分界：看有没有 `main()`
+
+判据只有一条——**这份 `.cpp` 能不能自己变成一个可执行文件**：
+
+| 目录 | 判据 | 本工程里的文件 |
+|---|---|---|
+| `apps/` | 有 `main()` ⇒ `add_executable()` 的源文件 | `motor_ctl.cpp`（验收程序）、`spin_test.cpp`（S1）、`serial_probe.cpp`（S2）、`sim_fake_motor_dryrun.cpp`（dry run） |
+| `src/` | 没有 `main()` ⇒ 库实现（`add_library()`）或平台垫片 | `motor_bus.cpp` / `zero_tracking.cpp` / `console.cpp`（链进 `motor_bench_core`）、`pty_serial_shim.c`（编成 `.so`） |
+| `include/` | 只有声明与 inline，不产出目标 | `motor_bench/*.hpp`、`sim/fake_motor.hpp` |
+
+**为什么不是别的做法**（以及它的代价）：
+
+* **更大的工程**会让每个应用各自成一个 CMake 工程（`apps/<名字>/CMakeLists.txt`，自带依赖、可单独构建）。
+  本项目只有 4 个入口 + 1 个库，一个 `CMakeLists.txt` 里四行 `add_executable` 就够，**不拆子目录**；
+  以后哪个入口长出自己独立的依赖或配置（比如要单独链 GLFW），再按那个方式拆。
+* **严格说，这点体量本来都可以放 `src/`**（`src/` 里混放"有 `main()` 的"与"没有 `main()` 的"，
+  由 CMake 区分谁进库、谁成可执行文件），多一层 `apps/` 并不带来功能上的好处。
+  保留它是为了把上面那条判据**摆在目录名上**：一眼能看出这四个源文件各自要变成一个可执行文件，
+  而 `src/` 里那四个只进库/垫片。代价就是多一层目录。
+* 同理，`include/motor_bench/sim/` 里的假电机是"编进库、但只被 dry run 用"的代码——它不是应用，
+  所以留在 `include/` 一侧（谁都可以 include，靠目录名与 [`fake_motor.md`](fake_motor.md) §5 的
+  "能证明什么/不能证明什么"约束用途）。
 
 ## 2 依赖
 

@@ -397,6 +397,23 @@ CMake 用 `target_include_directories(... PUBLIC include)` 把接口暴露出去
 `.hpp` 明确表示"C++ 头"；带前缀的 include 在项目变大时不会撞车；接口与实现分离以后，
 把共用部分抽成库、别人（或几个月后的自己）只读接口就能用。
 
+**`apps/` 到底放什么**：它不是"随便放源文件"的第三个目录，判据只有一条——
+**这份 `.cpp` 里有没有 `main()`（即能不能直接产出可执行文件）**：
+
+| 目录 | 判据 | 本次（`cpp_part2/`） |
+|---|---|---|
+| `apps/` | 有 `main()`，`add_executable()` 的源文件 → 直接产出可执行文件 | `motor_ctl.cpp`（验收程序）、`spin_test.cpp`（S1）、`serial_probe.cpp`（S2）、`sim_fake_motor_dryrun.cpp`（dry run） |
+| `src/` | 没有 `main()`：库实现（`add_library()` 的源文件）、平台垫片 | `motor_bus.cpp` / `zero_tracking.cpp` / `console.cpp`（链进静态库 `motor_bench_core`）、`pty_serial_shim.c`（编成 `.so`） |
+| `include/` | 只有声明与 inline，不产出任何目标 | `motor_bench/*.hpp` 与 `sim/fake_motor.hpp` |
+
+规模更大的工程还有第二种做法：**`apps/<每个应用>/CMakeLists.txt`**，让每个应用各自是一个独立
+CMake 工程（自带依赖、可单独配置构建）。本项目体量小（4 个入口、1 个库），一个 `CMakeLists.txt` 里
+`add_executable` 四行就够了，所以**不拆子目录**；真按"目录该不该存在"的严格标准，这点体量其实
+**都用 `src/` 也完全可以**（`src/` 里同时放"有 `main()` 的"与"没有 `main()` 的"，靠 CMake 区分），
+现在留着 `apps/` 只是为了把上面那条判据摆在目录名上——一眼能看出"这四个源文件是要各自变成
+可执行文件的"，代价是多一层目录。以后若某个入口长到需要自己的依赖或配置，再按
+`apps/<名字>/CMakeLists.txt` 拆出去。
+
 **收益边界**：单可执行、没有外部使用方的小工程**不做也一样跑**；真正的收益是
 ① 验收时"结构与命名"这一项更好讲（验收规范 §9）；② 以后把共用头（如 `motor.h`）抽成库时省事；
 ③ 与后续 ROS2 任务那种"控制与执行解耦"的结构衔接。代价是机械搬迁
@@ -407,8 +424,8 @@ CMake 用 `target_include_directories(... PUBLIC include)` 把接口暴露出去
 
 **已完成（2026-09-29）**：`cpp_part2/` 按上面这套结构重构完毕，同时换到 C++17、Allman 大括号
 （`cpp_part2/.clang-format`，只作用于该目录），并把原来 870 行的单文件拆成
-`include/motor_bench/*.hpp` + `src/*.cpp` + `apps/*.cpp`。细节见
-[`../../@20260927_motor/cpp_part2/README.md`](../../@20260927_motor/cpp_part2/README.md)。
+`include/motor_bench/*.hpp` + `src/*.cpp` + `apps/*.cpp`（`apps/` 的取舍见上一节最后两段）。细节见
+[`../../@20260927_motor/cpp_part2/docs/setup.md`](../../@20260927_motor/cpp_part2/docs/setup.md) §1。
 
 **待做**：`@20260927_motor/cpp/`（完整版 12 + `essential/` 10 + `essential_core/` 2 个头文件）与
 `@20260923_mujoco/` 的三个小程序（3 个头文件）随后再跟；每步都用

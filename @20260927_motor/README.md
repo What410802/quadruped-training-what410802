@@ -34,36 +34,24 @@
 ```
 @20260927_motor/
 ├── README.md                  # 本文件：只做索引
-├── cpp/                       # 子任务项一（仿真部分）的 C++ 工程
-│   ├── CMakeLists.txt
-│   ├── README.md              # 怎么建、怎么跑、实测摘要、参数
-│   ├── docs/sim.md            # 实现、全部实测数字、踩坑；§6 与第二次培训控制程序的对照
-│   ├── docs/essential.md      # 两个精简版的差别、理由与验证（低站姿的来历、踩坑、对拍方法）
-│   ├── src/                   # 完整版：main.cpp（只做编排）+ cli.h / scene_setup.h / motor.h / stance.h / state.h
-│   │                          #   / observation.h / start.h / viewer.h / recorder.h / ground.h / args.h
-│   └── essential/             # 最简版（官方 Simulate 窗口 + 终端按键，站姿从 models/stance.txt 加载）
-├── cpp_part2/                 # 子任务项二（实体电机控制）的程序与工具
-│   ├── CMakeLists.txt         # motor_bench_core 静态库 + 四个可执行 + PTY 垫片；生成 compile_commands.json
-│   ├── README.md              # 入口：四个程序、怎么建怎么跑、文档地图
-│   ├── docs/                  # runbook.md（现场执行清单：批次 0–7、记录表、故障处置、验收演示）
-│   │                          #   / real.md（硬件现状、成熟度、S0–S5 计划与手册、实测记录）
-│   │                          #   / zero_semantics.md（上电/运行/离线的零点语义、CLI 设计、验收时序）
-│   │                          #   / protocol.md（报文与定点标度实测）/ fixed_point.md（定点 vs 浮点）
-│   │                          #   / fake_motor.md（仿真电机：层级、接口、时序、保真度边界）
-│   │                          #   / cli.md（motor_ctl 参数与命令）/ setup.md（构建、布局与选型理由）
-│   │                          #   / pitfalls.md（无硬件阶段的坑）/ glossary.md（缩写表）
-│   ├── include/motor_bench/   # 公开接口（.hpp）：ticks / motor_bus / zero_tracking / trajectory / console
-│   │   └── sim/fake_motor.hpp # 假电机 + 假驱动板（不用于控制实机）
-│   ├── src/                   # 实现（.cpp）+ pty_serial_shim.c（PTY 垫片）
-│   └── apps/                  # 可执行入口：motor_ctl（验收）/ spin_test（S1）/ serial_probe（S2）/ sim_fake_motor_dryrun
-├── docs/                      # 两个子任务项共用的资料（子工程的文档已移到各自的 docs/）
+├── cpp/                       # 子任务项一（仿真部分）：完整版 + 两个精简版（essential / essential_core）
+│   └── docs/                  #   sim.md（实现与全部实测）、essential.md（精简版的理由与验证）
+├── cpp_part2/                 # 子任务项二（实体电机控制）：include/ + src/（无 main）+ apps/（有 main）
+│   └── docs/                  #   runbook / real / zero_semantics / protocol / fixed_point
+│                              #   / fake_motor / cli / setup / pitfalls / glossary
+├── docs/                      # 两个子任务项共用的资料
 │   └── teaching-materials/    # 讲义与任务书
 ├── scripts/
 │   ├── run_log.sh             # 实机命令的包装：行缓冲（stdbuf -oL）+ 按时间自动命名日志
-│   └── agent_scripts/         # AI 用来分析/诊断的脚本（不阻塞任务主线）：analyse_spin_log.py / analyse_watch_log.py / analyse_ctl_log.py / check_md_links.py
+│   └── agent_scripts/         # AI 用来分析/诊断的脚本（不阻塞任务主线）
 ├── models/ + scenes/          # 两个子任务项共用：模型与场景（从 @20260923_mujoco 复制）+ 搜好存下的 stance.txt
 └── output/                    # 产物：cpp/（录像）、terminal/（实机终端日志）
 ```
+
+每个子工程的**目录树、逐文件作用、怎么建怎么跑**都在它自己的 README 里：
+[`cpp/README.md`](cpp/README.md)（及其 [`docs/essential.md`](cpp/docs/essential.md)）、
+[`cpp_part2/README.md`](cpp_part2/README.md)（及其 [`docs/setup.md`](cpp_part2/docs/setup.md)）；
+每个脚本/程序干什么也在那几份文档与各自的文件头注释里，本文件不重复。
 
 ## 环境
 

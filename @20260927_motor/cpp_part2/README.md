@@ -22,9 +22,9 @@
 | `apps/motor_ctl.cpp` | **S3–S5**：回归 0 + 键盘给角度（梯形插值）+ `offset` 标定（收到加、下发减）+ 零点跳变检测与修正；`--self-test` 能离线跑通整条流程 | 实机要（`sudo`）；dry run 不要 |
 | `apps/sim_fake_motor_dryrun.cpp` | 最小 dry run：PTY + 假电机，跑通"上位机 → SDK → 报文 → 反馈" | 不要 |
 
-布局：`include/motor_bench/`（公开接口，`.hpp`）、`src/`（实现与 PTY 垫片）、`apps/`（可执行入口）；
-`include/motor_bench/sim/` 与 `apps/sim_fake_motor_dryrun.cpp` 是**不用于控制实机**的那部分。
-选型理由与目录规则见 [`docs/setup.md`](docs/setup.md)。
+布局：`include/motor_bench/`（公开接口，`.hpp`）、`src/`（**没有 `main()`** 的：库实现 + PTY 垫片）、
+`apps/`（**有 `main()`** 的：四个可执行入口）；`include/motor_bench/sim/` 与 `apps/sim_fake_motor_dryrun.cpp`
+是**不用于控制实机**的那部分。选型理由、`apps/` 与 `src/` 的分界理由见 [`docs/setup.md`](docs/setup.md) §1。
 
 ## 2 怎么建、怎么跑
 
