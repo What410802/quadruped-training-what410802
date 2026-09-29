@@ -4,7 +4,7 @@
 > 在没有硬件的情况下跑起来。实现只有两个文件：[`../include/motor_bench/sim/fake_motor.hpp`](../include/motor_bench/sim/fake_motor.hpp)
 > （假电机）与 [`../src/pty_serial_shim.c`](../src/pty_serial_shim.c)（串口垫片）。
 >
-> 怎么跑：[`../README.md`](../README.md) §3（手工编译）/ §6（CMake 产物 + 四种自检情形）；
+> 怎么跑：[`setup.md`](setup.md) §3（构建）/ [`cli.md`](cli.md) §1（八条自检命令）；
 > 实机计划与验收：[`real.md`](real.md) §3；缩写： [`glossary.md`](glossary.md)。
 > 证据：[`../../output/terminal/motor-ctl-dryrun-20260929.txt`](../../output/terminal/motor-ctl-dryrun-20260929.txt)。
 
@@ -14,7 +14,7 @@
 
 | 层 | 要验证什么 | 我们做到哪一步 |
 |---|---|---|
-| **协议层 mock**（本文件的主角） | 上位机代码路径、指令换算对不对、反馈解码对不对、状态机/标定/跳变逻辑 | ✅ 完整：官方 SDK **原样链接**，报文、CRC、定点标度全部按实机实测值收发（[`../README.md`](../README.md) §4） |
+| **协议层 mock**（本文件的主角） | 上位机代码路径、指令换算对不对、反馈解码对不对、状态机/标定/跳变逻辑 | ✅ 完整：官方 SDK **原样链接**，报文、CRC、定点标度全部按实机实测值收发（[`protocol.md`](protocol.md)） |
 | **物理层模型** | 控制器参数、力矩/转速边界、轨迹可行性 | 🔧 行为级：一阶速度响应 + 库仑摩擦 + 力矩限幅；转子惯量/摩擦/减速器效率/热模型都还是"旋钮"，没做参数辨识 |
 
 宇树**没有**发布 GO-M8010-6 的现成仿真模型（没有 MJCF/URDF，官方 SDK 里也没有 mock 模式），但手册
@@ -62,7 +62,7 @@ flowchart TB
 |---|---|---|---|
 | 控制/探针程序 | `apps/motor_ctl.cpp`、`apps/spin_test.cpp`、`apps/serial_probe.cpp`、`apps/sim_fake_motor_dryrun.cpp` | 控制律、插值、键盘、标定与跳变逻辑 | **同一份程序**，只把 `--self-test` 换成 `--port /dev/ttyUSB0` |
 | 官方 SDK | `ReadOnly.d/unitree_actuator_sdk`（头文件 + 预编译 `.so`） | 打包 17 B 命令帧（含 CRC 与定点量化）、`write`、`recv` 16 B、解包成物理量 | 同左 |
-| 串口垫片 | `src/pty_serial_shim.c`（`LD_PRELOAD`，CMake 目标 `pty_serial_shim`） | 让 `SerialPort` 构造时的 `TIOCGSERIAL`/`TIOCSSERIAL` 通过（PTY 一律回 `ENOTTY`，见 [`../README.md`](../README.md) §2） | FTDI 驱动提供的真 `serial_struct`（实测 `baud_base=60000000`、4 Mbaud 整除） |
+| 串口垫片 | `src/pty_serial_shim.c`（`LD_PRELOAD`，CMake 目标 `pty_serial_shim`） | 让 `SerialPort` 构造时的 `TIOCGSERIAL`/`TIOCSSERIAL` 通过（PTY 一律回 `ENOTTY`，见 [`pitfalls.md`](pitfalls.md) §2） | FTDI 驱动提供的真 `serial_struct`（实测 `baud_base=60000000`、4 Mbaud 整除） |
 | PTY 对 | `fakemotor::MakePty()` | 造一对"串口"：slave 给 SDK，master 给假电机 | FT232H ↔ TTL/RS485 线 ↔ 驱动板 |
 | 假电机线程 | `fakemotor::Start()` | 收满 17 B → `Step()` 积分 → `Fill()` → 回 16 B | 驱动板（位置环/速度环 + 报文）+ 电机本体 |
 | 上报层 | `Model::Reported()`、`Model::LoopPosition()`、`Encoder` | 把"真实转子位置"变成"板子报出来的位置"：里程计 / 锯齿 / 上电基准 / 中途换基准 | 单圈绝对值编码器 + 驱动板的零点约定（[`real.md`](real.md) §5） |
@@ -85,7 +85,7 @@ flowchart TB
 `Model` 的物理旋钮（都是转子侧）：`tau_max = 20 N·m`（力矩限幅）、`tau_fric = 0.002 N·m`（库仑摩擦）、
 `J = 1e-3 kg·m²`（等效惯量，写在 `Step()` 里；速度的时间常数 = `J/K_W`）、`temp`（随力矩慢慢涨，
 >89 °C 置 `merror=1`，只是为了让错误码那条路径能测）。
-**改这些不影响标度那部分**：报文格式与定点换算必须与实机一致（[`../README.md`](../README.md) §4）。
+**改这些不影响标度那部分**：报文格式与定点换算必须与实机一致（[`protocol.md`](protocol.md)）。
 
 ### 3.2 报文接口（谁负责哪一段）
 
@@ -95,7 +95,7 @@ flowchart TB
 | 反馈（驱动板 → 上位机） | 16 B | `head[2]` + `mode` + `fbk` 11 B（`torque` q8、`speed` q7、`pos` q15 圈、`temp` int8、`MError` 3 bit + 力传感 12 bit）+ CRC16 | **假电机打包**（`Fill()`）；官方 SDK 解包 |
 
 定点标度、截断与钳位（`spd_des` 是 q7 的 **π 倍**、增益超量程静默截断到 `32766`、整数除法导致 1 LSB 差…）
-都是实机实测出来的，逐条列在 [`../README.md`](../README.md) §4，这里不重复；`MotorCmd` 的 `q/dq/kp/kd`
+都是实机实测出来的，逐条列在 [`protocol.md`](protocol.md)，这里不重复；`MotorCmd` 的 `q/dq/kp/kd`
 **都是转子侧**，SDK 不做换算，所以换算责任在调用方（程序里 `×N` / `÷N²`）。
 
 ### 3.3 环境接口
@@ -238,7 +238,7 @@ sequenceDiagram
 
 ## 6 怎么跑（复现命令）
 
-见 [`../README.md`](../README.md) §6 的"① 离线自检"：四条命令分别覆盖"回 0 + 给角度 + 标定 + 跳变修正"
+见 [`cli.md`](cli.md) §1：八条命令分别覆盖"回 0 + 给角度 + 标定 + 跳变修正"
 "上电认错零点""运行中换基准""锯齿读数"。全部输出留档在
 [`../../output/terminal/motor-ctl-dryrun-20260929.txt`](../../output/terminal/motor-ctl-dryrun-20260929.txt)，
 用 `analyse_ctl_log.py` 可以一秒读完（会给出每个运行的一行摘要）。

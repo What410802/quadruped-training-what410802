@@ -34,7 +34,7 @@
 | 0.4 | 权限：`sudo`，或 `sudo usermod -aG dialout $USER` 后重新登录 | `id \| tr ',' '\n' \| grep -c dialout` |
 | 0.5 | 设备：插上转接头后确认设备节点，并确认这条串口上只有这一台电机 | `lsusb \| grep 0403:6014`；`ls -l /dev/ttyUSB0` |
 | 0.6 | 构建：`pixi run cmake -S @20260927_motor/cpp_part2 -B @20260927_motor/cpp_part2/build && pixi run cmake --build @20260927_motor/cpp_part2/build` | 产物在 `build/` |
-| 0.7 | dry run 回归：`export LD_PRELOAD=$PWD/@20260927_motor/cpp_part2/build/libpty_serial_shim.so`，再跑 README §6 的四条 | 0 超时、跳变修正按预期 |
+| 0.7 | dry run 回归：`export LD_PRELOAD=$PWD/@20260927_motor/cpp_part2/build/libpty_serial_shim.so`，再跑 [`cli.md`](cli.md) §1 的八条 | 0 超时、跳变修正按预期 |
 | 0.8 | 日志：每条实机命令都用 §2 的 `$RL <阶段> …` 包装 | 自动生成带时间戳的文件 |
 | 0.9 | 分析脚本先试一遍 | `pixi run python @20260927_motor/scripts/agent_scripts/analyse_ctl_log.py <日志>` |
 
@@ -253,7 +253,7 @@ sudo $RL s5 $C --port /dev/ttyUSB0 --id 0 --offset-deg 30 --jump-tol-deg 8
 
 | 批次 | 阶段 | 命令（简写） | 关键数字 | 结论 / 异常 | 日志文件 |
 |---|---|---|---|---|---|
-| D0 | dry run 回归 | README §6 四条 | 0 超时、跳变修正按预期 | | |
+| D0 | dry run 回归 | [`cli.md`](cli.md) §1 八条 | 0 超时、跳变修正按预期 | | |
 | S0 | 端口探针 | `sudo $RL s0 $P --port /dev/ttyUSB0` | ✅ 已完成（2026-09-29）：`baud_base=60000000`、除数 15.000 整除、构造成功 | 与 09-27 一致 | [`s0`](../../output/terminal/motor-real-202609291654-s0.txt) |
 | S1 | 小速度转 | `sudo $RL s1a/s1b/s1c` | ✅ 已完成（2026-09-29）：0.1→0.0603（60%）、0.2→0.1583（79%）、1.0→0.9358 圈/s（94%）；1601 帧 0 超时；27/30/30 °C；帧周期 6.38 ms | 低速达成率偏低，与 S2d 的摩擦/标度问题呼应 | [`s1a`](../../output/terminal/motor-real-202609291655-s1a.txt) [`s1b`](../../output/terminal/motor-real-202609291658-s1b.txt) [`s1c`](../../output/terminal/motor-real-202609291658-s1c.txt) |
 | S1b | 官方例程 | `sudo $RL s1b_example timeout -s INT 5 $B/example_go` + 急停 | ✅ 已完成（2026-09-29） | 掐死后不停转，必须补急停 | 批次 2 日志 |
@@ -293,7 +293,7 @@ sudo $RL s5 $C --port /dev/ttyUSB0 --id 0 --offset-deg 30 --jump-tol-deg 8
 
 当面验收大约 10 分钟，按下面的顺序演示：
 
-1. 讲一句结构：`cpp_part2/src/` 的三个程序加 `sim/` 的仿真电机；报文的标度是实测出来的（README §4）。
+1. 讲一句结构：`cpp_part2/src/` 的三个程序加 `sim/` 的仿真电机；报文的标度是实测出来的（[`protocol.md`](protocol.md)）。
 2. 离线也能跑：`LD_PRELOAD=... motor_ctl --self-test --script "0;30;mark;o+30;expect;30"`。
 3. 接上电机：`serial_probe --watch 3` 看读数与温度，然后 `motor_ctl` 跑 `0` 与 `30`。
 4. 任务书③：`o+30` 前后把线 A 的读数指给验收人看（0 → +30.00°），再 `30` 让它少转 30° 回到线 A。

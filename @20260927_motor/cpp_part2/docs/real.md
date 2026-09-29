@@ -60,7 +60,7 @@ sudo /tmp/serial_probe --port /dev/ttyUSB0 --id 0 --watch 10   # 零力矩 10 s�
 | 数学 | 关节侧 MIT 公式 | ✅ 仿真里实现并实测（§sim.md 2.1） | 实机不需要这段（驱动板里跑的就是它），实机需要的是**换算** |
 | 换算 | `ToRotor`：Pos/W ×N、tau ÷N、K_P/K_W ÷N² | ✅ 与官方 SDK 实际报文**逐字段对上** | 3.165 rad → `pos_des=16506`、K_P=1.9966 → `k_pos=2555` |
 | 协议 | 报文字段与 CRC | ✅ 实测：`fe ee` + mode + 12 B + `crc_ccitt`(前 15 B) | 我们本地重算的 CRC 与报文完全一致 |
-| 标度 | pos/speed/torque/gain 的定点标度、截断、32766 钳位 | ✅ 实测（[`../README.md`](../README.md) §4） | 含"速度是 q7 的 π 倍""增益超量程被静默截断"两个坑 |
+| 标度 | pos/speed/torque/gain 的定点标度、截断、32766 钳位 | ✅ 实测（[`protocol.md`](protocol.md)） | 含"速度是 q7 的 π 倍""增益超量程被静默截断"两个坑 |
 | 反馈 | 读回 q/dq/tau/temp/merror 并转成关节侧 | ✅ 假电机的回帧被官方 .so 正确解出 | 实机同样路径，只差真链路 |
 | 传输 | 真串口 4 Mbaud、半双工收发、时序/抖动、断线重连 | ✅ **已由 S1 实测** | 6 次 × 1601 帧、0 丢帧 0 超时、真的 4 Mbaud（§3.6）；**断链行为已实测**（S2e，2026-09-29）：驱动板**不会卸力**——上位机不发命令后它继续执行最后一条指令 |
 | 标定 | `offset` 零点标定、零点跳变（±1/6.33 圈）检测与修正 | 🔧 **程序已就绪 + dry run 已跑通**（[`../apps/motor_ctl.cpp`](../apps/motor_ctl.cpp)）：`q = q_enc + offset`、`cmd.q = (q_des − offset)·N`、整数 raw 差判跳变；但**实机还没标过** | 约定见 §5、手册见 §3.8、dry run 证据见 §3.8 末尾；实机剩下的是"这颗板子的读数到底是里程计还是锯齿"（S2b）与"上电基准会不会变"（S2f） |
@@ -300,8 +300,8 @@ S2a–S2e 里没有一项能回答"这颗板子的基准会不会变"。做法�
 
 ### 3.8 S3–S5 上机手册（`motor_ctl`：回归 0 / 键盘给角度 / 标零点 / 零点跳变）
 
-程序：[`../apps/motor_ctl.cpp`](../apps/motor_ctl.cpp)（编译见 [`../README.md`](../README.md) §0，
-用法与键盘命令表见 §6）。**先跑 §6 的 dry run 那四条**，确认程序本身没问题，实机时间只花在真事上。
+程序：[`../apps/motor_ctl.cpp`](../apps/motor_ctl.cpp)（编译见 [`setup.md`](setup.md) §3，
+用法与键盘命令表见 [`cli.md`](cli.md)）。**先跑 §6 的 dry run 那四条**，确认程序本身没问题，实机时间只花在真事上。
 
 ```bash
 cd ..            # 仓库根目录
@@ -336,7 +336,7 @@ sudo $B --port /dev/ttyUSB0 --id 0                 # 交互：h 看命令，先�
 3. 上电检查：下次上电先别动，`--expect-deg <记号笔那点的 q>`（或先 `stop` + `expect`）——
    差 ≈1 个区间就是"认错零点"（讲义 §2.6），程序默认会自动 `fix`，也可以加 `--no-fix-startup` 只看报告。
 
-**dry run 已经验证过的**（证据：[`../../output/terminal/motor-ctl-dryrun-20260929.txt`](../../output/terminal/motor-ctl-dryrun-20260929.txt)（tick 版；09-28 那份是 float 版），复现命令见 [`../README.md`](../README.md) §6）
+**dry run 已经验证过的**（证据：[`../../output/terminal/motor-ctl-dryrun-20260929.txt`](../../output/terminal/motor-ctl-dryrun-20260929.txt)（tick 版；09-28 那份是 float 版），复现命令见 [`cli.md`](cli.md) §1）
 
 | 情形 | 注入方式 | 结果（本机实测，假电机 + PTY） |
 |---|---|---|

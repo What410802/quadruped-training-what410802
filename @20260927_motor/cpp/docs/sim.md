@@ -206,7 +206,7 @@ pixi run @20260927_motor/cpp/build/motor_sim --mode record \
 实机侧（子任务项二）还有一层仿真里没有的限幅：**报文的定点标度**。这次用"假电机 dry run"把它实测清楚了——
 命令帧的力矩/速度/位置/刚度四个字段的物理标度、CRC 算法，以及**刚度超量程会被 SDK 静默截断**
 （K_P ≥ 25.6 一律变 32766，对应关节侧 kp 上限 ≈ 1026）——标度表与复现步骤见
-[`../cpp_part2/README.md`](../../cpp_part2/README.md) §4（“截断”那两行），程序里就是 `sim/fake_motor.h`。
+[`../cpp_part2/docs/protocol.md`](../../cpp_part2/docs/protocol.md) §3（“截断”那两行），程序里就是 `sim/fake_motor.h`。
 
 ## 3 实测（本机 i5-1035G1，MuJoCo 3.12.0）
 

@@ -40,7 +40,7 @@
 
 **与头文件注释的一处出入**：SDK 头文件把 `spd_des` 注释成 `unit: rad/s (q7)`（读起来像 ×128），
 **手册 §8.2 写的是 ω/(2π)×256**，即 ×128/π ≈ ×40.74 —— 我们实机实测（6.33 rad/s → `spd_des=257`）
-与**手册一致**。所以"少一个 π"的是头文件注释，不是手册（[`../README.md`](../README.md) §4 已改正）。
+与**手册一致**。所以"少一个 π"的是头文件注释，不是手册（实测记录见 [`protocol.md`](protocol.md) §3）。
 
 **我们能走的"全定点"路径**（都只用 public API）：
 
@@ -213,5 +213,5 @@ cmd.q_ticks   = q_des_ticks − offset_ticks
   [`../../../../ReadOnly.d/unitree_actuator_sdk`](../../../../ReadOnly.d/unitree_actuator_sdk)（BSD-3-Clause），
   及其 `lib/libUnitreeMotorSDK_Linux64.so`（本轮实测对象）
 * 讲义《关节电机培训》§2.3–§2.6（19:3、候选零点间距、认错零点）：[`../../docs/teaching-materials/motor.pdf.md`](../../docs/teaching-materials/motor.pdf.md)
-* 我们自己的实测：报文/CRC/定点标度（[`../README.md`](../README.md) §4）、S1 六次实跑（[`real.md`](real.md) §3.6）、
+* 我们自己的实测：报文/CRC/定点标度（[`protocol.md`](protocol.md)）、S1 六次实跑（[`real.md`](real.md) §3.6）、
   dry run 五种情形（tick 版：[`../output/terminal/motor-ctl-dryrun-20260929.txt`](../../output/terminal/motor-ctl-dryrun-20260929.txt)）

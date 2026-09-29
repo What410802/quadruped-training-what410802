@@ -25,7 +25,7 @@
 | 子任务项二 S1：让电机转起来（带斜坡与限幅） | ✅ 通过（6 次实跑：0 丢帧、温度 30–31 °C、`merror=0`） |
 | 子任务项二 S2：零力矩手转找零点 + 定“里程计/锯齿” + kd 扫描 + 量断链行为 + 上电基准 | 🔧 **工具与手册已就绪**（[`cpp_part2/docs/real.md`](cpp_part2/docs/real.md) §3.7 的 S2a–S2f），待实机执行（执行卡：[`cpp_part2/docs/runbook.md`](cpp_part2/docs/runbook.md) §4 批次 3） |
 | 子任务项二 S1b：官方 SDK 例程（任务书第 1 条的字面要求） | 🔧 **命令与安全注意事项已就绪**（[`cpp_part2/docs/runbook.md`](cpp_part2/docs/runbook.md) §4 批次 2），待实机执行 |
-| 子任务项二 S3–S5：回归 0 + 键盘给角度 / 标零点 + 偏移 30° / 零点跳变 | 🔧 **程序已就绪**（[`cpp_part2/apps/motor_ctl.cpp`](cpp_part2/apps/motor_ctl.cpp)；离线自检四种情形都跑通，见 [README §6](cpp_part2/README.md) 与 [real.md §3.8](cpp_part2/docs/real.md)），待实机执行（执行卡：runbook §4 批次 4–6） |
+| 子任务项二 S3–S5：回归 0 + 键盘给角度 / 标零点 + 偏移 30° / 零点跳变 | 🔧 **程序已就绪**（[`cpp_part2/apps/motor_ctl.cpp`](cpp_part2/apps/motor_ctl.cpp)；离线自检八种情形都跑通，见 [cli.md §1](cpp_part2/docs/cli.md) 与 [real.md §3.8](cpp_part2/docs/real.md)），待实机执行（执行卡：runbook §4 批次 4–6） |
 | 子任务项二收尾：实机记录表 → 填回文档 → 提交 → 当面验收演示 | ⏳ 记录表与演示脚本已备好（[`cpp_part2/docs/runbook.md`](cpp_part2/docs/runbook.md) §5 / §7），等实机数据 |
 | 工程结构对齐：`include/<项目>/**/*.hpp` + `src/*.cpp` + `apps/`，C++17 | 🔧 **`cpp_part2/` 已完成**（2026-09-29：拆成 5 个头文件 + 4 个实现 + 4 个入口，换 Allman/C++17）；`cpp/` 与 `@20260923_mujoco/` 待做，计划见 [`../docs/learn/cpp-cmake.md`](../docs/learn/cpp-cmake.md) 的「落地计划」一节 |
 
@@ -42,20 +42,24 @@
 │   │                          #   / observation.h / start.h / viewer.h / recorder.h / ground.h / args.h
 │   └── essential/             # 最简版（官方 Simulate 窗口 + 终端按键，站姿从 models/stance.txt 加载）
 ├── cpp_part2/                 # 子任务项二（实体电机控制）的程序与工具
-│   ├── CMakeLists.txt         # 四个可执行 + PTY 垫片；生成 compile_commands.json（编辑器智能提示）
-│   ├── README.md              # 报文/定点标度实测、五个程序、怎么建怎么跑、S3–S5 怎么用（§6）
-│   ├── docs/                  # real.md（硬件现状、成熟度、S0–S5 计划与手册）、glossary.md（缩写表）
-│   │                          #   / fake_motor.md（仿真电机：层级、接口、时序、保真度边界）
+│   ├── CMakeLists.txt         # motor_bench_core 静态库 + 四个可执行 + PTY 垫片；生成 compile_commands.json
+│   ├── README.md              # 入口：四个程序、怎么建怎么跑、文档地图
+│   ├── docs/                  # runbook.md（现场执行清单：批次 0–7、记录表、故障处置、验收演示）
+│   │                          #   / real.md（硬件现状、成熟度、S0–S5 计划与手册、实测记录）
 │   │                          #   / zero_semantics.md（上电/运行/离线的零点语义、CLI 设计、验收时序）
-│   │                          #   / runbook.md（实机执行清单：批次 0–7、记录表、故障处置、验收演示）
+│   │                          #   / protocol.md（报文与定点标度实测）/ fixed_point.md（定点 vs 浮点）
+│   │                          #   / fake_motor.md（仿真电机：层级、接口、时序、保真度边界）
+│   │                          #   / cli.md（motor_ctl 参数与命令）/ setup.md（构建、布局与选型理由）
+│   │                          #   / pitfalls.md（无硬件阶段的坑）/ glossary.md（缩写表）
 │   ├── include/motor_bench/   # 公开接口（.hpp）：ticks / motor_bus / zero_tracking / trajectory / console
-│   ├── src/                   # 实现（.cpp）+ pty_serial_shim.c
+│   │   └── sim/fake_motor.hpp # 假电机 + 假驱动板（不用于控制实机）
+│   ├── src/                   # 实现（.cpp）+ pty_serial_shim.c（PTY 垫片）
 │   └── apps/                  # 可执行入口：motor_ctl（验收）/ spin_test（S1）/ serial_probe（S2）/ sim_fake_motor_dryrun
-│       └── sim/               # 不控制实机的代码：pty_serial_shim.c / fake_motor.h（含假驱动板）/ fake_motor_dryrun.cpp
 ├── docs/                      # 两个子任务项共用的资料（子工程的文档已移到各自的 docs/）
 │   └── teaching-materials/    # 讲义与任务书
 ├── scripts/
-│   └── agent_scripts/         # AI 用来分析/诊断的脚本（不阻塞任务主线）：analyse_spin_log.py / analyse_watch_log.py / check_md_links.py
+│   ├── run_log.sh             # 实机命令的包装：行缓冲（stdbuf -oL）+ 按时间自动命名日志
+│   └── agent_scripts/         # AI 用来分析/诊断的脚本（不阻塞任务主线）：analyse_spin_log.py / analyse_watch_log.py / analyse_ctl_log.py / check_md_links.py
 ├── models/ + scenes/          # 两个子任务项共用：模型与场景（从 @20260923_mujoco 复制）+ 搜好存下的 stance.txt
 └── output/                    # 产物：cpp/（录像）、terminal/（实机终端日志）
 ```
