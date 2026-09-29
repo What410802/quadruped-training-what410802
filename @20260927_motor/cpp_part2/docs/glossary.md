@@ -9,7 +9,7 @@
 
 | 缩写 | 全称 | 一句话解释 | 本任务哪里用到 |
 |---|---|---|---|
-| **TTY** | Teletype（电传打字机） | Linux 里"终端设备"的统称，`/dev/tty*` 都是它。**TTY ≠ 串口**：真串口是 USB 转接芯片驱动出来的 `/dev/ttyUSB0`，伪终端（下面那个）也叫 tty | `serial_probe` / `spin_test` 打开的 `/dev/ttyUSB0` |
+| **TTY** | Teletype（电传打字机） | Linux 里"终端设备"的统称，`/dev/tty*` 都是它。**TTY ≠ 串口**：真串口是 USB 转接芯片驱动出来的 `/dev/ttyUSB0`，伪终端（下面那个）也叫 tty <br/>（另：[串口相关的硬件普及知识](https://yb.tencent.com/s/l76ZUePHO4ng)） | `serial_probe` / `spin_test` 打开的 `/dev/ttyUSB0` |
 | **PTY** | Pseudo-Terminal（伪终端） | 内核给的一对"假串口"：一头当程序（`/dev/pts/N`），另一头当"设备"。`posix_openpt()` 开一对，我们用它做 dry run（无硬件跑通协议） | `fake_motor.h` / `fake_motor_dryrun.cpp` 的 `--self-test` |
 | **termios** | terminal I/O settings | 串口参数的统一接口（波特率、数据位、校验、停止位、流控）。`tcgetattr`/`cfsetspeed` 都是它 | `serial_probe` 打印 `tcgetattr` 结果 |
 | **ioctl** | I/O control | "给设备发命令"的通用系统调用（不是读写数据）。串口的很多设置只能这样改 | `TIOCGSERIAL`/`TIOCSSERIAL`（读/写 `serial_struct`）——SDK 构造时要它，PTY 上必失败，所以要有 `pty_serial_shim.c` |

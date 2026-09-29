@@ -8,6 +8,8 @@
 //
 // 编译：gcc -O2 -fPIC -shared -o pty_serial_shim.so pty_serial_shim.c -ldl
 // 用法：LD_PRELOAD=./pty_serial_shim.so ./fake_motor_dryrun
+//
+// 它在整个"仿真电机"里的位置（层级图、接口、时序）见 ../docs/fake_motor.md §2–§4。
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <linux/serial.h>
