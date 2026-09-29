@@ -21,3 +21,9 @@ C++   ：Replicate.d/unitree_mujoco/cpp 下跑 ./build/unitree_mujoco（带官�
 两个数不一致本身就是发现：两边时间步不同（Python `SIMULATE_DT = 0.005`、C++ `0.002`），伺服收敛位形因此不同；做 A/B 对比时不能直接把两边的绝对高度拿来比。
 
 复现顺带确认的两件事（对做任务 3 有用）：**回调归属**（带队列的订阅回调跑在 SDK 自建线程 `rlsnr` / `ch_reader`，`queueLen=0` 才跑在 DDS 接收线程）见 [`../../docs/learn/runtime-timing.md`](../../docs/learn/runtime-timing.md) §10；上游**控制器没有 stdin 控制**、`#define private public` 覆盖 GLFW 回调导致官方快捷键失效等一批问题，见 [`../../docs/learn/unitree-mujoco.md`](../../docs/learn/unitree-mujoco.md) §7 的问题清单。
+
+## 这次复现给任务 4 的结论
+
+上游那份 C++ 实现（双缓冲 + DDS）在本次验收里**不需要再复刻一遍**：把 `cpp_task2` 接上 MuJoCo 官方
+`Simulate` 界面（`--mode view`）实测就是 **1.00x 实时**、画面流畅，Python 侧那 0.14x 的缺口来自 GIL。
+理由与实测见 [`cpp.md`](cpp.md) §3；逐帧对比见 [`../../docs/learn/runtime-timing.md`](../../docs/learn/runtime-timing.md) §11 的方案 ③。

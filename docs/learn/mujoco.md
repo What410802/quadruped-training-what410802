@@ -318,6 +318,23 @@ C++ 侧同一条规则：`cpp_task2/src/record.h` 的 `OffscreenRecorder` 也在
 
 **做法**：先用 §6.7 的办法确认地面转成了（断言 `d->geom_xmat`），再看画面。顺带一条：纯色地面即使真转了，画面里也只有亮度/边界的变化，看不出「斜多少、往哪斜」；要一眼看清坡度就给地面加**可见参照**——本次用的是 MuJoCo 自带的程序化纹理（`<texture type="2d" builtin="checker"/>` + `<material texture="..."/>`，不需要外部图片；地面仍是 `type="plane"`，物理一点没变），斜面 demo 的默认场景 `@20260923_mujoco/scenes/slope_scene.xml` 就是「flat_scene + 一张棋盘格材质」。
 
+### 6.9 官方 `Simulate` 界面的两个坑（`Load` 的顺序、程序化退出）
+
+用 C++ 调 MuJoCo 自带的界面库（`mujoco::libmujoco_simulate`，即 `mj::Simulate` + `mj::GlfwAdapter`）时踩到的两条，
+两个任务都撞过（[`../../@20260927_motor/cpp/docs/essential.md`](../../@20260927_motor/cpp/docs/essential.md) §5 与
+[`../../@20260923_mujoco/docs/cpp.md`](../../@20260923_mujoco/docs/cpp.md) §3）：
+
+- **`Simulate::Load()` 会阻塞等渲染线程来接模型**（内部条件变量 `cond_loadrequest`），所以顺序必须是
+  「主线程先跑 `RenderLoop()`，再由物理线程 `Load()`」（官方 `main.cc` 就是把加载放在 `PhysicsThread` 里）。
+  在 `RenderLoop()` 之前调 `Load`：开出一个空白窗口（任务栏有条目、Alt+Tab 里没有、内容全白）然后永久等待。
+- **想用程序自己退出窗口**：`sim.exitrequest` 只是通知物理线程，`RenderLoop()` 并不看它；`GlfwAdapter` 把
+  `GLFWwindow*` 藏在私有成员里（拿不到去 `glfwSetWindowShouldClose`），但 `ShouldCloseWindow()` 是**虚函数**
+  —— 子类里加一个自己的 `bool` 就够（`mujoco_simulate` 的 `main.cc` 之外没有别的钩子）。没有这一手，
+  终端里的"退出"只能 `exit()` 硬退：不跑析构、终端 raw 模式恢复不了。
+- 顺带：`RenderLoop()` 要求跑在**主线程**；它在 `Render()` **之前**就放锁（源码注释
+  `// MutexLock (unblocks simulation thread)`），所以"物理线程 + 官方界面"本来就不互相阻滞（实测 1.00x 实时，
+  见 [`runtime-timing.md`](runtime-timing.md) §11 的方案 ③）。
+
 ---
 
 ## 7. 渲染后端（`MUJOCO_GL`）与开销

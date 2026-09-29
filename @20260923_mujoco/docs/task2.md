@@ -20,7 +20,7 @@ pixi run python @20260923_mujoco/scripts/simulate_record.py                     
 
 关键点：**初始姿态不是拍脑袋写的常数**，而是先由脚底球体几何反算出“脚刚好触地”的基座高度，让它自由落下收敛，再把收敛后的 qpos 写回 `../scenes/flat_scene.xml` 的 `<keyframe name="rest">`，这样模型一加载就已经是静态平衡位形，不需要“先掉一下”。
 
-C++ 侧同一判据（`../cpp_task2/`）：`rest_check` 跑 8 s → 末 1 s 漂移 **4.440e-10 m**、末态 max|qvel| 6.06e-09、接触点数 8 → 判“静止趴住 ✓”，与 Python 侧数字一致。用法见任务 [README](../README.md) 的「C++ 程序」。
+C++ 侧同一判据（`../cpp_task2/`）：`rest_check` 跑 8 s → 末 1 s 漂移 **4.440e-10 m**、末态 max|qvel| 6.06e-09、接触点数 8 → 判“静止趴住 ✓”，与 Python 侧数字一致。命令与录像细节见 [`cpp.md`](cpp.md) §1。
 
 **A/B 对照**（同一平地、模型默认位形、`ctrl=0`、2 s）—— 证明“穿模”确实是弹跳的根因：
 
