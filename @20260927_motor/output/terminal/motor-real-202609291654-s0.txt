@@ -1,0 +1,11 @@
+GO-M8010-6：减速比 N = 19:3 = 6.333333（真值；SDK queryGearRatio 给 6.33）、FOC 模式号 = 1（queryMotorMode）、刹车模式号 = 0
+端口探针[构造 SerialPort 之前：端口原生参数]：
+    termios：输入 13 (9600)、输出 13 (9600)
+    serial_struct：type=0 baud_base=60000000 custom_divisor=0 xmit_fifo=0
+    想要 4000000 bps ⇒ 除数 15.000（能整除就精确；现在设的 custom_divisor=0 ⇒ 实得 跟着 termios 走 bps）
+SerialPort 构造成功（/dev/ttyUSB0）
+端口探针[构造 SerialPort 之后：SDK 配成的参数]：
+    termios：输入 4111 (4000000)、输出 4111 (4000000)
+    serial_struct：type=0 baud_base=60000000 custom_divisor=0 xmit_fifo=0
+    想要 4000000 bps ⇒ 除数 15.000（能整除就精确；现在设的 custom_divisor=0 ⇒ 实得 跟着 termios 走 bps）
+只开了端口，没发任何字节（要看反馈就加 --watch SEC）
