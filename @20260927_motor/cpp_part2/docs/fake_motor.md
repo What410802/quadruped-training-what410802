@@ -6,7 +6,7 @@
 >
 > 怎么跑：[`../README.md`](../README.md) §3（手工编译）/ §6（CMake 产物 + 四种自检情形）；
 > 实机计划与验收：[`real.md`](real.md) §3；缩写： [`glossary.md`](glossary.md)。
-> 证据：[`../../output/terminal/motor-ctl-dryrun-20260928.txt`](../../output/terminal/motor-ctl-dryrun-20260928.txt)。
+> 证据：[`../../output/terminal/motor-ctl-dryrun-20260929.txt`](../../output/terminal/motor-ctl-dryrun-20260929.txt)。
 
 ## 1 它解决什么问题（以及不解决什么）
 
@@ -202,7 +202,7 @@ sequenceDiagram
     P->>F: 第 N 帧命令（正常跟踪中）
     F->>E: jump_frame 命中 ⇒ datum += jump_turns
     E-->>F: 板子读数整体跳 K 个区间（物理位置没动）
-    Note over F: 这一帧的位置环用的是"跳过的读数" ⇒ τ = K_P × K×2π ≈ 12.5 N·m（转子侧），<br/>按 K×56.87° 的位置误差使劲，只能等下一帧救
+    Note over F: 这一帧的位置环用的是"跳过的读数" ⇒ τ = K_P × K×2π ≈ 12.5 N·m（转子侧），<br/>按 K×56.842° 的位置误差使劲，只能等下一帧救
     F-->>P: 回帧（读数已跳）
     P->>P: 整数 raw 差 ≈ K×32768 ⇒ offset 反向补 K 个区间（q_des 不动）
     Note over P: 下一帧起：同一个 q_des 仍对应同一个物理位置，<br/>电机不会跑到别的地方；这一帧的"抡一下"只能事后救
@@ -225,7 +225,7 @@ sequenceDiagram
 
 见 [`../README.md`](../README.md) §6 的"① 离线自检"：四条命令分别覆盖"回 0 + 给角度 + 标定 + 跳变修正"
 "上电认错零点""运行中换基准""锯齿读数"。全部输出留档在
-[`../../output/terminal/motor-ctl-dryrun-20260928.txt`](../../output/terminal/motor-ctl-dryrun-20260928.txt)，
+[`../../output/terminal/motor-ctl-dryrun-20260929.txt`](../../output/terminal/motor-ctl-dryrun-20260929.txt)，
 用 `analyse_ctl_log.py` 可以一秒读完（会给出每个运行的一行摘要）。
 
 上实机时的执行顺序、记录表与验收演示见 [`runbook.md`](runbook.md)（本文件负责"为什么"，runbook 负责"怎么做"）。

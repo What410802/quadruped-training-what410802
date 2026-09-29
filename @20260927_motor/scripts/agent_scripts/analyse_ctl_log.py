@@ -13,15 +13,15 @@
 
 日志格式（`motor_ctl` 的标准输出，见 cpp_part2/README.md §6）：
     === S3–S5：... ===             ← 每个运行由此开始
-    启动读数：q_enc +0.000°（第 0 区、区内 +0.000°）、offset +0.000° → q +0.000°；pos raw 0
+    启动读数：pos 0 tick（= +0.000°，第 0 区、区内 +0.000°）、offset +0 tick（+0.000°） → q +0.000°
     命令#1："30"
        目标 +30.000°（现在 +0.000°）：要转 +30.00° ...
       ⇒ 到位（|差| ≤ 1.00°），保持中
-      **零点跳变：pos 差 +32768（+1 个转子圈 ≈ +56.872° 输出端）** 帧 39 t=0.204 s
-        修正（运行中检测到）：offset ... → ...（...）
-    帧  100 t= 0.515：q_enc ... → q ...；目标 ... 差 ...；dq ...、tau ...、temp 30、merror 0
+      **零点跳变：Δpos +32768 tick = +1 个转子圈 ≈ +56.842° 输出端（残差 +0 tick）** 帧 39 t=0.200 s
+        修正（运行中检测到）：offset +0 → -32768 tick（-1 个区间 = -56.842°）
+    帧  100 t= 0.515：pos ... tick（...°、第 0 区） offset ...° → q ...°；目标 ... 差 ...；dq ...、tau ...、temp 30、merror 0
     === 汇总 ===
-    帧 2284（回复 2284、超时 0）；q ...（首帧 ...、末帧 ...）；offset 末值 ...；力矩峰值 ...；温度峰值 ...；末次 merror=0
+    帧 2284（回复 2284、超时 0）；q ...（首帧 ...、末帧 ...）；offset 末值 ...（... tick）；力矩峰值 ...；温度峰值 ...；末次 merror=0
     零点跳变修正 0 次；记号笔那个点 已记录；本次计划行程合计 90.0°；真实帧周期 5.309 ms（名义 5.0 ms）
 
 退出码：0 = 每个运行都拿到了汇总（正常分析完）；2 = 没解析到任何运行；3 = 有的运行缺汇总/需要人工确认。
@@ -32,18 +32,25 @@ from pathlib import Path
 
 
 RE_RUN_HEAD = re.compile(r"===\s*S3[–-]S5")
+# 启动读数（tick 化之后的写法）：pos +17299 tick（= +30.008°，第 0 区、区内 +30.008°）、offset +0 tick（+0.000°） → q +30.008°
 RE_START = re.compile(
-    r"启动读数：q_enc\s*([+-][\d.]+)°（第\s*(-?\d+)\s*区、区内\s*([+-][\d.]+)°）、offset\s*([+-][\d.]+)°\s*→\s*q\s*([+-][\d.]+)°；pos raw\s*([+-]?\d+)")
+    r"启动读数：pos\s*([+-]?\d+) tick（=\s*([+-][\d.]+)°，第\s*(-?\d+)\s*区、区内\s*([+-][\d.]+)°）、"
+    r"offset\s*([+-]?\d+) tick（([+-][\d.]+)°）\s*→\s*q\s*([+-][\d.]+)°")
 RE_CMD = re.compile(r"命令#(\d+)：\"(.*)\"")
 RE_TARGET = re.compile(r"目标\s*([+-][\d.]+)°（现在\s*([+-][\d.]+)°）")
 RE_ARRIVE = re.compile(r"⇒ 到位（\|差\| ≤ ([\d.]+)°）")
 # 段 = 一条"目标"行到下一次"目标"行之间；段内的"⇒ 到位"就记在这条命令名下
-RE_JUMP = re.compile(r"\*\*零点跳变：pos 差\s*([+-]\d+)（([+-]?\d+(?:\.\d+)?)\s*个转子圈 ≈\s*([+-][\d.]+)° 输出端）\*\* 帧\s*(\d+) t=([\d.]+)\s*s")
-RE_FIX = re.compile(r"修正（(.*?)）：offset\s*([+-][\d.]+)°\s*→\s*([+-][\d.]+)°")
+RE_JUMP = re.compile(r"\*\*零点跳变：Δpos\s*([+-]?\d+) tick =\s*([+-]?\d+(?:\.\d+)?)\s*个转子圈 ≈\s*"
+                     r"([+-][\d.]+)° 输出端（残差\s*([+-]?\d+) tick）\*\* 帧\s*(\d+) t=([\d.]+)\s*s")
+RE_FIX = re.compile(r"修正（(.*?)）：offset\s*([+-]?\d+) →\s*([+-]?\d+) tick")
 RE_STAT = re.compile(
-    r"帧\s*(\d+)\s*t=\s*([\d.]+)：q_enc\s*([+-][\d.]+)°（第\s*(-?\d+)\s*区）\s*offset\s*([+-][\d.]+)°\s*→\s*q\s*([+-][\d.]+)°；目标\s*([+-][\d.]+)°\s*差\s*([+-][\d.]+)°；dq\s*([+-][\d.]+)°/s、tau\s*([+-][\d.]+)\s*N·m[^、]*、temp\s*(\d+)、merror\s*(\d+)")
+    r"帧\s*(\d+)\s*t=\s*([\d.]+)：pos\s*([+-]?\d+) tick（\s*([+-][\d.]+)°、第\s*(-?\d+)\s*区）\s*"
+    r"offset\s*([+-][\d.]+)°\s*→\s*q\s*([+-][\d.]+)°；目标\s*([+-][\d.]+)°\s*差\s*([+-][\d.]+)°；"
+    r"dq\s*([+-][\d.]+)°/s、tau\s*([+-][\d.]+)\s*N·m[^、]*、temp\s*(\d+)、merror\s*(\d+)")
 RE_SUM = re.compile(
-    r"帧\s*(\d+)（回复\s*(\d+)、超时\s*(\d+)）；q\s*([+-][\d.]+)°…([+-][\d.]+)°（首帧\s*([+-][\d.]+)°、末帧\s*([+-][\d.]+)°）；offset 末值\s*([+-][\d.]+)°；力矩峰值\s*([\d.-]+)\s*N·m（保持时\s*([\d.-]+)）；温度峰值\s*(-?\d+)\s*°C；末次 merror=(\d+)")
+    r"帧\s*(\d+)（回复\s*(\d+)、超时\s*(\d+)）；q\s*([+-][\d.]+)°…([+-][\d.]+)°（首帧\s*([+-][\d.]+)°、"
+    r"末帧\s*([+-][\d.]+)°）；offset 末值\s*([+-][\d.]+)°（([+-]\d+) tick）；力矩峰值\s*([\d.-]+)\s*N·m（"
+    r"保持时\s*([\d.-]+)）；温度峰值\s*(-?\d+)\s*°C；末次 merror=(\d+)")
 RE_SUM2 = re.compile(r"零点跳变修正\s*(\d+)\s*次；记号笔那个点\s*(已记录|未记录[^；]*?)；本次计划行程合计\s*([\d.]+)°；真实帧周期\s*([\d.]+)\s*ms")
 RE_GAIN = re.compile(r"增益：输出端 kp=(\S+)\s*kd=(\S+)\s*→\s*转子侧 K_P=(\S+)\s*K_W=(\S+)；力矩上限\s*(\S+)\s*N·m")
 RE_CFG = re.compile(r"插值 vmax=(\d+)°/s、amax=(\d+)°/s²、到位判据 ([\d.]+)°")
@@ -96,8 +103,9 @@ def parse_run(run):
     for ln in run["lines"]:
         if m := RE_START.search(ln):
             r["启动"] = {
-                "q_enc": float(m.group(1)), "区": int(m.group(2)), "区内": float(m.group(3)),
-                "offset": float(m.group(4)), "q": float(m.group(5)), "raw": int(m.group(6)),
+                "pos_tick": int(m.group(1)), "pos_deg": float(m.group(2)), "区": int(m.group(3)),
+                "区内": float(m.group(4)), "offset_tick": int(m.group(5)),
+                "offset_deg": float(m.group(6)), "q_deg": float(m.group(7)),
             }
         if m := RE_GAIN.search(ln):
             r["增益"] = {"kp": m.group(1), "kd": m.group(2), "tau_limit": m.group(5)}
@@ -115,15 +123,16 @@ def parse_run(run):
             r["到位次数"] += 1
         if m := RE_JUMP.search(ln):
             r["跳变"].append({"raw": int(m.group(1)), "圈": float(m.group(2)), "deg": float(m.group(3)),
-                              "帧": int(m.group(4)), "t": float(m.group(5))})
+                              "残差tick": int(m.group(4)), "帧": int(m.group(5)), "t": float(m.group(6))})
         if m := RE_FIX.search(ln):
-            r["修正"].append({"why": m.group(1), "from": float(m.group(2)), "to": float(m.group(3))})
+            r["修正"].append({"why": m.group(1), "from_tick": int(m.group(2)), "to_tick": int(m.group(3))})
         if m := RE_STAT.search(ln):
             r["状态行"] += 1
-            st = {"帧": int(m.group(1)), "t": float(m.group(2)), "q_enc": float(m.group(3)),
-                  "区": int(m.group(4)), "offset": float(m.group(5)), "q": float(m.group(6)),
-                  "目标": float(m.group(7)), "差": float(m.group(8)), "dq": float(m.group(9)),
-                  "tau": float(m.group(10)), "temp": int(m.group(11)), "merror": int(m.group(12))}
+            st = {"帧": int(m.group(1)), "t": float(m.group(2)), "pos_tick": int(m.group(3)),
+                  "pos_deg": float(m.group(4)), "区": int(m.group(5)), "offset": float(m.group(6)),
+                  "q": float(m.group(7)), "目标": float(m.group(8)), "差": float(m.group(9)),
+                  "dq": float(m.group(10)), "tau": float(m.group(11)), "temp": int(m.group(12)),
+                  "merror": int(m.group(13))}
             if r["首次状态"] is None:
                 r["首次状态"] = st
             r["末次状态"] = st
@@ -131,9 +140,9 @@ def parse_run(run):
             r["汇总"] = {"帧": int(m.group(1)), "回复": int(m.group(2)), "超时": int(m.group(3)),
                          "q_min": float(m.group(4)), "q_max": float(m.group(5)),
                          "首帧": float(m.group(6)), "末帧": float(m.group(7)),
-                         "offset末": float(m.group(8)), "tau峰": float(m.group(9)),
-                         "tau保持": float(m.group(10)), "temp峰": int(m.group(11)),
-                         "merror": int(m.group(12))}
+                         "offset末": float(m.group(8)), "offset末tick": int(m.group(9)),
+                         "tau峰": float(m.group(10)), "tau保持": float(m.group(11)),
+                         "temp峰": int(m.group(12)), "merror": int(m.group(13))}
         if m := RE_SUM2.search(ln):
             r["汇总2"] = {"修正次数": int(m.group(1)), "记号笔": m.group(2),
                           "行程": float(m.group(3)), "帧周期ms": float(m.group(4))}
@@ -165,8 +174,9 @@ def report(path, runs):
                   + (f"、vmax={r['cfg']['vmax']}°/s、amax={r['cfg']['amax']}°/s²、到位判据 {r['cfg']['tol']}°" if r["cfg"] else ""))
         if r["启动"]:
             s = r["启动"]
-            print(f"  启动：q_enc {fmt(s['q_enc'])}°（第 {s['区']} 区、区内 {s['区内']:+.3f}°）、"
-                  f"offset {fmt(s['offset'])}° → q {fmt(s['q'])}°；pos raw {s['raw']}")
+            print(f"  启动：pos {s['pos_tick']:+d} tick（{fmt(s['pos_deg'])}°，第 {s['区']} 区、"
+                  f"区内 {s['区内']:+.3f}°）、offset {s['offset_tick']:+d} tick（{fmt(s['offset_deg'])}°）"
+                  f" → q {fmt(s['q_deg'])}°")
         if r["命令"]:
             print(f"  命令 {len(r['命令'])} 条：{' / '.join(r['命令'])}")
         if r["命令_目标"]:
@@ -184,10 +194,12 @@ def report(path, runs):
         if r["跳变"]:
             print(f"  零点跳变 {len(r['跳变'])} 次：")
             for j in r["跳变"]:
-                print(f"    pos 差 {j['raw']:+d}（{j['圈']:+.0f} 个转子圈 ≈ {j['deg']:+.3f}°）帧 {j['帧']} t={j['t']:.3f} s")
+                print(f"    Δpos {j['raw']:+d} tick（{j['圈']:+.0f} 个转子圈 ≈ {j['deg']:+.3f}°，残差 "
+                      f"{j['残差tick']:+d} tick）帧 {j['帧']} t={j['t']:.3f} s")
         if r["修正"]:
             for f in r["修正"]:
-                print(f"    修正（{f['why']}）：offset {fmt(f['from'])}° → {fmt(f['to'])}°")
+                print(f"    修正（{f['why']}）：offset {f['from_tick']:+d} → {f['to_tick']:+d} tick"
+                      f"（{f['to_tick'] / 32768 * 360 / (19 / 3):+.3f}°）")
         if r["保护"]:
             print(f"  ⚠ 触发/出现过：{'、'.join(r['保护'])}")
         if r["收尾"]:
@@ -196,7 +208,8 @@ def report(path, runs):
             s = r["汇总"]
             print(f"  汇总：帧 {s['帧']}（回复 {s['回复']}、超时 {s['超时']}）、"
                   f"q {fmt(s['q_min'])}°…{fmt(s['q_max'])}°（末帧 {fmt(s['末帧'])}°）、"
-                  f"offset 末值 {fmt(s['offset末'])}°、力矩峰 {s['tau峰']:.3f} N·m（保持 {s['tau保持']:.3f}）、"
+                  f"offset 末值 {fmt(s['offset末'])}°（{s['offset末tick']:+d} tick）、"
+                  f"力矩峰 {s['tau峰']:.3f} N·m（保持 {s['tau保持']:.3f}）、"
                   f"温度峰 {s['temp峰']} °C、merror {s['merror']}")
         if r["汇总2"]:
             s2 = r["汇总2"]

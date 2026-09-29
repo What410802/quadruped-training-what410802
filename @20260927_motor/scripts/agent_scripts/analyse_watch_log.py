@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 
-GEAR_CANDIDATES = (6.33, 19 / 3, 6.3, 6.333)   # 官方值 / 真实的 19:3
+GEAR_CANDIDATES = (19 / 3, 6.33, 6.3, 6.333)   # 真实的 19:3 优先（程序内部用它）；SDK 的 6.33 只作对照
 
 
 def load(path: Path):

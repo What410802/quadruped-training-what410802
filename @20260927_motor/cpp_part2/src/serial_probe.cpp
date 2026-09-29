@@ -41,6 +41,7 @@
 #include "serialPort/SerialPort.h"
 #include "unitreeMotor/unitreeMotor.h"
 
+#include "ticks.h"            // 内部定点表示：位置一律是转子侧 tick（见 docs/fixed_point.md §5）
 #include "sim/fake_motor.h"   // 只在 --self-test 里用到（src/sim/ = 不控制实机的代码）
 
 #include <atomic>
@@ -217,6 +218,7 @@ struct Mark {
 // 基本只会被跳变/跨零点触发。
 int WatchRun(SerialPort *serial, const Options &opt, double N) {
     const double zero_interval = 360.0 / N;   // 相邻两个“候选零点”在输出端上的间距（讲义 §2.4）
+    bool warned_precision = false;            // SDK 的 float 与整数帧对不上时只提醒一次（见 ticks.h）
     const double dt = 0.005;
 
     // 打标记：只用 ::read 读 stdin（不碰 iostream），进程退出时阻塞的 read 不会拦住退出
@@ -301,9 +303,12 @@ int WatchRun(SerialPort *serial, const Options &opt, double N) {
         }
         ++ok_frames;
 
-        const double q_rotor = data.q;                          // 转子侧 rad
-        const double out_deg = q_rotor / N * 180.0 / M_PI;      // 输出端角度（= q/N）
-        const double q_raw = q_rotor * 32768.0 / (2.0 * M_PI);  // 反算报文里的 int32 q15 圈数
+        // 位置用**回帧里的整数 tick**（不经过 SDK 的 float），输出端角度按真实减速比 19:3 换算
+        ticks::Feedback fb;
+        ticks::ReadFeedback(data, &fb, &warned_precision);
+        const double out_deg = ticks::TicksToDeg(fb.pos);        // 输出端角度
+        const double q_raw = double(fb.pos);                     // 报文里的 int32 q15 圈（整数 tick）
+        const double q_rotor = ticks::TicksToRadRotor(fb.pos);   // 转子侧 rad（打印用）
         const double zone = std::floor(out_deg / zero_interval);
         const double in_zone = out_deg - zone * zero_interval;  // “相对最近穿过那个零点”的角度
 
@@ -342,8 +347,9 @@ int WatchRun(SerialPort *serial, const Options &opt, double N) {
 
         if (log != nullptr) {
             std::fprintf(log, "%d,%.6f,%.1f,%.6f,%.6f,%d,%.6f,%.6f,%.6f,%d,%u\n", frame, wall, q_raw,
-                         q_rotor, out_deg, static_cast<int>(zone), in_zone, data.dq, data.tau,
-                         static_cast<int>(data.temp), static_cast<unsigned>(data.merror));
+                         q_rotor, out_deg, static_cast<int>(zone), in_zone,
+                         fb.speed_raw * (M_PI / 128.0), fb.torque_raw / 256.0,
+                         static_cast<int>(fb.temp), fb.merror);
             std::fflush(log);
         }
 
@@ -351,8 +357,8 @@ int WatchRun(SerialPort *serial, const Options &opt, double N) {
             std::printf("  帧 %5d t=%6.3f：输出端 %+9.3f°（第 %d 区、区内 %+7.3f°）Δ%+7.3f°；"
                         "转子 %+9.5f rad（raw≈%+11.1f）；dq=%+7.4f、tau=%+7.4f、temp=%d、merror=%u\n",
                         frame, t, out_deg, static_cast<int>(zone), in_zone, step, q_rotor, q_raw,
-                        data.dq, data.tau, static_cast<int>(data.temp),
-                        static_cast<unsigned>(data.merror));
+                        fb.speed_raw * (M_PI / 128.0), fb.torque_raw / 256.0, static_cast<int>(fb.temp),
+                        fb.merror);
         }
 
         // 回车打的标记：记下“此刻的读数”，这就是记号笔那个点的坐标
@@ -373,11 +379,11 @@ int WatchRun(SerialPort *serial, const Options &opt, double N) {
             }
         }
 
-        if (data.merror != 0)
-            std::printf("  **电机报错**：merror=%u（1 过热 / 2 过流 / 3 过压 / 4 编码器故障）\n",
-                        static_cast<unsigned>(data.merror));
-        if (data.temp >= 80)
-            std::printf("  **温度偏高**：%d °C（90 °C 触发保护）\n", static_cast<int>(data.temp));
+        if (fb.merror != 0)
+            std::printf("  **电机报错**：merror=%u（1 过热 / 2 过流 / 3 过压 / 4 编码器 / 5 母线欠压 / "
+                        "6 绕组过热）\n", fb.merror);
+        if (fb.temp >= 80)
+            std::printf("  **温度偏高**：%d °C（90 °C 触发保护）\n", fb.temp);
         usleep(5000);
     }
 
@@ -408,10 +414,12 @@ int main(int argc, char **argv) {
         Usage(argv[0]);
         return 1;
     }
-    const double N = queryGearRatio(MotorType::GO_M8010_6);
-    std::printf("GO-M8010-6：减速比 N = %.6f（queryGearRatio）、FOC 模式号 = %d（queryMotorMode）、"
+    const double N = ticks::kGearTrue;   // 真实减速比 19:3（SDK queryGearRatio 给的是 6.33，差 0.053%）
+    std::printf("GO-M8010-6：减速比 N = 19:3 = %.6f（真值；SDK queryGearRatio 给 %.2f）、"
+                "FOC 模式号 = %d（queryMotorMode）、"
                 "刹车模式号 = %d\n",
-                N, queryMotorMode(MotorType::GO_M8010_6, MotorMode::FOC),
+                N, queryGearRatio(MotorType::GO_M8010_6),
+                queryMotorMode(MotorType::GO_M8010_6, MotorMode::FOC),
                 queryMotorMode(MotorType::GO_M8010_6, MotorMode::BRAKE));
 
     if (!opt.self_test)

@@ -1,8 +1,10 @@
 // 实机 S3–S5（任务书第二部分第 2–4 条）：**回归 0 + 键盘给角度 + 零点标定 + 零点跳变处理**。
 //
-// 偏移的写法（讲义 §2.5；课程视频讲的是同一件事："对电机的输出加上偏移、对输入减去偏移"）：
-//     q     = q_enc + offset          读回来的（板子报的）角度，**加上** offset
-//     cmd.q = (q_des − offset) · N    要下发的目标，**减去** offset 再换到转子侧
+// **内部表示：转子侧 tick（int64，1 tick = 1/32768 转子圈）**，见 src/ticks.h —— 位置类量（读数、目标、
+// offset、记号笔）全部是整数 tick；减速比只出现在"与人打交道"（度/弧度、kp/kd、速度/加速度上限）的地方。
+// 于是偏移的写法（讲义 §2.5；课程视频讲的是同一件事："对电机的输出加上偏移、对输入减去偏移"）变成纯加减：
+//     q_ticks     = pos_ticks + offset_ticks     读回来的板子位置，**加上** offset
+//     cmd.q_ticks = q_des_ticks − offset_ticks   要下发的目标，**减去** offset
 // 两个方向必须反号：写成同号就是正反馈，一给目标就飞（推导见 ../docs/real.md §5.2）。
 // 注意 `cmd.q / cmd.dq / cmd.kd` 都是**转子侧** —— 官方 SDK 不做换算，官方例程自己 `×N`
 // （example/example_goM8010_6_motor.cpp 里的 `-6.28*queryGearRatio(...)` 就是证据）。
@@ -45,13 +47,12 @@
 #include "serialPort/SerialPort.h"
 #include "unitreeMotor/unitreeMotor.h"
 
+#include "ticks.h"            // 内部定点表示与三个边界上的换算（转子 tick ↔ 报文 ↔ 度）
 #include "sim/fake_motor.h"   // 只在 --self-test 里用到（src/sim/ = 不控制实机的代码）
 
 namespace {
 
 constexpr double kDt = 0.005;                  // 名义 5 ms/帧（实测约 5.6 ms，见 README §4）
-constexpr double kDegToRad = M_PI / 180.0;
-constexpr int64_t kRawPerTurn = 32768;         // pos 是 int32 q15 圈（转子侧）⇒ 一个转子圈 = 32768
 
 struct Options {
     std::string port = "/dev/ttyUSB0";
@@ -225,27 +226,38 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    const double N = queryGearRatio(MotorType::GO_M8010_6);   // 6.33
-    const double zone_deg = 360.0 / N;                        // 一个零点区间（输出端）= 56.872°
-    const double zone_rad = zone_deg * kDegToRad;
-    const double kp_rotor = opt.kp_out / (N * N);             // 下发用（转子侧）
+    const double N_sdk = queryGearRatio(MotorType::GO_M8010_6);   // SDK 说 6.33（真实是 19:3，见 ticks.h）
+    const double N = ticks::kGearTrue;                            // 与人打交道的换算一律用真值
+    const double zone_deg = 360.0 / N;                            // 一个零点区间（输出端）= 56.842°
+    const int64_t zone_ticks = ticks::kTicksPerTurn;              // 同一个区间在转子 tick 上就是 32768
+    const double kp_rotor = opt.kp_out / (N * N);                 // 下发用（转子侧）
     const double kd_rotor = opt.kd_out / (N * N);
-    const double tau_rotor_limit = opt.tau_out_limit / N;     // 转子侧力矩上限
+    const double tau_rotor_limit = opt.tau_out_limit / N;         // 转子侧力矩上限
+    // 插值/判据都在 tick 空间做：把"度"的限制换成"tick/秒、tick/秒²、tick"
+    const double vmax_tps = ticks::DegToTicks(opt.vmax_deg);      // ticks/s
+    const double amax_tps2 = ticks::DegToTicks(opt.amax_deg);     // ticks/s²
+    const int64_t tol_ticks = std::max<int64_t>(1, ticks::DegToTicks(opt.tol_deg));
+    const int64_t jump_tol_ticks = std::max<int64_t>(1, ticks::DegToTicks(opt.jump_tol_deg));
 
     std::printf("=== S3–S5：回归 0 / 键盘给角度 / 零点标定 / 零点跳变处理 ===\n");
-    std::printf("GO-M8010-6：N = %.4f ⇒ 一个零点区间 = %.4f°（输出端）= 转子 360°；FOC 模式号 %d\n",
-                N, zone_deg, queryMotorMode(MotorType::GO_M8010_6, MotorMode::FOC));
+    std::printf("GO-M8010-6：真实减速比 N = 19:3 = %.6f（SDK queryGearRatio 给的是 %.2f，差 %.3f%%）\n"
+                "  ⇒ 一个零点区间 = 转子 %lld tick = %.4f°（输出端）= 转子 360°；FOC 模式号 %d\n",
+                N, N_sdk, 100.0 * (N - N_sdk) / N, static_cast<long long>(zone_ticks), zone_deg,
+                queryMotorMode(MotorType::GO_M8010_6, MotorMode::FOC));
+    std::printf("位置内部表示：**转子侧 tick（int64）**，1 tick = 1/32768 转子圈 = %.6f° 输出端；"
+                "度只在输入/打印处出现\n", zone_deg / ticks::kTicksPerTurn);
     std::printf("增益：输出端 kp=%.3g kd=%.3g → 转子侧 K_P=%.4f K_W=%.5f；力矩上限 %.3f N·m（输出端）"
                 "→ tor_des=%d（转子侧 raw）；插值 vmax=%.0f°/s、amax=%.0f°/s²、到位判据 %.2f°\n",
                 opt.kp_out, opt.kd_out, kp_rotor, kd_rotor, opt.tau_out_limit,
                 static_cast<int>(std::lround(tau_rotor_limit * 256.0)), opt.vmax_deg, opt.amax_deg,
                 opt.tol_deg);
-    std::printf("偏移写法（讲义 §2.5）：q = q_enc + offset（收到加）、cmd.q = (q_des − offset)·N（下发减）；"
-                "offset 初值 %+.3f°\n",
-                opt.offset_deg);
-    std::printf("跳变判据：整数 pos 差 ≈ k×32768（= k 个转子圈 = k×%.3f° 输出端），残差 ≤ %.2f° ⇒ "
-                "offset 反向补回去（物理目标不动）；一次会话最多修 %d 次\n",
-                zone_deg, opt.jump_tol_deg, opt.max_fixes);
+    std::printf("偏移写法（讲义 §2.5）：q_ticks = pos_ticks + offset_ticks（收到加）、"
+                "cmd.q_ticks = q_des_ticks − offset_ticks（下发减）；offset 初值 %+.3f° = %lld tick\n",
+                opt.offset_deg, static_cast<long long>(ticks::DegToTicks(opt.offset_deg)));
+    std::printf("跳变判据（纯整数）：Δpos 必须是 %lld tick（= 1 个转子圈 = %.4f° 输出端）的整数倍，"
+                "残差 ≤ %.2f° = %lld tick；命中就把 offset 反向补回去（物理目标不动）；最多修 %d 次\n",
+                static_cast<long long>(zone_ticks), zone_deg, opt.jump_tol_deg,
+                static_cast<long long>(jump_tol_ticks), opt.max_fixes);
 
     if (opt.no_send) {
         std::printf("--no-send：到此为止，没有打开串口、没有发任何字节。\n");
@@ -296,21 +308,22 @@ int main(int argc, char **argv) {
     cmd.tau = 0.0f;
 
     // ---------- 状态 ----------
-    double offset = opt.offset_deg * kDegToRad;  // 唯一的 offset（收到加、下发减）
-    double q_cmd = 0.0;                          // 插值出来的"当前命令角度"（q 空间）
-    double q_target = 0.0;                       // 目标（q 空间）
+    int64_t offset_ticks = ticks::DegToTicks(opt.offset_deg);   // 唯一的 offset（收到加、下发减）
+    double q_cmd_ticks = 0.0;                    // 插值出来的"当前命令位置"（tick；double 只为插值平滑）
+    int64_t q_target_ticks = 0;                  // 目标（tick）
     bool hold_torque = true;                     // true = 位置保持；false = 零力矩（卸力）
     bool have_mark = false;
-    double mark_q = 0.0;                         // 记号笔那个点在**我们的 q 空间**的坐标
-    double mark_enc = 0.0;                       // 记号笔那个点的**板子读数**（q_enc）——与 offset 无关，
-                                                 // 所以它才是"跨界会话也不变"的锚点：上电时用它查跳变
+    int64_t mark_ticks = 0;                      // 记号笔那个点在 q 空间的坐标（tick）
+    int64_t mark_enc_ticks = 0;                  // 记号笔那个点的**板子读数**（tick；与 offset 无关，
+                                                 // 所以它是"跨会话"的锚点，抄下来给 --expect-deg 用）
     bool have_prev_raw = false;
     int64_t prev_raw = 0;
     int fixes = 0;
     int cmd_seq = 0;
-    double q_first = 0.0, last_q = 0.0, q_min = 1e9, q_max = -1e9;
+    int64_t q_first = 0, last_q_ticks = 0, q_min = INT64_MAX, q_max = INT64_MIN;
     double tau_peak = 0.0, tau_hold_max = 0.0, travel_planned = 0.0;
-    double v_plan = 0.0;                         // 梯形速度曲线里的"当前计划速度"
+    double v_plan = 0.0;                         // 梯形速度曲线里的"当前计划速度"（tick/s）
+    bool warned_precision = false;               // 是否已经提醒过"SDK 的 float 与整数帧对不上"
     int temp_max = -128;
     unsigned merror_last = 0;
     double tau_over_since = -1.0;                // 力矩超过上限是从什么时候开始的
@@ -362,39 +375,41 @@ int main(int argc, char **argv) {
         std::printf("stdin 不是终端、也没给 --script：只能靠 --expect-deg 做启动检查，之后会一直保持不动。\n");
     }
 
-    // ---------- 改 offset 的"安全动作" ----------
-    // offset 一变，同样的 q 对应的**物理**目标就变了（cmd.q = (q_des − offset)·N）。要让电机不动，
-    // 必须把 q 空间的三个量（插值中的 q_cmd、目标 q_target、记号笔坐标 mark_q）**同一帧**一起挪同样的量：
-    // offset 与 q 同向挪 ⇒ (q_des − offset) 不变 ⇒ 物理目标不变。反过来只改一半就会让驱动板"跳"一下
+    // ---------- 改 offset 的"安全动作"（都在 tick 空间，整数） ----------
+    // offset 一变，同样 q 对应的**物理**目标就变了（cmd.q_ticks = q_des_ticks − offset_ticks）。要让电机
+    // 不动，必须把 q 空间的三个量（插值中的 q_cmd、目标 q_target、记号笔坐标）**同一帧**一起挪同样的量：
+    // offset 与 q 同向挪 ⇒ (q_des − offset) 不变 ⇒ 物理目标不变。只改一半会让驱动板"跳"一下
     // （dry run 实测过一次：只挪目标不挪 q_cmd，力矩峰值冲到 41.8 N·m）。
-    const auto shift_q = [&](double d) {
-        if (d == 0.0)
+    const auto shift_q = [&](int64_t d) {
+        if (d == 0)
             return;
-        q_cmd += d;
-        q_target += d;
+        q_cmd_ticks += double(d);
+        q_target_ticks += d;
         if (have_mark)
-            mark_q += d;
+            mark_ticks += d;
     };
 
     // 跳变检测与修正（S5）：板子的读数跳了 k 个零点区间（读数是**先**跳的，物理位置没变）。
-    // 只做一件事：把 offset 反向补 k 个区间。为什么这样就够（而且必须**只**做这一件）：
+    // 只做一件事：把 offset 反向补 k 个区间（k×32768 tick）。为什么这样就够（而且必须**只**做这一件）：
     //   报文里的目标 = q_des − offset；offset 少 k 个区间 ⇒ 目标读数自动多 k 个区间，
     //   正好抵消板子基准的漂移 ⇒ **同一个 q_des 仍然对应同一个物理位置，电机不会去别的地方**。
-    //   同时 q = q_enc + offset 在这一帧是连续的（跳多少补多少），所以目标/记号笔都不用动。
+    //   同时 q = pos + offset 在这一帧是连续的（跳多少补多少），所以目标/记号笔都不用动。
     //   反过来"顺手挪一下 q_des/q_cmd"就错了：那等于把物理目标整体挪一个区间（dry run 里实测过）。
-    const auto apply_jump_fix = [&](double k, const char *why) {
-        const double before = offset;
-        offset -= k * zone_rad;
+    const auto apply_jump_fix = [&](int64_t k, const char *why) {
+        const int64_t before = offset_ticks;
+        offset_ticks -= k * zone_ticks;
         v_plan = 0.0;   // 当成一次扰动：插值从当前速度重新起步（目标不变）
         ++fixes;
-        std::printf("    修正（%s）：offset %+.3f° → %+.3f°（%+.0f 个区间 = %+.3f°）；q 连续、"
+        std::printf("    修正（%s）：offset %+lld → %+lld tick（%+lld 个区间 = %+.3f°）；q 连续、"
                     "q_des 不动 ⇒ 物理目标没变（%d/%d 次）\n",
-                    why, before / kDegToRad, offset / kDegToRad, -k, -k * zone_deg, fixes, opt.max_fixes);
+                    why, static_cast<long long>(before), static_cast<long long>(offset_ticks),
+                    static_cast<long long>(-k), ticks::TicksToDeg(-k * zone_ticks), fixes, opt.max_fixes);
     };
 
-    const auto send_frame = [&](double q_out, double dq_out) {
-        cmd.q = static_cast<float>((q_out - offset) * N);
-        cmd.dq = static_cast<float>(dq_out * N);
+    const auto send_frame = [&](double q_cmd_t, double dq_rotor) {
+        // cmd.q 是**转子侧**，SDK 会再乘它的 2π′ 打包；用 CmdQRotor 保证报文里的 pos_des 就是我们要的 tick
+        cmd.q = ticks::CmdQRotor(std::llround(q_cmd_t) - offset_ticks);
+        cmd.dq = static_cast<float>(dq_rotor);   // 已经是转子侧 rad/s
         cmd.kp = static_cast<float>(hold_torque ? kp_rotor : 0.0);
         cmd.kd = static_cast<float>(hold_torque ? kd_rotor : 0.0);
         cmd.tau = 0.0f;
@@ -421,46 +436,55 @@ int main(int argc, char **argv) {
             }
             return 3;
         }
-        prev_raw = static_cast<int64_t>(std::llround(data.q * 32768.0 / (2.0 * M_PI)));
+        ticks::Feedback fb;
+        ticks::ReadFeedback(data, &fb, &warned_precision);
+        prev_raw = fb.pos;
         have_prev_raw = true;
-        last_q = data.q / N + offset;
-        q_first = last_q;
-        const double q_enc_0 = data.q / N;
-        std::printf("启动读数：q_enc %+.3f°（第 %d 区、区内 %+.3f°）、offset %+.3f° → q %+.3f°；"
-                    "pos raw %lld\n",
-                    q_enc_0 / kDegToRad, static_cast<int>(std::floor(q_enc_0 / zone_rad)),
-                    q_enc_0 / kDegToRad - std::floor(q_enc_0 / zone_rad) * zone_deg,
-                    offset / kDegToRad, last_q / kDegToRad, static_cast<long long>(prev_raw));
+        last_q_ticks = fb.pos + offset_ticks;
+        q_first = last_q_ticks;
+        const auto show = [&](int64_t t) { return ticks::TicksToDeg(t); };
+        std::printf("启动读数：pos %+lld tick（= %+.3f°，第 %lld 区、区内 %+.3f°）、offset %+lld tick"
+                    "（%+.3f°） → q %+.3f°%s\n",
+                    static_cast<long long>(fb.pos), show(fb.pos),
+                    static_cast<long long>(fb.pos / zone_ticks),
+                    show(fb.pos % zone_ticks), static_cast<long long>(offset_ticks),
+                    show(offset_ticks), show(last_q_ticks),
+                    fb.from_raw ? "" : "（**注意**：没读到原始帧，退化成用 SDK 的 float q 反算）");
         if (opt.set_zero_read) {
-            const double enc_deg = q_enc_0 / kDegToRad;
-            const double in_zone = std::fmod(enc_deg + zone_deg, zone_deg);
-            std::printf("--set-zero-read：把此刻定义成 0 ⇒ offset = %+.3f°（q_enc 原本 %+.3f°）。"
+            const int64_t enc = fb.pos;
+            const int64_t in_zone = enc % zone_ticks;
+            const double dist = std::min<double>(std::abs(double(in_zone)),
+                                                 std::abs(double(zone_ticks - in_zone)));
+            std::printf("--set-zero-read：把此刻定义成 0 ⇒ offset = %+lld tick（%+.3f°）。"
                         "0 位就落在这里，离候选零点边界 %.3f°\n",
-                        -enc_deg, enc_deg, std::min(in_zone, zone_deg - in_zone));
-            offset = -q_enc_0;
-            last_q = 0.0;
+                        static_cast<long long>(-enc), show(-enc), ticks::TicksToDeg(static_cast<int64_t>(dist)));
+            offset_ticks = -enc;
+            last_q_ticks = 0;
         }
-        q_cmd = q_target = last_q;   // 先把"当前位置"当成目标：不给目标就不会动
+        q_cmd_ticks = double(q_target_ticks = last_q_ticks);   // 先把"当前位置"当成目标：不给目标就不会动
 
         if (opt.expect_set) {
-            // 比 q（和记号笔那个点的记录值同一个空间）；q_enc 一起打出来，方便跨会话抄录
-            const double d = (last_q - opt.expect_deg * kDegToRad) / kDegToRad;
-            const double k = std::round(d / zone_deg);
-            std::printf("★ 启动检查：q %+.3f°（板子读数 q_enc %+.3f°），记录值 %+.3f°（差 %+.3f°）。",
-                        last_q / kDegToRad, (last_q - offset) / kDegToRad, opt.expect_deg, d);
-            if (std::fabs(d) <= opt.expect_tol_deg) {
+            const int64_t expect_ticks = ticks::DegToTicks(opt.expect_deg);
+            const int64_t expect_tol = ticks::DegToTicks(opt.expect_tol_deg);
+            const int64_t d = last_q_ticks - expect_ticks;                  // tick
+            const int64_t k = (d >= 0 ? d + zone_ticks / 2 : d - zone_ticks / 2) / zone_ticks;  // 最近整数倍
+            std::printf("★ 启动检查：q %+.3f°（板子读数 %+.3f°），记录值 %+.3f°（差 %+.3f° = %+lld tick）。",
+                        show(last_q_ticks), show(fb.pos), opt.expect_deg, ticks::TicksToDeg(d),
+                        static_cast<long long>(d));
+            if (std::abs(d) <= expect_tol) {
                 std::printf("在容差 %.2f° 内 ⇒ **零点没跳变**，可以继续。\n", opt.expect_tol_deg);
-            } else if (k != 0.0 && std::fabs(d - k * zone_deg) <= opt.jump_tol_deg) {
-                std::printf("差了 %+.0f 个零点区间（%+.3f° ≈ %+.0f×%.3f°）⇒ **疑似上电认错零点**"
-                            "（讲义 §2.6）。\n", k, d, k, zone_deg);
+            } else if (k != 0 && std::abs(d - k * zone_ticks) <= jump_tol_ticks) {
+                std::printf("差了 %+lld 个零点区间（%+.3f° ≈ %+lld×%.3f°）⇒ **疑似上电认错零点**"
+                            "（讲义 §2.6）。\n", static_cast<long long>(k), ticks::TicksToDeg(d),
+                            static_cast<long long>(k), zone_deg);
                 if (opt.fix_startup) {
                     std::printf("   自动修正：\n");
                     apply_jump_fix(k, "启动检查");
-                    last_q = q_enc_0 + offset;   // 板子读数没变，变的是它对应的 q
-                    q_cmd = q_target = last_q;   // 启动阶段：把"当前位置"当目标，电机不动
+                    last_q_ticks = fb.pos + offset_ticks;   // 板子读数没变，变的是它对应的 q
+                    q_cmd_ticks = double(q_target_ticks = last_q_ticks);
                     std::printf("   板子读数仍是 %+.3f°（物理位置没动），但现在它对应 q %+.3f°；"
                                 "目标已同步到当前位置，电机不会动。不想自动修就加 --no-fix-startup。\n",
-                                q_enc_0 / kDegToRad, last_q / kDegToRad);
+                                show(fb.pos), show(last_q_ticks));
                 } else {
                     std::printf("   没有自动修（去掉 --no-fix-startup，或运行时 fix）。\n");
                 }
@@ -471,22 +495,26 @@ int main(int argc, char **argv) {
     }
 
     // ---------- 状态行（`p` 命令与"到位/周期性打印"共用） ----------
+    // 只在这里把 tick 换成"度"给人看：内部所有位置量都是整数 tick
+    const auto deg = [](int64_t t) { return ticks::TicksToDeg(t); };
     const auto print_status = [&]() {
-        const double q_enc = last_q - offset;
-        const double zone = std::floor(q_enc / zone_rad);
-        const double in_zone = q_enc / kDegToRad - zone * zone_deg;
-        char mark[80];
+        const int64_t enc = last_q_ticks - offset_ticks;
+        char mark[96];
         if (have_mark)
-            std::snprintf(mark, sizeof(mark), "记号笔 q %+.3f°（q_enc %+.3f°）", mark_q / kDegToRad,
-                          mark_enc / kDegToRad);
+            std::snprintf(mark, sizeof(mark), "记号笔 q %+.3f°（板子读数 %+.3f°）", deg(mark_ticks),
+                          deg(mark_enc_ticks));
         else
             std::snprintf(mark, sizeof(mark), "未记记号笔（用 mark）");
-        std::printf("状态：q_enc %+9.3f°（第 %d 区、区内 %+7.3f°） offset %+8.3f° → q %+9.3f°；"
+        std::printf("状态：板子读数 %+9.3f°（第 %lld 区、区内 %+7.3f°） offset %+8.3f° → q %+9.3f°；"
                     "目标 %+9.3f°（差 %+7.3f°）、插值位置 %+9.3f°；%s；%s\n",
-                    q_enc / kDegToRad, static_cast<int>(zone), in_zone, offset / kDegToRad,
-                    last_q / kDegToRad, q_target / kDegToRad, (q_target - last_q) / kDegToRad,
-                    q_cmd / kDegToRad, hold_torque ? "位置保持" : "**零力矩（卸力）**", mark);
-        std::printf("      帧 %d（收到 %d）、零点跳变修正 %d 次、力矩峰值 %.3f N·m、温度峰值 %d °C\n",
+                    deg(enc), static_cast<long long>(enc / zone_ticks), deg(enc % zone_ticks),
+                    deg(offset_ticks), deg(last_q_ticks), deg(q_target_ticks),
+                    deg(q_target_ticks - last_q_ticks), deg(static_cast<int64_t>(std::llround(q_cmd_ticks))),
+                    hold_torque ? "位置保持" : "**零力矩（卸力）**", mark);
+        std::printf("      tick：pos %lld、offset %lld、q %lld、目标 %lld；"
+                    "帧 %d（收到 %d）、跳变修正 %d 次、力矩峰值 %.3f N·m、温度峰值 %d °C\n",
+                    static_cast<long long>(enc), static_cast<long long>(offset_ticks),
+                    static_cast<long long>(last_q_ticks), static_cast<long long>(q_target_ticks),
                     frames, ok_frames, fixes, tau_peak, temp_max);
     };
 
@@ -523,17 +551,17 @@ int main(int argc, char **argv) {
             while (!c.empty() && (c.back() == ' ' || c.back() == '\r'))
                 c.pop_back();
             std::printf("命令#%d：\"%s\"\n", ++cmd_seq, c.c_str());
-            const double before_target = q_target;
+            const int64_t before_target = q_target_ticks;
             if (c == "h" || c == "help" || c == "?") {
                 std::printf("%s", kHelp);
             } else if (c == "p" || c == "print") {
                 print_status();
             } else if (c == "hold") {
                 hold_torque = true;
-                q_cmd = q_target = last_q;
+                q_cmd_ticks = double(q_target_ticks = last_q_ticks);
                 travel_planned = 0.0;
                 std::printf("回到位置保持（kp=%.3g kd=%.3g 输出端），目标 = 当前位置 %+.3f°\n",
-                            opt.kp_out, opt.kd_out, last_q / kDegToRad);
+                            opt.kp_out, opt.kd_out, deg(last_q_ticks));
             } else if (c == "stop" || c == "free") {
                 hold_torque = false;
                 std::printf("**零力矩（卸力）**：电机自由、可手转；用 hold 回到位置保持\n");
@@ -541,90 +569,94 @@ int main(int argc, char **argv) {
                 std::printf("退出：先发零力矩，然后再退。\n");
                 quit = true;
             } else if (c == "m" || c == "mark") {
-                mark_q = last_q;
-                mark_enc = last_q - offset;     // = q_enc，与 offset 无关（跨会话的锚点）
+                mark_ticks = last_q_ticks;
+                mark_enc_ticks = last_q_ticks - offset_ticks;   // 板子读数（跨会话的锚点，抄它）
                 have_mark = true;
-                const double in_zone = std::fmod(mark_enc / kDegToRad + zone_deg, zone_deg);
-                std::printf("MARK：记号笔那个点 = q %+.3f°、板子读数 q_enc %+.3f°（区内 %+.3f°）。"
-                            "★ 把它抄下来：上电检查用 q_enc\n",
-                            mark_q / kDegToRad, mark_enc / kDegToRad, in_zone);
-                if (std::min(in_zone, zone_deg - in_zone) < 10.0)
+                const int64_t in_zone = mark_enc_ticks % zone_ticks;
+                const double dist_edge = std::min<double>(std::abs(double(in_zone)),
+                                                          std::abs(double(zone_ticks - in_zone)));
+                std::printf("MARK：记号笔那个点 = q %+.3f°、板子读数 %+.3f°（区内 %+.3f°，%lld tick）。"
+                            "★ 抄下板子读数：上电检查用\n",
+                            deg(mark_ticks), deg(mark_enc_ticks), ticks::TicksToDeg(in_zone),
+                            static_cast<long long>(mark_enc_ticks));
+                if (dist_edge < 10.0)
                     std::printf("    ⚠ 这个点离候选零点边界只有 %.2f°：上电最容易“认错零点”。"
                                 "用 --set-zero-read 把 0 位放到别处，或者实验时都把电机停在这里\n",
-                                std::min(in_zone, zone_deg - in_zone));
+                                dist_edge);
             } else if (c == "goto-mark" || c == "gm") {
                 if (!have_mark) {
                     std::printf("还没记过记号笔位置：先 mark。\n");
                 } else {
-                    q_target = mark_q;
+                    q_target_ticks = mark_ticks;
                     std::printf("去记号笔那个点：目标 %+.3f°（第 4 条“把输出端转到零点附近”就用它）\n",
-                                mark_q / kDegToRad);
+                                deg(mark_ticks));
                 }
             } else if (c == "expect") {
-                const double want = have_mark ? mark_q : 0.0;   // 比 q（记号笔那个点）；q_enc 也一起打出来
-                const double q_enc_now = last_q - offset;
-                const double d = (last_q - want) / kDegToRad;
-                const double k = std::round(d / zone_deg);
-                std::printf("对照（q 空间）：现在 %+.3f°、记录值 %+.3f°（差 %+.3f°）；"
-                            "板子读数 q_enc %+.3f°", last_q / kDegToRad, want / kDegToRad, d,
-                            q_enc_now / kDegToRad);
-                if (std::fabs(d) <= opt.expect_tol_deg)
+                const int64_t want = have_mark ? mark_ticks : 0;   // 比 q（记号笔那个点），纯整数
+                const int64_t d = last_q_ticks - want;
+                const int64_t k = (d >= 0 ? d + zone_ticks / 2 : d - zone_ticks / 2) / zone_ticks;
+                std::printf("对照（tick，整数）：现在 %+.3f°、记录值 %+.3f°（差 %+lld tick = %+.3f°）；"
+                            "板子读数 %+.3f°", deg(last_q_ticks), deg(want), static_cast<long long>(d),
+                            ticks::TicksToDeg(d), deg(last_q_ticks - offset_ticks));
+                if (std::abs(d) <= ticks::DegToTicks(opt.expect_tol_deg))
                     std::printf(" ⇒ ≈0，**零点没跳变**。\n");
-                else if (k != 0.0 && std::fabs(d - k * zone_deg) <= opt.jump_tol_deg)
-                    std::printf(" ⇒ 差了 %+.0f 个区间（≈%+.3f°），**疑似认错零点**：用 fix 修。\n", k,
-                                k * zone_deg);
+                else if (k != 0 && std::abs(d - k * zone_ticks) <= jump_tol_ticks)
+                    std::printf(" ⇒ 差了 %+lld 个区间（≈%+.3f°），**疑似认错零点**：用 fix 修。\n",
+                                static_cast<long long>(k), ticks::TicksToDeg(k * zone_ticks));
                 else
                     std::printf(" ⇒ 既不是 0 也不是整数个区间：先别动电机（也可能是位置被手动挪过）。\n");
             } else if (c == "fix") {
-                const double want = have_mark ? mark_q : 0.0;
-                const double d = (last_q - want) / kDegToRad;
-                const double k = std::round(d / zone_deg);
-                if (k == 0.0 || std::fabs(d - k * zone_deg) > opt.jump_tol_deg) {
-                    std::printf("与记录值相差 %+.3f°，不是整数个区间 ⇒ fix 不动"
-                                "（先确认电机停在记号笔那个位置、或者先 mark）\n", d);
+                const int64_t want = have_mark ? mark_ticks : 0;
+                const int64_t d = last_q_ticks - want;
+                const int64_t k = (d >= 0 ? d + zone_ticks / 2 : d - zone_ticks / 2) / zone_ticks;
+                if (k == 0 || std::abs(d - k * zone_ticks) > jump_tol_ticks) {
+                    std::printf("与记录值相差 %+.3f°（%+lld tick），不是整数个区间 ⇒ fix 不动"
+                                "（先确认电机停在记号笔那个位置、或者先 mark）\n",
+                                ticks::TicksToDeg(d), static_cast<long long>(d));
                 } else {
-                    const double q_enc_now = last_q - offset;   // 修正前那个板子读数
+                    const int64_t enc_now = last_q_ticks - offset_ticks;   // 修正前那个板子读数
                     apply_jump_fix(-k, "fix 命令");
-                    last_q = q_enc_now + offset;   // 同一个板子读数、用新 offset 解释 ⇒ q 回到记录值
+                    last_q_ticks = enc_now + offset_ticks;   // 同一个板子读数、用新 offset 解释
                     std::printf("    记号笔那个点读 %+.3f°（S4 验收：+30 之后这里应该是 +30.00°）；"
-                                "电机没动\n",
-                                mark_q / kDegToRad);
+                                "电机没动\n", deg(mark_ticks));
                 }
             } else if (c.size() > 1 && c[0] == 'o' && (c[1] == '+' || c[1] == '-' || c[1] == ' ')) {
-                const double d = std::atof(c.c_str() + 1);
-                const double old_offset = offset;
+                const double d_deg = std::atof(c.c_str() + 1);
+                const int64_t old_offset = offset_ticks;
                 if (c[1] == ' ')
-                    offset = d * kDegToRad;
+                    offset_ticks = ticks::DegToTicks(d_deg);
                 else
-                    offset += (c[1] == '+' ? d : -d) * kDegToRad;
-                const double delta = offset - old_offset;
-                std::printf("offset %+.3f° → %+.3f°（收到加、下发减；差 %+.3f°）\n", old_offset / kDegToRad,
-                            offset / kDegToRad, delta / kDegToRad);
-                if (hold_torque)
+                    offset_ticks += ticks::DegToTicks(c[1] == '+' ? d_deg : -d_deg);
+                const int64_t delta = offset_ticks - old_offset;
+                std::printf("offset %+.3f° → %+.3f°（收到加、下发减；差 %+lld tick = %+.3f°）\n",
+                            deg(old_offset), deg(offset_ticks), static_cast<long long>(delta),
+                            ticks::TicksToDeg(delta));
+                if (delta != 0 && hold_torque)
                     shift_q(delta);
                 if (have_mark)
                     std::printf("    q 空间同步挪 %+.3f°（物理目标不动）；记号笔那个点现在读 %+.3f°"
                                 "（先 mark 在 0 位的话，这里就应该是 +30.00°）\n",
-                                delta / kDegToRad, mark_q / kDegToRad);
+                                ticks::TicksToDeg(delta), deg(mark_ticks));
             } else if (c.size() > 7 && c.compare(0, 7, "travel ") == 0) {
-                const double d = std::atof(c.c_str() + 7);
-                q_target = last_q + d * kDegToRad;
+                const double d_deg = std::atof(c.c_str() + 7);
+                q_target_ticks = last_q_ticks + ticks::DegToTicks(d_deg);
                 std::printf("本会话相对“现在”再转 %.2f° ⇒ 目标 %+.3f°（找记号笔位置用；"
-                            "对准之后请 mark）\n", d, q_target / kDegToRad);
+                            "对准之后请 mark）\n", d_deg, deg(q_target_ticks));
             } else if (std::isdigit(static_cast<unsigned char>(c[0])) || c[0] == '-' || c[0] == '+' ||
                        c[0] == '.') {
-                q_target = std::atof(c.c_str()) * kDegToRad;
+                q_target_ticks = ticks::DegToTicks(std::atof(c.c_str()));
             } else {
                 std::printf("没看懂：\"%s\"（h 看帮助）\n", c.c_str());
             }
-            if (std::fabs(q_target - before_target) > 1e-12 && c != "fix")
-                travel_planned += std::fabs(q_target - before_target);
-            if (std::fabs(q_target - last_q) > opt.tol_deg * kDegToRad && c != "hold" && c != "stop") {
-                const double travel = (q_target - last_q) / kDegToRad;
-                std::printf("   目标 %+.3f°（现在 %+.3f°）：要转 %+.2f° ≈ %.2f 圈输出端 ≈ %.2f 圈转子，"
-                            "按 vmax=%.0f°/s 直线时间 %.1f s\n",
-                            q_target / kDegToRad, last_q / kDegToRad, travel, travel / 360.0,
-                            travel / 360.0 * N, opt.vmax_deg, std::fabs(travel) / opt.vmax_deg);
+            if (q_target_ticks != before_target && c != "fix")
+                travel_planned += std::abs(ticks::TicksToDeg(q_target_ticks - before_target));
+            if (std::abs(q_target_ticks - last_q_ticks) > tol_ticks && c != "hold" && c != "stop") {
+                const double travel = ticks::TicksToDeg(q_target_ticks - last_q_ticks);
+                std::printf("   目标 %+.3f°（现在 %+.3f°）：要转 %+.2f° ≈ %.2f 圈输出端 ≈ %.2f 圈转子"
+                            "（%lld tick），按 vmax=%.0f°/s 直线时间 %.1f s\n",
+                            deg(q_target_ticks), deg(last_q_ticks), travel, travel / 360.0,
+                            travel / 360.0 * N, static_cast<long long>(q_target_ticks - last_q_ticks),
+                            opt.vmax_deg, std::fabs(travel) / opt.vmax_deg);
                 if (std::fabs(travel) > 360.0)
                     std::printf("   ⚠ 这是一次多圈行程（读数是从上电起累计的）：确认输出端能自由转、周围没人\n");
             }
@@ -633,33 +665,33 @@ int main(int argc, char **argv) {
             break;
 
         // ---- 2. 插值：梯形速度曲线（加/减速受 amax 限制、最高 vmax），一步一步走向 q_target ----
+        // 全程在 tick 空间（v_plan 的单位是 tick/s）；因为 tick 比"度"细 ~576 倍，量化看不见
         {
-            const double err = q_target - q_cmd;
-            const double a_step = opt.amax_deg * kDegToRad * kDt;      // 每帧允许的速度变化
-            if (std::fabs(err) <= 1e-12) {
+            const double err = double(q_target_ticks) - q_cmd_ticks;
+            const double a_step = amax_tps2 * kDt;                  // 每帧允许的速度变化（tick/s）
+            if (std::fabs(err) <= 1e-9) {
                 v_plan = 0.0;
             } else {
                 // 该踩的最高速度：v² = 2·a·|Δ|（这样才煞得住）；先取方向，再按斜坡逼近
-                const double v_cap = std::min(std::sqrt(2.0 * opt.amax_deg * kDegToRad * std::fabs(err)),
-                                              opt.vmax_deg * kDegToRad);
+                const double v_cap = std::min(std::sqrt(2.0 * amax_tps2 * std::fabs(err)), vmax_tps);
                 const double v_want = (err > 0.0) ? v_cap : -v_cap;
                 if (std::fabs(v_want - v_plan) <= a_step)
-                    v_plan = v_want;                                    // 这条边已经走完（加速段/减速段交接）
+                    v_plan = v_want;                                // 这条边已经走完（加速段/减速段交接）
                 else
-                    v_plan += (v_want > v_plan ? a_step : -a_step);      // 还在按加速度斜坡爬/收
+                    v_plan += (v_want > v_plan ? a_step : -a_step);  // 还在按加速度斜坡爬/收
             }
             const double step = v_plan * kDt;
             if (std::fabs(err) <= std::fabs(step)) {
-                q_cmd = q_target;                                       // 这一帧就能到
+                q_cmd_ticks = double(q_target_ticks);               // 这一帧就能到
                 v_plan = 0.0;
             } else {
-                q_cmd += step;
+                q_cmd_ticks += step;
             }
         }
-        const double v_cmd = v_plan;
+        const double v_cmd = v_plan * (2.0 * ticks::kPiSdk / ticks::kTicksPerTurn);  // tick/s → 转子 rad/s
 
         // ---- 3. 发一帧 ----
-        const bool ok = send_frame(q_cmd, v_cmd);
+        const bool ok = send_frame(q_cmd_ticks, v_cmd);
         ++frames;
         if (!ok) {
             ++timeouts;
@@ -680,58 +712,63 @@ int main(int argc, char **argv) {
         temp_max = std::max(temp_max, static_cast<int>(data.temp));
         merror_last = data.merror;
 
-        // ---- 4. 反馈 → 我们的量：q = q_enc + offset ----
-        const double dq_out = data.dq / N;          // 板子报的速度（输出端 rad/s）
-        const double tau_out = data.tau * N;        // 讲义 §2.3：τ_out = N·τ_rotor
-        const int64_t raw = static_cast<int64_t>(std::llround(data.q * 32768.0 / (2.0 * M_PI)));
-        const double q_enc = data.q / N;
-        last_q = q_enc + offset;
-        q_min = std::min(q_min, last_q);
-        q_max = std::max(q_max, last_q);
+        // ---- 4. 反馈 → tick（整数）----
+        ticks::Feedback fb;
+        ticks::ReadFeedback(data, &fb, &warned_precision);
+        const double dq_out = (fb.speed_raw / (256.0 / (2.0 * M_PI))) / N;  // 输出端 rad/s（手册 §8.2 的 ω）
+        const double tau_out = (fb.torque_raw / 256.0) * N;                 // 讲义 §2.3：τ_out = N·τ_rotor
+        const int64_t pos_ticks = fb.pos;
+        last_q_ticks = pos_ticks + offset_ticks;
+        q_min = std::min(q_min, last_q_ticks);
+        q_max = std::max(q_max, last_q_ticks);
         tau_peak = std::max(tau_peak, std::fabs(tau_out));
-        if (hold_torque && std::fabs(q_target - last_q) <= opt.tol_deg * kDegToRad)
+        if (hold_torque && std::abs(q_target_ticks - last_q_ticks) <= tol_ticks)
             tau_hold_max = std::max(tau_hold_max, std::fabs(tau_out));
 
-        // ---- 5. 零点跳变检测：用**整数 raw 差**（1 个零点区间 = k 个转子整圈 = k×32768） ----
+        // ---- 5. 零点跳变检测：**纯整数**（1 个零点区间 = 1 个转子整圈 = 32768 tick）----
         if (have_prev_raw) {
-            const int64_t d_raw = raw - prev_raw;
-            const double k = std::round(static_cast<double>(d_raw) / kRawPerTurn);
-            // 残差换算到输出端 °：raw 是 q15 圈（转子侧）⇒ 1 圈 = 360°/N（输出端） = 一个零点区间
-            const double resid_deg =
-                (static_cast<double>(d_raw) - k * kRawPerTurn) / kRawPerTurn * (360.0 / N);
-            if (k != 0.0 && std::fabs(resid_deg) <= opt.jump_tol_deg) {
-                std::printf("  **零点跳变：pos 差 %+lld（%+.0f 个转子圈 ≈ %+.3f° 输出端）** 帧 %d t=%.3f s\n",
-                            static_cast<long long>(d_raw), k, k * zone_deg, frame, wall_now());
+            const int64_t d = pos_ticks - prev_raw;
+            const int64_t k = (d >= 0 ? d + zone_ticks / 2 : d - zone_ticks / 2) / zone_ticks;
+            const int64_t resid = d - k * zone_ticks;              // tick；整圈时必须是 0 附近
+            if (k != 0 && std::abs(resid) <= jump_tol_ticks) {
+                std::printf("  **零点跳变：Δpos %+lld tick = %+lld 个转子圈 ≈ %+.3f° 输出端"
+                            "（残差 %+lld tick）** 帧 %d t=%.3f s\n",
+                            static_cast<long long>(d), static_cast<long long>(k),
+                            ticks::TicksToDeg(k * zone_ticks), static_cast<long long>(resid), frame,
+                            wall_now());
                 apply_jump_fix(k, "运行中检测到");
-                last_q = q_enc + offset;   // 同一个板子读数、用新 offset 解释 ⇒ q 连续（不跳）
+                last_q_ticks = pos_ticks + offset_ticks;   // 同一个板子读数、用新 offset 解释 ⇒ q 连续
                 if (fixes > opt.max_fixes) {
                     std::printf("**跳变次数超过 %d 次 ⇒ 停下来查（接线/编码器/供电），不要继续。**\n",
                                 opt.max_fixes);
                     exit_code = 7;
                     break;
                 }
-            } else if (k != 0.0) {
-                std::printf("  本帧步进 %+lld（≈%+.2f 个转子圈）但不是整圈（残差 %+.2f°）——"
-                            "先怀疑手转太快/换了方向，不算跳变\n",
-                            static_cast<long long>(d_raw), static_cast<double>(d_raw) / kRawPerTurn,
-                            resid_deg);
+            } else if (k != 0) {
+                std::printf("  本帧步进 %+lld tick（≈%+.2f 个转子圈）但不是整圈（残差 %+lld tick = %.3f°）"
+                            "——先怀疑手转太快/换了方向，不算跳变\n",
+                            static_cast<long long>(d), double(d) / double(zone_ticks),
+                            static_cast<long long>(resid), ticks::TicksToDeg(resid));
             }
         }
-        prev_raw = raw;
+        prev_raw = pos_ticks;
         have_prev_raw = true;
 
         // ---- 6. 打印 + 到位 ----
-        const bool arrive = std::fabs(q_target - last_q) <= opt.tol_deg * kDegToRad;
+        const bool arrive = std::abs(q_target_ticks - last_q_ticks) <= tol_ticks;
         if (frame % every == 0 || arrive != arrived_printed || (arrive && arrived_since < 0.0)) {
-            const double zone = std::floor(q_enc / zone_rad);
-            std::printf("  帧 %5d t=%6.3f：q_enc %+9.3f°（第 %d 区） offset %+8.3f° → q %+9.3f°；"
-                        "目标 %+9.3f° 差 %+7.3f°；dq %+6.2f°/s、tau %+6.3f N·m%s、temp %d、merror %u\n",
-                        frame, wall_now(), q_enc / kDegToRad, static_cast<int>(zone),
-                        offset / kDegToRad, last_q / kDegToRad, q_target / kDegToRad,
-                        (q_target - last_q) / kDegToRad, dq_out / kDegToRad, tau_out,
-                        (std::fabs(q_target - last_q) / kDegToRad > 2.0 &&
+            const int64_t diff = q_target_ticks - last_q_ticks;
+            std::printf("  帧 %5d t=%6.3f：pos %+9lld tick（%+9.3f°、第 %lld 区） offset %+8.3f° → "
+                        "q %+9.3f°；目标 %+9.3f° 差 %+7.3f°；dq %+6.2f°/s、tau %+6.3f N·m%s、temp %d、"
+                        "merror %u\n",
+                        frame, wall_now(), static_cast<long long>(pos_ticks),
+                        ticks::TicksToDeg(pos_ticks),
+                        static_cast<long long>(pos_ticks / zone_ticks), deg(offset_ticks),
+                        deg(last_q_ticks), deg(q_target_ticks), ticks::TicksToDeg(diff), dq_out,
+                        tau_out,
+                        (std::abs(diff) > ticks::DegToTicks(2.0) &&
                          std::fabs(tau_out) >= 0.5 * opt.tau_out_limit) ? " ← 力矩接近上限" : "",
-                        static_cast<int>(data.temp), static_cast<unsigned>(data.merror));
+                        static_cast<int>(fb.temp), fb.merror);
             if (arrive)
                 std::printf("  ⇒ 到位（|差| ≤ %.2f°），保持中\n", opt.tol_deg);
             arrived_printed = arrive;
@@ -744,14 +781,14 @@ int main(int argc, char **argv) {
         }
 
         // ---- 7. 保护：报错 / 温度 / 力矩上限 ----
-        if (merror_last != 0) {
-            std::printf("**电机报错 merror=%u**（1 过热/2 过流/3 过压/4 编码器）⇒ 卸力退出\n",
-                        static_cast<unsigned>(merror_last));
+        if (fb.merror != 0) {
+            std::printf("**电机报错 merror=%u**（1 过热/2 过流/3 过压/4 编码器/5 母线欠压/6 绕组过热）"
+                        "⇒ 卸力退出\n", fb.merror);
             exit_code = 4;
             break;
         }
-        if (data.temp >= 80) {
-            std::printf("**温度 %d °C 偏高**（90 °C 触发保护）⇒ 卸力退出\n", static_cast<int>(data.temp));
+        if (fb.temp >= 80) {
+            std::printf("**温度 %d °C 偏高**（90 °C 触发保护）⇒ 卸力退出\n", fb.temp);
             exit_code = 4;
             break;
         }
@@ -772,7 +809,7 @@ int main(int argc, char **argv) {
         // ---- 8. 脚本模式：等都发完 + 到位 + 稳住 --settle 秒才退出 ----
         if (opt.seconds > 0.0 && now >= opt.seconds) {
             std::printf("--seconds %.1f 到 ⇒ 收尾退出（差 %+.3f°）\n", opt.seconds,
-                        (q_target - last_q) / kDegToRad);
+                        ticks::TicksToDeg(q_target_ticks - last_q_ticks));
             break;
         }
         if (!opt.script.empty() && script_last_set) {
@@ -789,7 +826,7 @@ int main(int argc, char **argv) {
             }
             if (empty && now - script_last > opt.script_step + 30.0) {
                 std::printf("脚本跑完但 30 s 内没能到位（差 %+.3f°）⇒ 按超时收尾\n",
-                            (q_target - last_q) / kDegToRad);
+                            ticks::TicksToDeg(q_target_ticks - last_q_ticks));
                 exit_code = 6;
                 break;
             }
@@ -814,13 +851,16 @@ int main(int argc, char **argv) {
             exit_code = 3;
     } else {
         std::printf("帧 %d（回复 %d、超时 %d）；q %+.3f°…%+.3f°（首帧 %+.3f°、末帧 %+.3f°）；"
-                    "offset 末值 %+.3f°；力矩峰值 %.3f N·m（保持时 %.3f）；温度峰值 %d °C；末次 merror=%u\n",
-                    frames, ok_frames, timeouts, q_min / kDegToRad, q_max / kDegToRad, q_first / kDegToRad,
-                    last_q / kDegToRad, offset / kDegToRad, tau_peak, tau_hold_max, temp_max, merror_last);
-        std::printf("零点跳变修正 %d 次；记号笔那个点 %s%s；本次计划行程合计 %.1f°；真实帧周期 %.3f ms"
-                    "（名义 %.1f ms）\n",
+                    "offset 末值 %+.3f°（%+lld tick）；力矩峰值 %.3f N·m（保持时 %.3f）；温度峰值 %d °C；"
+                    "末次 merror=%u\n",
+                    frames, ok_frames, timeouts, ticks::TicksToDeg(q_min), ticks::TicksToDeg(q_max),
+                    ticks::TicksToDeg(q_first), ticks::TicksToDeg(last_q_ticks),
+                    ticks::TicksToDeg(offset_ticks), static_cast<long long>(offset_ticks), tau_peak,
+                    tau_hold_max, temp_max, merror_last);
+        std::printf("零点跳变修正 %d 次；记号笔那个点 %s%s；本次计划行程合计 %.1f°；"
+                    "真实帧周期 %.3f ms（名义 %.1f ms）\n",
                     fixes, have_mark ? "已记录" : "未记录（mark）",
-                    have_mark ? "" : "（S4 的验收要用它）", travel_planned / kDegToRad,
+                    have_mark ? "" : "（S4 的验收要用它）", travel_planned,
                     ok_frames > 1 ? 1000.0 * wall_now() / ok_frames : 0.0, kDt * 1000.0);
     }
     delete serial;

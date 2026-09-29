@@ -46,7 +46,7 @@
 │   ├── docs/                  # real.md（硬件现状、成熟度、S0–S5 计划与手册）、glossary.md（缩写表）
 │   │                          #   / fake_motor.md（仿真电机：层级、接口、时序、保真度边界）
 │   │                          #   / runbook.md（实机执行清单：批次 0–7、记录表、故障处置、验收演示）
-│   └── src/                   # serial_probe.cpp（S2）/ spin_test.cpp（S1）/ motor_ctl.cpp（S3–S5）
+│   └── src/                   # ticks.h（内部定点表示）/ serial_probe.cpp（S2）/ spin_test.cpp（S1）/ motor_ctl.cpp（S3–S5）
 │       └── sim/               # 不控制实机的代码：pty_serial_shim.c / fake_motor.h（含假驱动板）/ fake_motor_dryrun.cpp
 ├── docs/                      # 两部分共用的资料（子工程的文档已移到各自的 docs/）
 │   └── teaching-materials/    # 讲义与任务书

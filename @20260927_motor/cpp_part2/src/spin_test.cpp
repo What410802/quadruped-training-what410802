@@ -39,6 +39,7 @@
 #include "serialPort/SerialPort.h"
 #include "unitreeMotor/unitreeMotor.h"
 
+#include "ticks.h"            // 位置统一用转子侧 tick（见 docs/fixed_point.md §5）
 #include "sim/fake_motor.h"   // 只在 --self-test 里用到（src/sim/ = 不控制实机的代码）
 
 #include <atomic>
@@ -209,7 +210,12 @@ int main(int argc, char **argv) {
 
     const double dt = 0.005; // 5 ms 一帧（200 Hz）
     int frames = 0, timeouts = 0, timeout_streak = 0, ok_frames = 0;
-    double dq_min = 1e9, dq_max = -1e9, q_first = 0.0, q_last = 0.0;
+    double dq_min = 1e9, dq_max = -1e9;
+    int64_t q_first = 0, q_last = 0;      // 位置：转子侧 tick（整数，来自回帧）
+    bool warned_precision = false;        // SDK 的 float 与整数帧对不上时只提醒一次（见 ticks.h）
+    int64_t q_ticks = 0;                  // 最近一帧的位置（转子 tick；阶段标记要用，所以放循环外）
+    ticks::Feedback fb;                   // 最近一帧的整数反馈（打印/判断都用它，不走 SDK 的 float）
+    double dq_out = 0.0;                  // 最近一帧的输出端转速（圈/s，由 speed_raw 换算）
     int temp_max = -128;
     unsigned merror_last = 0;
     bool have_reply = false;
@@ -218,7 +224,7 @@ int main(int argc, char **argv) {
     // 阶段标记（帧号 / 转子位置 / **墙钟**）：名义 5 ms 一帧只是我们自己的定时，
     // 真实周期会被 usleep 的粒度与调度拉长（实测 ~5.6 ms），而"物理转速"只能用墙钟算，
     // 所以每次阶段切换都把墙钟与位置一起记下来。
-    struct Mark { std::string name; int frame; double q; double wall; };
+    struct Mark { std::string name; int frame; int64_t q; double wall; };   // q 单位：转子 tick
     std::vector<Mark> marks;
     const auto wall0 = std::chrono::steady_clock::now();
     const auto wall_now = [&wall0] {
@@ -249,14 +255,16 @@ int main(int argc, char **argv) {
         if (ok) {
             ++ok_frames;
             timeout_streak = 0;
-            const double dq_out = data.dq / N / (2.0 * M_PI); // 输出端 圈/s
+            ticks::ReadFeedback(data, &fb, &warned_precision);
+            dq_out = fb.speed_raw / (256.0 / (2.0 * M_PI)) / N / (2.0 * M_PI);
+            q_ticks = fb.pos;   // 位置一律用整数 tick
             dq_min = std::min(dq_min, dq_out);
             dq_max = std::max(dq_max, dq_out);
             if (ok_frames <= 2)
-                q_first = data.q;
-            q_last = data.q;
-            temp_max = std::max(temp_max, static_cast<int>(data.temp));
-            merror_last = data.merror;
+                q_first = q_ticks;
+            q_last = q_ticks;
+            temp_max = std::max(temp_max, fb.temp);
+            merror_last = fb.merror;
             have_reply = true;
         } else {
             ++timeouts;
@@ -273,22 +281,22 @@ int main(int argc, char **argv) {
                         "已发 %d 帧、收到 %d 帧\n",
                         t, wall_now(), phase, cmd.dq, cmd.dq / N / (2.0 * M_PI), frames, ok_frames);
             last_phase = phase;
-            marks.push_back({phase, frames, have_reply ? data.q : 0.0, wall_now()});
+            marks.push_back({phase, frames, have_reply ? q_ticks : 0, wall_now()});
         }
         if (ok && frames % 50 == 0) {
             std::printf("    帧 %5d：转子 实测 %.4f rad/s、tau=%+.4f N·m；输出端 %.4f 圈/s、累计转角 %.2f°、"
                         "temp=%d °C、merror=%u\n",
-                        frames, data.dq, data.tau, data.dq / N / (2.0 * M_PI),
-                        data.q / N * 180.0 / M_PI, data.temp, data.merror);
+                        frames, fb.speed_raw * (M_PI / 128.0), fb.torque_raw / 256.0, dq_out,
+                        ticks::TicksToDeg(q_ticks), fb.temp, fb.merror);
         }
-        if (ok && data.merror != 0) {
-            std::printf("**电机报错 merror=%u**（1 过热/2 过流/3 过压/4 编码器故障）：立刻收速度退出。\n",
-                        data.merror);
+        if (ok && fb.merror != 0) {
+            std::printf("**电机报错 merror=%u**（1 过热/2 过流/3 过压/4 编码器/5 母线欠压/6 绕组过热）："
+                        "立刻收速度退出。\n", fb.merror);
             exit_code = 4;
             break;
         }
-        if (ok && data.temp >= 80) {
-            std::printf("**温度 %d °C 偏高**（90 °C 触发保护）：收速度退出。\n", data.temp);
+        if (ok && fb.temp >= 80) {
+            std::printf("**温度 %d °C 偏高**（90 °C 触发保护）：收速度退出。\n", fb.temp);
             exit_code = 4;
             break;
         }
@@ -326,9 +334,11 @@ int main(int argc, char **argv) {
         return 3;
     }
     std::printf("帧数 %d（收到回复 %d、超时 %d）；实测输出端转速区间 %.4f…%.4f 圈/s（指令 %.4f）；\n"
-                "转子侧位置 %.4f → %.4f rad（输出端 %.2f° → %.2f°）；温度峰值 %d °C；最后一次 merror=%u\n",
-                frames, ok_frames, timeouts, dq_min, dq_max, opt.rev_per_s, q_first, q_last,
-                q_first / N * 180.0 / M_PI, q_last / N * 180.0 / M_PI, temp_max, merror_last);
+                "位置 %lld → %lld tick（转子侧；输出端 %.2f° → %.2f°）；温度峰值 %d °C；"
+                "最后一次 merror=%u\n",
+                frames, ok_frames, timeouts, dq_min, dq_max, opt.rev_per_s,
+                static_cast<long long>(q_first), static_cast<long long>(q_last),
+                ticks::TicksToDeg(q_first), ticks::TicksToDeg(q_last), temp_max, merror_last);
     // 真实帧周期 + 用墙钟算的"物理转速"（这才是与用标志物量出来的速度对应的那个数）
     if (ok_frames > 1) {
         const double wall_total = wall_now();
@@ -342,14 +352,14 @@ int main(int argc, char **argv) {
                 down = &m;
         }
         if (hold != nullptr && down != nullptr && down->wall > hold->wall) {
-            const double rev = (down->q - hold->q) / (2.0 * M_PI);
+            const double rev = double(down->q - hold->q) / ticks::kTicksPerTurn;   // tick 差分 → 转子圈
             const double secs = down->wall - hold->wall;
             std::printf("匀速段（用**墙钟**与位置反馈算）：%.2f s 转了 %.3f 圈转子 = %.3f 圈输出端"
                         " ⇒ **%.4f 圈/s**（指令 %.4f，达成 %.0f%%）\n",
                         secs, rev, rev / N, rev / N / secs, opt.rev_per_s,
                         100.0 * std::fabs(rev / N / secs) / std::max(1e-9, std::fabs(opt.rev_per_s)));
-            std::printf("（同名物理量用 data.dq 读出来是 %.4f 圈/s，两者的差别就是\"速度反馈准不准\"）\n",
-                        dq_max);
+            std::printf("（同名物理量用回帧的 speed（int16，π/128 量化）读出来是 %.4f 圈/s，"
+                        "两者的差别就是\"速度反馈准不准\"）\n", dq_max);
         }
     }
     std::printf("（结束时的转子位置是\"相对上电时那个零点\"的读数，下一阶段 S2/S3 就用它来标零。）\n");
