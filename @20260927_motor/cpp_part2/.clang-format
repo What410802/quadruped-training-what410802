@@ -1,0 +1,19 @@
+# 第二部分的 C++ 风格：Allman 大括号 + 4 空格 + 100 列 + C++17（通行做法，理由见
+# ../../../docs/learn/cpp-cmake.md 的「工程目录与文件风格」一节）。
+# 用法：clang-format -i <file>（只作用于本目录，仓库根的 .clang-format 留给第一部分的施工区。）
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++17
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Allman       # if/for/函数/类 的花括号都另起一行
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+BreakStringLiterals: false      # 不拆字符串字面量（我们的 printf 文案很长）
+PointerAlignment: Left          # int* p
+IncludeBlocks: Preserve     # 不重排 include：SDK 的 crc_ccitt.h 依赖调用方先包 <cstdint>
+SortIncludes: false

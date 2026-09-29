@@ -8,8 +8,9 @@ set(_kRepoRoot "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 get_filename_component(_kSdkDefault "${_kRepoRoot}/../ReadOnly.d/unitree_actuator_sdk" ABSOLUTE)
 set(UNITREE_SDK_DIR "${_kSdkDefault}" CACHE PATH "宇树官方电机 SDK 目录")
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)    # 给 VS Code / clangd 的智能提示用（解决"代码标红"）
 
 find_package(Threads REQUIRED)
@@ -45,31 +46,47 @@ find_package(Threads REQUIRED)
 # 上面的路径可能是相对的（相对 build 目录以外的调用位置），rpath 要用绝对路径
 get_filename_component(UNITREE_SDK_LIB_DIR "${UNITREE_SDK_DIR}/lib" ABSOLUTE)
 
-# src/sim/ = **不用于控制实机**的代码（PTY 垫片、假电机、dry run）；src/ 下其余文件都要接实机。
-#
+# 目录职责：include/motor_bench/ = 公开接口（.hpp），src/ = 实现，apps/ = 可执行入口，
+# src/sim/ 与 include/motor_bench/sim/ = **不用于控制实机**的代码（PTY 垫片、假电机、dry run）。
+add_library(motor_bench_core
+    src/motor_bus.cpp
+    src/zero_tracking.cpp
+    src/console.cpp
+)
+target_include_directories(motor_bench_core
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
+target_link_libraries(motor_bench_core PUBLIC "${UNITREE_SDK_LIB}" Threads::Threads)
+target_compile_features(motor_bench_core PUBLIC cxx_std_17)
+
 # LD_PRELOAD 垫片：让 SDK 的 SerialPort 能挂在 PTY 上（--self-test 用），实机不需要
-add_library(pty_serial_shim SHARED src/sim/pty_serial_shim.c)
+add_library(pty_serial_shim SHARED src/pty_serial_shim.c)
 target_link_libraries(pty_serial_shim PRIVATE dl)
 
 # 无硬件自检：PTY + 假电机跑通"上位机 → SDK → 报文 → 反馈"
-add_executable(fake_motor_dryrun src/sim/fake_motor_dryrun.cpp)
-target_link_libraries(fake_motor_dryrun PRIVATE "${UNITREE_SDK_LIB}" Threads::Threads)
+add_executable(fake_motor_dryrun apps/sim_fake_motor_dryrun.cpp)
+target_link_libraries(fake_motor_dryrun PRIVATE motor_bench_core)
 
 # 实机探针：只开端口 / 零力矩读反馈（默认不发字节）
-add_executable(serial_probe src/serial_probe.cpp)
-target_link_libraries(serial_probe PRIVATE "${UNITREE_SDK_LIB}" Threads::Threads)
+add_executable(serial_probe apps/serial_probe.cpp)
+target_link_libraries(serial_probe PRIVATE motor_bench_core)
 
 # S1：带斜坡与限幅的"让电机慢慢转起来"
-add_executable(spin_test src/spin_test.cpp)
-target_link_libraries(spin_test PRIVATE "${UNITREE_SDK_LIB}" Threads::Threads)
+add_executable(spin_test apps/spin_test.cpp)
+target_link_libraries(spin_test PRIVATE motor_bench_core)
 
-# S3–S5：回归 0 + 键盘给角度 + 零点标定（offset）+ 零点跳变处理
-add_executable(motor_ctl src/motor_ctl.cpp)
-target_link_libraries(motor_ctl PRIVATE "${UNITREE_SDK_LIB}" Threads::Threads)
+# 验收程序：回归 0 + 键盘给角度 + 软件零点标定 + 上电/离线/跳变处理
+add_executable(motor_ctl apps/motor_ctl.cpp)
+target_link_libraries(motor_ctl PRIVATE motor_bench_core)
 
-foreach(t fake_motor_dryrun serial_probe spin_test motor_ctl)
+foreach(t motor_bench_core fake_motor_dryrun serial_probe spin_test motor_ctl)
     target_compile_options(${t} PRIVATE -Wall -Wextra)
 endforeach()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(motor_bench_core PRIVATE -Wpedantic)
+endif()
 
 # 运行时的 .so 搜索路径（不设的话要自己 export LD_LIBRARY_PATH，而且用 sudo 时会被清掉）
 set_target_properties(fake_motor_dryrun serial_probe spin_test motor_ctl PROPERTIES
