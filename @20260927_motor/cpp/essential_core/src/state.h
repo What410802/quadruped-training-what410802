@@ -36,7 +36,7 @@
 // 这份站姿与 `../models/stance.txt` **逐位相同**（两个精简版共用同一份；也是重搜出来的低站姿，
 // 旧的高站姿是膝 1.100 / 基座 z 0.497）：
 // 低站姿离“阻尼模式下正在塌落”的狗更近，**上电后任意时刻按 S 都站得住**；再往前偏 1.0 cm，
-// 稳态**四脚受力均匀**。代价、实测数据与生成办法见 [`../essential/README.md`](../essential/README.md) 的
+// 稳态**四脚受力均匀**。代价、实测数据与生成办法见 [`../docs/essential.md`](../docs/essential.md) 的
 // 「站姿为什么可以预存」「验证」两节，生成工具是 [`../agent_scripts/search_stance.cpp`](../agent_scripts/search_stance.cpp)。
 //
 // 为什么不能直接用模型默认位形（所有关节 = 0）：膝关节会越界、质心落在四足中心后面 0.18 m

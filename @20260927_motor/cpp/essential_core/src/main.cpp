@@ -16,7 +16,7 @@
 //     5        阻尼模式 kd_damp，默认 0.5
 //   例：essential_core / 0.5 120 6    （默认场景、斜坡 0.5 s、kp=120、kd=6）
 //   本版**没有 README**：与 `../essential/` 的区别、共用那份站姿的实测数据，都在
-//   [`../essential/README.md`](../essential/README.md) 里。
+//   [`../docs/essential.md`](../docs/essential.md) §2 里。
 //
 // 两个线程（官方 `simulate` 的既定形状）：
 //   * 主线程：`RenderLoop()` —— 窗口与渲染（GLFW 要求"谁建窗口谁用它"，窗口只能在主线程跑）；

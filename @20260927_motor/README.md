@@ -38,6 +38,7 @@
 │   ├── CMakeLists.txt
 │   ├── README.md              # 怎么建、怎么跑、实测摘要、参数
 │   ├── docs/sim.md            # 实现、全部实测数字、踩坑；§6 与第二次培训控制程序的对照
+│   ├── docs/essential.md      # 两个精简版的差别、理由与验证（低站姿的来历、踩坑、对拍方法）
 │   ├── src/                   # 完整版：main.cpp（只做编排）+ cli.h / scene_setup.h / motor.h / stance.h / state.h
 │   │                          #   / observation.h / start.h / viewer.h / recorder.h / ground.h / args.h
 │   └── essential/             # 最简版（官方 Simulate 窗口 + 终端按键，站姿从 models/stance.txt 加载）

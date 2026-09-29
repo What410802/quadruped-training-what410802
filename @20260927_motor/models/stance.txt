@@ -2,7 +2,7 @@
 #
 # 它是**重新搜出来的结果**：由 cpp/agent_scripts/search_stance.cpp 生成（在 cpp/src 那份搜索的几何
 # 口径上多一个“整条腿绕髋旋转”的自由度：膝 1.7、大腿 = 0.55×膝、整条腿后移 0.011 rad）。为什么换成
-# 低站姿、以及旧站姿“上电后 0.1–0.35 s 按 S 会向后倒”那组实测，见 cpp/essential_core/README.md。
+# 低站姿、以及旧站姿“上电后 0.1–0.35 s 按 S 会向后倒”那组实测，见 cpp/docs/essential.md §4。
 # 重新生成（换了模型、或想再调站姿参数）：
 #   pixi run bash -c 'g++ -O2 -std=c++17 -I$CONDA_PREFIX/include -o /tmp/search_stance \
 #       @20260927_motor/cpp/agent_scripts/search_stance.cpp -L$CONDA_PREFIX/lib \
