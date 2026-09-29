@@ -2,7 +2,7 @@
  * @file console.hpp
  * @brief 验收程序的命令行：把一行输入解析成一条命令，并给帮助文本。
  *
- * 命令表（详见 cpp_part2/docs/zero_semantics.md §5）：
+ * 命令表（详见 cpp_part2/docs/zero-semantics.md §5）：
  *   state(p) 看账本 | reset [here|raw] 定零点 | raw 去编码器真值零点 | 0 去软件零点
  *   <角度> 去相对软件零点的角度 | +d/-d 相对当前位置挪 | offset <度> 设偏移 | o+30/o-30 加减偏移
  *   mark 记记号笔 | goto-mark | expect | fix | hold | stop | q

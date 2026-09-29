@@ -1,9 +1,6 @@
 # C++ 工程：`cpp_task2/` / `cpp_stand/` / `cpp_slope/`
 
-> 三个工程都用**同一个 pixi 环境**与**同一份 MJCF**，所以数字能与 Python 侧直接对照；每个工程都是独立的
-> `CMakeLists.txt`（工具链取自 pixi 环境）。
-> 入口（怎么跑、结果在哪）见 [`../README.md`](../README.md)；任务 2 的结论与产物见 [`task2.md`](task2.md)，
-> 倾斜地面 demo 的实测与踩坑见 [`stand.md`](stand.md)，上游复现见 [`replication.md`](replication.md)。
+> 三个工程都用**同一个 pixi 环境**与**同一份 MJCF**，所以数字能与 Python 侧直接对照；每个工程都是独立的 `CMakeLists.txt`（工具链取自 pixi 环境）。 入口（怎么跑、结果在哪）见 [`../README.md`](../README.md)；任务 2 的结论与产物见 [`task2.md`](task2.md)， 倾斜地面 demo 的实测与踩坑见 [`stand.md`](stand.md)，上游复现见 [`replication.md`](replication.md)。
 
 ## 1 任务 2 的 C++ 版（`cpp_task2/`）
 

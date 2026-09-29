@@ -6,7 +6,7 @@
  *   pos_ticks = raw + turn_base          raw 是板子报的整数（上电后 ∈ [0, 32768)）
  *   q_ticks   = pos_ticks + offset       软件零点：q_ticks = 0 就是 `0` 命令去的地方
  *
- * 三件事（设计与依据见 docs/zero_semantics.md）：
+ * 三件事（设计与依据见 docs/zero-semantics.md）：
  *   1. AnchorAtStartup()      上电首帧：默认接受当前位置（k = 0）；
  *   2. AnchorTo(raw, ref)     有外部参考（上次记录的位置/已知姿势）时，求最近的整圈 k；
  *   3. ReanchorAfterOffline() 掉线又回来：按"物理位置没动"重新求 turn_base（只动账本，不动

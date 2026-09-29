@@ -1,8 +1,6 @@
 # 任务推进情况（做到哪、还差什么）
 
-> 这是**本任务的推进记录**：各任务的完成情况、推进顺序与学习进度。
-> 入口（做了什么、怎么跑、结果在哪）在 [`../README.md`](../README.md)；
-> 约定来源：[`../../docs/conventions.md`](../../docs/conventions.md) §2（README 只做入口，不记进度）。
+> 这是**本任务的推进记录**：各任务的完成情况、推进顺序与学习进度。 入口（做了什么、怎么跑、结果在哪）在 [`../README.md`](../README.md)； 约定来源：[`../../docs/conventions.md`](../../docs/conventions.md) §2（README 只做入口，不记进度）。
 
 ## 1 任务完成情况
 
@@ -15,17 +13,11 @@
 
 ## 2 推进顺序（任务 3/4）
 
-① C++ 工具链可行性验证（已完成）→ ② 研读 `unitree_mujoco`、写 `../../docs/learn/unitree-mujoco.md`（已完成）
-→ ③ Python 侧按新结构重构（**已完成**：`../python/`，`../scripts/` 里的旧脚本暂留作对照）
-→ ④ C++ 侧验证（**已完成**：`cpp_task2 --mode view` 接官方 `Simulate` 界面，实测 1.00x 且流畅，
-结论是不必再手写一份双缓冲）。
+① C++ 工具链可行性验证（已完成）→ ② 研读 `unitree_mujoco`、写 `../../docs/learn/unitree-mujoco.md`（已完成） → ③ Python 侧按新结构重构（**已完成**：`../python/`，`../scripts/` 里的旧脚本暂留作对照） → ④ C++ 侧验证（**已完成**：`cpp_task2 --mode view` 接官方 `Simulate` 界面，实测 1.00x 且流畅， 结论是不必再手写一份双缓冲）。
 
 ## 3 学习进度
 
-目前仿真、控制、渲染窗口/录制视频的逻辑以及场景物体概念、MJCF/URDF 及其基本语法与使用已学会；
-由 agent 编写的主要代码（`../cpp_task2/` `../cpp_stand/` `../cpp_slope/` `../python/`
-`../scripts/{simulate.py, simulate_record.py, visualization/}`）已理解；仓库 `docs/` 内讲解的 C++ 进阶语法
-还在深化理解中。
+目前仿真、控制、渲染窗口/录制视频的逻辑以及场景物体概念、MJCF/URDF 及其基本语法与使用已学会； 由 agent 编写的主要代码（`../cpp_task2/` `../cpp_stand/` `../cpp_slope/` `../python/` `../scripts/{simulate.py, simulate_record.py, visualization/}`）已理解；仓库 `docs/` 内讲解的 C++ 进阶语法 还在深化理解中。
 
 ## 4 提交与分支
 

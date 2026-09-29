@@ -151,8 +151,7 @@ print(data.warning)   # 7 个条目，各有 lastinfo（最近一次的 id）与
    实测：令 `qvel = [1,0,0, 0,0,π]`（绕 z 轴 π rad/s）积分 1 s，得到 `qpos[3:7] = [0,0,0,1]` —— 即绕 z 轴转 180°，走的是四元数**指数映射**；若按"线性叠加"算成 `[1,0,0,π]`， 模长 3.297，根本不是四元数。
 2. 在两个 `qpos` 之间插值/比较要用专门的 API：`mj_integratePos(model, qpos, qvel, dt)` 往前推；
    反方向是 `mj_differentiatePos(model, qvel, dt, qpos1, qpos2)`（实测前者积出来的 `[1,0,0,0,0,π]` 能被后者精确还原）。直接对 `qpos` 线性插值会得到非单位四元数。
-3. 力/力矩、雅可比、质量矩阵全在 `nv` 维空间（`qfrc_*`、`efc_J`、`data.M`），
-   只有 `qpos`/`key_qpos` 是 `nq` 维。看代码时先看 `nq` 还是 `nv`，就知道自己在哪个空间。
+3. 力/力矩、雅可比、质量矩阵全在 `nv` 维空间（`qfrc_*`、`efc_J`、`data.M`）， 只有 `qpos`/`key_qpos` 是 `nq` 维。看代码时先看 `nq` 还是 `nv`，就知道自己在哪个空间。
 
 > 顺带：`qpos` 的布局由 `jnt_qposadr[j]` 给出、`qvel` 由 `jnt_dofadr[j]` 给出。本模型 freejoint 是关节 0， `qposadr = dofadr = 0`，所以 `qpos[0:3]` 是基座位置、`qpos[3:7]` 是基座姿态、`qpos[7:]` 才是那 12 个关节角。
 
@@ -257,20 +256,13 @@ mjtNum  o_friction[5];   // friction
 
 （放在 include 之后很要紧：多个 `<compiler>` 元素里**后写的覆盖先写的**，写在前面会被 模型自己那份 `meshdir="meshes/"` 又盖回去。）
 
-于是 `scenes/` 下**不再需要** `meshes` 目录软链接；`models/meshes`、`assets/black_description/meshes`
-仍然保留，因为可能被当顶层加载的是那两份 XML（见 `@20260923_mujoco/scripts/onetime_tools/measure_and_fix_base_height.py` 的 `MESH_LINKS`）。
-以前的统一做法是"跑到哪个目录就放一个软链接"，现在顶层场景自己说清楚用哪个 mesh 目录。
+于是 `scenes/` 下**不再需要** `meshes` 目录软链接；`models/meshes`、`assets/black_description/meshes` 仍然保留，因为可能被当顶层加载的是那两份 XML（见 `@20260923_mujoco/scripts/onetime_tools/measure_and_fix_base_height.py` 的 `MESH_LINKS`）。 以前的统一做法是"跑到哪个目录就放一个软链接"，现在顶层场景自己说清楚用哪个 mesh 目录。
 
 ### 6.2 网站导出的模型「默认位形就穿模」，求解器会把狗弹飞
 
-`urdf.enkeebot.com` 把根 body 放在原点，而零位形下脚底在基座下方 0.5786 m ⇒ 默认状态整只 狗沉进地面。**症状与修法**：不修的话，第一步就会看到狗被弹到几米高（本任务的实测数字与 A/B 脚本见 [`../../@20260923_mujoco/docs/task2.md`](../../@20260923_mujoco/docs/task2.md)）。修法：把基座默认高度抬到「脚底刚好触地」；或在脚本里 `mj_resetDataKeyframe(model, data, 0)` / 显式设 `data.qpos[2]`。
-注意**场景里的 `<keyframe>` 不会自动加载**，最简 `viewer.launch_passive` 循环就 会踩到（本仓库谁在显式加载它、谁默认不加载，见 [`../../@20260923_mujoco/docs/model.md`](../../@20260923_mujoco/docs/model.md)）。
+`urdf.enkeebot.com` 把根 body 放在原点，而零位形下脚底在基座下方 0.5786 m ⇒ 默认状态整只 狗沉进地面。**症状与修法**：不修的话，第一步就会看到狗被弹到几米高（本任务的实测数字与 A/B 脚本见 [`../../@20260923_mujoco/docs/task2.md`](../../@20260923_mujoco/docs/task2.md)）。修法：把基座默认高度抬到「脚底刚好触地」；或在脚本里 `mj_resetDataKeyframe(model, data, 0)` / 显式设 `data.qpos[2]`。 注意**场景里的 `<keyframe>` 不会自动加载**，最简 `viewer.launch_passive` 循环就 会踩到（本仓库谁在显式加载它、谁默认不加载，见 [`../../@20260923_mujoco/docs/model.md`](../../@20260923_mujoco/docs/model.md)）。
 
-**“脚底刚好触地”的高度怎么求**（本模型足底是球体，所以有闭式解）：`mj_forward()` 之后遍历足底 geom，
-取 `基座高度 = -min(球心世界坐标 z − size[0])`，即“基座到最低足底点的距离”；把基座默认 z 设成它即可。
-两个脚本用的都是这条思路：`scripts/onetime_tools/measure_and_fix_base_height.py`（算出后写回 XML）与
-`scripts/agent_scripts/rest_check.py --mode drop`（用同一条算式反算基座高度，再自由落体求趴卧姿态）。
-足型不是球体时，改用 `mj_ray` 向下打射线，或对 geom 的顶点/包围盒求最小值。
+**“脚底刚好触地”的高度怎么求**（本模型足底是球体，所以有闭式解）：`mj_forward()` 之后遍历足底 geom， 取 `基座高度 = -min(球心世界坐标 z − size[0])`，即“基座到最低足底点的距离”；把基座默认 z 设成它即可。 两个脚本用的都是这条思路：`scripts/onetime_tools/measure_and_fix_base_height.py`（算出后写回 XML）与 `scripts/agent_scripts/rest_check.py --mode drop`（用同一条算式反算基座高度，再自由落体求趴卧姿态）。 足型不是球体时，改用 `mj_ray` 向下打射线，或对 geom 的顶点/包围盒求最小值。
 
 ### 6.3 同一份 mesh 被复制三份
 
@@ -320,20 +312,12 @@ C++ 侧同一条规则：`cpp_task2/src/record.h` 的 `OffscreenRecorder` 也在
 
 ### 6.9 官方 `Simulate` 界面的两个坑（`Load` 的顺序、程序化退出）
 
-用 C++ 调 MuJoCo 自带的界面库（`mujoco::libmujoco_simulate`，即 `mj::Simulate` + `mj::GlfwAdapter`）时踩到的两条，
-两个任务都撞过（[`../../@20260927_motor/cpp/docs/essential.md`](../../@20260927_motor/cpp/docs/essential.md) §5 与
-[`../../@20260923_mujoco/docs/cpp.md`](../../@20260923_mujoco/docs/cpp.md) §3）：
+用 C++ 调 MuJoCo 自带的界面库（`mujoco::libmujoco_simulate`，即 `mj::Simulate` + `mj::GlfwAdapter`）时踩到的两条， 两个任务都撞过（[`../../@20260927_motor/cpp/docs/essential.md`](../../@20260927_motor/cpp/docs/essential.md) §5 与 [`../../@20260923_mujoco/docs/cpp.md`](../../@20260923_mujoco/docs/cpp.md) §3）：
 
-- **`Simulate::Load()` 会阻塞等渲染线程来接模型**（内部条件变量 `cond_loadrequest`），所以顺序必须是
-  「主线程先跑 `RenderLoop()`，再由物理线程 `Load()`」（官方 `main.cc` 就是把加载放在 `PhysicsThread` 里）。
+- **`Simulate::Load()` 会阻塞等渲染线程来接模型**（内部条件变量 `cond_loadrequest`），所以顺序必须是 「主线程先跑 `RenderLoop()`，再由物理线程 `Load()`」（官方 `main.cc` 就是把加载放在 `PhysicsThread` 里）。
   在 `RenderLoop()` 之前调 `Load`：开出一个空白窗口（任务栏有条目、Alt+Tab 里没有、内容全白）然后永久等待。
-- **想用程序自己退出窗口**：`sim.exitrequest` 只是通知物理线程，`RenderLoop()` 并不看它；`GlfwAdapter` 把
-  `GLFWwindow*` 藏在私有成员里（拿不到去 `glfwSetWindowShouldClose`），但 `ShouldCloseWindow()` 是**虚函数**
-  —— 子类里加一个自己的 `bool` 就够（`mujoco_simulate` 的 `main.cc` 之外没有别的钩子）。没有这一手，
-  终端里的"退出"只能 `exit()` 硬退：不跑析构、终端 raw 模式恢复不了。
-- 顺带：`RenderLoop()` 要求跑在**主线程**；它在 `Render()` **之前**就放锁（源码注释
-  `// MutexLock (unblocks simulation thread)`），所以"物理线程 + 官方界面"本来就不互相阻滞（实测 1.00x 实时，
-  见 [`runtime-timing.md`](runtime-timing.md) §11 的方案 ③）。
+- **想用程序自己退出窗口**：`sim.exitrequest` 只是通知物理线程，`RenderLoop()` 并不看它；`GlfwAdapter` 把 `GLFWwindow*` 藏在私有成员里（拿不到去 `glfwSetWindowShouldClose`），但 `ShouldCloseWindow()` 是**虚函数** —— 子类里加一个自己的 `bool` 就够（`mujoco_simulate` 的 `main.cc` 之外没有别的钩子）。没有这一手， 终端里的"退出"只能 `exit()` 硬退：不跑析构、终端 raw 模式恢复不了。
+- 顺带：`RenderLoop()` 要求跑在**主线程**；它在 `Render()` **之前**就放锁（源码注释 `// MutexLock (unblocks simulation thread)`），所以"物理线程 + 官方界面"本来就不互相阻滞（实测 1.00x 实时， 见 [`runtime-timing.md`](runtime-timing.md) §11 的方案 ③）。
 
 ---
 
@@ -413,14 +397,11 @@ MUJOCO_GL=glfw pixi run python xxx.py         # 无效（被 activation.env 覆�
 要点：
 
 1. **只录视频就不要开窗口**。不开窗口时 50 fps 也能跑得比实时快，而且没有下面那两个坑。
-2. 开窗口时 `viewer.sync()` 必须**降频**（每 10~25 步一次）。它每次要 8~20 ms，按 500 Hz 的
-   仿真步调它，等于把循环钉在刷新率上、仿真只剩 ~10% 实时。
+2. 开窗口时 `viewer.sync()` 必须**降频**（每 10~25 步一次）。它每次要 8~20 ms，按 500 Hz 的 仿真步调它，等于把循环钉在刷新率上、仿真只剩 ~10% 实时。
 3. 开窗口时的实时节流要用「目标墙钟时刻 = 起点 + `data.time`」**自我纠偏**；
    `sleep(dt - 本步耗时)` 这种只补本步亏欠的写法会累积误差 （`sleep(1.7 ms)` 实际睡 4~5 ms），实测 69% → 100%。
-4. 开窗口的进程退出时偶发 `segmentation fault`，或输出 `GLFWError: EGL: Failed to clear current
-   context ...` 之类的清理告警（GLFW 与已存在的 EGL 上下文在同进程收尾时的冲突）； MP4 在崩溃前已由 `close()` 写完，产物不受影响；纯离屏不出现。
-5. 自己 new 的 `mujoco.Renderer` 一定要 `close()`，否则解释器退出时会打印
-   `Exception ignored in: Renderer.__del__` 加一串 OpenGL 报错（录像库内部会显式 close， 正常使用看不到）。
+4. 开窗口的进程退出时偶发 `segmentation fault`，或输出 `GLFWError: EGL: Failed to clear current context ...` 之类的清理告警（GLFW 与已存在的 EGL 上下文在同进程收尾时的冲突）； MP4 在崩溃前已由 `close()` 写完，产物不受影响；纯离屏不出现。
+5. 自己 new 的 `mujoco.Renderer` 一定要 `close()`，否则解释器退出时会打印 `Exception ignored in: Renderer.__del__` 加一串 OpenGL 报错（录像库内部会显式 close， 正常使用看不到）。
 
 ### 7.3 分辨率、"DPI" 与尺寸上限
 
@@ -458,8 +439,7 @@ update_scene → render()（GPU 画进离屏 FBO）→ tobytes()
 
 1. `-pix_fmt yuv420p`：RGB → YUV，并按 4:2:0 做色度下采样（每 4 个像素共享一组色度）；
 2. `libx264` 编码：`-preset veryfast -crf 20`，运动估计 / DCT / 熵编码 → I/P/B 帧；
-3. MP4 封装：写上时间戳。注意**时间戳不是逐帧传过去的**，而是靠 `-framerate 50` 声明为恒定帧率
-   （第 N 帧 = N/50 秒）——这是 `capture()` 必须按**仿真时间**节流的原因，否则视频和仿真对不上。
+3. MP4 封装：写上时间戳。注意**时间戳不是逐帧传过去的**，而是靠 `-framerate 50` 声明为恒定帧率 （第 N 帧 = N/50 秒）——这是 `capture()` 必须按**仿真时间**节流的原因，否则视频和仿真对不上。
 
 实测（960×540 / 50 fps / crf 20 / veryfast）：输出 **310 kbps**（4.02 s 共 156 KB）， 相对 74 MiB/s 的输入约 **2000:1** 的压缩（场景基本静止，所以这么夸张）。
 
@@ -481,10 +461,8 @@ update_scene → render()（GPU 画进离屏 FBO）→ tobytes()
 
 两个前提（否则会“掉帧”——时间轴仍然正确，但画面会跳）：
 
-1. 调用频率要够：**每个 `1/fps` 的仿真区间内至少调一次 `capture()`**（最省心的做法是每步都调，
-   反正内部会节流）；
-2. `fps ≤ 1/timestep`：一个步长只能采一帧，本模型 `timestep=0.002` ⇒ 上限 500 fps（C++ 侧 `record.h` 同一条限制），
-   想更高只能减小 `timestep`。
+1. 调用频率要够：**每个 `1/fps` 的仿真区间内至少调一次 `capture()`**（最省心的做法是每步都调， 反正内部会节流）；
+2. `fps ≤ 1/timestep`：一个步长只能采一帧，本模型 `timestep=0.002` ⇒ 上限 500 fps（C++ 侧 `record.h` 同一条限制）， 想更高只能减小 `timestep`。
 
 ### 7.6 这些结论驱动了哪些配置决策
 

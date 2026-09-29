@@ -1,12 +1,8 @@
 # 目录与文件清单
 
-> 这是本任务**每个目录/文件干什么**的完整清单（注释里带"为什么这么分"）。
-> 入口（怎么跑、结果在哪）见 [`../README.md`](../README.md)；模型来源见 [`model.md`](model.md)、
-> 站立 demo 见 [`stand.md`](stand.md)、录像工具见 [`recording.md`](recording.md)。
+> 这是本任务**每个目录/文件干什么**的完整清单（注释里带"为什么这么分"）。 入口（怎么跑、结果在哪）见 [`../README.md`](../README.md)；模型来源见 [`model.md`](model.md)、 站立 demo 见 [`stand.md`](stand.md)、录像工具见 [`recording.md`](recording.md)。
 
-本目录只放模型、场景与代码；环境（Python / MuJoCo / C++ 工具链）由仓库根 `pixi.toml` 统一管理。
-分工按仓库 [`../../docs/conventions.md`](../../docs/conventions.md) §7：**本任务成立的**（模型来源、过程与产出、
-本任务的数字）留在本目录，**跳任务也成立的**（MuJoCo 知识点与坑、图形栈、环境与镜像）放仓库 `docs/`。
+本目录只放模型、场景与代码；环境（Python / MuJoCo / C++ 工具链）由仓库根 `pixi.toml` 统一管理。 分工按仓库 [`../../docs/conventions.md`](../../docs/conventions.md) §7：**本任务成立的**（模型来源、过程与产出、 本任务的数字）留在本目录，**跳任务也成立的**（MuJoCo 知识点与坑、图形栈、环境与镜像）放仓库 `docs/`。
 
 ```text
 @20260923_mujoco/

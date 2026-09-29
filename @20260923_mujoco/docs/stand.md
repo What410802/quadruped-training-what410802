@@ -1,5 +1,4 @@
-<!-- 任务级文档：只写 cpp_stand/ 与 cpp_slope/ 成立的东西（本任务的站姿、本任务的数字）。
-     通用坑（geom_sameframe、相机与地面倾斜、C++ 工具链）在仓库 docs/ 下，这里只放飞指针。 -->
+<!-- 任务级文档：只写 cpp_stand/ 与 cpp_slope/ 成立的东西（本任务的站姿、本任务的数字）。 通用坑（geom_sameframe、相机与地面倾斜、C++ 工具链）在仓库 docs/ 下，这里只放飞指针。 -->
 
 # 站立与斜面 demo：`cpp_stand/` + `cpp_slope/`
 

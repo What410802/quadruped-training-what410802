@@ -4,7 +4,7 @@
  * 位、键盘给角度、软件零点标定、上电/离线/跳变的零点处理。
  *
  * 这一层只做"编排 + 与人交互"：位置账本在 ZeroTracker，插值在 TrapezoidPlanner，收发在 MotorBus，
- * 命令行解析在 ParseCommand。设计说明见 ../../docs/zero_semantics.md，现场步骤见
+ * 命令行解析在 ParseCommand。设计说明见 ../../docs/zero-semantics.md，现场步骤见
  * ../../docs/runbook.md。
  *
  * 用法要点（完整列表见 --help）：

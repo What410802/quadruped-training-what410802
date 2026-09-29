@@ -1,7 +1,6 @@
 # C++ 语法与 CMake 学习笔记
 
-> 第一次培训（C++ / OOP / CMake）期间整理的问答笔记，回答的是"为什么这么写"。 与代码里的实际用法互为参考；任务记录与验收见 [`../../@20260922_robot_cpp_training/`](../../@20260922_robot_cpp_training/)，编辑器（clangd / cpptools）的配置见 [`cmake-intellisense.md`](cmake-intellisense.md)。
-> 原始问答来自 [与 AI 的对话](https://yuanbao.tencent.com/chat/naQivTmsDa/0Qgx9qPyAvQ?projectId=3daea2310a624f939a9e427e121d9c47)。 任务验收记录：[`../../@20260922_robot_cpp_training/验收.md`](../../@20260922_robot_cpp_training/验收.md)；文档索引见 [`../../README.md`](../../README.md)。
+> 第一次培训（C++ / OOP / CMake）期间整理的问答笔记，回答的是"为什么这么写"。 与代码里的实际用法互为参考；任务记录与验收见 [`../../@20260922_robot_cpp_training/`](../../@20260922_robot_cpp_training/)，编辑器（clangd / cpptools）的配置见 [`cmake-intellisense.md`](cmake-intellisense.md)。 原始问答来自 [与 AI 的对话](https://yuanbao.tencent.com/chat/naQivTmsDa/0Qgx9qPyAvQ?projectId=3daea2310a624f939a9e427e121d9c47)。 任务验收记录：[`../../@20260922_robot_cpp_training/验收.md`](../../@20260922_robot_cpp_training/验收.md)；文档索引见 [`../../README.md`](../../README.md)。
 
 ## C++
 
@@ -74,9 +73,7 @@
 
 	vptr 的初始化发生在**构造函数初始化列表阶段、函数体执行之前**；析构时反向把 vptr 逐层重置回当前类的 vtable——这也解释了为什么在构造/析构函数里调虚函数**不会**有多态效果（此时 vptr 指向的是当前正在构造/析构的那一层）。
 
-	> **补充："虚类" 有两个不同含义，别混**
-	> - **抽象类**（含纯虚函数的类）：不能实例化，vtable 中该槽位填的是 `__cxa_pure_virtual` 之类的桩函数，调到就报 "pure virtual function called" 并终止。
-	> - **虚基类**（`class D : virtual public B`，解决菱形继承的重复子对象问题）：额外引入虚基类表/偏移量做二次间接寻址，与虚函数表是两套机制。
+	> **补充："虚类" 有两个不同含义，别混** - **抽象类**（含纯虚函数的类）：不能实例化，vtable 中该槽位填的是 `__cxa_pure_virtual` 之类的桩函数，调到就报 "pure virtual function called" 并终止。 - **虚基类**（`class D : virtual public B`，解决菱形继承的重复子对象问题）：额外引入虚基类表/偏移量做二次间接寻址，与虚函数表是两套机制。
 
 	**3）虚函数与抽象类的性质**
 
@@ -129,29 +126,23 @@
 
 	逐行：
 
-	- **`class Motor {`**
-		定义类 `Motor`。这是个**纯接口类**（interface / 纯抽象基类），等价于其他语言里的 `interface`。它规定"所有电机必须支持哪些操作"，但完全不管怎么实现。
+	- **`class Motor {`** 定义类 `Motor`。这是个**纯接口类**（interface / 纯抽象基类），等价于其他语言里的 `interface`。它规定"所有电机必须支持哪些操作"，但完全不管怎么实现。
 
-	- **`public:`**
-		访问说明符。接口成员必须 `public`，否则派生类和外部调用方都访问不到。
+	- **`public:`** 访问说明符。接口成员必须 `public`，否则派生类和外部调用方都访问不到。
 
-	- **`virtual void enable() = 0;`**
-		纯虚函数：上电/使能，无参无返回值。
+	- **`virtual void enable() = 0;`** 纯虚函数：上电/使能，无参无返回值。
 		- `virtual` → 运行期动态分派，`Motor*` 指向 `DMMotor` 时调 `enable()` 会调到 `DMMotor::enable()`
 		- `= 0` → `Motor` 不提供实现，`DMMotor` 必须自己写
 		- 这一条的存在使 `Motor` 成为抽象类，`Motor m;` 编译错误
 
-	- **`virtual void setPosition(double position) = 0;`**
-		纯虚函数：设置目标位置。参数名 `position` 在纯虚声明里只是**文档性质**（可以不写，写上便于阅读和 IDE 提示）。注意这里传的是 `double` 值拷贝，不涉及 const。
+	- **`virtual void setPosition(double position) = 0;`** 纯虚函数：设置目标位置。参数名 `position` 在纯虚声明里只是**文档性质**（可以不写，写上便于阅读和 IDE 提示）。注意这里传的是 `double` 值拷贝，不涉及 const。
 
-	- **`virtual double getPosition() const = 0;`**
-		纯虚函数：读取当前位置。
+	- **`virtual double getPosition() const = 0;`** 纯虚函数：读取当前位置。
 		- `const` 修饰 `this`，承诺不修改对象 → `const Motor&` 也能调用它
 		- `const` 是**函数签名的一部分**，派生类覆盖时**必须也带 `const`**，否则变成另一个函数（此时若写了 `override` 就会编译报错，这正是 `override` 的价值）
 		- 返回 `double` 是值拷贝，安全；若返回引用则应写 `const double&`
 
-	- **`virtual ~Motor() = default;`**
-		**最关键的一行。** 任何作为多态基类使用的类，析构函数都必须是 virtual：
+	- **`virtual ~Motor() = default;`** **最关键的一行。** 任何作为多态基类使用的类，析构函数都必须是 virtual：
 		```cpp
 		Motor* m = new DMMotor();
 		delete m;   // 若 ~Motor() 非虚 → 只调用 Motor 的析构，DMMotor 部分不被销毁 → 未定义行为/资源泄漏
@@ -247,8 +238,7 @@
 
 	普通成员函数的 `this` 类型是 `Motor* const`；加上尾部 `const` 后变成 `const Motor* const`（指向常量的常指针）。于是：
 
-	1. **编译器强制不能修改对象状态**
-		 在函数体内给任何非 `mutable` 成员赋值都会编译错误；也不能调用非 const 成员函数。
+	1. **编译器强制不能修改对象状态** 在函数体内给任何非 `mutable` 成员赋值都会编译错误；也不能调用非 const 成员函数。
 		 ```cpp
 		 double DMMotor::getPosition() const {
 				 position_ = 0;      // 编译错误
@@ -266,26 +256,22 @@
 		 ```
 		 这就是接口里 `getPosition` 必须带 `const` 的原因——否则所有只读上下文都用不了它。而 `setPosition` 天然不该带 `const`（它就是要改状态）。
 
-	3. **const 是函数签名的一部分，构成重载维度**
-		 一个类可以同时有 `double f()` 和 `double f() const`，编译器按调用对象的 const 性选择。
+	3. **const 是函数签名的一部分，构成重载维度** 一个类可以同时有 `double f()` 和 `double f() const`，编译器按调用对象的 const 性选择。
 
-	4. **`override` 在这里的作用（重点）**
-		 基类声明是 `virtual double getPosition() const = 0`。派生类如果写成：
+	4. **`override` 在这里的作用（重点）** 基类声明是 `virtual double getPosition() const = 0`。派生类如果写成：
 		 ```cpp
 		 double getPosition() override { ... }   // 少了 const
 		 ```
 		 编译器会报 **"marked override but does not override any member functions"**——因为 `const` 参与了签名匹配，少了 `const` 就是一个全新的函数，同时还**隐藏**了基类的版本，多态调用会出人意料。加上 `override` 就把这类笔误在编译期抓住。**这是 `override` 最典型的价值场景。**
 
-	5. **语义含义：逻辑常量性（logical constness）**
-		 `const` 表达的是"这个操作**对外**不改变对象可见状态"。若内部需要改（缓存、懒计算、加互斥锁），把成员声明为 `mutable` 即可绕开：
+	5. **语义含义：逻辑常量性（logical constness）** `const` 表达的是"这个操作**对外**不改变对象可见状态"。若内部需要改（缓存、懒计算、加互斥锁），把成员声明为 `mutable` 即可绕开：
 		 ```cpp
 		 mutable std::mutex mtx_;
 		 double getPosition() const { std::lock_guard lk(mtx_); return position_; }
 		 ```
 		 `mutable` 就是为"物理上改了、逻辑上没改"准备的。`const_cast` 也能绕过，但通常是设计有问题的信号。
 
-	6. **返回值的 const 无关性**
-		 这里返回 `double`（值拷贝），带不带 const 成员函数都不影响。若改成返回引用，就必须 `const double& getPosition() const`，否则外部能通过这个引用改内部状态，const 承诺就破了。
+	6. **返回值的 const 无关性** 这里返回 `double`（值拷贝），带不带 const 成员函数都不影响。若改成返回引用，就必须 `const double& getPosition() const`，否则外部能通过这个引用改内部状态，const 承诺就破了。
 
 	7. **其他细节**
 		 - `const` 成员函数里，`this` 已是 `const Motor*`，不能再 `const_cast` 后修改（除非原对象本身非 const，否则 UB）
@@ -389,16 +375,11 @@
 
 ### 工程目录与文件风格（`.hpp` + 独立 `include/`）
 
-"`.hpp` + 独立 `include/`"是 C/C++ 项目的主流做法：把**接口**（`include/<项目>/**/*.hpp`）与**实现**
-（`src/*.cpp`）分开，可执行入口放 `apps/`，include 路径带项目/模块前缀（避免重名），
-CMake 用 `target_include_directories(... PUBLIC include)` 把接口暴露出去。
+"`.hpp` + 独立 `include/`"是 C/C++ 项目的主流做法：把**接口**（`include/<项目>/**/*.hpp`）与**实现** （`src/*.cpp`）分开，可执行入口放 `apps/`，include 路径带项目/模块前缀（避免重名）， CMake 用 `target_include_directories(... PUBLIC include)` 把接口暴露出去。
 
-判断依据来自通用工程惯例（也是 CMake 的 `PUBLIC include` 想表达的东西），不是某个具体项目的特点：
-`.hpp` 明确表示"C++ 头"；带前缀的 include 在项目变大时不会撞车；接口与实现分离以后，
-把共用部分抽成库、别人（或几个月后的自己）只读接口就能用。
+判断依据来自通用工程惯例（也是 CMake 的 `PUBLIC include` 想表达的东西），不是某个具体项目的特点： `.hpp` 明确表示"C++ 头"；带前缀的 include 在项目变大时不会撞车；接口与实现分离以后， 把共用部分抽成库、别人（或几个月后的自己）只读接口就能用。
 
-**`apps/` 到底放什么**：它不是"随便放源文件"的第三个目录，判据只有一条——
-**这份 `.cpp` 里有没有 `main()`（即能不能直接产出可执行文件）**：
+**`apps/` 到底放什么**：它不是"随便放源文件"的第三个目录，判据只有一条—— **这份 `.cpp` 里有没有 `main()`（即能不能直接产出可执行文件）**：
 
 | 目录 | 判据 | 本次（`cpp_part2/`） |
 |---|---|---|
@@ -406,32 +387,17 @@ CMake 用 `target_include_directories(... PUBLIC include)` 把接口暴露出去
 | `src/` | 没有 `main()`：库实现（`add_library()` 的源文件）、平台垫片 | `motor_bus.cpp` / `zero_tracking.cpp` / `console.cpp`（链进静态库 `motor_bench_core`）、`pty_serial_shim.c`（编成 `.so`） |
 | `include/` | 只有声明与 inline，不产出任何目标 | `motor_bench/*.hpp` 与 `sim/fake_motor.hpp` |
 
-规模更大的工程还有第二种做法：**`apps/<每个应用>/CMakeLists.txt`**，让每个应用各自是一个独立
-CMake 工程（自带依赖、可单独配置构建）。本项目体量小（4 个入口、1 个库），一个 `CMakeLists.txt` 里
-`add_executable` 四行就够了，所以**不拆子目录**；真按"目录该不该存在"的严格标准，这点体量其实
-**都用 `src/` 也完全可以**（`src/` 里同时放"有 `main()` 的"与"没有 `main()` 的"，靠 CMake 区分），
-现在留着 `apps/` 只是为了把上面那条判据摆在目录名上——一眼能看出"这四个源文件是要各自变成
-可执行文件的"，代价是多一层目录。以后若某个入口长到需要自己的依赖或配置，再按
-`apps/<名字>/CMakeLists.txt` 拆出去。
+规模更大的工程还有第二种做法：**`apps/<每个应用>/CMakeLists.txt`**，让每个应用各自是一个独立 CMake 工程（自带依赖、可单独配置构建）。本项目体量小（4 个入口、1 个库），一个 `CMakeLists.txt` 里 `add_executable` 四行就够了，所以**不拆子目录**；真按"目录该不该存在"的严格标准，这点体量其实 **都用 `src/` 也完全可以**（`src/` 里同时放"有 `main()` 的"与"没有 `main()` 的"，靠 CMake 区分）， 现在留着 `apps/` 只是为了把上面那条判据摆在目录名上——一眼能看出"这四个源文件是要各自变成 可执行文件的"，代价是多一层目录。以后若某个入口长到需要自己的依赖或配置，再按 `apps/<名字>/CMakeLists.txt` 拆出去。
 
-**收益边界**：单可执行、没有外部使用方的小工程**不做也一样跑**；真正的收益是
-① 验收时"结构与命名"这一项更好讲（验收规范 §9）；② 以后把共用头（如 `motor.h`）抽成库时省事；
-③ 与后续 ROS2 任务那种"控制与执行解耦"的结构衔接。代价是机械搬迁
-（26 个头文件 + 6 个 `.cpp` + 4 个 `CMakeLists.txt` + 约 18 处文档引用），验证方式明确
-（重建 + 各程序 `--self-test` + 文档自检脚本）。
+**收益边界**：单可执行、没有外部使用方的小工程**不做也一样跑**；真正的收益是 ① 验收时"结构与命名"这一项更好讲（验收规范 §9）；② 以后把共用头（如 `motor.h`）抽成库时省事； ③ 与后续 ROS2 任务那种"控制与执行解耦"的结构衔接。代价是机械搬迁 （26 个头文件 + 6 个 `.cpp` + 4 个 `CMakeLists.txt` + 约 18 处文档引用），验证方式明确 （重建 + 各程序 `--self-test` + 文档自检脚本）。
 
 ### 落地情况（各任务做到哪见其 `docs/status.md`）
 
-规则见上一节；**各任务按这套结构改到哪一步，记在各任务自己的进度文档里**
-（[`@20260927_motor/docs/status.md`](../../@20260927_motor/docs/status.md)、
-[`@20260923_mujoco/docs/status.md`](../../@20260923_mujoco/docs/status.md)），本文只留规则与做法：
+规则见上一节；**各任务按这套结构改到哪一步，记在各任务自己的进度文档里** （[`@20260927_motor/docs/status.md`](../../@20260927_motor/docs/status.md)、 [`@20260923_mujoco/docs/status.md`](../../@20260923_mujoco/docs/status.md)），本文只留规则与做法：
 
-- 参考实现：[`@20260927_motor/cpp_part2/`](../../@20260927_motor/cpp_part2/docs/setup.md) §1
-  （`include/motor_bench/*.hpp` + `src/*.cpp` + `apps/*.cpp`，C++17、Allman、100 列；`apps/` 与 `src/` 的分界见同节）。
-- 搬迁步骤：先建 `include/<项目>/` 与 `src/`、把 `.h` 改成 `.hpp`（或 `.hpp` + 同名 `.cpp` 拆声明与实现），
-  再改 `CMakeLists.txt`（`add_library` + `target_include_directories(PUBLIC include)`），最后全仓搜文档引用。
-- 每次收尾用 `pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py .` 兜住文档路径漂移，
-  并重建 + 跑各程序的 `--self-test`。
+- 参考实现：[`@20260927_motor/cpp_part2/`](../../@20260927_motor/cpp_part2/docs/setup.md) §1 （`include/motor_bench/*.hpp` + `src/*.cpp` + `apps/*.cpp`，C++17、Allman、100 列；`apps/` 与 `src/` 的分界见同节）。
+- 搬迁步骤：先建 `include/<项目>/` 与 `src/`、把 `.h` 改成 `.hpp`（或 `.hpp` + 同名 `.cpp` 拆声明与实现）， 再改 `CMakeLists.txt`（`add_library` + `target_include_directories(PUBLIC include)`），最后全仓搜文档引用。
+- 每次收尾用 `pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py .` 兜住文档路径漂移， 并重建 + 跑各程序的 `--self-test`。
 
 ## CMake
 
@@ -473,15 +439,13 @@ CMake 工程（自带依赖、可单独配置构建）。本项目体量小（4 
 	- `target_*` 版带 **usage requirements** 传播机制：`PUBLIC` → 既给自己用也传给依赖方；`PRIVATE` → 只给自己用；`INTERFACE` → 只传给依赖方（自己不用，用于 header-only 库）
 	- 现代 CMake 风格（"Modern CMake" / Effective CMake）核心原则：**一切围绕 target 和它的 usage requirements**
 
-- *Q:* ```cmake
-	add_library(robot_core
+- *Q:* ```cmake add_library(robot_core
 		# ...
 	)
 	```
 	和
 	```cmake
-	add_library(
-		robot_core
+	add_library( robot_core
 		# ...
 	)
 	```
@@ -495,25 +459,17 @@ CMake 工程（自带依赖、可单独配置构建）。本项目体量小（4 
 
 	同理，下面这些也全都等价：
 	```cmake
-	add_library(robot_core STATIC a.cpp b.cpp)
-	add_library(robot_core
-			STATIC
-			a.cpp
-			b.cpp)
-	add_library  (robot_core STATIC a.cpp b.cpp)   # 命令名与括号间有空格：多数版本能解析，但不推荐
+	add_library(robot_core STATIC a.cpp b.cpp) add_library(robot_core STATIC a.cpp b.cpp) add_library  (robot_core STATIC a.cpp b.cpp)   # 命令名与括号间有空格：多数版本能解析，但不推荐
 	```
 
 	**真正会让换行产生差异的只有两种情况：**
 	1. **引号参数内的换行是字面内容**：
 		 ```cmake
-		 set(MSG "第一行
-		 第二行")    # MSG 里真的含有一个 \n
+		 set(MSG "第一行 第二行")    # MSG 里真的含有一个 \n
 		 ```
 	2. **方括号参数 `[[...]]` 内的换行也是字面内容**：
 		 ```cmake
-		 set(SCRIPT [[
-		 echo hello
-		 ]])         # SCRIPT 含换行
+		 set(SCRIPT [[ echo hello ]])         # SCRIPT 含换行
 		 ```
 
 	另外 `#` 到行尾是注释——如果某行被 `#` 注释掉了，那一整行的换行自然也就"消失"了，这是唯一可能因为换行位置而意外合并参数的地方（但这是注释造成的，不是换行本身）。

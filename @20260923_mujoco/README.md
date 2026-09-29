@@ -75,8 +75,7 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/physics_pacing.py    # �
 └── cpp_slope/     # 额外 demo：可调倾斜地面（重力不动）
 ```
 
-**每个目录/文件干什么、为什么这么分**（含 `scripts/` 与 `cpp_*/src/` 的逐文件注释、软链接与 gitignore 说明）：
-[`docs/layout.md`](docs/layout.md)。
+**每个目录/文件干什么、为什么这么分**（含 `scripts/` 与 `cpp_*/src/` 的逐文件注释、软链接与 gitignore 说明）： [`docs/layout.md`](docs/layout.md)。
 
 ## 环境与版本
 
@@ -116,15 +115,12 @@ pixi run python @20260923_mujoco/scripts/agent_scripts/physics_pacing.py    # �
 
 三个独立工程，都用同一个 pixi 环境与同一份 MJCF，数字可直接与 Python 侧对照：
 
-* **`cpp_task2/`**（任务 2 的 C++ 版）：`rest_check`（静止判定，与 `rest_check.py` 同一判据：末 1 s 漂移
-  4.440e-10 m、`ncon=8`）与 `dog_sim`（最小仿真 / 离屏录像 / 官方 `Simulate` 窗口三种模式）；
+* **`cpp_task2/`**（任务 2 的 C++ 版）：`rest_check`（静止判定，与 `rest_check.py` 同一判据：末 1 s 漂移 4.440e-10 m、`ncon=8`）与 `dog_sim`（最小仿真 / 离屏录像 / 官方 `Simulate` 窗口三种模式）；
 * **`cpp_stand/` + `cpp_slope/`**（额外 demo）：关节 PD 顶住平地 / 可调倾斜地面（≤15° 能撑住，≥20° 滑走翻倒）；
-* **任务 4 的结论**：不必再用手写双缓冲复刻 —— `cpp_task2 --mode view` 接官方 `Simulate` 界面实测
-  **1.00x 实时**（官方 `RenderLoop` 在 `Render()` 之前就放锁），Python 侧那点缺口来自 GIL。
+* **任务 4 的结论**：不必再用手写双缓冲复刻 —— `cpp_task2 --mode view` 接官方 `Simulate` 界面实测 **1.00x 实时**（官方 `RenderLoop` 在 `Render()` 之前就放锁），Python 侧那点缺口来自 GIL。
 
 **命令与可执行文件对照表、录像的时间网格、官方界面的两个坑、全部实测数字**：见 [`docs/cpp.md`](docs/cpp.md)。
 
 ## 进度
 
-各任务做到哪一步、推进顺序与学习进度见 [`docs/status.md`](docs/status.md)；本 README 只做入口，不记进度
-（[`../docs/conventions.md`](../docs/conventions.md) §2）。
+各任务做到哪一步、推进顺序与学习进度见 [`docs/status.md`](docs/status.md)；本 README 只做入口，不记进度 （[`../docs/conventions.md`](../docs/conventions.md) §2）。

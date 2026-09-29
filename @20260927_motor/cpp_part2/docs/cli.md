@@ -1,9 +1,6 @@
 # `motor_ctl` 用法（离线自检与实机）
 
-> 程序：[`../apps/motor_ctl.cpp`](../apps/motor_ctl.cpp)（构建见 [`setup.md`](setup.md) §3）。
-> 本文是**参数与命令的完整清单**；现场怎么一步步做见 [`runbook.md`](runbook.md) §4 批次 4–6，
-> 上机手册的"每步看什么"见 [`real.md`](real.md) §3.8。
-> 设计依据（零点语义、离线重锚、验收时序）在 [`zero_semantics.md`](zero_semantics.md)。
+> 程序：[`../apps/motor_ctl.cpp`](../apps/motor_ctl.cpp)（构建见 [`setup.md`](setup.md) §3）。 本文是**参数与命令的完整清单**；现场怎么一步步做见 [`runbook.md`](runbook.md) §4 批次 4–6， 上机手册的"每步看什么"见 [`real.md`](real.md) §3.8。 设计依据（零点语义、离线重锚、验收时序）在 [`zero-semantics.md`](zero-semantics.md)。
 
 ## 1 离线自检（不接电机）
 
@@ -24,8 +21,7 @@ $B --self-test --fake-off-after 200 --fake-off-frames 200 --fake-hand-deg 80 --s
 $B --self-test --fake-cycle-frame 250 --script "60" --seconds 4 --every 50                        # 单次上电复位（读数跳一个区间）
 ```
 
-注入开关的语义（含"断电窗口按收到的命令帧计时""窗口结束那一帧按真上电处理"）见
-[`fake_motor.md`](fake_motor.md) §3.4。
+注入开关的语义（含"断电窗口按收到的命令帧计时""窗口结束那一帧按真上电处理"）见 [`fake-motor.md`](fake-motor.md) §3.4。
 
 ## 2 实机
 
@@ -36,9 +32,7 @@ sudo $B --port /dev/ttyUSB0 --id 0 --script "0;mark;30;o+30;expect;30"   # S3→
 sudo $B --port /dev/ttyUSB0 --id 0 --expect-deg 0        # 上电检查（记号笔那个点的记录值）：差 ≈1 个区间会自动修
 ```
 
-要 `sudo`（或把自己加进 `dialout`）；每次都建议用行缓冲的日志包装（`sudo stdbuf -oL … | tee`，
-理由见仓库 [`../../../docs/pitfalls/environment.md`](../../../docs/pitfalls/environment.md)），
-现成脚本是 [`../../scripts/run_log.sh`](../../scripts/run_log.sh)。
+要 `sudo`（或把自己加进 `dialout`）；每次都建议用行缓冲的日志包装（`sudo stdbuf -oL … | tee`， 理由见仓库 [`../../../docs/pitfalls/environment.md`](../../../docs/pitfalls/environment.md)）， 现成脚本是 [`../../scripts/run_log.sh`](../../scripts/run_log.sh)。
 
 ## 3 参数
 
@@ -89,8 +83,7 @@ sudo $B --port /dev/ttyUSB0 --id 0 --expect-deg 0        # 上电检查（记号
 
 ## 5 几件必须知道的事
 
-* **位置在内部是 tick**（转子侧 int64）：`q_ticks = pos_ticks + offset_ticks`、`cmd.q_ticks = q_des_ticks − offset_ticks`
-  —— 就是纯加减；度只在命令输入与打印处出现（[`fixed_point.md`](fixed_point.md) §5）；
+* **位置在内部是 tick**（转子侧 int64）：`q_ticks = pos_ticks + offset_ticks`、`cmd.q_ticks = q_des_ticks − offset_ticks` —— 就是纯加减；度只在命令输入与打印处出现（[`fixed-point.md`](fixed-point.md) §5）；
 * `cmd.dq / cmd.kd` 仍是**转子侧**：程序里已经换算好（速度按 tick→rad、增益 ÷N²），别再换一遍；
 * `offset` 的方向是**收到加、下发减**；`o+30` 之后，**同一个物理点（记号笔那个点）读数 +30°**，而"同一个目标角度"会落在记号笔那一点上（= 朝反方向少转 30°）。符号的唯一标准见 [`real.md`](real.md) §5.3；
 * 回归 0 可能是**多圈**行程（读数从上次上电起一直累计），程序会先打印"要转多少度、直线时间多少秒"；

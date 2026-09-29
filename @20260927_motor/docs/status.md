@@ -1,9 +1,6 @@
 # 任务推进情况（做到哪、还差什么）
 
-> 这是**本任务的推进记录**：阶段状态、下一步、阻滞项、提交与分支情况。
-> 入口（任务书要求、怎么跑、文档地图）在 [`../README.md`](../README.md)；每个子任务项的细节在
-> [`../cpp/docs/`](../cpp/docs/) 与 [`../cpp_part2/docs/`](../cpp_part2/docs/)。
-> 约定来源：[`../../docs/conventions.md`](../../docs/conventions.md) §2（README 只做入口，不记进度）。
+> 这是**本任务的推进记录**：阶段状态、下一步、阻滞项、提交与分支情况。 入口（任务书要求、怎么跑、文档地图）在 [`../README.md`](../README.md)；每个子任务项的细节在 [`../cpp/docs/`](../cpp/docs/) 与 [`../cpp_part2/docs/`](../cpp_part2/docs/)。 约定来源：[`../../docs/conventions.md`](../../docs/conventions.md) §2（README 只做入口，不记进度）。
 
 ## 1 阶段状态
 
@@ -29,12 +26,9 @@
 
 ## 3 下一步
 
-实机到手后的顺序：先 **S2**（[`../cpp_part2/docs/real.md`](../cpp_part2/docs/real.md) §3.7：手转找零点 +
-定"里程计/锯齿" + 量断链行为 + 查上电基准），再用 `motor_ctl` 做 **S3–S5**（§3.8；标定与跳变的符号约定见 §5）。
-现场照着 [`../cpp_part2/docs/runbook.md`](../cpp_part2/docs/runbook.md) 的批次 3–6 走，跑完把数字填回 §5 记录表。
+实机到手后的顺序：先 **S2**（[`../cpp_part2/docs/real.md`](../cpp_part2/docs/real.md) §3.7：手转找零点 + 定"里程计/锯齿" + 量断链行为 + 查上电基准），再用 `motor_ctl` 做 **S3–S5**（§3.8；标定与跳变的符号约定见 §5）。 现场照着 [`../cpp_part2/docs/runbook.md`](../cpp_part2/docs/runbook.md) 的批次 3–6 走，跑完把数字填回 §5 记录表。
 
 ## 4 提交与分支
 
-- 本仓库直接在 `master` 上提交（`origin` = 自己的 GitHub 仓库），**不开长期分支**；唯一的历史分支
-  `backup/before-conventions-rewrite` 是改写约定之前的存档，不再合入。
+- 本仓库直接在 `master` 上提交（`origin` = 自己的 GitHub 仓库），**不开长期分支**；唯一的历史分支 `backup/before-conventions-rewrite` 是改写约定之前的存档，不再合入。
 - 提交信息规范见 [`../../docs/conventions.md`](../../docs/conventions.md) §1（一行英文，`type(scope): …`）。

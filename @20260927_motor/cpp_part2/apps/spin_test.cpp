@@ -31,7 +31,7 @@
 // 的“到位后保持”要靠它， 所以先在低速（≤0.1 圈/s）下测一次。真正拔 USB 线比这更彻底，两种都可以试。
 
 #include "motor_bench/sim/fake_motor.hpp" // 只在 --self-test 里用到（src/sim/ = 不控制实机的代码）
-#include "motor_bench/ticks.hpp" // 位置统一用转子侧 tick（见 docs/fixed_point.md §5）
+#include "motor_bench/ticks.hpp" // 位置统一用转子侧 tick（见 docs/fixed-point.md §5）
 #include "serialPort/SerialPort.h"
 #include "unitreeMotor/unitreeMotor.h"
 

@@ -31,7 +31,7 @@
 // 用的）。
 
 #include "motor_bench/sim/fake_motor.hpp" // 只在 --self-test 里用到（src/sim/ = 不控制实机的代码）
-#include "motor_bench/ticks.hpp" // 内部定点表示：位置一律是转子侧 tick（见 docs/fixed_point.md §5）
+#include "motor_bench/ticks.hpp" // 内部定点表示：位置一律是转子侧 tick（见 docs/fixed-point.md §5）
 #include "serialPort/SerialPort.h"
 #include "unitreeMotor/unitreeMotor.h"
 

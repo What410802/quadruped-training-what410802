@@ -24,6 +24,4 @@ C++   ：Replicate.d/unitree_mujoco/cpp 下跑 ./build/unitree_mujoco（带官�
 
 ## 这次复现给任务 4 的结论
 
-上游那份 C++ 实现（双缓冲 + DDS）在本次验收里**不需要再复刻一遍**：把 `cpp_task2` 接上 MuJoCo 官方
-`Simulate` 界面（`--mode view`）实测就是 **1.00x 实时**、画面流畅，Python 侧那 0.14x 的缺口来自 GIL。
-理由与实测见 [`cpp.md`](cpp.md) §3；逐帧对比见 [`../../docs/learn/runtime-timing.md`](../../docs/learn/runtime-timing.md) §11 的方案 ③。
+上游那份 C++ 实现（双缓冲 + DDS）在本次验收里**不需要再复刻一遍**：把 `cpp_task2` 接上 MuJoCo 官方 `Simulate` 界面（`--mode view`）实测就是 **1.00x 实时**、画面流畅，Python 侧那 0.14x 的缺口来自 GIL。 理由与实测见 [`cpp.md`](cpp.md) §3；逐帧对比见 [`../../docs/learn/runtime-timing.md`](../../docs/learn/runtime-timing.md) §11 的方案 ③。

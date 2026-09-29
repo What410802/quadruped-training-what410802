@@ -10,7 +10,7 @@
  *
  * 为什么内部用转子侧：报文的 `pos` 就是转子侧的整数 tick，零点跳变是"整 32768"，
  * 减速比是有理数 19:3 —— 这三件事在转子 tick 上都是精确整数运算。详见
- * docs/fixed_point.md §5 与 docs/zero_semantics.md。
+ * docs/fixed-point.md §5 与 docs/zero-semantics.md。
  */
 #pragma once
 

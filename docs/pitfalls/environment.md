@@ -201,13 +201,9 @@ LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$SDK/lib" ./build-stand/stand_go2
 
 ## 2026-09-29 管道（`| tee`）让程序输出变"卡顿"：`stdbuf -oL`
 
-**症状**：给命令接了 `2>&1 | tee log.txt`（实机日志留档）之后，终端不再逐行刷新——要攒一大段才出现一次，
-而且经常从半行中间断开；不接 `tee` 时一切正常。实机调零/手转那些"看着读数变化"的操作因此很难受。
+**症状**：给命令接了 `2>&1 | tee log.txt`（实机日志留档）之后，终端不再逐行刷新——要攒一大段才出现一次， 而且经常从半行中间断开；不接 `tee` 时一切正常。实机调零/手转那些"看着读数变化"的操作因此很难受。
 
-**原因**：stdio 的缓冲策略跟着"stdout 是不是终端"变。接了管道/重定向之后，C 库把 stdout 从**按行缓冲**
-（`\n` 就刷）改成**按块缓冲**（4 KB 才刷一次）⇒ 输出要么攒满一块、要么等进程退出才出来。
-`tee` 本身**没有**解缓冲的选项（GNU coreutils 的 tee 只有 `-a/-i/-p/--output-error`；`grep --line-buffered`
-那类是每个程序自己的开关，不能通用）。
+**原因**：stdio 的缓冲策略跟着"stdout 是不是终端"变。接了管道/重定向之后，C 库把 stdout 从**按行缓冲** （`\n` 就刷）改成**按块缓冲**（4 KB 才刷一次）⇒ 输出要么攒满一块、要么等进程退出才出来。 `tee` 本身**没有**解缓冲的选项（GNU coreutils 的 tee 只有 `-a/-i/-p/--output-error`；`grep --line-buffered` 那类是每个程序自己的开关，不能通用）。
 
 **修法**：把**生产端**改成行缓冲——`stdbuf` 通过 `LD_PRELOAD` 改 libc 的缓冲模式：
 
@@ -224,8 +220,6 @@ stdbuf -oL sudo <程序> | tee log       # ❌ 无效
 | `./slow \| while read …`（管道，无 stdbuf） | 全部挤在进程结束时（11 ms 内 4 行一起到） |
 | `stdbuf -oL ./slow \| while read …` | 0.4 s 均匀间隔（56.878 / 57.279 / 57.680 / 58.080 s） |
 
-**要记住的两点**：① 这是"程序的 stdout 不是终端"造成的，跟 `tee` 关系不大——任何重定向/管道都一样；
-② 交互式程序（读 stdin 的那种）用 `stdbuf -oL` 只改 stdout/stderr，**stdin 仍是终端**，键盘输入不受影响。
+**要记住的两点**：① 这是"程序的 stdout 不是终端"造成的，跟 `tee` 关系不大——任何重定向/管道都一样； ② 交互式程序（读 stdin 的那种）用 `stdbuf -oL` 只改 stdout/stderr，**stdin 仍是终端**，键盘输入不受影响。
 
-**落到本仓库**：实机命令统一走 `@20260927_motor/cpp_part2/docs/runbook.md` §2 里的 `run_log.sh` 包装
-（`sudo stdbuf -oL … | tee`，按时间戳自动命名日志；`sudo` 写在脚本外面）。
+**落到本仓库**：实机命令统一走 `@20260927_motor/cpp_part2/docs/runbook.md` §2 里的 `run_log.sh` 包装 （`sudo stdbuf -oL … | tee`，按时间戳自动命名日志；`sudo` 写在脚本外面）。

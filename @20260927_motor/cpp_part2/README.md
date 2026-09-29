@@ -1,8 +1,6 @@
 # 子任务项二（实体电机控制）：程序与工具
 
-真实电机是宇树 **GO-8010-6**，走官方 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../ReadOnly.d/unitree_actuator_sdk)）。
-本目录是任务书"二、实体电机控制"那部分的程序与工具：**让电机转起来 → 回 0 位 + 键盘给角度 →
-标零点并正向偏移 30° → 处理零点跳变**。
+真实电机是宇树 **GO-8010-6**，走官方 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../ReadOnly.d/unitree_actuator_sdk)）。 本目录是任务书"二、实体电机控制"那部分的程序与工具：**让电机转起来 → 回 0 位 + 键盘给角度 → 标零点并正向偏移 30° → 处理零点跳变**。
 
 ```
 上位机（我们的控制律）          官方 SDK                            假电机 / 真电机
@@ -22,9 +20,7 @@
 | `apps/motor_ctl.cpp` | **S3–S5**：回归 0 + 键盘给角度（梯形插值）+ `offset` 标定（收到加、下发减）+ 零点跳变检测与修正；`--self-test` 能离线跑通整条流程 | 实机要（`sudo`）；dry run 不要 |
 | `apps/sim_fake_motor_dryrun.cpp` | 最小 dry run：PTY + 假电机，跑通"上位机 → SDK → 报文 → 反馈" | 不要 |
 
-布局：`include/motor_bench/`（公开接口，`.hpp`）、`src/`（**没有 `main()`** 的：库实现 + PTY 垫片）、
-`apps/`（**有 `main()`** 的：四个可执行入口）；`include/motor_bench/sim/` 与 `apps/sim_fake_motor_dryrun.cpp`
-是**不用于控制实机**的那部分。选型理由、`apps/` 与 `src/` 的分界理由见 [`docs/setup.md`](docs/setup.md) §1。
+布局：`include/motor_bench/`（公开接口，`.hpp`）、`src/`（**没有 `main()`** 的：库实现 + PTY 垫片）、 `apps/`（**有 `main()`** 的：四个可执行入口）；`include/motor_bench/sim/` 与 `apps/sim_fake_motor_dryrun.cpp` 是**不用于控制实机**的那部分。选型理由、`apps/` 与 `src/` 的分界理由见 [`docs/setup.md`](docs/setup.md) §1。
 
 ## 2 怎么建、怎么跑
 
@@ -44,8 +40,7 @@ $B --self-test --script "0;30;mark;o+30;expect;30" --seconds 14
 sudo $B --port /dev/ttyUSB0 --id 0
 ```
 
-全部参数、键盘命令与八条离线自检命令见 [`docs/cli.md`](docs/cli.md)；编译细节（SDK 路径、编辑器提示）
-见 [`docs/setup.md`](docs/setup.md)。
+全部参数、键盘命令与八条离线自检命令见 [`docs/cli.md`](docs/cli.md)；编译细节（SDK 路径、编辑器提示） 见 [`docs/setup.md`](docs/setup.md)。
 
 ## 3 结果与文档
 
@@ -53,10 +48,10 @@ sudo $B --port /dev/ttyUSB0 --id 0
 |---|---|
 | [`docs/runbook.md`](docs/runbook.md) | **现场执行清单**：批次 0–7 的执行卡、记录表、故障处置、验收演示 |
 | [`docs/real.md`](docs/real.md) | 硬件现状、成熟度评估、S0–S5 的完整计划与验收标准、实机实测记录 |
-| [`docs/zero_semantics.md`](docs/zero_semantics.md) | 零点的上电/运行/离线语义、程序自维护的状态、验收时序 |
-| [`docs/fixed_point.md`](docs/fixed_point.md) | 定点 vs 浮点：官方协议依据、误差预算、编码器精度、待实机复验清单 |
+| [`docs/zero-semantics.md`](docs/zero-semantics.md) | 零点的上电/运行/离线语义、程序自维护的状态、验收时序 |
+| [`docs/fixed-point.md`](docs/fixed-point.md) | 定点 vs 浮点：官方协议依据、误差预算、编码器精度、待实机复验清单 |
 | [`docs/protocol.md`](docs/protocol.md) | **报文与定点标度的实测记录**（raw ↔ 物理量、截断、1 LSB） |
-| [`docs/fake_motor.md`](docs/fake_motor.md) | 仿真电机：层级、接口、收发时序、注入开关、能证明什么 |
+| [`docs/fake-motor.md`](docs/fake-motor.md) | 仿真电机：层级、接口、收发时序、注入开关、能证明什么 |
 | [`docs/cli.md`](docs/cli.md) | `motor_ctl` 的参数与命令清单（离线 / 实机两种用法） |
 | [`docs/setup.md`](docs/setup.md) | 构建、目录布局与工具链选型理由 |
 | [`docs/pitfalls.md`](docs/pitfalls.md) | 无硬件阶段踩过的坑（例程崩溃、PTY ioctl、断链不卸力…） |
