@@ -14,8 +14,11 @@
 > `src/sim/` 里是**不用于控制实机**的代码（PTY 垫片 + 假电机 + dry run），`src/` 下其余文件都要接实机。
 >
 > 硬件现状（转接头型号/驱动/权限）、成熟度评估、**S0–S5 的完整计划与验收标准**、实机实测记录都在
-> [`docs/real.md`](docs/real.md)；S3–S5 的上机手册在 [`docs/real.md`](docs/real.md) §3.8，缩写
-> （TTY/PTY、Mbaud、LSB、CRC、offset…）见 [`docs/glossary.md`](docs/glossary.md)。
+> [`docs/real.md`](docs/real.md)；**实机怎么一步步做**（批次 0–7 的执行卡、记录表、故障处置、验收演示）见
+> [`docs/runbook.md`](docs/runbook.md)；S3–S5 的上机手册在 [`docs/real.md`](docs/real.md) §3.8，缩写
+> （TTY/PTY、Mbaud、LSB、CRC、offset…）见 [`docs/glossary.md`](docs/glossary.md)；
+> **仿真电机**（向 SDK 伪装成实体电机的那一层：层级、接口、时序、能证明什么）见
+> [`docs/fake_motor.md`](docs/fake_motor.md)。
 
 ```
 上位机（我们的控制律）          官方 SDK                            假电机 / 真电机
@@ -125,9 +128,10 @@ gear ratio = 6.330000（queryGearRatio），mode = 1（queryMotorMode）
 
 | 层 | 状态 |
 |---|---|
-| 报文 / CRC / 定点标度 / 关节↔转子换算 / 反馈解码 | ✅ 已实测证明（本文件 §4） |
+| 报文 / CRC / 定点标度 / 关节↔转子换算 / 反馈解码 | ✅ 已实测证明（本文件 §4）；无硬件时由[仿真电机](docs/fake_motor.md)按同一套标度收发，官方 SDK 原样解析 |
 | 真串口链路（4 Mbaud、半双工、时序/抖动） | ✅ **S1 实测通过**：6 次 × 1601 帧、0 丢帧 0 超时（见 [`docs/real.md`](docs/real.md) §3.6） |
-| S2 找零点 / 读数形态 / 断链行为 | 🔧 工具与手册就绪（[`docs/real.md`](docs/real.md) §3.7），**待实机执行** |
+| S2 找零点 / 读数形态 / 断链行为 / 上电基准 | 🔧 工具与手册就绪（[`docs/real.md`](docs/real.md) §3.7），**待实机执行** |
+| 官方例程（任务书 1 的字面要求） | 🔧 命令与安全注意事项就绪（[`docs/runbook.md`](docs/runbook.md) §4 批次 2），**待实机执行** |
 | 零点标定（`offset`）与零点跳变处理（S3–S5） | 🔧 **程序已就绪**（`src/motor_ctl.cpp`，§6 的 dry run 已把标定/跳变/认错零点整套流程跑通），**待实机执行** |
 | 安全层（看门狗、斜率/速度/力矩上限、温度与错误处理） | 🔧 `motor_ctl` 已有：插值限速限加速度、连续 40 帧无回复卸力退出、`merror`/温度退出、力矩持续超限判卡住；**“断链后驱动板自己怎么办”仍要 S2e 量** |
 
@@ -137,9 +141,11 @@ gear ratio = 6.330000（queryGearRatio），mode = 1（queryMotorMode）
 |---|---|
 | `analyse_spin_log.py` | 分析 `spin_test` 的输出：每次跑的命令转速 vs 实测转速、丢帧、温度 |
 | `analyse_watch_log.py` | 分析 S2 的 `--watch --log`：读数形态（里程计/锯齿）、手转量、±1 区间的跳变清单、MARK 读数 |
+| `analyse_ctl_log.py` | 分析 `motor_ctl` 的一次/多次运行：每条命令的到位情况、跳变修正、保护触发、并给出"可直接抄进记录表"的一行摘要 |
 | `check_md_links.py` | 文档自检：断链/锚点/表格列数 |
 
-先做 **S2**（手册 [`docs/real.md`](docs/real.md) §3.7）：手转找零点 + 定“里程计/锯齿” + 量断链行为；
+**实机的执行顺序与记录表**见 [`docs/runbook.md`](docs/runbook.md)（批次 0–7）。一句话：
+先 **S2**（手册 [`docs/real.md`](docs/real.md) §3.7）：手转找零点 + 定“里程计/锯齿” + 量断链行为 + 查上电基准；
 再按 §3.8 用 `motor_ctl` 做 S3–S5（标定与跳变处理的符号约定见 [`docs/real.md`](docs/real.md) §5）。
 实机跑要 `sudo`（或把自己加进 `dialout`）、先确认串口设备与电机 ID、先从**小角度 + 插值**开始。
 
