@@ -1,8 +1,8 @@
 # 仿真电机：让官方 SDK 以为真的接了一台 GO-8010-6
 
 > 实体电机一时拿不到（当前最大阻滞项）时，它让**同一份上位机代码**（同一套 SDK 调用、同一套报文与换算）
-> 在没有硬件的情况下跑起来。实现只有两个文件：[`../src/sim/fake_motor.h`](../src/sim/fake_motor.h)
-> （假电机）与 [`../src/sim/pty_serial_shim.c`](../src/sim/pty_serial_shim.c)（串口垫片）。
+> 在没有硬件的情况下跑起来。实现只有两个文件：[`../include/motor_bench/sim/fake_motor.hpp`](../include/motor_bench/sim/fake_motor.hpp)
+> （假电机）与 [`../src/pty_serial_shim.c`](../src/pty_serial_shim.c)（串口垫片）。
 >
 > 怎么跑：[`../README.md`](../README.md) §3（手工编译）/ §6（CMake 产物 + 四种自检情形）；
 > 实机计划与验收：[`real.md`](real.md) §3；缩写： [`glossary.md`](glossary.md)。
@@ -32,9 +32,9 @@
 ```mermaid
 flowchart TB
     subgraph PROC["上位机进程（dry run 时全部在同一个进程里）"]
-        CTL["控制/探针程序<br/>src/motor_ctl.cpp · src/spin_test.cpp · src/serial_probe.cpp"]
+        CTL["控制/探针程序<br/>apps/motor_ctl.cpp · apps/spin_test.cpp · apps/serial_probe.cpp"]
         SDK["官方 SDK（预编译 .so，原样链接）<br/>SerialPort.sendRecv · MotorCmd.modify_data · MotorData.extract_data"]
-        SHIM["串口垫片（LD_PRELOAD 注入）<br/>src/sim/pty_serial_shim.c"]
+        SHIM["串口垫片（LD_PRELOAD 注入）<br/>src/pty_serial_shim.c"]
         FAKE["假电机线程<br/>fakemotor.Start 里的 lambda"]
         MODEL["假电机模型 + 驱动板上报层<br/>Model.Step / Model.Fill / Encoder"]
     end
@@ -60,9 +60,9 @@ flowchart TB
 
 | 层 | 在哪 | 职责 | 实机上的对应物 |
 |---|---|---|---|
-| 控制/探针程序 | `src/motor_ctl.cpp`、`src/spin_test.cpp`、`src/serial_probe.cpp`、`src/sim/fake_motor_dryrun.cpp` | 控制律、插值、键盘、标定与跳变逻辑 | **同一份程序**，只把 `--self-test` 换成 `--port /dev/ttyUSB0` |
+| 控制/探针程序 | `apps/motor_ctl.cpp`、`apps/spin_test.cpp`、`apps/serial_probe.cpp`、`apps/sim_fake_motor_dryrun.cpp` | 控制律、插值、键盘、标定与跳变逻辑 | **同一份程序**，只把 `--self-test` 换成 `--port /dev/ttyUSB0` |
 | 官方 SDK | `ReadOnly.d/unitree_actuator_sdk`（头文件 + 预编译 `.so`） | 打包 17 B 命令帧（含 CRC 与定点量化）、`write`、`recv` 16 B、解包成物理量 | 同左 |
-| 串口垫片 | `src/sim/pty_serial_shim.c`（`LD_PRELOAD`，CMake 目标 `pty_serial_shim`） | 让 `SerialPort` 构造时的 `TIOCGSERIAL`/`TIOCSSERIAL` 通过（PTY 一律回 `ENOTTY`，见 [`../README.md`](../README.md) §2） | FTDI 驱动提供的真 `serial_struct`（实测 `baud_base=60000000`、4 Mbaud 整除） |
+| 串口垫片 | `src/pty_serial_shim.c`（`LD_PRELOAD`，CMake 目标 `pty_serial_shim`） | 让 `SerialPort` 构造时的 `TIOCGSERIAL`/`TIOCSSERIAL` 通过（PTY 一律回 `ENOTTY`，见 [`../README.md`](../README.md) §2） | FTDI 驱动提供的真 `serial_struct`（实测 `baud_base=60000000`、4 Mbaud 整除） |
 | PTY 对 | `fakemotor::MakePty()` | 造一对"串口"：slave 给 SDK，master 给假电机 | FT232H ↔ TTL/RS485 线 ↔ 驱动板 |
 | 假电机线程 | `fakemotor::Start()` | 收满 17 B → `Step()` 积分 → `Fill()` → 回 16 B | 驱动板（位置环/速度环 + 报文）+ 电机本体 |
 | 上报层 | `Model::Reported()`、`Model::LoopPosition()`、`Encoder` | 把"真实转子位置"变成"板子报出来的位置"：里程计 / 锯齿 / 上电基准 / 中途换基准 | 单圈绝对值编码器 + 驱动板的零点约定（[`real.md`](real.md) §5） |
@@ -115,6 +115,21 @@ flowchart TB
 | `--fake-sawtooth` | 板子只报"相对最近零点"的角度（0…1 个区间） | 讲义 §2.4 的锯齿读数（S2b 要判定哪种） |
 | `--fake-datum-turns N` | 上电基准平移 N 个转子整圈（N 可负） | 讲义 §2.6 的"认错零点"（S5 的上电那一半） |
 | `--fake-jump-frame N` / `--fake-jump-turns K` | 第 N 帧注入一次"读数往前跳 K 个区间" | 运行中换基准（S5 的另一半；K=1 正跳、K=-1 反跳） |
+| `--fake-off-after N` / `--fake-off-frames M` | 第 N 帧起"板子断电"M 帧：不收命令、不积分、不回帧；窗口结束那一帧按**真上电**处理（见下） | S2e 断链、S2f 上电基准（断掉的是**整块板子**，不是只丢回帧） |
+| `--fake-cycle-frame N` | 第 N 帧模拟一次"上电复位"（丢圈数：raw 重新落回 0…一个区间） | 上电语义（S2f） |
+| `--fake-hand-deg D` / `--fake-hand-period-s T` | "手推输出端"：输出端在一根正弦上来回 ±D 度、周期 T 秒（内部是转子侧一个软弹簧 + 阻尼，力矩上限 1 N·m ≈ 输出端 6.3 N·m） | S2a 的"手转"、"跨多个零点"；断电窗口里也生效（那时电机本来就是自由的） |
+| `--fake-status-bits N` | 回帧 mode 状态位写死成 N（bit1 期望速度超范围、bit2 期望位置超范围） | 手册 §8.1 的状态位告警路径 |
+
+**断电窗口的语义（两个容易想错的地方）**
+
+- 窗口按"板子收到过多少条命令"计时，**不是**按"处理过多少帧"：窗口内不收命令也不积分，
+  用处理帧数计时的话窗口永远不会结束（旧版假板子就栽在这里）。
+- 窗口里电机是"没上电"的：转子自由、可以被手推着走；窗口结束的那一帧等价于**重新上电**
+  ⇒ 单圈绝对值编码器丢圈数（`PowerCycle()` 把基准重设成"报出来的数落回 0…一个区间"），
+  同时**速度和力矩先归零**（真板子上电那一刻的"归零声明"）。
+  所以：断电期间被手推过的地方，上电后的读数与掉线前是"差了整数个区间"的 —— 这正是
+  控制程序必须靠 `turn_base` 重锚、并且**第一帧只发零力矩**的原因（见
+  [`zero_semantics.md`](zero_semantics.md) §4）。
 
 ## 4 通信时序
 
