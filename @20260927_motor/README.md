@@ -11,23 +11,12 @@
 > | 子任务项一（仿真部分） | 加控制程序模拟关节电机特性，控制程序写成状态机（阻尼 / 站立两个状态，按键切换） | [`cpp/`](cpp/) | [`cpp/README.md`](cpp/README.md) | [`cpp/docs/sim.md`](cpp/docs/sim.md) |
 > | 子任务项二（实体电机控制） | 官方 SDK 例程让电机转起来 → 写程序慢慢回归 0 位、键盘输入角度并缓慢转过去 → 标零点并正向偏移 30° → 处理零点跳变 | [`cpp_part2/`](cpp_part2/) | [`cpp_part2/README.md`](cpp_part2/README.md) | [`cpp_part2/docs/real.md`](cpp_part2/docs/real.md)（缩写见 [`cpp_part2/docs/glossary.md`](cpp_part2/docs/glossary.md)） |
 >
-> 目录（TOC）：[状态一览](#状态一览) · [目录结构](#目录结构) · [环境](#环境) ·
+> 目录（TOC）：[目录结构](#目录结构) · [环境](#环境)。
 > 缩写表（主要针对子任务项二）：[`cpp_part2/docs/glossary.md`](cpp_part2/docs/glossary.md)
 > （TTY/PTY、Mbaud、LSB、TTL/RS485、CRC、q7/q8/q15…看不懂先翻它）。
-
-## 状态一览
-
-| 阶段 | 状态 |
-|---|---|
-| 子任务项一：状态机仿真（窗口 / 无窗口回归 / 录像） | ✅ 完成；实测数字见 [`cpp/docs/sim.md`](cpp/docs/sim.md) §3 |
-| 子任务项一附加：倾斜地面、可调摩擦、与第二次培训控制程序的对照 | ✅ 完成（同上 §2.5 / §2.6 / §6） |
-| 子任务项二 S0：端口探针（转接头能不能配 4 Mbaud、SDK 能不能开端口） | ✅ 通过（FT232H + `ftdi_sio`，4 Mbaud 整除） |
-| 子任务项二 S1：让电机转起来（带斜坡与限幅） | ✅ 通过（6 次实跑：0 丢帧、温度 30–31 °C、`merror=0`） |
-| 子任务项二 S2：零力矩手转找零点 + 定“里程计/锯齿” + kd 扫描 + 量断链行为 + 上电基准 | 🔧 **工具与手册已就绪**（[`cpp_part2/docs/real.md`](cpp_part2/docs/real.md) §3.7 的 S2a–S2f），待实机执行（执行卡：[`cpp_part2/docs/runbook.md`](cpp_part2/docs/runbook.md) §4 批次 3） |
-| 子任务项二 S1b：官方 SDK 例程（任务书第 1 条的字面要求） | 🔧 **命令与安全注意事项已就绪**（[`cpp_part2/docs/runbook.md`](cpp_part2/docs/runbook.md) §4 批次 2），待实机执行 |
-| 子任务项二 S3–S5：回归 0 + 键盘给角度 / 标零点 + 偏移 30° / 零点跳变 | 🔧 **程序已就绪**（[`cpp_part2/apps/motor_ctl.cpp`](cpp_part2/apps/motor_ctl.cpp)；离线自检八种情形都跑通，见 [cli.md §1](cpp_part2/docs/cli.md) 与 [real.md §3.8](cpp_part2/docs/real.md)），待实机执行（执行卡：runbook §4 批次 4–6） |
-| 子任务项二收尾：实机记录表 → 填回文档 → 提交 → 当面验收演示 | ⏳ 记录表与演示脚本已备好（[`cpp_part2/docs/runbook.md`](cpp_part2/docs/runbook.md) §5 / §7），等实机数据 |
-| 工程结构对齐：`include/<项目>/**/*.hpp` + `src/*.cpp` + `apps/`，C++17 | 🔧 **`cpp_part2/` 已完成**（2026-09-29：拆成 5 个头文件 + 4 个实现 + 4 个入口，换 Allman/C++17）；`cpp/` 与 `@20260923_mujoco/` 待做，计划见 [`../docs/learn/cpp-cmake.md`](../docs/learn/cpp-cmake.md) 的「落地计划」一节 |
+>
+> **任务推进情况**（各阶段做到哪、还差什么、阻滞项、提交与分支）见 [`docs/status.md`](docs/status.md)——
+> 本 README 只做入口，不记进度（[`../docs/conventions.md`](../docs/conventions.md) §2）。
 
 ## 目录结构
 
@@ -40,6 +29,7 @@
 │   └── docs/                  #   runbook / real / zero_semantics / protocol / fixed_point
 │                              #   / fake_motor / cli / setup / pitfalls / glossary
 ├── docs/                      # 两个子任务项共用的资料
+│   ├── status.md              # 任务推进情况（阶段状态、下一步、阻滞项、提交与分支）
 │   └── teaching-materials/    # 讲义与任务书
 ├── scripts/
 │   ├── run_log.sh             # 实机命令的包装：行缓冲（stdbuf -oL）+ 按时间自动命名日志

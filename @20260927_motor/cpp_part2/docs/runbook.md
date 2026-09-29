@@ -288,12 +288,13 @@ sudo $RL s5 $C --port /dev/ttyUSB0 --id 0 --offset-deg 30 --jump-tol-deg 8
 
 ## 7 收尾：提交与当面验收
 
-提交：先把 §5 填完，再把结论写回 [`real.md`](real.md) 的实测小节与任务
-[`README.md`](../../README.md) 的状态表，然后提交日志与照片。按阶段分开提交，不要攒到最后。
+提交：先把 §5 填完，再把结论写回 [`real.md`](real.md) 的实测小节、把阶段状态在
+[`../../docs/status.md`](../../docs/status.md) 里打勾，然后提交日志与照片。按阶段分开提交，不要攒到最后。
 
 当面验收大约 10 分钟，按下面的顺序演示：
 
-1. 讲一句结构：`cpp_part2/src/` 的三个程序加 `sim/` 的仿真电机；报文的标度是实测出来的（[`protocol.md`](protocol.md)）。
+1. 讲一句结构：`cpp_part2/` 的 `include/`（接口）+ `src/`（库与垫片）+ `apps/`（四个入口），其中假电机在
+   `include/motor_bench/sim/`；报文的标度是实测出来的（[`protocol.md`](protocol.md)）。
 2. 离线也能跑：`LD_PRELOAD=... motor_ctl --self-test --script "0;30;mark;o+30;expect;30"`。
 3. 接上电机：`serial_probe --watch 3` 看读数与温度，然后 `motor_ctl` 跑 `0` 与 `30`。
 4. 任务书③：`o+30` 前后把线 A 的读数指给验收人看（0 → +30.00°），再 `30` 让它少转 30° 回到线 A。

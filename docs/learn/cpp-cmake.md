@@ -420,16 +420,18 @@ CMake 工程（自带依赖、可单独配置构建）。本项目体量小（4 
 （26 个头文件 + 6 个 `.cpp` + 4 个 `CMakeLists.txt` + 约 18 处文档引用），验证方式明确
 （重建 + 各程序 `--self-test` + 文档自检脚本）。
 
-### 落地计划（`@20260927_motor/cpp_part2/` 已完成，其余待做）
+### 落地情况（各任务做到哪见其 `docs/status.md`）
 
-**已完成（2026-09-29）**：`cpp_part2/` 按上面这套结构重构完毕，同时换到 C++17、Allman 大括号
-（`cpp_part2/.clang-format`，只作用于该目录），并把原来 870 行的单文件拆成
-`include/motor_bench/*.hpp` + `src/*.cpp` + `apps/*.cpp`（`apps/` 的取舍见上一节最后两段）。细节见
-[`../../@20260927_motor/cpp_part2/docs/setup.md`](../../@20260927_motor/cpp_part2/docs/setup.md) §1。
+规则见上一节；**各任务按这套结构改到哪一步，记在各任务自己的进度文档里**
+（[`@20260927_motor/docs/status.md`](../../@20260927_motor/docs/status.md)、
+[`@20260923_mujoco/docs/status.md`](../../@20260923_mujoco/docs/status.md)），本文只留规则与做法：
 
-**待做**：`@20260927_motor/cpp/`（完整版 12 + `essential/` 10 + `essential_core/` 2 个头文件）与
-`@20260923_mujoco/` 的三个小程序（3 个头文件）随后再跟；每步都用
-`pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py .` 兜住文档路径漂移。
+- 参考实现：[`@20260927_motor/cpp_part2/`](../../@20260927_motor/cpp_part2/docs/setup.md) §1
+  （`include/motor_bench/*.hpp` + `src/*.cpp` + `apps/*.cpp`，C++17、Allman、100 列；`apps/` 与 `src/` 的分界见同节）。
+- 搬迁步骤：先建 `include/<项目>/` 与 `src/`、把 `.h` 改成 `.hpp`（或 `.hpp` + 同名 `.cpp` 拆声明与实现），
+  再改 `CMakeLists.txt`（`add_library` + `target_include_directories(PUBLIC include)`），最后全仓搜文档引用。
+- 每次收尾用 `pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py .` 兜住文档路径漂移，
+  并重建 + 跑各程序的 `--self-test`。
 
 ## CMake
 

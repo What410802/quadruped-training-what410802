@@ -61,10 +61,7 @@ sudo $B --port /dev/ttyUSB0 --id 0
 | [`docs/setup.md`](docs/setup.md) | 构建、目录布局与工具链选型理由 |
 | [`docs/pitfalls.md`](docs/pitfalls.md) | 无硬件阶段踩过的坑（例程崩溃、PTY ioctl、断链不卸力…） |
 | [`docs/glossary.md`](docs/glossary.md) | 缩写（TTY/PTY、Mbaud、LSB、CRC、offset…） |
-
-当前状态一句话：**协议层、串口链路（S1）已实测通过；S2（手转找零点/断链/上电基准）与 S3–S5 的
-程序已就绪并能在离线自检里跑通，等实机执行**——细节见 [`docs/real.md`](docs/real.md) §3 与任务
-[`../README.md`](../README.md) 的状态表。
+| [`../docs/status.md`](../docs/status.md) | **任务推进情况**（跨两个子任务项）：阶段状态、下一步、阻滞项、提交与分支（本 README 只做入口，不记进度） |
 
 顺手能跑的分析脚本（在 [`../scripts/agent_scripts/`](../scripts/agent_scripts/)，用 `pixi run python` 跑）：
 
@@ -74,9 +71,3 @@ sudo $B --port /dev/ttyUSB0 --id 0
 | `analyse_watch_log.py` | 分析 S2 的 `--watch --log`：读数形态（里程计/锯齿）、手转量、±1 区间的跳变清单、MARK 读数 |
 | `analyse_ctl_log.py` | 分析 `motor_ctl` 的一次/多次运行：每条命令的到位情况、跳变修正、保护触发，并给出"可直接抄进记录表"的一行摘要 |
 | `check_md_links.py` | 文档自检：断链/锚点/表格列数 |
-
-## 4 下一步
-
-实机执行顺序：先 **S2**（[`docs/real.md`](docs/real.md) §3.7：手转找零点 + 定"里程计/锯齿" + 量断链行为 +
-查上电基准），再用 `motor_ctl` 做 **S3–S5**（§3.8；标定与跳变的符号约定见 §5）。现场照着
-[`docs/runbook.md`](docs/runbook.md) 的批次 3–6 走，跑完把数字填回 §5 记录表。
