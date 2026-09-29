@@ -207,6 +207,9 @@ sudo $C --port /dev/ttyUSB0 --id 0 --offset-deg 30 --jump-tol-deg 8 2>&1 | tee $
 
 > 每次运行后先用 `pixi run python @20260927_motor/scripts/agent_scripts/analyse_ctl_log.py <日志>`
 > 把摘要行打出来，抄进下表；`spin_test`/`serial_probe` 的日志用 `analyse_spin_log.py` / `analyse_watch_log.py`。
+>
+> 有些数值/精度问题**只能上机量**（编码器重复性与背隙、减速比 6.33 vs 19:3、长会话的浮点漂移…）：
+> 那些项的清单在 [`fixed_point.md`](fixed_point.md) §6，做完把结论搬回这张表。
 
 | 批次 | 阶段 | 命令（简写） | 关键数字 | 结论 / 异常 | 日志文件 |
 |---|---|---|---|---|---|
