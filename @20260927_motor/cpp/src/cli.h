@@ -36,7 +36,7 @@ inline const char *kUsage =
     "                 [--delay-cycles N] [--noise N] [--gear N]\n"
     "                 [--pitch DEG] [--roll DEG] [--floor-friction \"S [SPIN ROLL]\"] [--floor-condim N]\n"
     "\n"
-    "第三次培训·第一部分（仿真）：关节电机 = MIT 混合控制器（讲义 §1.2），\n"
+    "第三次培训·子任务项一（仿真部分）：关节电机 = MIT 混合控制器（讲义 §1.2），\n"
     "控制程序是两状态的**状态机**——阻尼模式 / 站立模式，窗口里按键实时切换。\n"
     "\n"
     "  --mode view     开窗口（自己写的窗口，才有键盘切换）；默认\n"

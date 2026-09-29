@@ -26,7 +26,7 @@ inline const char *kUsage =
     "用法：essential_sim [scene.xml] [--start raw|stance|rest|side]\n"
     "                    [--kp N] [--kd N] [--kd-damp N] [--ramp auto|SEC] [--stance FILE]\n"
     "\n"
-    "第三次培训·第一部分（仿真）的最简版：关节电机 = MIT 混合控制器（讲义 §1.2），\n"
+    "第三次培训·子任务项一（仿真部分）的最简版：关节电机 = MIT 混合控制器（讲义 §1.2），\n"
     "控制程序是两状态的**状态机**——阻尼模式 / 站立模式。\n"
     "\n"
     "窗口是 MuJoCo **官方**的 Simulate 界面（相机、暂停/调速、关节表都在里面），按键在**这个终端**里按：\n"

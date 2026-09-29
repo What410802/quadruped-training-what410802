@@ -1,4 +1,4 @@
-// 第三次培训 · 第一部分（仿真）：把关节电机当 MIT 混合控制器自己算，控制程序写成状态机。
+// 第三次培训 · 子任务项一（仿真部分）：把关节电机当 MIT 混合控制器自己算，控制程序写成状态机。
 //
 //   阻尼模式（上电默认）：12 个关节都下阻尼指令（kp=0、kd=--kd-damp、pos=0）⇒ τ = −kd·q̇
 //   站立模式：按 S 键，位置项目标 q_des 从"按下那一刻的关节角"在 --ramp 秒内平滑推到站姿
@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
     std::printf("状态机：%s；初始 = %s（上电默认）；起点 = %s\n", sm.desc(),
                 ctrl::Name(sm.state()), opt.start.c_str());
 
-    // 讲义 §2.3 的换算：第二部分对实机下发的就是右边这组（本模型 gear=1，仿真里用不到）
+    // 讲义 §2.3 的换算：子任务项二对实机下发的就是右边这组（本模型 gear=1，仿真里用不到）
     {
         const motor::Cmd c = motor::Mit(target.q[0], opt.kp, opt.kd);
         const motor::RotorCmd r = motor::ToRotor(c, opt.gear);
@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
 
     if (opt.mode == "view") {
         // ---------------------------------------------------------------- 窗口模式
-        viewer::Window win(m, "motor_sim | 第三次培训·第一部分", opt.width, opt.height);
+        viewer::Window win(m, "motor_sim | 第三次培训·子任务项一", opt.width, opt.height);
         auto wall0 = std::chrono::steady_clock::now();
         const double sim0 = d->time;
         long steps = 0;
