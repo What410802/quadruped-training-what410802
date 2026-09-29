@@ -34,7 +34,7 @@
 | 0.5 | **设备在**：插上转接头后 `lsusb \| grep 0403:6014`、`dmesg \| tail -5`、`ls -l /dev/ttyUSB0`；确认这条串口上**只有这一台电机** | 期望 `crw-rw---- root:dialout` |
 | 0.6 | **构建**：`pixi run cmake -S @20260927_motor/cpp_part2 -B @20260927_motor/cpp_part2/build && pixi run cmake --build @20260927_motor/cpp_part2/build` | 产物在 `build/`（不入库） |
 | 0.7 | **dry run 回归**（证明程序没坏）：`export LD_PRELOAD=$PWD/@20260927_motor/cpp_part2/build/libpty_serial_shim.so`，再跑 README §6 的四条 | 期望 0 超时、跳变修正按预期触发 |
-| 0.8 | **日志留档**：每次实机都用 `2>&1 \| tee @20260927_motor/output/terminal/motor-real-<YYYYMMDDHH>-<阶段>.txt` | 命名见本文件 §6 |
+| 0.8 | **日志留档**：每条实机命令都接 `2>&1 \| LOG <阶段>`（`LOG` 是 §2 里定义的函数，自动拼出带时间戳的文件名，不用手改） | 命名见本文件 §6 |
 | 0.9 | **分析脚本拿一条命令试过**：`pixi run python @20260927_motor/scripts/agent_scripts/analyse_ctl_log.py <日志>` | 能打出每次运行的摘要行 |
 
 一次性环境（下面各批都用）：
@@ -46,6 +46,8 @@ P=$PWD/$B/serial_probe                # 探针（S2a/S2f 用）
 T=$PWD/$B/spin_test                   # S1/S2e 用
 C=$PWD/$B/motor_ctl                   # S3–S5 用
 L=@20260927_motor/output/terminal     # 日志目录
+stamp() { date +%Y%m%d%H%M; }         # 日志文件名里的时间戳（自动生成，不用手改文件名）
+LOG() { tee "$L/motor-real-$(stamp)-$1.txt"; }   # 用法：<命令> 2>&1 | LOG s3   ⇒ motor-real-202609301530-s3.txt
 ```
 
 **两条最容易踩的用法**（`motor_ctl --help` 里也有）：
@@ -86,12 +88,12 @@ flowchart TD
 
 ```bash
 # 1) S0：只开端口、一个字节都不发（会打印 TIOCGSERIAL/波特率复核与 SDK 构造结果）
-sudo $P --port /dev/ttyUSB0                       | tee $L/motor-real-<时间>-s0.txt
+sudo $P --port /dev/ttyUSB0                       | LOG s0
 
 # 2) S1：从小速度开始（电机固定好、手里别拿东西、手边能断电）
-sudo $T --port /dev/ttyUSB0 --id 0 --rev-per-s 0.1 --ramp 2 --hold 3  | tee $L/motor-real-<时间>-s1a.txt
-sudo $T --port /dev/ttyUSB0 --id 0 --rev-per-s 0.2 --ramp 2 --hold 3  | tee $L/motor-real-<时间>-s1b.txt
-sudo $T --port /dev/ttyUSB0 --id 0 --rev-per-s 1.0 --ramp 2 --hold 3  | tee $L/motor-real-<时间>-s1c.txt
+sudo $T --port /dev/ttyUSB0 --id 0 --rev-per-s 0.1 --ramp 2 --hold 3  | LOG s1a
+sudo $T --port /dev/ttyUSB0 --id 0 --rev-per-s 0.2 --ramp 2 --hold 3  | LOG s1b
+sudo $T --port /dev/ttyUSB0 --id 0 --rev-per-s 1.0 --ramp 2 --hold 3  | LOG s1c
 
 # 3) S2e：断链后驱动板是保持还是卸力？（低速、先测清楚，后面所有"到位保持"都靠它）
 sudo $T --port /dev/ttyUSB0 --id 0 --rev-per-s 0.1 --kd-out 0.5 --ramp 1 --hold 30 --drop-after 4
@@ -123,9 +125,9 @@ sudo timeout -s INT 5 $B/example_go                      # 转 5 秒就 SIGINT �
 
 ```bash
 # S2a：零力矩（电机自由、可手转），每帧都记；手转时按回车打 MARK
-sudo $P --port /dev/ttyUSB0 --id 0 --watch 60 --every 1 --log /tmp/s2.log | tee $L/motor-real-<时间>-s2a.txt
+sudo $P --port /dev/ttyUSB0 --id 0 --watch 60 --every 1 --log /tmp/s2.log | LOG s2a
 #   手转：同方向慢慢转 2–3 圈 → 反向半圈 → 经过"记号笔那个位置"时按回车；手转 ≤0.25 圈/s
-pixi run python @20260927_motor/scripts/agent_scripts/analyse_watch_log.py /tmp/s2.log | tee $L/motor-real-<时间>-s2b.txt
+pixi run python @20260927_motor/scripts/agent_scripts/analyse_watch_log.py /tmp/s2.log | LOG s2b
 
 # S2f：把输出端停在能重复的位置 → 断电 → 上电 → 只读一帧，重复 3–5 次
 sudo $P --port /dev/ttyUSB0 --id 0 --watch 1 --every 1         # 每次上电后跑 1 秒，抄下读数
@@ -143,7 +145,7 @@ S2f 给出"上电基准每次相同 / 差一个区间"，并附**边界多近会
 ```bash
 # 交互式最顺手（h 看命令）；也可以 --script "0" 一条条来
 sudo $C --port /dev/ttyUSB0 --id 0 --vmax-deg 30 --amax-deg 60 --tau-out-limit 1.0 --every 50 \
-    2>&1 | tee $L/motor-real-<时间>-s3.txt
+    2>&1 | LOG s3
 #   启动后程序会打印 q_enc / offset / q 与"要转多少度、直线时间多少秒"——先确认它是"读"不是"动"
 #   然后敲： 0        （回 0 位；上电后读数本来就在 0…56.842° 内，所以这通常是**小行程**）
 #           +10       （先小角度试方向：看输出端往哪转，记下来）
@@ -160,7 +162,7 @@ sudo $C --port /dev/ttyUSB0 --id 0 --vmax-deg 30 --amax-deg 60 --tau-out-limit 1
 在输出端与电机外壳上画**两条线**：回 0 位画**线 A**，去 30° 画**线 B**（B 是备用参照）。
 
 ```bash
-sudo $C --port /dev/ttyUSB0 --id 0 --expect-deg <上次 mark 的 q 值> 2>&1 | tee $L/motor-real-<时间>-s4.txt
+sudo $C --port /dev/ttyUSB0 --id 0 --expect-deg <上次 mark 的 q 值> 2>&1 | LOG s4
 #   0        回 0 位（板子读数 0）→ 在 0 位画线 A
 #   mark     记下 A 这一点（程序会打印 q 与 q_enc，抄进记录表；只 mark 一次，别覆盖这个基准）
 #   30       去 +30° → 在 30° 位画线 B
@@ -183,7 +185,7 @@ dry run 里按上面这串命令跑过一遍，实测：线 A 读数 0.000° →
 ### 批次 6 · S5 零点跳变
 
 ```bash
-sudo $C --port /dev/ttyUSB0 --id 0 --offset-deg 30 --jump-tol-deg 8 2>&1 | tee $L/motor-real-<时间>-s5.txt
+sudo $C --port /dev/ttyUSB0 --id 0 --offset-deg 30 --jump-tol-deg 8 2>&1 | LOG s5
 #   启动检查会自动对照（若带了 --expect-deg）：差 ≈1 个区间就是认错零点
 #   stop     卸力（电机自由）
 #   （用手把输出端**慢慢**转过**线 A**：正方向过两次、再反方向过两次；一帧最多 2°，慢点）
@@ -228,12 +230,13 @@ sudo $C --port /dev/ttyUSB0 --id 0 --offset-deg 30 --jump-tol-deg 8 2>&1 | tee $
 
 ## 6 日志与产物命名
 
-* 终端日志：`@20260927_motor/output/terminal/motor-real-<YYYYMMDDHH>-<阶段>.txt`，例如
-  `motor-real-2026093015-s3.txt`（阶段取 `s0/s1/s1b/s2a/s2b/s2f/s3/s4/s5`；同一天多次加 `-2`）。
-  沿用上次实跑的名字风格（`motor-real-2026092719.txt` 是 S1 那批），**每批一个文件、用 `tee` 落盘**。
+* 终端日志：`@20260927_motor/output/terminal/motor-real-<YYYYMMDDHHmm>-<阶段>.txt`，**由 §2 的 `LOG` 函数自动生成**
+  （`<命令> 2>&1 | LOG s3` ⇒ `motor-real-202609301530-s3.txt`；阶段取 `s0/s1/s1b/s2a/s2b/s2f/s3/s4/s5`）。
+  同一分钟内重跑会覆盖同名文件，那就隔一分钟再跑或手动在阶段后加 `-2`；沿用上次实跑的名字风格
+  （`motor-real-2026092719.txt` 是 S1 那批），**每批一个文件**。
 * 相片/短视频（记号笔位置、方向）：放 `@20260927_motor/output/media/`（新建；文件名同上规则）。
   README §6 说"运行结果主要用于快速确认"，所以**每批一张关键照片足够**，不用堆。
-* 分析结果：直接贴进 §5 表，或另存 `motor-real-<时间>-<阶段>-分析.txt`（与日志同目录）。
+* 分析结果：直接贴进 §5 表，或另存 `motor-real-$(stamp)-<阶段>-分析.txt`（与日志同目录）。
 
 ## 7 收尾：提交什么 + 当面验收演示
 
