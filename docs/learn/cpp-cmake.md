@@ -387,6 +387,36 @@
 	- **类外（放 `.cpp`）**：函数体较大、实现依赖很多头文件或第三方库签名、需要隐藏实现细节、希望减少重编译范围
 	- 经验：先把函数体放 `.cpp`，只有确认是热路径或必须暴露时再挪进头文件
 
+### 工程目录与文件风格（队里代码 vs 我们的现状）
+
+"`.hpp` + 独立 `include/`"是不是"更 C++"？——是主流做法，也确实是队内两处参考代码
+（第二次培训的 `@20260922_robot_cpp_training/robot_cpp_oop_cmake_training/mini_robot/`、
+队里的 `ReadOnly.d/quadruped_control/`）采用的风格。它们的共同点：
+
+| 方面 | 参考代码的做法 | 我们目前（`@20260927_motor/cpp*`） |
+|---|---|---|
+| 头文件位置 | `include/<项目>/**/*.hpp`，源文件在 `src/`，可执行入口在 `apps/` | 头文件与 `.cpp` **平铺在 `src/`** |
+| 扩展名 | `.hpp`（C++ 头文件），`cpp` 44 / `hpp` 37 / `h` 1（`quadruped_control` 全仓统计） | `.h` |
+| include 写法 | `#include "quadruped/backends/replay/replay_log.hpp"`（带项目/模块前缀，避免重名） | `#include "stance.h"`（同目录直引） |
+| CMake | 每个模块一个 `CMakeLists.txt` + `target_include_directories(... PUBLIC include)`；库带 `ALIAS` | 单个 `CMakeLists.txt`，`add_executable` + `include_directories(src)` |
+| 大括号 | **Allman**（`if (...)` 换行再 `{`），见 `quadruped_control/AGENTS.md` 的 "C and C++ formatting" | `.clang-format` 用 LLVM 基（`Attach`，`{` 跟在行尾） |
+| 标准 | C++17 | C++14（对齐官方 SDK 例程的编译行） |
+| 其它 | `snake_case` 函数/变量、`PascalCase` 类型、`kPascalCase` 常量、`[[nodiscard]]`、`/** @file */` 文件头、注释用中文 | 命名一致；没有 `[[nodiscard]]`/文件头注释 |
+
+**为什么它更"标准"**：把接口（`include/`）与实现（`src/`）分开，是 C/C++ 项目最通行的约定（也是
+`target_include_directories(... PUBLIC include)` 想表达的东西）；`.hpp` 明确表示"C++ 头"；
+带模块前缀的 include 路径在项目变大、或两份代码同名时不会撞车。
+
+**收益边界**：我们是"单可执行、没有外部使用方"的小工程，功能上**不做也一样跑**；真正的收益是
+① 与队内代码/后续 ROS2 任务（[`../../@20260927_motor/cpp_part2/docs/`](../../@20260927_motor/cpp_part2/docs/) 那种"把控制与执行解耦"的结构）风格一致、
+② 验收时"结构与命名"这一项更好讲（验收规范 §9）、③ 以后把 `cpp/` 里的共用头（如 `motor.h`）抽成库时省事。
+代价是机械搬迁：26 个头文件 + 6 个 `.cpp` + 4 个 `CMakeLists.txt` + 约 18 处文档引用，验证方式明确
+（重建 + 各程序 `--self-test` + 文档自检脚本）。
+
+**建议顺序**：先立约定（写进 [`../conventions.md`](../conventions.md) §3），再按"先新代码、后老代码"搬；
+`cpp_part2/` 只有 2 个头文件，先搬它最划算；`cpp/` 那 24 个（完整版 12 + essential 10 + essential_core 2）
+一次搬完并跑一次三套自检即可。
+
 ## CMake
 
 - *Q:* 各命令名称中的`executable`、`library`和`target`指代分别是什么？

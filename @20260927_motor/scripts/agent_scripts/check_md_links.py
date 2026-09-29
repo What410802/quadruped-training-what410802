@@ -8,11 +8,13 @@
 """
 import re
 import sys
+import os
 from pathlib import Path
 
 
 def slug(heading: str) -> str:
-    s = heading.strip().lower()
+    s = re.sub(r"^#+\s*", "", heading.strip())   # 去掉 '### ' 这类标记（否则会多出一个前导 '-'）
+    s = s.lower()
     s = re.sub(r"[^\w\u4e00-\u9fff\- ]", "", s)
     return s.replace(" ", "-")
 
@@ -52,7 +54,9 @@ def main() -> int:
                 path, _, frag = tgt.partition("#")
                 dest = p
                 if path:
-                    dest = p.parent / path          # 不 resolve：要和 heads 的键（相对路径）对得上
+                    # 归一化（去掉 ../ 而不是 resolve）：heads 的键是 rglob 给出的规整路径，
+                    # 不归一化的话 "docs/pitfalls/../learn/x.md" 这种键永远匹配不上，会误报"锚点找不到"
+                    dest = Path(os.path.normpath(p.parent / path))
                     if not dest.exists():
                         bad.append(f"{p}:{i} -> {tgt}")
                         continue
