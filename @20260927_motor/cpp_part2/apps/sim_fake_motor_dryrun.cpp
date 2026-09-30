@@ -4,19 +4,17 @@
 // master 一侧起一个"假电机"线程：按 GO-8010-6 的报文格式收 17 字节命令、回 16 字节反馈。
 // 打包/CRC/定点换算全部由官方 SDK 的 .so 做，我们只负责"另一头"，所以跑通的链路与实机是同一套代码。
 //
-// 编译（在仓库根目录 MyMonoRepo.d/ 下；ReadOnly.d 与它同级）：
-//   S=../ReadOnly.d/unitree_actuator_sdk
-//   gcc -O2 -fPIC -shared -o /tmp/pty_serial_shim.so
-//   @20260927_motor/cpp_part2/src/sim/pty_serial_shim.c -ldl g++ -O2 -std=c++14 -I$S/include
-//   -I$S/include/unitreeMotor @20260927_motor/cpp_part2/src/sim/fake_motor_dryrun.cpp -L$S/lib
-//   -lUnitreeMotorSDK_Linux64 -Wl,-rpath,"$PWD/$S/lib" -pthread -o /tmp/fake_motor_dryrun
-// 运行：
-//   LD_PRELOAD=/tmp/pty_serial_shim.so /tmp/fake_motor_dryrun
+// 编译与运行（在仓库根目录 MyMonoRepo.d/ 下；CMake 会一起编好 PTY 垫片与本程序）：
+//   pixi run cmake -S @20260927_motor/cpp_part2 -B @20260927_motor/cpp_part2/build
+//   pixi run cmake --build @20260927_motor/cpp_part2/build
+//   LD_PRELOAD=@20260927_motor/cpp_part2/build/libpty_serial_shim.so \
+//       @20260927_motor/cpp_part2/build/fake_motor_dryrun
 //
-// 实测结论（本文件自己会打印）见 ../README.md §4。
+// 实测结论（本文件自己会打印）见 docs/protocol.md。
 // 注意：本文件里的假电机是最初那版（固定转速/力矩，只为验证协议）；S1 之后的自检都用更真的
-// include/motor_bench/sim/fake_motor.hpp（一阶响应 + 摩擦 +
-// 限幅），新的控制逻辑请用它，不要再照这份抄。 头文件注意事项：`crc/crc_ccitt.h` 自己没有 include
+// include/motor_bench/sim/fake_motor.hpp（一阶响应 + 摩擦 + 限幅），新的控制逻辑请用它，
+// 不要再照这份抄。
+// 头文件注意事项：`crc/crc_ccitt.h` 自己没有 include
 // <stdint.h>/<stddef.h>，直接包会报 uint16_t / size_t 未定义（官方 .so
 // 的编译单元应该是先包了别的头，所以能过），这里先补上。
 // SDK 的 crc_ccitt.h 自己没有 include <stdint.h>/<stddef.h>，所以这两个标准头必须**放在最前**。

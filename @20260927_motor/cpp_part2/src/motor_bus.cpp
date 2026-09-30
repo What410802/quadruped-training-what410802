@@ -7,11 +7,13 @@
 namespace motor_bench
 {
 
-MotorBus::MotorBus(const std::string& port, int id, int baud) : serial_(port, 16, baud), id_(id)
+MotorBus::MotorBus(const std::string& port, int id, int baud, MotorMode mode)
+    : serial_(port, 16, baud), id_(id)
 {
     cmd_.motorType = MotorType::GO_M8010_6;
     data_.motorType = MotorType::GO_M8010_6;
-    cmd_.mode = static_cast<unsigned short>(queryMotorMode(MotorType::GO_M8010_6, MotorMode::FOC));
+    mode_ = static_cast<unsigned>(queryMotorMode(MotorType::GO_M8010_6, mode));
+    cmd_.mode = static_cast<unsigned short>(mode_);
     cmd_.id = static_cast<unsigned short>(id);
     cmd_.kp = 0.0f;
     cmd_.kd = 0.0f;

@@ -11,17 +11,15 @@
 // 速度指令是**速度环**：`kp=0、tau=0、q=0`，只给 `kd`（阻尼/速度刚度）与 `dq`，
 // 即 τ = kd·(dq_des − dq)：不转的时候相当于阻尼模式，转起来时是速度控制 —— 手上不会被"硬顶"。
 //
-// 编译（仓库根目录）：
-//   S=../ReadOnly.d/unitree_actuator_sdk
-//   g++ -O2 -std=c++14 -I$S/include -I$S/include/unitreeMotor
-//   @20260927_motor/cpp_part2/src/spin_test.cpp -L$S/lib -lUnitreeMotorSDK_Linux64
-//   -Wl,-rpath,"$PWD/$S/lib" -pthread -o /tmp/spin_test
+// 编译与运行（仓库根目录；CMake 会一起编好库与本程序）：
+//   pixi run cmake -S @20260927_motor/cpp_part2 -B @20260927_motor/cpp_part2/build
+//   pixi run cmake --build @20260927_motor/cpp_part2/build
+//   B=@20260927_motor/cpp_part2/build/spin_test
 //
 // 用法（**需要 sudo**，而且电机要固定好、手上别拿东西）：
-//   sudo /tmp/spin_test --port /dev/ttyUSB0 --id 0 --rev-per-s 0.1 --ramp 2 --hold 3
-//   sudo /tmp/spin_test ... --no-send        # 只打印"将要下发什么"，一个字节都不发
-//   LD_PRELOAD=/tmp/pty_serial_shim.so /tmp/spin_test --self-test   # 无硬件自检：PTY +
-//   假电机，看真转速
+//   sudo $B --port /dev/ttyUSB0 --id 0 --rev-per-s 0.1 --ramp 2 --hold 3
+//   sudo $B ... --no-send        # 只打印"将要下发什么"，一个字节都不发
+//   LD_PRELOAD=<build>/libpty_serial_shim.so $B --self-test   # 无硬件自检：PTY + 假电机，看真转速
 //
 // 退出码：0 正常；3 一帧回复都没收到；4 电机报错/温度高；5 中途掉线；7 --drop-after
 // 到了（**故意**断链，见下）。
@@ -30,10 +28,8 @@
 // 用来量“驱动板收不到指令时会怎样”（保持最后一条指令 / 自己卸力）——这个行为 S3
 // 的“到位后保持”要靠它， 所以先在低速（≤0.1 圈/s）下测一次。真正拔 USB 线比这更彻底，两种都可以试。
 
-#include "motor_bench/sim/fake_motor.hpp" // 只在 --self-test 里用到（src/sim/ = 不控制实机的代码）
-#include "motor_bench/ticks.hpp" // 位置统一用转子侧 tick（见 docs/fixed-point.md §5）
-#include "serialPort/SerialPort.h"
-#include "unitreeMotor/unitreeMotor.h"
+#include "motor_bench/motor_bus.hpp" // 收发（串口 + 报文）走库里的 MotorBus，本文件不碰 SDK 的报文层
+#include "motor_bench/sim/fake_motor.hpp" // 只在 --self-test 里用到（include/.../sim/ = 不控制实机的代码）
 
 #include <atomic>
 #include <chrono>
@@ -198,7 +194,10 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    SerialPort* serial = nullptr;
+    using motor_bench::MotorBus;
+    using motor_bench::RotorCommand;
+
+    MotorBus* bus = nullptr;
     std::thread fake_motor;
     std::atomic<bool> fake_stop{false};
     try
@@ -214,11 +213,11 @@ int main(int argc, char** argv)
                 slave.c_str());
             sim::Model model;
             fake_motor = sim::Start(master, &fake_stop, model);
-            serial = new SerialPort(slave, 16, 4000000);
+            bus = new MotorBus(slave, opt.id, 4000000);
         }
         else
         {
-            serial = new SerialPort(opt.port, 16, 4000000);
+            bus = new MotorBus(opt.port, opt.id, 4000000);
         }
     }
     catch (const std::exception& e)
@@ -229,22 +228,14 @@ int main(int argc, char** argv)
     std::printf("串口已打开（%s，4 Mbaud）——开始发指令\n",
                 opt.self_test ? "自检 PTY" : opt.port.c_str());
 
-    MotorCmd cmd;
-    MotorData data;
-    cmd.motorType = MotorType::GO_M8010_6;
-    data.motorType = MotorType::GO_M8010_6;
-    cmd.mode = queryMotorMode(MotorType::GO_M8010_6, MotorMode::FOC);
-    cmd.id = opt.id;
-    cmd.kp = 0.0;
+    // 速度环：kp=0、tau=0（q 由 MotorBus 按 tick 换算，这里恒为 0），只给 kd 与 dq
+    RotorCommand cmd;
     cmd.kd = kd_rotor;
-    cmd.q = 0.0;
-    cmd.tau = 0.0;
 
     const double dt = 0.005; // 5 ms 一帧（200 Hz）
     int frames = 0, timeouts = 0, timeout_streak = 0, ok_frames = 0;
     double dq_min = 1e9, dq_max = -1e9;
     int64_t q_first = 0, q_last = 0; // 位置：转子侧 tick（整数，来自回帧）
-    bool warned_precision = false; // SDK 的 float 与整数帧对不上时只提醒一次（见 ticks.h）
     int64_t q_ticks = 0; // 最近一帧的位置（转子 tick；阶段标记要用，所以放循环外）
     ticks::Feedback fb; // 最近一帧的整数反馈（打印/判断都用它，不走 SDK 的 float）
     double dq_out = 0.0; // 最近一帧的输出端转速（圈/s，由 speed_raw 换算）
@@ -295,13 +286,13 @@ int main(int argc, char** argv)
         }
         cmd.dq = w_rotor * u;
 
-        const bool ok = serial->sendRecv(&cmd, &data);
-        ++frames;
+        const bool ok = bus->Send(cmd, &fb);
+        frames = bus->frames();
+        ok_frames = bus->ok_frames();
+        timeouts = bus->timeouts();
+        timeout_streak = bus->timeout_streak();
         if (ok)
         {
-            ++ok_frames;
-            timeout_streak = 0;
-            ticks::ReadFeedback(data, &fb, &warned_precision);
             dq_out = fb.speed_raw / (256.0 / (2.0 * M_PI)) / N / (2.0 * M_PI);
             q_ticks = fb.pos; // 位置一律用整数 tick
             dq_min = std::min(dq_min, dq_out);
@@ -313,15 +304,11 @@ int main(int argc, char** argv)
             merror_last = fb.merror;
             have_reply = true;
         }
-        else
+        else if (timeout_streak == 20)
         {
-            ++timeouts;
-            if (++timeout_streak == 20)
-            {
-                std::printf("**连续 20 帧没回复**：停下（可能是线松了/ID 不对/波特率）。\n");
-                exit_code = 5;
-                break;
-            }
+            std::printf("**连续 20 帧没回复**：停下（可能是线松了/ID 不对/波特率）。\n");
+            exit_code = 5;
+            break;
         }
 
         // 阶段切换时打一行汇总（升速 → 保持 → 降速 → 收速度）
@@ -359,6 +346,8 @@ int main(int argc, char** argv)
         }
         // --drop-after：到这里就“假掉线”——不发收尾指令、不拆对象，直接退出。
         // 驱动板接下来收到的就是“什么都不来”，它自己的行为（保持 / 卸力）就是我们要测的东西。
+        // 用 std::exit 是**故意的**：它不跑析构（`bus` 不解构、串口句柄交给进程退出收尾），
+        // 等价于"上位机突然消失"——这正是要量的那个场景，别顺手改成 return。
         if (opt.drop_after > 0.0 && t >= opt.drop_after)
         {
             std::printf(
@@ -377,12 +366,12 @@ int main(int argc, char** argv)
         cmd.dq = 0.0;
         for (int i = 0; i < 100; ++i)
         {
-            serial->sendRecv(&cmd, &data);
+            bus->Send(cmd, nullptr);
             usleep(5000);
         }
         std::printf("已额外发送 0.5 s 零速度指令（最后一帧：dq=0、kd=%.6f、tau=0）\n", kd_rotor);
     }
-    delete serial;
+    delete bus;
     if (fake_motor.joinable())
     {
         fake_stop = true;

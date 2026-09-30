@@ -9,20 +9,18 @@
 // 安全：**本程序只会下发零力矩**（`--mode zerotorque`）或刹车（`--mode brake`），不会让电机转。
 //       但"零力矩"要驱动板保持 FOC 闭环才回得及时，所以电机必须是**固定好**的（手能转但不会乱飞）。
 //
-// 编译（仓库根目录 MyMonoRepo.d/ 下）：
-//   S=../ReadOnly.d/unitree_actuator_sdk
-//   g++ -O2 -std=c++14 -I$S/include -I$S/include/unitreeMotor
-//   @20260927_motor/cpp_part2/src/serial_probe.cpp -L$S/lib -lUnitreeMotorSDK_Linux64
-//   -Wl,-rpath,"$PWD/$S/lib" -pthread -o /tmp/serial_probe
+// 编译与运行（仓库根目录 MyMonoRepo.d/ 下；CMake 会一起编好 PTY 垫片与本程序）：
+//   pixi run cmake -S @20260927_motor/cpp_part2 -B @20260927_motor/cpp_part2/build
+//   pixi run cmake --build @20260927_motor/cpp_part2/build
+//   B=@20260927_motor/cpp_part2/build/serial_probe
 //
 // 用法：
-//   /tmp/serial_probe --port /dev/ttyUSB0                     # 只开端口、打印参数，一个字节都不发
-//   /tmp/serial_probe --port /dev/ttyUSB0 --id 0 --watch 10    # 零力矩跑 10
-//   s，打印输出端角度（可手转输出端看它变） LD_PRELOAD=/tmp/pty_serial_shim.so /tmp/serial_probe
-//   --self-test   # 无硬件自检（PTY + 假电机，验证本程序自己）
+//   sudo $B --port /dev/ttyUSB0                     # 只开端口、打印参数，一个字节都不发
+//   sudo $B --port /dev/ttyUSB0 --id 0 --watch 10    # 零力矩跑 10 s，打印输出端角度（可手转输出端看它变）
+//   LD_PRELOAD=<build>/libpty_serial_shim.so $B --self-test   # 无硬件自检（PTY + 假电机，验证本程序自己）
 //
 // ★ S2（找零点）主用法：零力矩、每帧都记、用手慢慢转输出端、回车打标记：
-//   sudo /tmp/serial_probe --port /dev/ttyUSB0 --id 0 --watch 40 --every 1 --log /tmp/s2.log
+//   sudo $B --port /dev/ttyUSB0 --id 0 --watch 40 --every 1 --log /tmp/s2.log
 //   然后（另开一个终端也行，这里是同一个终端的 stdin）在"手转到一个已知位置"时按一下回车，
 //   日志里就会多一行 MARK —— 这就是"记号笔那个点"在读数上的坐标。见 docs/real.md §3.7。
 //
@@ -30,10 +28,8 @@
 // `sudo`， 要么把自己加进 dialout 后重新登录）。跑**实机**时不要带 LD_PRELOAD（那是给 --self-test
 // 用的）。
 
-#include "motor_bench/sim/fake_motor.hpp" // 只在 --self-test 里用到（src/sim/ = 不控制实机的代码）
-#include "motor_bench/ticks.hpp" // 内部定点表示：位置一律是转子侧 tick（见 docs/fixed-point.md §5）
-#include "serialPort/SerialPort.h"
-#include "unitreeMotor/unitreeMotor.h"
+#include "motor_bench/motor_bus.hpp" // 收发（串口 + 报文）走库里的 MotorBus；本程序只用它的"零力矩/刹车"帧
+#include "motor_bench/sim/fake_motor.hpp" // 只在 --self-test 里用到（include/.../sim/ = 不控制实机的代码）
 
 #include <atomic>
 #include <chrono>
@@ -56,6 +52,9 @@
 
 namespace ticks = motor_bench::ticks;
 namespace sim = motor_bench::sim;
+
+using motor_bench::MotorBus;
+using motor_bench::RotorCommand;
 
 namespace
 {
@@ -257,7 +256,7 @@ void InspectPort(const std::string& port, uint32_t baud, const char* when)
 }
 
 // 无硬件自检：开一对 PTY，另一头放"假电机"（sim/fake_motor.h：一阶速度响应 + 摩擦 + 力矩限幅）
-int SelfTest(SerialPort** out_port, std::thread* out_thread, std::atomic<bool>* stop)
+int SelfTest(MotorBus** out_bus, std::thread* out_thread, std::atomic<bool>* stop, MotorMode mode)
 {
     int master = -1;
     const std::string slave = sim::MakePty(&master);
@@ -267,7 +266,7 @@ int SelfTest(SerialPort** out_port, std::thread* out_thread, std::atomic<bool>* 
     *stop = false;
     sim::Model model;
     *out_thread = sim::Start(master, stop, model);
-    *out_port = new SerialPort(slave, 16, 4000000);
+    *out_bus = new MotorBus(slave, 0, 4000000, mode);
     return 0;
 }
 
@@ -290,10 +289,9 @@ struct Mark
 
 // 手转时相邻采样的正常步进很小（200 Hz 下 0.1 圈/s 也才 0.18°/帧），所以“步进 ≥ --jump-deg”
 // 基本只会被跳变/跨零点触发。
-int WatchRun(SerialPort* serial, const Options& opt, double N)
+int WatchRun(MotorBus* bus, const Options& opt, double N)
 {
     const double zero_interval = 360.0 / N; // 相邻两个“候选零点”在输出端上的间距（讲义 §2.4）
-    bool warned_precision = false; // SDK 的 float 与整数帧对不上时只提醒一次（见 ticks.h）
     const double dt = 0.005;
 
     // 打标记：只用 ::read 读 stdin（不碰 iostream），进程退出时阻塞的 read 不会拦住退出
@@ -329,23 +327,13 @@ int WatchRun(SerialPort* serial, const Options& opt, double N)
             .detach();
     }
 
-    MotorCmd cmd;
-    MotorData data;
-    cmd.motorType = MotorType::GO_M8010_6;
-    data.motorType = MotorType::GO_M8010_6;
-    cmd.mode = opt.mode == "brake" ? queryMotorMode(MotorType::GO_M8010_6, MotorMode::BRAKE)
-                                   : queryMotorMode(MotorType::GO_M8010_6, MotorMode::FOC);
-    cmd.id = opt.id;
-    cmd.kp = 0.0; // 五个量全 0 = 零力矩模式（可自由拖动）/ 刹车模式下无所谓
-    cmd.kd = 0.0;
-    cmd.q = 0.0;
-    cmd.dq = 0.0;
-    cmd.tau = 0.0;
+    // 零力矩 / 刹车都只用同一个"五个量全 0"的命令；模式由 MotorBus 在构造时定（`--mode`）
+    RotorCommand cmd;
 
     std::printf("减速比 N = %.6f ⇒ 一个零点区间 = 1/N 圈 = %.4f°（输出端）\n", N, zero_interval);
     std::printf("开始：id=%d、mode=%u（%s）、五个命令量全 0（零力矩 = 电机自由，可手转输出端）；"
                 "跑 %.1f s（名义 5 ms/帧，每 %d 帧打印一行）\n",
-                opt.id, static_cast<unsigned>(cmd.mode), opt.mode.c_str(), opt.watch, opt.every);
+                opt.id, bus->mode(), opt.mode.c_str(), opt.watch, opt.every);
 
     FILE* log = nullptr;
     if (!opt.log.empty())
@@ -375,23 +363,23 @@ int WatchRun(SerialPort* serial, const Options& opt, double N)
     const int total_frames = static_cast<int>(opt.watch / dt);
     for (int frame = 1; frame <= total_frames; ++frame)
     {
-        const bool ok = serial->sendRecv(&cmd, &data);
+        // 位置用**回帧里的整数 tick**（不经过 SDK 的 float），输出端角度按真实减速比 19:3 换算
+        ticks::Feedback fb;
+        const bool ok = bus->Send(cmd, &fb); // cmd 五个量全 0 = 零力矩（或刹车）
         const double wall = wall_now();
         const double t = (frame - 1) * dt;
-        ++frames;
+        frames = bus->frames();
+        ok_frames = bus->ok_frames();
+        timeouts = bus->timeouts();
         if (!ok)
         {
-            if (++timeouts <= 3)
+            if (timeouts <= 3)
                 std::printf("  第 %d 帧：没收到回复（超时）——ID 对不对？协议线接反？波特率？\n",
                             frames);
             usleep(5000);
             continue;
         }
-        ++ok_frames;
 
-        // 位置用**回帧里的整数 tick**（不经过 SDK 的 float），输出端角度按真实减速比 19:3 换算
-        ticks::Feedback fb;
-        ticks::ReadFeedback(data, &fb, &warned_precision);
         const double out_deg = ticks::TicksToDeg(fb.pos); // 输出端角度
         const double q_raw = double(fb.pos); // 报文里的 int32 q15 圈（整数 tick）
         const double q_rotor = ticks::TicksToRadRotor(fb.pos); // 转子侧 rad（打印用）
@@ -534,19 +522,21 @@ int main(int argc, char** argv)
     if (!opt.self_test)
         InspectPort(opt.port, opt.baud, "构造 SerialPort 之前：端口原生参数");
 
-    SerialPort* serial = nullptr;
+    // 模式（`--mode`）：zerotorque 用 FOC 闭环 + 五量全 0；brake 用锁定
+    const MotorMode mode = opt.mode == "brake" ? MotorMode::BRAKE : MotorMode::FOC;
+    MotorBus* bus = nullptr;
     std::thread fake_motor;
     std::atomic<bool> stop{false};
     try
     {
         if (opt.self_test)
         {
-            if (SelfTest(&serial, &fake_motor, &stop) != 0)
+            if (SelfTest(&bus, &fake_motor, &stop, mode) != 0)
                 return 1;
         }
         else
         {
-            serial = new SerialPort(opt.port, 16, opt.baud); // 与官方例程同一个构造
+            bus = new MotorBus(opt.port, opt.id, opt.baud, mode); // 与官方例程同一个构造
         }
         std::printf("SerialPort 构造成功（%s）\n", opt.self_test ? "自检 PTY" : opt.port.c_str());
         if (!opt.self_test)
@@ -563,7 +553,7 @@ int main(int argc, char** argv)
     if (opt.watch <= 0.0)
     {
         std::printf("只开了端口，没发任何字节（要看反馈就加 --watch SEC）\n");
-        delete serial;
+        delete bus;
         if (fake_motor.joinable())
         {
             stop = true;
@@ -572,8 +562,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    const int rc = WatchRun(serial, opt, N);
-    delete serial;
+    const int rc = WatchRun(bus, opt, N);
+    delete bus;
     if (fake_motor.joinable())
     {
         stop = true;

@@ -32,6 +32,10 @@ cpp_part2/
 | `src/` | 没有 `main()` ⇒ 库实现（`add_library()`）或平台垫片 | `motor_bus.cpp` / `zero_tracking.cpp` / `console.cpp`（链进 `motor_bench_core`）、`pty_serial_shim.c`（编成 `.so`） |
 | `include/` | 只有声明与 inline，不产出目标 | `motor_bench/*.hpp`、`sim/fake_motor.hpp` |
 
+**"什么才算接口、该进 `include/`"的通用判据**（含"app 自己的 `Options` 为什么留在 `apps/`"的推理）见
+[`../../../docs/learn/cpp-cmake.md`](../../../docs/learn/cpp-cmake.md) 的「哪些东西该放 `include/`」一节；
+本节的表是它在 `cpp_part2/` 里的落地。
+
 **为什么不是别的做法**（以及它的代价）：
 
 * **更大的工程**会让每个应用各自成一个 CMake 工程（`apps/<名字>/CMakeLists.txt`，自带依赖、可单独构建）。
@@ -69,7 +73,7 @@ pixi run cmake --build @20260927_motor/cpp_part2/build
 | 选择 | 为什么 | 代价 |
 |---|---|---|
 | **CMake**（而不是 README 里那种手写 `g++` 一行） | 四个可执行 + 一个垫片 `.so` 要复用同一批源文件；手写命令每加一个文件就要改一遍，还容易漏 `-pthread`/`-ldl`；顺带产出 `compile_commands.json` | 多一层 `CMakeLists.txt`（约 70 行） |
-| **C++17 + Allman + 100 列**（`.clang-format`） | 与第二次培训/队内 C++ 工程的风格对齐（`.hpp` 头文件、`include/` 独立目录），读代码时不用切换习惯；`-std=c++17` 对 `<filesystem>` / `std::optional` 之类是白拿的 | 与 SDK 自己的 C++14 头文件混编没问题（我们只调它的 public 接口） |
+| **C++17 + Allman + 100 列**（`.clang-format`） | 与前面几次培训的 C++ 工程风格对齐（`.hpp` 头文件、`include/` 独立目录），读代码时不用切换习惯；`-std=c++17` 对 `<filesystem>` / `std::optional` 之类是白拿的 | 与 SDK 自己的 C++14 头文件混编没问题（我们只调它的 public 接口） |
 | **静态库 `motor_bench_core`** | 让"控制律"与"入口"分开：入口只解析参数、打日志；同一个控制律被 dry run 与实机共用 | 多一个 target |
 | **PTY 垫片用 `LD_PRELOAD`**（不是改 SDK、不是内核模块） | 不动官方 `.so`、不需要 root、不需要内核模块；只在 `--self-test` 时加载，实机路径上不生效 | 只拦 `TIOCGSERIAL`/`TIOCSSERIAL`，别的问题不掩盖（见 [`pitfalls.md`](pitfalls.md)） |
 | **假电机放在 `include/motor_bench/sim/`** | 它是"协议层 mock"，要和真实代码走同一个 SDK、同一套报文；放 `src/` 会让人以为实机也要链它 | 谁都可以 include，靠目录名与文档约束（[`fake-motor.md`](fake-motor.md) §5 说明它证明什么、不证明什么） |

@@ -30,14 +30,21 @@ struct RotorCommand
 class MotorBus
 {
   public:
-    /** 打开串口；失败时抛 SDK 的异常，由调用方捕获 */
-    MotorBus(const std::string& port, int id, int baud = 4000000);
+    /**
+     * 打开串口；失败时抛 SDK 的异常，由调用方捕获。
+     * `mode` 就是报文里那个 mode 字节（`FOC` = 闭环、`BRAKE` = 锁定、`CALIBRATE` = 编码器校准），
+     * 默认 FOC。它属于协议层，所以是这一层的参数。
+     */
+    MotorBus(const std::string& port, int id, int baud = 4000000, MotorMode mode = MotorMode::FOC);
 
     /** 发一帧命令并读反馈；返回 false = 这一帧没收到回复 */
     bool Send(const RotorCommand& cmd, ticks::Feedback* fb);
 
     /** 五个命令量全 0 的"零力矩"帧 */
     bool SendZero(ticks::Feedback* fb = nullptr);
+
+    /** 报文里那个 mode 字节（`queryMotorMode` 的返回值） */
+    unsigned mode() const { return mode_; }
 
     int frames() const { return frames_; }
     int ok_frames() const { return ok_frames_; }
@@ -49,6 +56,7 @@ class MotorBus
     MotorCmd cmd_{};
     MotorData data_{};
     int id_ = 0;
+    unsigned mode_ = 0;
     bool warned_precision_ = false;
     int frames_ = 0;
     int ok_frames_ = 0;
