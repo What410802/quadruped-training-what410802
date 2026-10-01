@@ -44,7 +44,7 @@ LD_PRELOAD=<仓库路径>/.../libpty_serial_shim.so <仓库路径>/.../motor_ctl
 
 实机执行卡（步骤、记录表、异常处置、实验台演练）见 [docs/runbook.md](docs/runbook.md)。
 
-stdin 就是命令通道：`;` 与换行等效，`wait <秒>` 与 `quit` 是语句；重定向即脚本模式。命令表与角度显示 / 输入单位约定见 [docs/design.md](docs/design.md) §3.6。
+stdin 就是命令通道：`;` 与换行等效，`wait <秒>` 与 `quit` 是语句；重定向即脚本模式。命令表与角度显示 / 输入单位约定见 [docs/design.md](docs/design.md) §3.8。
 
 ## 目录
 

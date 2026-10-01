@@ -27,6 +27,8 @@ $B --no-send                                     # 看配置，不开串口
 sudo @20260927_motor/scripts/run_log.sh m1-ctl $B --port /dev/ttyUSB0 --id 0   # 交互；日志自动落到 output/terminal/
 ```
 
+交互（终端里）运行时，最后一行固定为输入行（`> ` 提示符），状态输出不会把它冲散；退格 / `Ctrl-U` 编辑、`Ctrl-D` 或 `quit` 退出、`Ctrl-C` 正常卸力退出。脚本模式（重定向 stdin）行为不变。
+
 脚本形态（无人值守，最后 `quit` 卸力）：
 
 ```bash
