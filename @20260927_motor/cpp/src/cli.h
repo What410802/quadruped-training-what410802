@@ -117,7 +117,7 @@ struct Options {
     double deadzone = 0.0;
     int delay_cycles = 0;
     double noise = 0.0;
-    double gear = 6.33;         // 宇树 GO-8010-6 的减速比（讲义 §2.1）
+    double gear = 6.33;         // 宇树 GO-M8010-6 的减速比（讲义 §2.1）
     double pitch = 0.0;         // --pitch DEG：地面绕 y 轴倾角（0 = 水平）
     double roll = 0.0;          // --roll DEG：地面绕 x 轴倾角
     bool friction_set = false;  // 是否显式给了 --floor-friction

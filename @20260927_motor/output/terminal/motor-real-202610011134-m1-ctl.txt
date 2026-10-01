@@ -1,0 +1,178 @@
+# 2026-10-01 11:34:12  命令：@20260927_motor/cpp_part2_remake/build/apps/motor_ctl/motor_ctl --port /dev/ttyUSB0 --id 0
+# 由 scripts/run_log.sh 记录（行缓冲；日志：/home/bis/BiS.d/Code.d/RoboCon/MyMonoRepo.d/@20260927_motor/output/terminal/motor-real-202610011134-m1-ctl.txt）
+=== motor_ctl（M1：在线简版；假设程序运行时段 ⊆ 电机上电时段）===
+减速比 N = 19:3 = 6.3333（SDK 报 6.33）⇒ 一个零点区间 = 32768 计数 = 56.8421°（输出端）
+1 计数 = 0.0017347°（输出端）；增益 kp=80 kd=3 → 转子侧 1.9945 / 0.07479
+vmax 90 °/s、amax 180 °/s²、到位 ±1.00°；力矩上限 1.50 N·m / 1.0 s；温度上限 80 °C；失联 40 帧
+软件零点偏移初值 +0 圈 +0.000°
+串口已打开（unitree-sdk：/dev/ttyUSB0，id 0，4000000 baud）
+键盘就绪（输入 help 看命令）
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+帧    20 t=  0.481：raw       +0  q +0 圈 +0.000°  目标 +0 圈 +0.000°  差 +0 圈 +0.000°  tau +0.000 N·m  temp   0  merror 0  未对齐
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+帧    40 t=  0.989：raw       +0  q +0 圈 +0.000°  目标 +0 圈 +0.000°  差 +0 圈 +0.000°  tau +0.000 N·m  temp   0  merror 0  未对齐
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+帧    60 t=  1.495：raw       +0  q +0 圈 +0.000°  目标 +0 圈 +0.000°  差 +0 圈 +0.000°  tau +0.000 N·m  temp   0  merror 0  未对齐
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+**启动 2 s 内一帧回复都没收到**：检查 ID、接线（TX/RX/共地）、供电、权限（sudo 或 dialout）。
+[WARNING] SerialPort::recv, unblock version, wait time out
+[WARNING] motor id=0 does not reply
+收尾：已发 0 帧零力矩
+=== 汇总 ===
+帧 80（回复 0、超时 80）；q 末值 +0 圈 +0.000°；offset +0（+0 圈 +0.000°）；turn_base +0；事件 0 条；力矩峰值 0.000 N·m；温度峰值 -128 °C；末次 merror 0

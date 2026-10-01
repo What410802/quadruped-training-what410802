@@ -35,7 +35,7 @@ $$\tau = \tau_{ff} + k_p(q_{des}-q) + k_d(\dot q_{des}-\dot q)$$
 | 速度刚度（阻尼） | $k_d$（转子侧 $K_W$） | $\mathrm{M L^2 T^{-2} T}$（每 rad/s） | N·m·s/rad | 3（站立）/ 0.5（阻尼模式） |
 | 角度 / 目标角度 | $q$, $q_{des}$（转子侧 $p$, $Pos$） | 无量纲（弧度） | rad | 站姿膝 1.10 rad |
 | 角速度 / 目标角速度 | $\dot q$, $\dot q_{des}$（转子侧 $\omega$, $W$） | $\mathrm{T^{-1}}$ | rad/s | 起身段 \|q̇\| 峰值 ~10 rad/s |
-| 减速比 | $N$ | 无量纲（圈数比） | – | 6.33（GO-8010-6，$N^2 \approx 40.07$） |
+| 减速比 | $N$ | 无量纲（圈数比） | – | 6.33（GO-M8010-6，$N^2 \approx 40.07$） |
 | 转子侧力矩 | $\tau_{rotor}$ | 同 $\tau$ | N·m | $\tau_{out}/N$，例：33.5 N·m → 5.29 N·m |
 
 代进公式就能看出为什么只有这一种写法：$k_p(q_{des}-q)$ 是 $\mathrm{N\,m/rad}\times\mathrm{rad}=\mathrm{N\,m}$， $k_d(\dot q_{des}-\dot q)$ 是 $\mathrm{N\,m\,s/rad}\times\mathrm{rad/s}=\mathrm{N\,m}$，两项与 $\tau_{ff}$ 同量纲、可以相加； `data.ctrl`（我们写的）/ 实机的 `cmd.tau`（转子侧）也都是 N·m。**数值直觉**：$k_p=80$ 时 10°（0.1745 rad）偏差 产生 **14.0 N·m**；$k_d=3$ 时 1 rad/s 产生 **3 N·m**；$k_d$ 的量纲里带一个“秒”，所以换单位（deg、rpm）必须先换算。

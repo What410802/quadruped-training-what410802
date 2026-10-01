@@ -22,10 +22,14 @@ get_filename_component(MOTOR_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOL
 find_package(Threads REQUIRED) # motor_ctl 的 stdin 读线程
 
 add_subdirectory(core)
+add_subdirectory(sim)
 
 if(MOTOR_ENABLE_SDK)
     add_subdirectory(backends/unitree_sdk)
+    add_subdirectory(wire)
+    add_subdirectory(tools/pty_shim)
     add_subdirectory(apps/motor_ctl)
+    add_subdirectory(apps/motor_sim)
 endif()
 
 include(CTest)

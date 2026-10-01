@@ -1,4 +1,4 @@
-# 仿真电机：让官方 SDK 以为真的接了一台 GO-8010-6
+# 仿真电机：让官方 SDK 以为真的接了一台 GO-M8010-6
 
 > 实体电机一时拿不到（当前最大阻滞项）时，它让**同一份上位机代码**（同一套 SDK 调用、同一套报文与换算） 在没有硬件的情况下跑起来。实现只有两个文件：[`../include/motor_bench/sim/fake_motor.hpp`](../include/motor_bench/sim/fake_motor.hpp) （假电机）与 [`../src/pty_serial_shim.c`](../src/pty_serial_shim.c)（串口垫片）。
 >
@@ -32,7 +32,7 @@ flowchart TB
         PTYA["PTY slave<br/>/dev/pts/N（交给 SDK）"]
         PTYB["PTY master<br/>（留给假电机）"]
     end
-    REAL["真机链路（对照）<br/>FT232H → 4 Mbaud 半双工 → GO-8010-6 驱动板"]
+    REAL["真机链路（对照）<br/>FT232H → 4 Mbaud 半双工 → GO-M8010-6 驱动板"]
     CTL -->|"关节侧 cmd：程序里已 ×N（位置/速度）、÷N²（增益）"| SDK
     SDK -->|"17 B 命令帧：write(slave)"| PTYA
     PTYA -.->|"内核把两端接起来"| PTYB
