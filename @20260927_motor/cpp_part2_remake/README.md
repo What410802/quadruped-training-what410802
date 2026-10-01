@@ -1,6 +1,6 @@
 # cpp_part2 重做版（实体电机控制）
 
-本目录是子任务项二的**重做版**：任务书目标不变（回编码器零点 → 键盘给角度 → 记号笔标零点并正向偏移 30° → 处理零点跳变），但按只读参考工程 `ReadOnly.d/quadruped_control/` 的分层与命名规范重写，并修掉旧版（[`../cpp_part2/`](../cpp_part2/README.md)）的缺陷。设计（需求、伪代码、决策、测试矩阵、里程碑）在 [docs/design.md](docs/design.md)。
+本目录是子任务项二的**重做版**：任务书目标不变（回编码器零点 → 键盘给角度 → 记号笔标零点并正向偏移 30° → 处理零点跳变），但按只读参考工程 `ReadOnly.d/quadruped_control/` 的分层与命名规范重写，并修掉旧版（[`../cpp_part2/`](../cpp_part2/README.md)）的缺陷。设计（需求、符号约定、伪代码、决策、测试矩阵、里程碑）在 [docs/design.md](docs/design.md)（v2；v1 在 [docs/v1/](docs/v1/)）。
 
 ## 构建与运行
 
@@ -28,7 +28,7 @@ sudo $B/apps/motor_ctl/motor_ctl --no-send                         # 只看配�
 sudo $B/apps/motor_ctl/motor_ctl --port /dev/ttyUSB0 <<< "move 0; wait 3; mark; move 30; wait 3; zero move 30; state; move 30; wait 3; quit"
 ```
 
-没有实机时，用虚拟实验台演练同一条主线（两个终端，见 [docs/runbook.md](docs/runbook.md) §7）：
+没有实机时，用虚拟实验台演练同一条主线（两个终端，见 [docs/runbook.md](docs/runbook.md) §8）：
 
 ```bash
 $B/apps/motor_sim/motor_sim                        # 终端 2：假电机
@@ -78,6 +78,7 @@ docs/       设计文档与执行卡
 
 | 文档 | 一句话 |
 |---|---|
-| [docs/design.md](docs/design.md) | 需求、设计、伪代码、决策记录（D1–D12）、测试矩阵与里程碑（唯一权威设计文档） |
-| [docs/runbook.md](docs/runbook.md) | 执行卡：实机（M1 批次 4–5 主干 + 记录表 + 异常处置）与虚拟实验台演练（§7） |
+| [docs/design.md](docs/design.md) | **唯一权威设计文档（v2）**：需求（R1–R17）、符号与变量约定（§2.6）、设计、伪代码、决策记录（D1–D18）、测试矩阵（T1–T23）与里程碑 |
+| [docs/runbook.md](docs/runbook.md) | 实机执行卡（v2）：批次 0–7 步骤卡、现场规则（手动转动允许范围）、记录表、异常处置与虚拟实验台演练 |
 | [docs/control-loop.md](docs/control-loop.md) | 板子里的控制环（MIT / FOC）与实机停稳偏差（静摩擦死区）的来源分析 |
+| [docs/v1/](docs/v1/) | v1 存档（[design.md](docs/v1/design.md) / [runbook.md](docs/v1/runbook.md)，2026-10-01 之前的版本，仅作对照） |
