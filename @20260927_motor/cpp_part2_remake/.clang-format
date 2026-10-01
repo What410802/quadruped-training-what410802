@@ -1,0 +1,19 @@
+# 重做版（cpp_part2_remake）的 C++ 风格：Allman 大括号 + 4 空格 + 100 列 + C++17。
+# 与 cpp_part2 一致；仓库根的 .clang-format（ColumnLimit: 0）留给第一部分的施工区。
+# 用法：clang-format -i <file>
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++17
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Allman       # if/for/函数/类 的花括号都另起一行
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+BreakStringLiterals: false      # 不拆字符串字面量（我们的 printf 文案很长）
+PointerAlignment: Left          # int* p
+IncludeBlocks: Preserve         # 不重排 include（与 SDK 头文件的包含顺序有关）
+SortIncludes: false
