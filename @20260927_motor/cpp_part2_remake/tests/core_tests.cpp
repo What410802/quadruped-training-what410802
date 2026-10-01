@@ -160,6 +160,10 @@ void test_command()
     expect_eq(command_of("zero move 30").value, motor::output_deg_to_counts(30.0), "zero move 30");
     expect_eq(command_of("zero move -30").value, -motor::output_deg_to_counts(30.0),
               "zero move 支持负号");
+    expect_eq(command_of("move 32768tick").value, 32768, "move 32768tick = 一个转子圈（计数）");
+    expect_eq(command_of("move 21845ticks").value, 21845, "ticks 同义，直接按计数取值");
+    expect_near(motor::counts_to_output_deg(command_of("move 32768tick").value), motor::kZoneDegrees,
+                1e-9, "32768 tick = 一个零点区间（56.8421° 输出端）");
     expect(command_of("offset set 30").kind == motor::CommandKind::kOffsetSet, "offset set");
     expect(command_of("offset add 30").kind == motor::CommandKind::kUnknown,
            "offset add 已移除（改为 zero move）");

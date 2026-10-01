@@ -33,7 +33,7 @@ sudo @20260927_motor/scripts/run_log.sh m1-ctl $B --port /dev/ttyUSB0 --id 0   #
 sudo $B --port /dev/ttyUSB0 <<< "move 0; wait 3; mark; move 30; wait 3; zero move 30; state; move 30; wait 3; quit"
 ```
 
-角度输入默认度，可加 `deg` / `rad` / `r` / `rev`；显示一律是"±圈数 ±<360°"。
+角度输入默认度，可加 `deg` / `rad` / `r` / `rev` / `tick`（`tick` = 转子计数）；显示一律是"±圈数 ±<360°"。
 
 ## 3 步骤卡
 

@@ -136,9 +136,13 @@ std::string parse_output_angle(const std::string& token, Counts* counts)
     {
         *counts = output_turns_to_counts(value);
     }
+    else if (iequals(unit, "tick") || iequals(unit, "ticks"))
+    {
+        *counts = std::llround(value); // 转子侧计数：1 转子圈 = 32768 tick = 56.8421°（输出端）
+    }
     else
     {
-        return "不认识的角度单位：" + unit + "（可用 deg / rad / r / rev）";
+        return "不认识的角度单位：" + unit + "（可用 deg / rad / r / rev / tick）";
     }
     return std::string();
 }
@@ -279,7 +283,8 @@ Command parse_command(const std::string& statement, std::string* error)
 
 const char* command_help_text()
 {
-    return "命令（角度单位默认度，可加后缀 deg / rad / r / rev；多条语句用 ; 或换行分隔）：\n"
+    return "命令（角度单位默认度，可加后缀 deg / rad / r / rev / tick；tick = 转子计数，"
+           "32768 tick = 一个转子圈 = 56.8421° 输出端；多条语句用 ; 或换行分隔）：\n"
            "  state                 打印账本与状态\n"
            "  move <角度>           去相对软件零点的角度；默认 offset=0 时 move 0 就是回编码器零点\n"
            "  jog <增量>            相对当前位置挪（带符号）\n"
