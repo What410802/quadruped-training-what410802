@@ -53,6 +53,7 @@
 | R12 | 里程计与标度验证：`free` 下手转 3 整圈（凭标记） | `q` 增 $1080.0000°$、计数增 $622592$（不是 $1080.5687°$，见 §5.4 表 D） |
 | R13 | 实验台模型分层（M4）：真值（输出角）与上报（上电折圈 + 会话里程计）分离，可注入 `power off/on` 与整圈数 | T15–T18 全绿 |
 | R17 | 提示层：与标定姿态差超过 $T_w$（$= C/6 = 9.4737°$）时打印提示；**只打印**，不影响对齐、不 gate；阈值可配 | T23 |
+| R18 | 启动自动对齐（D20）：给了 `--pose-ref` 且护栏通过时，首帧自动 `fix`；护栏未通过时不自动、打印原因并停在 gate | ④b：断电重上电、摆回参考附近 ⇒ 启动即自动对齐（`kAlignFix` 事件 +1、电机不动、`move 30` 落点正确）；护栏外（`|k| \ge 2`、`|r| > W`、`raw0 \ge C`）⇒ 停在 gate；`--no-auto-fix` ⇒ 全人工路径 |
 
 原 R5（指认编码器零点）已删除：编码器零点没法"指认"，其作用由 R1（回零即到它）与验收步骤（② 回零后打标记）替代，见 §2.5 与 §4 D7。
 
@@ -106,7 +107,7 @@
 
 ### 2.6 符号与变量约定（唯一权威）
 
-本节是全文档的符号字典。**每个名字全文只用一种格式**：能与代码 / 命令 / 报文字段逐字对应的名字用**行内代码**（`raw`、`pos`、`turn_base`、`offset`、`q`、`q_des`、`p_des`、`q_m`、`pos_des`、`ref`、`q_now`、`target`）；只在公式与表格里出现的纯数学量用 **LaTeX**（$N$、$C$、$L$、$H$、$S$、$T_w$、$T_a$、$k_b$、$d$、$k$、$r$、$j$、$\delta$、$n$、$\psi$）。角度单位默认**输出端度**；计数一律是**转子侧计数**（板子回帧 `pos` 的单位）。"程序名"列给出它在上位机代码里的落点。
+本节是全文档的符号字典。**每个名字全文只用一种格式**：能与代码 / 命令 / 报文字段逐字对应的名字用**行内代码**（`raw`、`raw0`、`pos`、`turn_base`、`offset`、`q`、`q_des`、`p_des`、`q_m`、`pos_des`、`ref`、`q_now`、`target`）；只在公式与表格里出现的纯数学量用 **LaTeX**（$N$、$C$、$L$、$H$、$S$、$T_w$、$T_a$、$W$、$k_b$、$d$、$k$、$r$、$j$、$\delta$、$n$、$\psi$）。角度单位默认**输出端度**；计数一律是**转子侧计数**（板子回帧 `pos` 的单位）。"程序名"列给出它在上位机代码里的落点。
 
 **常量**（不随会话变化）：
 
@@ -119,6 +120,7 @@
 | $S$ | 分支步长：断电期间净转 1 整输出圈造成的读数漂移（现象量，§5.4 表 B） | $360°/19 = 18.9474°$ | — |
 | $T_w$ | 提示阈值（R17）：$r$ 越过它即打印提示，**不影响对齐** | $C/6 = 5461$ 计数 $= 9.4737°$（$= S/2$） | `pose_warn_counts` |
 | $T_a$ | 到位容差 | 默认 $1.0°$ | `tol_deg`（→ `tol_counts_`） |
+| $W$ | 自动对齐窗口（D20）：自动路径额外要求 $\lvert r\rvert \le W$ | 默认 $20°$ | `fix_window_deg` |
 
 **账本链（会话状态）**：
 
@@ -138,6 +140,7 @@
 | 符号 | 定义 | 来源 | 样例 | 程序名 |
 |---|---|---|---|---|
 | `ref` | 参考读数：约定启动姿态（或记号点）当时的 `raw` | 启动参数 `--pose-ref`；或从记录表抄入 | `--pose-ref 0tick`（线画在格边界，`move 0` 到位时手工记 0） | `pose_ref_raw` |
+| `raw0` | 会话首帧的 `raw`（程序接手时的读数） | 电机回传（首帧） | ② 会话首帧 +2832 计数；④b 例：27003 计数 | `last_raw()`（首帧后） |
 | $d$ | 差：启动检查时取 `raw` 与 `ref` 之差；一般 `check` 取 `q` 与参考坐标之差 | 程序计算 | $d$ = 27003 计数 | `check_report` 内部 |
 | $k$ | $d$ 的整格部分（单位：格 $=$ 转子圈） | 程序计算 | $k$ = +1（板子 datum 比参考低一格） | 同上 |
 | $r$ | 残差：$r = d - kC$，$\lvert r\rvert \le C/2$ | 程序计算 | $r$ = −5765 计数（$-10.0004°$） | 同上 |
@@ -383,8 +386,8 @@ I7  提示层（R17）只打印：不改账本、不阻止命令、不影响 fix
 ```mermaid
 stateDiagram-v2
     [*] --> Handshake: 打开传输
-    Handshake --> Online: 首帧有效且账本可确认（上电锚定 / 恢复重锚）
-    Handshake --> Handshake: 账本不可确认（启动检查非 ≈0 非 ≈k 区间、恢复残差模糊）⇒ 零力矩等人工命令
+    Handshake --> Online: 首帧有效 + 账本可确认（锚定 + 启动检查/自动对齐通过）
+    Handshake --> Handshake: 账本不可确认（护栏未通过、$k \ne 0$）⇒ 零力矩等人工命令
     Handshake --> Fault: 保护触发
     Online --> Offline: 连续 N 帧无回复（立即切零力矩）
     Offline --> Handshake: 收到回复（按"位置没动"重锚）
@@ -392,9 +395,12 @@ stateDiagram-v2
     Fault --> [*]: 零力矩收尾
 ```
 
-Handshake 里"等人工命令"的出口（D5 的落地）：操作者显式发出 `hold` / `move` / `jog` / `offset` / `zero move` / `fix` 之一 ⇒ 视为**对账本的确认**，转入 Online（`free` 只是保持零力矩，不算确认）。**是否停在 Handshake 由 gate 条件决定**（有 `--pose-ref` 时的启动检查结论）：
-- **gate**：二义点（$\lvert r\rvert \ge C/2 - \varepsilon$）、超半格 / 无法归因、或 $k \ne 0$（存在"可能偏一整格"的确定风险）；
-- **不 gate**：R17 提示层——只打印，不拖延任何命令；
+Handshake 的出口（D5 / D20 的落地）：首帧锚定后，若给了 `--pose-ref` 就做启动检查；**护栏通过时默认自动对齐**，否则按下面三种情况处理（`raw0` = 首帧 `raw`）：
+
+- **无动作**：$k = 0$（$\lvert r\rvert > T_w$ 时按 R17 只打印提示）；
+- **自动对齐**（`auto_fix` 且三条件同时成立）：`raw0 ∈ [0, C)`（"刚上电"的侧面证据）、$\lvert k\rvert \le 1$（半格纪律）、$\lvert r\rvert \le W$（默认 $20°$）⇒ `offset -= kC` + 一条 `kAlignFix` 事件（打印分解与 `offset` 变化、**电机不动**），随后照常使能；
+- **gate**：$k \ne 0$ 但护栏未通过（`--no-auto-fix`、$\lvert k\rvert \ge 2$、$\lvert r\rvert > W$、或 `raw0 ≥ C`）⇒ 打印未通过的原因 + "先 `fix`，再发移动命令（否则可能偏一整格 $L$）"，**零力矩等命令**；`hold` / `move` / `jog` / `zero move` / `offset set` / `fix` 任一显式命令视为**对账本的确认**，转入 Online（`free` 只是保持零力矩，不算确认）；
+- **不 gate**：R17 提示层与检查信息——只打印，不拖延任何命令；
 - gate 期间仍只发零力矩（I5）。
 
 正交的两个开关（与链路状态无关地组合）：
@@ -409,11 +415,11 @@ Handshake 里"等人工命令"的出口（D5 的落地）：操作者显式发�
 | 操作 | 何时 | 改什么 | 为什么 |
 |---|---|---|---|
 | 上电锚定 `anchor(k0)` | 会话第一帧 | `turn_base = k0×C`（默认 $k_0 = 0$：接受当前位置） | 板子掉电丢圈数，必须先假设一个基准 |
-| 区间重对齐 `fix` | `fix` 命令（前提 $\lvert\delta\rvert < H$） | `offset -= kC` | 板子基准与参考差 $k$ 格；只补账本，物理目标不变（I3/I4） |
+| 区间重对齐 `fix` | `fix` 命令；或启动自动对齐（D20，`auto_fix` 且三条件全过） | `offset -= kC` | 板子基准与参考差 $k$ 格；只补账本，物理目标不变（I3/I4） |
 | 跳变修正 `fix_jump(k)` | 运行中 `raw` 跳了 $k$ 格（Δ ≈ $kC$）；或 `fix` 命令 | `offset -= kC` | 板子中途换基准（兜底）；只补账本，物理目标不变 |
 | 离线重锚 `reanchor(raw)` | 离线恢复第一帧 | `turn_base = round((pos_{before} - raw)/C)×C` | "板子没断电"与"断过电"在数学上不可区分，统一按"物理位置未动"取最近整圈 |
 
-事件类型：`kAnchor`（上电锚定）、`kAlignFix`（区间重对齐）、`kOffsetShift`（`zero move` / `offset set` 的标定动作）、`kRestore`（可选，附录 A.1）。`check` **不产生事件**（只报告）。
+事件类型：`kAnchor`（上电锚定）、`kAlignFix`（区间重对齐：自动或手动，事件值记 $k$）、`kOffsetShift`（`zero move` / `offset set` 的标定动作）、`kRestore`（可选，附录 A.1）。`check` **不产生事件**（只报告）。**启动自动对齐会多出 1 条 `kAlignFix`**：`state` 里看到"事件 2 条"是预期（验收脚本按这个核对）。
 
 **为什么需要 `turn_base`**（它什么时候不为 0、动了它会发生什么）：
 
@@ -451,11 +457,12 @@ residual   = (raw_new + turn_base) − pos_before     # 构造上有 |residual| 
 | core | `initial_offset` | 已有 | 0 | 软件零点初值（= 上次标定结果） |
 | core | `pose_ref_raw`（`none` = 不给） | **新增** | none | 启动检查参考（§3.6.3），对应 `--pose-ref` |
 | core | `pose_warn_counts`（→ $T_w$） | **新增** | 5461 | R17 提示层阈值 |
+| core | `auto_fix` / `fix_window_deg`（→ $W$） | **新增** | true / 20.0 | D20：启动自动对齐开关与窗口 |
 | core | `max_fixes` / `max_move_deg` | **新增** | 3 / 360 | `fix` 次数上限 / P6 单次移动上限 |
 | app（`motor_ctl`） | `--port` / `--id` / `--baud` | 已有 | `/dev/ttyUSB0` / 0 / 4000000 | 串口 |
 | app | `--kp-out` `--kd-out` `--vmax-deg` `--amax-deg` `--tol-deg` `--tau-out-limit` `--stall-s` `--temp-limit` `--offline-frames` `--offset-deg` | 已有 | 同 core 默认 | 逐项覆盖 `SessionConfig` |
 | app | `--every` / `--no-send` / `--help` | 已有 | 20 / 关 / — | 打印节奏 / 干跑 / 帮助 |
-| app | `--pose-ref <角度或计数>` / `--max-move-deg <角度>` | **新增** | 不给 / 360 | 例：`--pose-ref 25.951deg`、`--pose-ref 14960tick` |
+| app | `--pose-ref <角度或计数>` / `--max-move-deg <角度>` / `--no-auto-fix` / `--fix-window-deg <角度>` | **新增** | 不给 / 360 / 关 / 20 | 例：`--pose-ref 25.951deg`、`--pose-ref 14960tick`；`--no-auto-fix` = 全人工 `fix`（D20） |
 | app（常量） | 帧周期 / 收尾零力矩帧数 / 首帧超时 | 已有 | 5 ms / 20 / 2.0 s | `motor_ctl` 内部 |
 | 实验台（`motor_sim`） | `--print-interval` / `--frame-period` | 已有 | 1.0 s / 5 ms | 与 core 无关 |
 
@@ -511,13 +518,19 @@ session.on_feedback(fb, now):
         return
     miss = 0
     if link == Handshake:
-        if 从未收到过帧:                                    # 上电
-            anchor(k0 = 0)                                  # 1 条事件
+        if 从未收到过帧:                                    # 上电 / 程序接手
+            anchor(k0 = 0)                                  # 1 条事件（上电锚定）
             if pose_ref_set:
-                {k, r} = check_report(fb.raw, pose_ref_raw)  # 只报告（含 R17 分带）
-                if gate_needed(k, r):                        # 二义 / 超半格 / k≠0（§3.4）
-                    提示"先 check / fix，再发移动命令（否则可能偏一整格 L）"
-                    stay_zero_torque_until_command()          # 任一显式命令即确认（D5）
+                {k, r} = check_report(fb.raw, pose_ref_raw)  # 只报告（含"两种解释"与 R17 分带）
+                if k == 0:
+                    pass                                    # 无动作（|r| 大时 check 里已打印提示）
+                elif auto_fix && fb.raw ∈ [0, C) && |k| ≤ 1 && |r| ≤ W:
+                    apply_fix(k, r, automatic = true)        # D20：护栏通过 ⇒ 自动对齐
+                else:
+                    warn("不自动对齐（原因：%s）；先 fix，再发移动命令（否则可能偏一整格 L）", why)
+                    last_raw = fb.raw; have_feedback = true
+                    gate = true                             # 零力矩等待；任一显式命令解除（D5）
+                    return
             target = q_now; planner.snap(target); enabled = true   # 就地保持
             link = Online
         elif 本次进入 Handshake 的原因是离线恢复:            # 离线恢复
@@ -543,8 +556,12 @@ session.on_feedback(fb, now):
 check_report(current, ref):                     # §2.6：d = kC + r
     d = current − ref
     k = round(d / C); r = d − kC                           # |r| ≤ C/2（±H）
-    emit("参考 %lld；当前 %lld；分解 = k=%+d 格 + 残差 %s（%lld 计数）", ref, current, fmt(r), r)
-    emit("  残差 = 真实位移 δ（当 |δ| < H = 28.4211°）；k 表示板子 datum 比参考低/高了几格")
+    emit("启动检查：参考 %lld 计数（记录值）；当前 %lld（首帧 raw）；分解 = k=%+d 格 + 残差 %s", ref, current, fmt(r))
+    emit("  两种解释都成立、读数无法区分：")
+    emit("   ① 断电重上电过 ⇒ k 是 datum 挪动的格数（负 = 挪低一格）；")
+    emit("   ② 只是程序重启、电机没断电 ⇒ k 是自参考以来累计的整圈数（读数本来就对，不该动账）。")
+    emit("  侧面证据：首帧 raw %lld %s [0, C = 32768)——断电重上电后必然落在里面，反之不一定。",
+         current, current ∈ [0, C) ? "落在" : "不在")
     if |r| ≤ pose_warn_counts:                             # T_w = C/6 = 5461 计数 = 9.4737°（R17）
         if verbose: emit("  姿态差在 ±1/38 圈内（干净带）")
     elif |r| < C/2 − eps:
@@ -556,24 +573,33 @@ check_report(current, ref):                     # §2.6：d = kC + r
         emit("  ⚠ 恰在半格：二义点，请改姿态后重测")
     return {k, r}
 
-gate_needed(k, r):
-    return (|r| ≥ C/2 − eps) or (超半格 / 无法归因) or (k ≠ 0)
+# ---------- 自动对齐的护栏（D20）与唯一改账本的入口 ----------
 
-fix():                                         # 只做区间重对齐；前提写进打印
-    if not have_feedback or not pose_ref_set: error("先给参考（--pose-ref / mark）")
-    {k, r} = check_report(raw_now, pose_ref_raw)
-    if k == 0: emit("一致，无需修正"); return
-    if fixes_used ≥ max_fixes: emit("已达 max-fixes，拒绝自动修正"); return
-    emit("前提：断电期间净位移 |δ| < H = 28.4211°（超半格时本命令会把账本修错，见 §3.2 边界事实 4）")
-    ledger.shift_offset(−k×C, now)             # offset −= kC：账本平移；目标 / 插值 / 标记在 q 空间同步平移 ⇒ 物理目标不动（I3）
+auto_fix_ok(raw0, k, r):                        # 三条件同时成立才允许"自动"路径
+    return auto_fix && (raw0 ∈ [0, C)) && (|k| ≤ 1) && (|r| ≤ W)
+
+apply_fix(k, r, automatic):                     # 手动 fix 与自动对齐共用（I3：目标/插值/标记同步平移）
+    if fixes_used ≥ max_fixes: emit("已达 max-fixes ⇒ 拒绝"); return rejected
+    emit("前提：启动姿态在参考附近（|δ| < H = 28.4211°；自动路径另有 |δ| ≤ W = 20°）")
+    ledger.shift_offset(−k×C, now)              # 账本平移：物理目标不动、电机不动
     event(kAlignFix, k);  fixes_used += 1
-    emit("已对齐：offset %lld → %lld；q 现为 %s（= 真实位移 %s）", ...)
+    emit("已对齐（%s）：offset %lld → %lld；q 现为 %s", automatic ? "自动" : "手动", ...)
+
+fix():                                          # 手动命令：护栏只拦"自动"，手动由操作者负责
+    if not have_feedback or not pose_ref_set: error("先给参考（--pose-ref）")
+    {k, r} = check_report(raw_now, pose_ref_raw)
+    if k == 0: emit("k = 0：无需修正"); return ok
+    if !auto_fix_ok(raw0, k, r):
+        emit("（自动护栏未通过：%s——你现在是手动 fix，请自行确认'确实断电重上电过'）", why)
+    return apply_fix(k, r, automatic = false)
 
 predict():                                     # 可选（附录 A.2）：先预测、再动手（说明 §5.4 表 B）
     for i in 0..3: emit("断电期间净转 %d 整圈 ⇒ 记号线读数漂移 %+.4f°", i, drift(i))
     # 0.0000, +18.9474, −18.9474, 0.0000
 
 apply(command):
+    # 先处理 gate（D5/D20）：hold / move / jog / zero move / offset set / fix 任一显式命令
+    # ⇒ 解除 gate、置 link = Online（视为"对账本的确认"）；free 只是保持零力矩、不算确认
     move <deg>      : 若 |deg| > max_move_deg ⇒ 拒绝（P6）；否则 target = deg_to_counts(deg); enabled = true; planner.snap(now); planner.target(target)
     jog <d>         : 同上（相对 q_now）
     free            : enabled = false                                        # 零力矩
@@ -583,7 +609,7 @@ apply(command):
     mark            : mark_q = q_now; mark_pos = pos_now      # 记下物理点（供 check 对照）
     mark goto       : target = mark_q; enabled = true
     check [<参考>]  : 见 check_report（只报告、不 gate、不动账）
-    fix             : 见 fix()（前提 |δ| < H；受 max_fixes 限制）
+    fix             : 见 fix()（护栏只拦"自动"路径；受 max_fixes 限制）
     predict         : 见 predict()（可选，附录 A.2）
     state / help / wait / quit
 ```
@@ -702,17 +728,17 @@ send(cmd, &fb):
 | `zero move <d>` | 把软件零点沿正方向（读数增大方向）移动 d 度；电机不动，标记点读数减少 d | ③ 的"零点正向偏移 30°" |
 | `offset set <deg>` | 直接设定内部 offset 变量（= 零点沿负方向移动该角度）；复现标定值用，日常用 `zero move` | — |
 | `mark` / `mark goto` | 记下 / 回到标记点（② 回零后打标记，③④ 复用） | ②③④ |
-| `check [<参考>]` | 打印唯一分解 $d = kC + r$、$r$ 的解释（= 真实位移 $\delta$，当 $\lvert\delta\rvert < H$）、R17 分带提示；**只报告、不动账** | 任务书 ④ 的"先确定零点未跳变" |
-| `fix` | 按 `check` 的 $k$ 做区间重对齐（`offset -= kC`），打印前提（$\lvert\delta\rvert < H$）与免责句，记事件，受 `max_fixes` 限制 | ④b |
+| `check [<参考>]` | 打印唯一分解 $d = kC + r$、两种解释（① datum 挪格 / ② 程序重启的累计圈数）、侧面证据（`raw0` 是否 ∈ $[0, C)$）、R17 分带提示；**只报告、不动账** | 任务书 ④ 的"先确定零点未跳变" |
+| `fix` | 按 `check` 的 $k$ 做区间重对齐（`offset -= kC`），打印前提与免责句，记事件，受 `max_fixes` 限制；**手动路径不受护栏限制**（护栏只决定"自动"要不要做，D20） | ④b（自动为主、手动兜底） |
 | `predict` | 可选（附录 A.2）：打印"断电整圈 → 读数漂移"预测表（教学用） | ④ 说明（可选） |
 | `free` / `hold` | 零力矩（可手转）/ 位置保持 | ④ 手转前后 |
 | `wait <s>` | 推迟后续语句至少 s 秒（脚本节拍） | ②③④ 演示节拍 |
 | `help` / `quit` | 帮助 / 先卸力再退出 | — |
 
-**`check` / `fix` 的三条硬规则**（§3.6.3 伪代码的语义摘要）：
+**`check` / `fix` 的硬规则**（§3.6.3 伪代码的语义摘要）：
 
-1. `check` 是**只读**的：不改账本、不 gate、不产生事件；它报告的是唯一分解 $d = kC + r$（$\lvert r\rvert \le C/2$），以及"$r$ = 真实位移 $\delta$（当 $\lvert\delta\rvert < H$）；$k$ = 板子 datum 比参考低/高了几格"。
-2. `fix` **只做区间部分**（`offset -= kC`），并且**必须**先打印前提与免责句；超前提（$\lvert\delta\rvert \ge H$、二义点、$r$ 无法归因）时**拒绝**（模糊即停，D5/D15）。
+1. `check` 是**只读**的：不改账本、不 gate、不产生事件；它报告唯一分解 $d = kC + r$（$\lvert r\rvert \le C/2$）、**两种解释**（① 断电重上电 ⇒ $k$ 是 datum 挪动的格数；② 只是程序重启 ⇒ $k$ 是累计整圈数、读数本来就对）与侧面证据（`raw0` 是否 ∈ $[0, C)$），以及 R17 分带提示。
+2. `fix` **只做区间部分**（`offset -= kC`），并且**必须**先打印前提与免责句；手动路径由操作者负责前提（护栏未通过时打印提醒）；自动路径由护栏保证前提（`raw0 ∈ [0, C)`、$\lvert k\rvert \le 1$、$\lvert r\rvert \le W$，D20）；$k = 0$ 时什么都不做（没有可补的格）。
 3. 无论 `check` 还是 `fix`，"读数正常 ≠ 姿态正确"：整格错位用读数发现不了，`fix` 不得声称"已确认姿态正确"（P7）。
 4. 整圈运动（带电）用 `jog <n>r`（§3.6.3 末尾）；整圈**声明**（断电期间转过整圈）不设命令，靠 §5.3 规则避免（程序只给 1/19 圈特征提示）。
 
@@ -759,8 +785,9 @@ send(cmd, &fb):
 | D15 | `fix` 的适用前提 | ✅ 只在 $\lvert\delta\rvert < H$ 时做区间重对齐；打印前提与免责句；二义 / 超半格 / 无法归因时拒绝（模糊即停） | 与 D5 同一原则；`fix` 不声称"已确认姿态正确"（P7） |
 | D16 | ④ 的两档演示 | ✅ ④a 带电 `free` 手转跨标记点前后（必演，零风险）；④b 断电重上电 + `check` / `fix`（必演，任务书 ④ 的真考点）；④c "不 `fix` 直接 `move`"反例（可选） | 步骤卡见 §5.3 |
 | D17 | 提示层阈值 | ✅ 采纳现场建议：$\lvert r\rvert > T_w$（$= C/6 = 5461$ 计数 $= 9.4737° = 1/38$ 圈）时打印提示；**只打印**，不影响对齐、不 gate；阈值可配 | 依据：$T_w$ 恰为分支步长 $S$ 的一半（§3.2 边界事实 3 的推论） |
-| D18 | 启动不自动、也不询问对齐 | ✅ 不加"首帧询问 / 自动对齐软件零点"的参数；对齐一律由显式命令触发（`fix` / `zero move` / `offset set`） | 理由：① 容差不可验证（位移整一格时 $r = 0$）；② 自动对齐会抹掉 $k$、$r$ 证据；③ 与 R1/D6 的启动语义冲突；④ 脚本模式下"询问"无应答者 |
+| D18 | 启动不自动、也不询问对齐 | ⛔ **已被 D20 修订**（本条只保留"不询问"的部分）。原结论：不加"首帧询问 / 自动对齐软件零点"的参数；对齐一律由显式命令触发（`fix` / `zero move` / `offset set`） | 原理由：① 容差不可验证（位移整一格时 $r = 0$）；② 自动对齐会抹掉 $k$、$r$ 证据；③ 与 R1/D6 的启动语义冲突；④ 脚本模式下"询问"无应答者。**D20 用"护栏 + 打印 + 事件"回应了 ①②**（证据不抹、只在证据支持"刚上电"时才自动），③ 不受影响（D20 不改变"启动=接受当前读数 + offset 取记录值"），④ 仍成立所以依旧**不询问** |
 | D19 | 验收的假设范围：只放宽"可重启"，不放宽"会话内连续" | ✅ 保留 A1 的"在线"部分（会话内通信连续、板子不掉电；掉了按 P3 报警退出），**只放宽"连续"**＝允许程序重启、每次启动可能接手一个未对齐的板子；由启动检查（`check` / `fix`）+ `--pose-ref` 归位。**M3（会话内断线恢复：`reanchor` / `--recover-hold` / `drop` 注入）降为可选**，不进验收 | 依据：任务书 ④ 的考点是"**上电那一刻**基准有没有变"，不是会话中途断线；放宽后 `turn_base` 在验收线恒为 0，模型里"重锚 / 残差模糊 / 恢复策略"整套都不用做。代价（可接受）：① 需把 ②③④ 按会话组织（会话内不拔线；④b 本身就是"断电+重启+`fix`"）；② gate 必须保留（判不清就停下来问人）；③ 现场规则不变（摆回记号线附近 ±20°、不净转整圈），二者都把"程序重启"与"断电重上电"压成同一个动作（T18 只给证据、不判定） |
+| D20 | 启动**自动**对齐（默认开），带护栏与证据打印 | ✅ 给了 `--pose-ref` 时，首帧锚定后自动做启动检查；**护栏三条件同时成立才自动 `fix`**：`raw0 ∈ [0, C)`（"刚上电"的证据——断电重上电后首帧必然落在 $[0, C)$）、$\lvert k\rvert \le 1$（半格纪律）、$\lvert r\rvert \le W$（默认 $20°$）。自动路径必须打印分解、两种解释与 `raw0` 证据，并记 `kAlignFix` 事件（证据不抹）。护栏未通过且 $k \ne 0$ ⇒ **不自动**、打印原因并停在 gate（零力矩等命令；任一显式命令即确认）。`--no-auto-fix` 关掉自动、全走人工；仍然**不询问** | 依据：④b 的现场动作就是"断电重上电 + 摆回参考附近"，自动对齐正好覆盖它（`kAlignFix` 事件 +1、电机不动）。**固有代价（写进 §5.3 纪律）**：$k \ne 0$ 有两种不可区分的来源（① 断电 ⇒ 该修；② 程序重启 ⇒ 读数本来就对、不该修），程序只能用 `raw0 ∈ [0, C)` 当侧面证据（是"刚上电"的必要不充分条件），所以纪律是"**重启程序前也把输出端摆回参考附近**"，不确定时用 `--no-auto-fix`。三者关系：D18 的"不询问"保留，D18 的"不自动"由本条取代 |
 
 ## 5 测试与验收矩阵
 
@@ -792,7 +819,8 @@ send(cmd, &fb):
 | T20 | P6 幅度上限 | `move 720` | 拒绝并打印上限 | M1 |
 | T21 | 二义点 | 断电位移 $-H$ | `check` 打印"恰在半格"；启动时 gate | M4 |
 | T22 | 整格反例（已知局限） | 断电位移 $+L$ | `check` 报"一致"——**记录为已知局限**，配套免责句（P7） | M4 |
-| T23 | 提示层（R17 / D17） | `power off` → 手转 $-12°$ → `power on` | `check` 打印提示行（$12° > T_w = 9.4737°$）；`fix` 仍成功、不受影响；改手转 $-5°$ 时不打印 | M4 |
+| T23 | 提示层（R17 / D17） | `power off` → 手转 $-12°$ → `power on` | `check` 打印提示行（$12° > T_w = 9.4737°$）；自动对齐仍成功、不受影响；改手转 $-5°$ 时不打印 | M4 |
+| T24 | **启动自动对齐（R18 / D20）** | `power off` → 手转 $\delta$（$\le 20°$）→ `power on`，带 `--pose-ref` | 护栏通过 ⇒ 自动 `kAlignFix`（事件 +1）、电机不动、下发的 `pos_des` 不变；⚠ 用 `--no-auto-fix` 时停在 gate；护栏外（`offturns 1`、$\lvert r\rvert > W$、`raw0 \ge C$ 且 $k \ne 0$）⇒ 不自动、gate | M4 |
 
 实验台只做**人工演练与脚本冒烟**，不进 CTest。M2b 完成后加一条"PTY 端到端冒烟"（人工触发的脚本：起 `motor_sim` → `motor_ctl` 跑主格脚本 → 检查关键行），不进默认测试。
 
@@ -800,18 +828,24 @@ send(cmd, &fb):
 
 批次 0 准备（接线 / 权限 / 探针）与批次 1–2（S1 / S1b）在 M2a 完成；批次 3 的手转形态与上电基准重复性在 M4 复跑（"量断链"那一步只在做 M3（可选）时才需要）；批次 4–5（S3 回零与给角度、S4 标定 +30°）的主干在 M1 即跑通、M4 复跑（离线用实验台对照）；批次 6（④b 断电重上电 + `check` / `fix`，含 T21–T23 的分带与二义场景）在 M4；批次 7 收尾在 M5。现场步骤见 §5.3–§5.5；记录表与故障处置在新版 `docs/runbook.md` 落地（沿用旧版 [runbook.md](../../cpp_part2/docs/runbook.md) 的结构与实测数字）。
 
-### 5.3 现场规则：手动转动允许范围（④ 用；D14）
+### 5.3 现场规则：手动转动允许范围与启动姿态（④ 用；D14 / D20）
 
 | 灯 | 场景 | 规则 |
 |---|---|---|
 | 🟢 绿 | 带电 `free` 手转 | 任意角度、任意多次、跨任意多个转子零点；`raw` 是里程计，无歧义 |
-| 🟢 绿 | 断电手转，净位移 $\lvert\delta\rvert \le 20°$ | `check` 给出 $k$ 与 $r$（$= \delta$）；`fix` 后账本正确 |
-| 🟡 黄 | 断电净位移 $20° < \lvert\delta\rvert < H$；或停在恰好 $\pm H$ | 余量小 / 二义点：换姿态重来，别在这里下结论 |
-| 🔴 红 | 断电净位移 $\lvert\delta\rvert \ge H$ | $k$ 的解释会翻转（§5.4 反例 2）；`fix` 会把账本修错 |
+| 🟢 绿 | ④b：断电重上电、摆回参考附近（$\lvert\delta\rvert \le 20° = W$） | 程序**自动对齐**（D20）：打印 $k$、$r$，`offset` 自动平移、电机不动、`kAlignFix` 事件 +1 |
+| 🟢 绿 | 程序重启（电机没断电）且输出端就停在参考姿态附近 | $k = 0$、$r$ 小 ⇒ 无动作，直接可用（**重启前摆回参考附近**是本条的前提） |
+| 🟡 黄 | 断电净位移 $20° < \lvert\delta\rvert < H$；或停在恰好 $\pm H$ | 余量小 / 二义点：换姿态重来，别在这里下结论（自动路径此时已不执行，会停在 gate） |
+| 🔴 红 | 断电净位移 $\lvert\delta\rvert \ge H$ | $k$ 的解释会翻转（§5.4 反例 2）；硬做 `fix` 会把账本修错 |
 | 🔴 红 | 断电净转 ≥ 1 整输出圈 | 分支漂移（§5.4 表 B）：读数差 $n \bmod 3$ 个 $S$；此时 $k = 0$，`fix` 也修不了，程序只给 1/19 圈特征提示 ⇒ **只能靠规则避免** |
-| 🔴 红 | 断电重上电后不 `check` / `fix` 直接 `move` | 基准差一格时落点静默偏 $L$（§5.4 反例 3） |
+| 🔴 红 | 程序重启、电机**没断电**、输出端**不在**参考姿态附近 | 自动护栏会拦住（`raw0 ≥ C` 或 $\lvert r\rvert > W$ 或 $\lvert k\rvert \ge 2$）⇒ 停在 gate；**此时不要硬发 `move`**：读数本来就对，正确做法是 `move` 本身（或 `hold`）作为确认继续，或先摆回参考附近再重启 |
 
-程序侧对应输出（都**只打印**，不影响对齐与 `fix`）：`check` / 启动检查在 $T_w < \lvert r\rvert < H$（$9.4737°$ 到 $28.4211°$）时打印一行提示（R17），在 $k \ne 0$ 时打印"可能偏了一格、建议先 `fix`"。
+**两条纪律**（护栏能拦的与拦不住的）：
+
+1. **每次启动程序前（含程序重启），把输出端摆回参考姿态附近**（$\le W = 20°$，且不要停在"差整格"的位置）。护栏（`raw0 ∈ [0, C)`、$\lvert k\rvert \le 1$、$\lvert r\rvert \le W$）是**保守**的：它宁可停在 gate 让人判断，也不在证据不足时动账；但"程序重启 + 停在恰好一格处 + `raw0` 恰好 < $C$"这一类它拦不住，只能靠本纪律避免。
+2. 不确定"电机断没断过电"时，用 `--no-auto-fix`：程序只打印检查结果、停在 gate，由你决定 `fix`（确实断电过）还是直接 `move`（没断电）。
+
+程序侧对应输出（都**只打印**）：`check` / 启动检查在 $T_w < \lvert r\rvert < H$（$9.4737°$ 到 $28.4211°$）时打印一行提示（R17）；自动对齐或 gate 时打印完整分解（$k$、$r$、`raw0` 证据与所选解释）。
 
 ### 5.4 数值表与证明（可复现）
 
@@ -860,10 +894,11 @@ send(cmd, &fb):
 
 | 步骤 | 数值 |
 |---|---|
-| 首帧 `raw` | 27003 计数（$+46.8421°$，从板子新 datum 量起） |
-| 启动检查 | $d = 27003$ ⇒ $k = +1$、$r = -5765$ 计数（$-10.0004°$）；提示行（$\lvert r\rvert > T_w$）与 gate |
-| `fix` 前 | `q` $= 27003 - 17294 = +9709$ 计数（$+16.8421°$，错一格） |
-| `fix` 后 | `offset = -50062`；`q`（当前点）$= -23059$ 计数 $= -40.0001°$（$= -(30+10)$）；线处读数恢复 $-30.000°$ |
+| 首帧 `raw0` | 27003 计数（$+46.8421°$，从板子新 datum 量起） |
+| 启动检查 | $d = 27003$ ⇒ $k = +1$、$r = -5765$ 计数（$-10.0004°$）；提示行（$\lvert r\rvert > T_w$）；`raw0 < C` ⇒ 证据支持"刚上电" |
+| 自动对齐（D20） | 护栏三条件全过（`raw0 ∈ [0, C)`、$\lvert k\rvert = 1$、$\lvert r\rvert = 10° \le W$）⇒ 自动 `kAlignFix`：`offset -17294 → -50062`；**电机不动** |
+| `fix` 前（若不自动） | `q` $= 27003 - 17294 = +9709$ 计数（$+16.8421°$，错一格） |
+| 对齐后 | `q`（当前点）$= -23059$ 计数 $= -40.0001°$（$= -(30+10)$）；线处读数恢复 $-30.000°$；事件 2 条 |
 | `move 30` | 落点回到"线前方 $60°$"（与 ③ 之前的落点同一点），读数 $+30.000°$ |
 
 **四个反例**（都用于现场话术与 T22/T21）：
@@ -878,17 +913,18 @@ send(cmd, &fb):
 | # | 做什么 | 期望 |
 |---|---|---|
 | 0 | 前置：夹紧、接线、`sudo`/dialout、`--no-send` 看配置、准备记录表 | 配置里 $N$ 显示 19:3、$L = 56.8421°$ |
-| 1 | 启动（可带 `--offset-deg <上次记录>` 与 `--pose-ref <上次读数>`） | 打印锚定；有 `--pose-ref` 时再打印启动检查（$k$、$r$、免责句） |
-| 2 | `state` | `raw` / `turn_base` / `offset` / `q` + 事件 1 条 |
+| 1 | 启动（可带 `--offset-deg <上次记录>` 与 `--pose-ref <上次读数>`） | 打印锚定；有 `--pose-ref` 时再打印启动检查（$k$、$r$、两种解释、`raw0` 证据） |
+| 2 | `state` | `raw` / `turn_base` / `offset` / `q` + 事件条数（**锚定 1 条；若启动自动对齐过则 2 条**） |
 | 3 | ② `move 0` → 画线 → `mark` | 线处 `q` ≈ +0.000°；`mark` 打印"离零点边界 $0.000°$"（预期） |
 | 4 | ② `move 30` | 平滑到位（≈0.7 s）；读 $+0$ 圈 $+30.000°$ |
 | 5 | ③ `zero move 30` → `state` → `move 30` | 电机不动；线处读数 $-30.000°$；`move 30` 落点比第 4 步多 30° |
 | 6 | ④a（带电）`free` → 手转跨线前后各 ≈10°（可多跨几格）→ `move 30` | 读数连续无跳变、落点正确；`hold` 收住 |
-| 7 | ④b（断电）`quit` → 断电 → 移到线某一侧（$\lvert\delta\rvert \le 20°$，绝不整圈）→ 上电 → 启动（`--offset-deg -30 --pose-ref 0tick`）→ 看检查 → `fix` → `move 30` | 检查行给 $k$、$r$（$\lvert\delta\rvert > 9.4737°$ 时多一行提示——正常）；`fix` 打印前提与事件；落点正确；`state` 事件 +1 |
-| 8 | （可选反例）重复 7 但不 `fix`，直接 `move 30` | 落点偏一格 $L$——说明"读数正常 ≠ 姿态正确" |
-| 9 | 收尾：`quit`，抄汇总行与退出码 | 先发 20 帧零力矩 |
+| 7 | ④b（断电）`quit` → 断电 → 移到线某一侧（$\lvert\delta\rvert \le 20°$，绝不整圈）→ 上电 → 启动（`--offset-deg -30 --pose-ref <§6 表 A 的 raw>tick`） | **启动即自动对齐**（D20 护栏通过）：打印 $k$、$r$ 与 `offset` 变化；**电机不动**；事件 2 条；随后 `move 30` 落点正确（可先 `state` 核对线处读数 $-30.000°$） |
+| 8 | （可选反例 A）重复 7 但加 `--no-auto-fix` | 停在 gate（零力矩）并打印未通过原因；此时**直接 `move 30` 会偏一格 $L$**——说明"读数正常 ≠ 姿态正确"；正确做法是先 `fix` 再 `move` |
+| 9 | （可选反例 B）模拟"程序重启、电机没断电"：把输出端停在离参考一格附近，`quit` 后不断电直接重启 | 护栏拦住（`raw0` 大 / $\lvert k\rvert \ge 1$ 视位置）⇒ 停在 gate 并给两种解释；由人判断"没断电 ⇒ 不该 fix" |
+| 10 | 收尾：`quit`，抄汇总行与退出码 | 先发 20 帧零力矩 |
 
-记录表增补：启动检查（`raw` / `pose-ref` / $k$ / $r$）、`fix` 前后 `offset` 与事件数、④b 的 $\delta$ 与 `check` 结论、（可选）3 圈标度验证、免责确认（记号线目视一致？）。
+记录表增补：启动检查与**自动对齐**（`raw0` / `pose-ref` / $k$ / $r$ / `offset` 变化 / 护栏是否通过）、④b 的 $\delta$ 与结论、（可选）3 圈标度验证、免责确认（记号线目视一致？）。
 
 ## 6 假设与里程碑（按假设强度逐级放宽）
 
@@ -967,21 +1003,21 @@ for n in range(4):
 | [core/include/motor/counts.hpp](../core/include/motor/counts.hpp) | 可选：补常量 `C/2`（半格）与 $S$ 的计数表示（`10923`，提示窗口用） | ~5 行 | 单测 |
 | [core/include/motor/ledger.hpp](../core/include/motor/ledger.hpp) + [.cpp](../core/src/ledger.cpp) | 事件枚举加 `kAlignFix`（与 `kOffsetShift` 区分）与其名称 | ~6 行 | 事件计数单测 |
 | [core/include/motor/command.hpp](../core/include/motor/command.hpp) + [core/src/command.cpp](../core/src/command.cpp) | 加 `kCheck` / `kFix`：解析（`check` 可带参考 `[<角度或计数>]`）与 `command_help_text()` | ~40 行 | `--no-send` 打印的 help |
-| [core/include/motor/session.hpp](../core/include/motor/session.hpp) + [core/src/session.cpp](../core/src/session.cpp) | ① `SessionConfig` 加 `pose_ref_raw` / `pose_warn_counts` / `max_fixes` / `max_move_deg`；② `check_report()`（返回 `{k, r, 文本}`）与 `fix()`；③ Handshake 首帧：锚定后做启动检查、按 `gate_needed` 置 gate（`app` 读走提示文本）；④ `apply()` 加 `kCheck` / `kFix` 分支；⑤ `kMove` / `kJog` 的 P6 限幅；⑥ `fixes_used_` 计数 | **~120–160 行（大头）** | T19–T23；`motor_core_tests` |
-| [apps/motor_ctl/main.cpp](../apps/motor_ctl/main.cpp) | `--pose-ref`（复用 `parse_output_angle`，支持 `deg` / `tick`）、`--max-move-deg`（可选 `--pose-warn`）；`print_config()` 加一行；首帧后打印启动检查与 gate 提示；汇总行加 `fixes` 次数 | ~60 行 | `--no-send` + 实机 |
+| [core/include/motor/session.hpp](../core/include/motor/session.hpp) + [core/src/session.cpp](../core/src/session.cpp) | ① `SessionConfig` 加 `pose_ref_raw` / `pose_warn_counts` / `auto_fix`（默认 true）/ `fix_window_deg`（$W$）/ `max_fixes` / `max_move_deg`；② `check_report()` 与 `apply_fix()`（自动/手动共用，内部走 `Ledger::shift_offset`）；③ Handshake 首帧：锚定 → 启动检查 → **护栏（D20：`raw0 ∈ [0, C)`、$\lvert k\rvert \le 1$、$\lvert r\rvert \le W$）** → 自动 `fix` 或 gate；④ `apply()` 加 `kCheck` / `kFix` 分支；⑤ `kMove` / `kJog` 的 P6 限幅；⑥ `fixes_used_` 计数 | **~140–180 行（大头）** | T19–T24；`motor_core_tests` |
+| [apps/motor_ctl/main.cpp](../apps/motor_ctl/main.cpp) | `--pose-ref`（复用 `parse_output_angle`，支持 `deg` / `tick`）、`--no-auto-fix`、`--fix-window-deg`、`--max-move-deg`（可选 `--pose-warn`）；`print_config()` 加一行；首帧后打印启动检查**与自动对齐结果/gate 原因**；汇总行加 `fixes` 次数 | ~70 行 | `--no-send` + 实机 |
 | [sim/include/motor_sim/model.hpp](../sim/include/motor_sim/model.hpp) + [sim/src/model.cpp](../sim/src/model.cpp) | **上报层分层**（R13）：新增 `powered_` / `datum_rad_`；`reported_raw()` = `wrap(真值 − datum)`；`power_cycle()`；`offturns(n)`（断电期间净转 $n$ 整圈）；`datum(j)`（手工换基准）。`step()` 里"位置环量的是上报角度"保持不变——这正是要复现的现象 | ~80–100 行 | T15–T18（离线） |
 | [apps/motor_sim/main.cpp](../apps/motor_sim/main.cpp) | REPL 加 `power off\|on`、`offturns <n>`、`datum <j>`；`status` 加"上电/断电、datum、会话里程计" | ~40 行 | 人工双终端演练 |
-| [tests/core_tests.cpp](../tests/core_tests.cpp) | T19–T23（纯 core：可用 `Session` + 手工反馈覆盖 T21/T22/T23 与 T16 的非模型部分） | ~120–180 行 | `motor_core_tests` 全绿 |
+| [tests/core_tests.cpp](../tests/core_tests.cpp) | T19–T24（纯 core：可用 `Session` + 手工反馈覆盖 T21/T22/T23/T24 与 T16 的非模型部分） | ~140–200 行 | `motor_core_tests` 全绿 |
 | `tests/sim_tests.cpp`（**新建**） + [tests/CMakeLists.txt](../tests/CMakeLists.txt) | T15–T18 需要模型；新建测试链接 `motor::sim_model`（CMake 加 3 行） | ~120–150 行 | `ctest` |
 
-合计约 **450–650 行 C++**（9 个文件 + 1 个新测试文件）。**不动**：`wire/`、`backends/unitree_sdk/`、`tools/pty_shim/`、`core/trajectory.hpp`、`core/format.*`、`apps/motor_ctl/line_input.*`。
+合计约 **480–700 行 C++**（9 个文件 + 1 个新测试文件）。**不动**：`wire/`、`backends/unitree_sdk/`、`tools/pty_shim/`、`core/trajectory.hpp`、`core/format.*`、`apps/motor_ctl/line_input.*`。
 
 实现顺序与每步的验证（都先离线、后实机）：
 
-1. core（命令 + 会话 + 账本 + 常量）→ `motor_core_tests` 全绿 + `motor_ctl --no-send` 能看到 `check` / `fix` 的 help；
-2. `motor_ctl` 的参数与打印 → 实机跑一次"启动检查 + `fix`"（不需要模型：真机就是最真实的检验）；
-3. `sim` 分层 + `motor_sim` 注入 → 实验台把批次 6b 完整走一遍（T15–T17，含 `offturns` 负例）；
-4. 测试补齐（T15–T23）→ `ctest`；
+1. core（命令 + 会话 + 账本 + 常量 + D20 护栏）→ `motor_core_tests` 全绿 + `motor_ctl --no-send` 能看到 `check` / `fix` 的 help；
+2. `motor_ctl` 的参数与打印 → 实机跑一次"启动检查 + 自动对齐"（不需要模型：真机就是最真实的检验；`--no-auto-fix` 用来演 gate）；
+3. `sim` 分层 + `motor_sim` 注入 → 实验台把批次 6b 完整走一遍（T15–T17、T24，含 `offturns` 负例）；
+4. 测试补齐（T15–T24）→ `ctest`；
 5. 实机批次 6b（④b 验收）→ 填 runbook §6 表 C。
 
-两个容易踩的点：① gate 不会被脚本卡住（`fix` / `move` / `jog` / `hold` / `zero move` 任一显式命令即视为确认），但纯 `state` 脚本在 gate 下会一直零力矩——脚本要给出力的意图；② `fix` 复用现成的 `Ledger::shift_offset`（它已经会同步平移 target / planner / mark，即 I3），**不要**新写一套改账本的路径。
+三个容易踩的点：① **自动路径只做 `k ≠ 0` 且护栏全过**的情形，$k = 0$ 一律不动作（`|r| > T_w$ 只打印）；② 脚本/非 TTY 下 gate 不会被卡死（`fix` / `move` / `jog` / `hold` / `zero move` 任一显式命令即视为确认），但**纯 `state` 脚本**在 gate 下会一直零力矩——脚本要给出力的意图；③ `fix` 复用现成的 `Ledger::shift_offset`（它已经会同步平移 target / planner / mark，即 I3），**不要**新写一套改账本的路径。
