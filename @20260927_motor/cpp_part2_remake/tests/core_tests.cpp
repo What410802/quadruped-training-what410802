@@ -305,6 +305,154 @@ void test_session_link_lost()
     expect(session.device_command().zero_torque, "故障后只发零力矩");
 }
 
+// ---------- M4：启动检查 / 自动对齐 / P6 / 标度（T19–T24） ----------
+
+/** 与 design.md §5.4 算例同源：δ = -10° ⇒ 首帧 raw 27003（ref = 0 计数的记号点） */
+constexpr Counts kRawAtMinus10Deg = 27003;
+
+void test_scale_three_turns()
+{
+    // T19：输出端 3 圈 = 19 转子圈 = 622592 计数 = 1080.0000°（不是 1080.5687°）
+    expect_eq(motor::output_turns_to_counts(3.0), 622592, "3 圈 = 622592 计数");
+    expect_near(motor::counts_to_output_deg(622592), 1080.0, 1e-9, "622592 计数 = 1080°");
+    expect_near(motor::counts_to_output_deg(32768), 56.842105263157894, 1e-9, "1 转子圈 = 56.8421°");
+}
+
+void test_check_report_decomposition()
+{
+    motor::SessionConfig config;
+    config.pose_ref_raw = 0;
+    motor::Session session(config);
+
+    // δ = -10°：k = +1、r = -5765 计数（-10.0004°，量化来自半计数）
+    const motor::CheckReport report = session.check_report(kRawAtMinus10Deg, 0);
+    expect_eq(report.k, 1, "δ=-10° ⇒ k=+1");
+    expect_eq(report.r, -5765, "δ=-10° ⇒ r=-5765 计数");
+    expect(report.warn_band && !report.ambiguous, "δ=-10° 落在提示带（|r|>9.47°）");
+    expect(report.text.find("两种解释") != std::string::npos, "报告含两种解释");
+
+    // 恰在半格：二义点
+    const motor::CheckReport half = session.check_report(motor::kHalfZoneCounts, 0);
+    expect(half.ambiguous, "恰在半格 ⇒ 二义点");
+
+    // 整格：与 0° 同读数（反例 1，作为已知局限——raw 无法区分"+L 位移"与"没动"）
+    const motor::CheckReport zone = session.check_report(0, 0);
+    expect(zone.k == 0 && zone.r == 0, "整格错位读数发现不了（已知局限）");
+}
+
+void test_auto_fix_on_startup()
+{
+    // T24：护栏通过 ⇒ 启动即自动对齐（kAlignFix 事件 +1、电机不动）
+    motor::SessionConfig config;
+    config.pose_ref_raw = 0;
+    motor::Session session(config);
+    double now = 0.0;
+    feed(&session, kRawAtMinus10Deg, now);
+
+    expect(!session.awaiting_confirm(), "护栏通过不 gate");
+    expect_eq(session.ledger().offset(), -motor::kCountsPerTurn, "自动对齐：offset = -32768");
+    expect_eq(session.fixes(), 1, "自动对齐记 1 次 fix");
+    expect(session.ledger().events().size() == 2, "事件：锚定 + 区间对齐");
+    expect_eq(session.q_now(), kRawAtMinus10Deg - motor::kCountsPerTurn, "q = raw + offset");
+    now += 0.005;
+    session.step(0.005);
+    expect_eq(session.device_command().pos_counts, kRawAtMinus10Deg,
+              "物理目标不动：下发的板子目标仍 = 当前 raw");
+}
+
+void test_startup_guard_blocks()
+{
+    // T24 负例：|r| > W（位移 25°）⇒ 不自动、停在 gate
+    {
+        motor::SessionConfig config;
+        config.pose_ref_raw = 0;
+        motor::Session session(config);
+        double now = 0.0;
+        const Counts raw = motor::kCountsPerTurn - 14412; // δ = -25.0°（|r| = 25° > W = 20°）
+        feed(&session, raw, now);
+        expect(session.awaiting_confirm(), "|r| > W ⇒ 停在 gate");
+        expect_eq(session.ledger().offset(), 0, "gate 时不动账本");
+    }
+    // --no-auto-fix：护栏本身能过，但开关关掉 ⇒ 停在 gate，人工 fix 才动
+    {
+        motor::SessionConfig config;
+        config.pose_ref_raw = 0;
+        config.auto_fix = false;
+        motor::Session session(config);
+        double now = 0.0;
+        feed(&session, kRawAtMinus10Deg, now);
+        expect(session.awaiting_confirm(), "auto_fix 关 ⇒ 停在 gate");
+        const motor::ApplyResult result = session.apply(motor::parse_command("fix", nullptr), now);
+        expect(result.ok, "人工 fix 可执行");
+        expect_eq(session.ledger().offset(), -motor::kCountsPerTurn, "人工 fix 后 offset = -32768");
+        expect(!session.awaiting_confirm(), "显式命令解除 gate");
+    }
+    // 首帧 raw ≥ 32768（更像"电机没断电、只是程序重启"）⇒ 不自动
+    {
+        motor::SessionConfig config;
+        config.pose_ref_raw = 0;
+        motor::Session session(config);
+        double now = 0.0;
+        feed(&session, motor::kCountsPerTurn + kRawAtMinus10Deg, now);
+        expect(session.awaiting_confirm(), "首帧 raw ≥ C ⇒ 停在 gate");
+        expect_eq(session.ledger().offset(), 0, "gate 时不动账本");
+    }
+}
+
+void test_runtime_datum_change()
+{
+    // T4（兜底）：运行中基准挪了 k 格（Δraw 正好是整格）⇒ 只补账本、物理目标不动
+    motor::SessionConfig config;
+    motor::Session session(config);
+    double now = 0.0;
+    feed(&session, 5, now);
+    for (int i = 0; i < 5; ++i)
+    {
+        now += 0.005;
+        session.step(0.005);
+        feed(&session, 5, now);
+    }
+    const Counts q_before = session.q_now();
+    const size_t events_before = session.ledger().events().size();
+    // 板子换基准：datum 挪 +1 个转子圈 ⇒ 上报 raw 少 32768
+    feed(&session, 5 - motor::kCountsPerTurn, now + 0.005);
+    expect_eq(session.q_now(), q_before, "运行中换基准：q 不变（账本补上）");
+    expect(session.ledger().events().size() == events_before + 1, "运行中换基准记 1 条对齐事件");
+}
+
+void test_move_limit_p6()
+{
+    // T20：单次 move / jog 超上限被拒绝
+    motor::Session session({});
+    double now = 0.0;
+    feed(&session, 0, now);
+    const motor::ApplyResult too_far = session.apply(motor::parse_command("move 720", nullptr), now);
+    expect(!too_far.ok, "move 720 超上限被拒（P6）");
+    expect(too_far.message.find("P6") != std::string::npos, "拒绝原因提到 P6");
+    const motor::ApplyResult ok = session.apply(motor::parse_command("move 350", nullptr), now);
+    expect(ok.ok, "move 350 在上限内");
+    const motor::ApplyResult jog_far = session.apply(motor::parse_command("jog 400", nullptr), now);
+    expect(!jog_far.ok, "jog 400 超上限被拒（P6）");
+}
+
+void test_fix_max_fixes()
+{
+    motor::SessionConfig config;
+    config.pose_ref_raw = 0;
+    config.auto_fix = false;
+    config.max_fixes = 1;
+    motor::Session session(config);
+    double now = 0.0;
+    feed(&session, kRawAtMinus10Deg, now);
+    const motor::ApplyResult first =
+        session.apply(motor::parse_command("check 0tick", nullptr), now);
+    expect(first.ok && first.message.find("k = +1") != std::string::npos, "check 报告 k = +1");
+    expect(session.apply(motor::parse_command("fix", nullptr), now).ok, "第一次 fix 成功");
+    expect(!session.apply(motor::parse_command("fix", nullptr), now).ok, "超过 max-fixes 被拒");
+}
+
+// ---------- 保护（沿用 M1 用例） ----------
+
 void test_session_protection()
 {
     // merror
@@ -360,6 +508,13 @@ int main()
     test_session_basic();
     test_session_zero_move_keeps_physical_target();
     test_session_link_lost();
+    test_scale_three_turns();
+    test_check_report_decomposition();
+    test_auto_fix_on_startup();
+    test_startup_guard_blocks();
+    test_runtime_datum_change();
+    test_move_limit_p6();
+    test_fix_max_fixes();
     test_session_protection();
 
     if (failures == 0)

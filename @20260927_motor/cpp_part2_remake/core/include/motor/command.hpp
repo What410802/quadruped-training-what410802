@@ -25,6 +25,8 @@ enum class CommandKind
     kMarkGoto,  // 回到标记点
     kHold,      // 位置保持
     kFree,      // 零力矩
+    kCheck,     // 启动检查的只读版：打印 k / r / 两种解释（arg 可选 = 参考读数）
+    kFix,       // 区间重对齐（offset -= k×C）；手动路径，护栏只决定"自动"要不要做
     kWait,      // wait_s 秒后再执行后续语句
     kQuit,      // 卸力退出
     kUnknown,   // 解析失败
@@ -33,7 +35,8 @@ enum class CommandKind
 struct Command
 {
     CommandKind kind = CommandKind::kUnknown;
-    Counts value = 0; // 角度类命令（计数）
+    Counts value = 0; // 角度类命令（计数）；check 时 = 参考读数（计数）
+    bool has_value = false; // check 是否给了参考（角度 / tick）
     double wait_s = 0.0;
     std::string text; // 原文（回显与报错）
 };

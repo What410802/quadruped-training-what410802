@@ -14,6 +14,8 @@ const char* ledger_event_name(LedgerEventKind kind)
     {
     case LedgerEventKind::kAnchor:
         return "上电锚定";
+    case LedgerEventKind::kAlignFix:
+        return "区间对齐";
     case LedgerEventKind::kOffsetShift:
         return "偏移改动";
     }
@@ -38,6 +40,17 @@ void Ledger::shift_offset(Counts delta, double now_s)
     const Counts before = offset_;
     offset_ += delta;
     events_.push_back({LedgerEventKind::kOffsetShift, delta, before, offset_, now_s});
+}
+
+void Ledger::align_fix(Counts k, double now_s)
+{
+    if (k == 0)
+    {
+        return;
+    }
+    const Counts before = offset_;
+    offset_ -= k * kCountsPerTurn;
+    events_.push_back({LedgerEventKind::kAlignFix, k, before, offset_, now_s});
 }
 
 } // namespace motor

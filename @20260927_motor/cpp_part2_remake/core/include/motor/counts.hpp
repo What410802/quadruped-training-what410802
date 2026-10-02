@@ -25,6 +25,12 @@ inline constexpr double kSdkPi = 3.1416; // SDK float 换算用的 π′（实�
 inline constexpr double kZoneDegrees =
     360.0 / kGearRatio; // 一个零点区间 = 一个转子圈 = 56.8421°（输出端）
 
+// 零点账本用的两个固定量（§2.6 的 H 与 S，都是计数）：
+//   半格 H：单次读数能"判"的边界（越过它 k 的解释会翻转），= C/2；
+//   分支步长 S：断电期间净转 1 整输出圈造成的读数漂移，= C/3（因为 1/N = 3/19 圈 ⇒ 3/19×C）。
+inline constexpr Counts kHalfZoneCounts = kCountsPerTurn / 2;
+inline constexpr Counts kBranchStepCounts = kCountsPerTurn / 3;
+
 /** 输出端角度（度）→ 计数 */
 inline Counts output_deg_to_counts(double deg)
 {
@@ -85,6 +91,12 @@ inline Counts turns_of_delta(Counts delta)
 {
     const Counts t = kCountsPerTurn;
     return (delta >= 0 ? delta + t / 2 : delta - t / 2) / t;
+}
+
+/** 最近格数（= turns_of_delta，语义化别名：check / fix 里的 k） */
+inline Counts zones_of_delta(Counts delta)
+{
+    return turns_of_delta(delta);
 }
 
 /** 离最近零点边界的距离（计数），用于提示"这里上电最容易认错零点" */

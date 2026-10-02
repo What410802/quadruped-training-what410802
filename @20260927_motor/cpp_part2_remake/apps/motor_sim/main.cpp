@@ -63,11 +63,14 @@ void usage(const char* program)
     std::printf("本程序建一对 PTY 并在另一头模拟 GO-M8010-6：把打印出来的 slave 路径交给\n");
     std::printf(
         "motor_ctl（配合 tools/pty_shim 的 LD_PRELOAD）即可。REPL 命令见下：\n\n%s",
-        "  status                    模型与线的状态\n"
+        "  status                    模型与线的状态（含上电 / 断电、datum、上报 raw）\n"
         "  torque <N·m>              以给定力矩扳动输出端（正方向 = 输出角增大；自由轴上会一直加速，\n"
         "                            到最高转速（约 271 °/s 输出端）为止；想模拟手扳请用 hold）\n"
         "  hold [<角度>[deg|rad|r]]  手握住：软弹簧拉向该输出角（无参 = 保持当前角）\n"
         "  release                   松手\n"
+        "  power off|on              断电（不积分、不回帧）/ 上电复位（按当前真值重新选 datum）\n"
+        "  offturns <n>              模拟断电期间净转 n 整输出圈（配合 power off/on 用）\n"
+        "  datum <j>                 直接换基准：datum 挪 j 个转子圈（注入\"板子选了别的零点\"）\n"
         "  line draw|angle|clear     记号线：在当前位置画线 / 查夹角 / 擦掉\n"
         "  wait <秒>                 推迟后续语句\n"
         "  help | quit               本帮助 / 退出（会把 PTY 一并关掉）\n");
@@ -154,6 +157,20 @@ class Bench
         // 握住都不会动，和真实电机的手感对不上。
         const double nominal_dt = options_.frame_period;
         motor::DeviceCommand last_command; // 默认 = 零力矩（还没收到任何命令时不动）
+        // 空闲推进：到点就按名义步长积分一次（断电时跳过——断电的板子不会自己动）
+        const auto idle_step = [&] {
+            const auto now = std::chrono::steady_clock::now();
+            const double idle = std::chrono::duration<double>(now - last).count();
+            if (idle >= nominal_dt)
+            {
+                last = now;
+                std::lock_guard<std::mutex> lock(mutex_);
+                if (model_.powered())
+                {
+                    model_.step(last_command, std::min(idle, 0.02));
+                }
+            }
+        };
         while (!stop_)
         {
             // 用 poll 等数据（而不是直接阻塞 read）：这样 stop_ 一到就能退出，不会卡在关闭流程里
@@ -172,14 +189,7 @@ class Bench
             }
             if (ready == 0)
             {
-                const auto now = std::chrono::steady_clock::now();
-                const double idle = std::chrono::duration<double>(now - last).count();
-                if (idle >= nominal_dt)
-                {
-                    last = now;
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    model_.step(last_command, std::min(idle, 0.02));
-                }
+                idle_step();
                 continue; // 超时：回去看 stop_
             }
             const ssize_t count = ::read(master_fd, buffer + got, sizeof(buffer) - got);
@@ -189,7 +199,10 @@ class Bench
                 {
                     continue;
                 }
-                break; // 主程序关闭 master（退出）或出错
+                // 控制程序退出后 slave 端关闭，master 读到 0 / EIO：这不代表"实验台也该退出"。
+                // 设备进程要继续活着（可以重新连、也可以被 REPL 单独驱动），所以照常空闲推进。
+                idle_step();
+                continue;
             }
             got += static_cast<std::size_t>(count);
             if (got != sizeof(buffer))
@@ -212,6 +225,10 @@ class Bench
                 if (!meta.crc_ok)
                 {
                     ++crc_errors_;
+                }
+                if (!model_.powered())
+                {
+                    continue; // 断电：不积分、不回帧（控制程序会看到超时）
                 }
                 model_.step(command, dt);
                 feedback = model_.feedback();
@@ -259,6 +276,12 @@ void print_status(Bench& bench, double now)
                 format_plain_deg(model.output_speed_deg_s()).c_str(),
                 model.torque_rotor_nm() * motor::kGearRatio, model.temp_c(), bench.rx_frames(),
                 bench.crc_errors());
+    std::printf("      板子：%s；datum %+lld 计数；上报 raw %+lld 计数（%s）；真值 %+lld 计数\n",
+                model.powered() ? "已上电" : "**已断电**（不积分、不回帧）",
+                static_cast<long long>(motor::rotor_rad_to_counts(model.datum_rad())),
+                static_cast<long long>(model.reported_raw()),
+                motor::format_output_angle(model.reported_raw()).c_str(),
+                static_cast<long long>(model.true_counts()));
     switch (model.interaction())
     {
     case motor_sim::Interaction::kNone:
@@ -457,7 +480,7 @@ int main(int argc, char** argv)
                     "<build>/apps/motor_ctl/motor_ctl --port %s\n\n",
                     slave.c_str());
     }
-    std::printf("本终端：status / torque / hold / release / line / wait / help / quit\n");
+    std::printf("本终端：status / torque / hold / release / power / offturns / datum / line / wait / help / quit\n");
 
     Bench bench(options);
     bench.start_pty_thread(master_fd);
@@ -557,6 +580,45 @@ int main(int argc, char** argv)
                 {
                     model.release();
                     std::printf("  → 松手\n");
+                }
+                else if (words[0] == "power" && words.size() == 2)
+                {
+                    if (words[1] == "off")
+                    {
+                        model.set_powered(false);
+                        std::printf("  → 已断电（不积分、不回帧；控制程序会看到超时）\n");
+                    }
+                    else if (words[1] == "on")
+                    {
+                        model.power_cycle();
+                        std::printf("  → 已上电复位：按当前真值重新选 datum，上报 raw %+lld 计数\n",
+                                    static_cast<long long>(model.reported_raw()));
+                    }
+                    else
+                    {
+                        fail("power 的用法：power off | power on");
+                    }
+                }
+                else if (words[0] == "offturns" && words.size() == 2)
+                {
+                    double n = 0.0;
+                    if (!parse_double(words[1], &n))
+                    {
+                        fail("offturns 要一个数（净转多少整输出圈；可负）");
+                    }
+                    else
+                    {
+                        model.offturns(n);
+                        std::printf("  → 断电期间净转 %+.3f 整输出圈（真值已挪；下次 power on 会折圈）\n",
+                                    n);
+                    }
+                }
+                else if (words[0] == "datum" && words.size() == 2)
+                {
+                    const int j = std::atoi(words[1].c_str());
+                    model.datum_zones(j);
+                    std::printf("  → 基准挪 %+d 个转子圈；上报 raw 现为 %+lld 计数（注入用）\n", j,
+                                static_cast<long long>(model.reported_raw()));
                 }
                 else if (words[0] == "line")
                 {

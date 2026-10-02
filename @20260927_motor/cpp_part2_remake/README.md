@@ -2,7 +2,7 @@
 
 本目录是子任务项二的**重做版**：任务书目标不变（回编码器零点 → 键盘给角度 → 记号笔标零点并正向偏移 30° → 处理零点跳变），但按只读参考工程 `ReadOnly.d/quadruped_control/` 的分层与命名规范重写，并修掉旧版（[`../cpp_part2/`](../cpp_part2/README.md)）的缺陷。设计（需求、符号约定、伪代码、决策、测试矩阵、里程碑）在 [docs/design.md](docs/design.md)（v2；v1 在 [docs/v1/](docs/v1/)）。
 
-## 构建与运行
+## 构建
 
 下面命令里的 `<仓库路径>` 都要换成**你自己的仓库根目录**（含 `pixi.toml` 与 `@20260927_motor/` 的那一级，例如 `/home/<用户名>/.../MyMonoRepo.d`）。
 
@@ -15,17 +15,22 @@ pixi run cmake --build @20260927_motor/cpp_part2_remake/build
 不需要宇树 SDK 的环境（只构建核心与测试）：给 cmake 加 `-DMOTOR_ENABLE_SDK=OFF`。
 SDK 默认按"与本仓库根同级的 `ReadOnly.d/unitree_actuator_sdk`"推算，可用 `-DMOTOR_SDK_DIR=<路径>` 覆盖。
 
-## 跑
+## 运行
 
 ```bash
 B=<仓库路径>/@20260927_motor/cpp_part2_remake/build     # <仓库路径> 换成你的仓库根目录（绝对路径）
 
 $B/tests/motor_core_tests                          # 核心自检（无硬件）
+$B/tests/motor_sim_tests                           # 模型自检（无硬件）：折圈 / 里程计 / 整圈漂移
 $B/tests/motor_wire_tests                          # 报文往返（无硬件；需 SDK 头文件）
+# 或一次跑完：pixi run ctest --test-dir <仓库路径>/@20260927_motor/cpp_part2_remake/build
 
 sudo $B/apps/motor_ctl/motor_ctl --port /dev/ttyUSB0 --id 0        # 实机交互（要 sudo 或 dialout 权限）
 sudo $B/apps/motor_ctl/motor_ctl --no-send                         # 只看配置，不开串口
 sudo $B/apps/motor_ctl/motor_ctl --port /dev/ttyUSB0 <<< "move 0; wait 3; mark; move 30; wait 3; zero move 30; state; move 30; wait 3; quit"
+
+# ④b（可重启 + 启动自动对齐）：把上次标定与参考姿态带进新会话
+sudo $B/apps/motor_ctl/motor_ctl --port /dev/ttyUSB0 --offset-deg -30 --pose-ref 14960tick
 ```
 
 没有实机时，用虚拟实验台演练同一条主线（两个终端，见 [docs/runbook.md](docs/runbook.md) §8）：

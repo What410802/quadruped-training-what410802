@@ -257,6 +257,37 @@ Command parse_command(const std::string& statement, std::string* error)
         command.kind = CommandKind::kOffsetSet;
         command.value = counts;
     }
+    else if (iequals(head, "check"))
+    {
+        command.kind = CommandKind::kCheck;
+        if (words.size() == 1)
+        {
+            command.has_value = false;
+        }
+        else if (need_words(2))
+        {
+            Counts counts = 0;
+            const std::string why = parse_output_angle(words[1], &counts);
+            if (!why.empty())
+            {
+                return fail(why);
+            }
+            command.value = counts;
+            command.has_value = true;
+        }
+        else
+        {
+            return fail("check 的用法：check [<参考读数>[deg|rad|r|rev|tick]]（缺省用 --pose-ref / 标记点）");
+        }
+    }
+    else if (iequals(head, "fix"))
+    {
+        if (!need_words(1))
+        {
+            return fail("fix 的用法：fix（把软件零点按 k 个整格对齐；不动电机）");
+        }
+        command.kind = CommandKind::kFix;
+    }
     else if (iequals(head, "wait"))
     {
         if (!need_words(2))
@@ -291,6 +322,8 @@ const char* command_help_text()
            "  zero move <角度>      把软件零点沿正方向移动该角度（标定；电机不动，标记点读数减少同样角度）\n"
            "  offset set <角度>     直接把内部 offset 变量设为该角度（复现标定值用；日常用 zero move）\n"
            "  mark | mark goto      记下 / 回到标记点（回零后打标记）\n"
+           "  check [<参考>]        只报告：参考缺省用 --pose-ref / 标记点；打印 k 格 + 残差 r 与两种解释\n"
+           "  fix                   区间重对齐（offset -= k×C；电机不动；受 max-fixes 限制）\n"
            "  hold | free           位置保持 / 零力矩（可手转）\n"
            "  wait <秒>             推迟后续语句（脚本节拍）\n"
            "  help | quit           本帮助 / 先卸力再退出\n";

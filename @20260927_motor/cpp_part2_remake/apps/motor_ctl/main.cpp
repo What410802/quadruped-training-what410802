@@ -74,7 +74,6 @@ struct Options
     int print_every = 20;
     bool no_send = false;
 };
-
 void usage(const char* program)
 {
     emitf("用法：%s [--port /dev/ttyUSB0] [--id N] [--baud N] [选项]\n", program);
@@ -87,6 +86,11 @@ void usage(const char* program)
     emitf("  --temp-limit                 温度上限（默认 80 °C）\n");
     emitf("  --offline-frames             连续 N 帧无回复算失联（默认 40）\n");
     emitf("  --offset-deg                 软件零点偏移初值（默认 0；标定结果可写在这）\n");
+    emitf("  --pose-ref <读数>            参考读数（约定启动姿态 / 记号线；如 14960tick 或 25.951deg）；\n");
+    emitf("                               给了就做启动检查，护栏通过时自动对齐（D20）\n");
+    emitf("  --no-auto-fix                关掉启动自动对齐（只打印检查、停在 gate 等命令）\n");
+    emitf("  --fix-window-deg             自动对齐的位移窗口 W（默认 20°）\n");
+    emitf("  --max-move-deg               单次 move / jog 的转角上限（默认 360°）\n");
     emitf("  --every N                    每 N 帧打印一行（默认 20）\n");
     emitf("  --no-send                    只打印配置，不打开串口\n");
     emitf("  --help                       本帮助\n\n%s", motor::command_help_text());
@@ -158,6 +162,29 @@ bool parse_options(int argc, char** argv, Options* options, bool* show_help)
         else if (argument == "--offset-deg" && next)
         {
             options->session.initial_offset = motor::output_deg_to_counts(std::atof(argv[++i]));
+        }
+        else if (argument == "--pose-ref" && next)
+        {
+            motor::Counts counts = 0;
+            const std::string why = motor::parse_output_angle(argv[++i], &counts);
+            if (!why.empty())
+            {
+                std::fprintf(stderr, "--pose-ref：%s\n", why.c_str());
+                return false;
+            }
+            options->session.pose_ref_raw = counts;
+        }
+        else if (argument == "--no-auto-fix")
+        {
+            options->session.auto_fix = false;
+        }
+        else if (argument == "--fix-window-deg" && next)
+        {
+            options->session.fix_window_deg = std::atof(argv[++i]);
+        }
+        else if (argument == "--max-move-deg" && next)
+        {
+            options->session.max_move_deg = std::atof(argv[++i]);
         }
         else if (argument == "--every" && next)
         {
@@ -263,7 +290,7 @@ const char* link_name(motor::LinkState link)
 void print_config(const Options& options)
 {
     const double gear_squared = motor::kGearRatio * motor::kGearRatio;
-    emitf("=== motor_ctl（M1：在线简版；假设程序运行时段 ⊆ 电机上电时段）===\n");
+    emitf("=== motor_ctl（M4：可重启；启动检查 + 护栏通过时自动对齐）===\n");
     emitf("减速比 N = 19:3 = %.4f（SDK 报 6.33）⇒ 一个零点区间 = 32768 计数 = %.4f°（输出端）\n",
           motor::kGearRatio, motor::kZoneDegrees);
     emitf("1 计数 = %.7f°（输出端）；增益 kp=%.3g kd=%.3g → 转子侧 %.4f / %.5f\n",
@@ -276,6 +303,20 @@ void print_config(const Options& options)
           options.session.offline_frames);
     emitf("软件零点偏移初值 %s\n",
           motor::format_output_angle(options.session.initial_offset).c_str());
+    if (options.session.pose_ref_raw.has_value())
+    {
+        emitf("启动检查：参考 %s；自动对齐 %s（窗口 W = %.3g°）\n",
+              motor::format_output_angle_with_counts(*options.session.pose_ref_raw).c_str(),
+              options.session.auto_fix ? "开（护栏：首帧 raw ∈ [0, 32768) 且 |k| ≤ 1 且 |r| ≤ W）"
+                                       : "关（--no-auto-fix：只报告、停在 gate）",
+              options.session.fix_window_deg);
+    }
+    else
+    {
+        emitf("启动检查：未给 --pose-ref（不做检查；check / fix 也可以手动用参考）\n");
+    }
+    emitf("单次 move / jog 上限 %.4g°；fix 次数上限 %d\n", options.session.max_move_deg,
+          options.session.max_fixes);
 }
 
 void print_frame_line(const Session& session, double now)
@@ -469,6 +510,14 @@ int main(int argc, char** argv)
                   motor::format_output_angle(pos).c_str());
             emitf("      默认 offset = 0，软件零点与该点重合：move 0 会转回它。"
                   "现在就在输出端打记号笔标记（任务书 ②）。\n");
+            if (!session.startup_report().empty())
+            {
+                emitf("%s\n", session.startup_report().c_str());
+            }
+            if (session.awaiting_confirm())
+            {
+                emitf("**已停下等确认**（零力矩）：确认位置后发 hold / move / jog / zero move / fix 之一继续。\n");
+            }
         }
 
         if (session.faulted())
@@ -539,13 +588,13 @@ int main(int argc, char** argv)
     emitf("收尾：已发 %d 帧零力矩\n", zero_frames);
     emitf("=== 汇总 ===\n");
     emitf("帧 %d（回复 %d、超时 %d）；q 末值 %s；offset %+lld（%s）；turn_base %+lld；"
-          "事件 %zu 条；力矩峰值 %.3f N·m；温度峰值 %d °C；末次 merror %u\n",
+          "事件 %zu 条；对齐 %d 次；力矩峰值 %.3f N·m；温度峰值 %d °C；末次 merror %u\n",
           session.frames(), session.ok_frames(), session.timeouts(),
           motor::format_output_angle(session.q_now()).c_str(),
           static_cast<long long>(session.ledger().offset()),
           motor::format_output_angle(session.ledger().offset()).c_str(),
           static_cast<long long>(session.ledger().turn_base()), session.ledger().events().size(),
-          session.torque_peak_nm(), session.temp_peak_c(), session.last_merror());
+          session.fixes(), session.torque_peak_nm(), session.temp_peak_c(), session.last_merror());
     if (!interactive && script_errors > 0 && exit_code == 0)
     {
         emitf("（脚本模式：有 %d 条语句没执行成功 ⇒ 退出码 2）\n", script_errors);

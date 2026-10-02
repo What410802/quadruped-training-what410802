@@ -183,7 +183,37 @@ motor::Counts MotorModel::true_counts() const
 
 motor::RawCounts MotorModel::reported_raw() const
 {
-    return static_cast<motor::RawCounts>(true_counts());
+    // 上报层 = 真值 − 本次上电的 datum（上电瞬间 ∈ [0, C)，此后连续累计、可多圈）
+    return static_cast<motor::RawCounts>(rad_to_counts(position_rad_ - datum_abs_rad_));
+}
+
+void MotorModel::power_cycle()
+{
+    // 上电复位：板子只看得到"当前这一圈"，把整数部分清零（= 取往回最近的一个转子零点当 datum）
+    double frac = std::fmod(position_rad_, kTwoPi);
+    if (frac < 0.0)
+    {
+        frac += kTwoPi;
+    }
+    if (frac > kTwoPi - 1e-6)
+    {
+        frac = 0.0; // 正好落在零点上（浮点误差不许把它算到下一圈的末尾）
+    }
+    datum_abs_rad_ = position_rad_ - frac;
+    powered_ = true;
+    speed_rad_s_ = 0.0; // 断电期间不会保留转速
+}
+
+void MotorModel::offturns(double n)
+{
+    // 断电期间有人把输出端净转了 n 整圈：只挪真值（datum 是上次上电选的，不动）
+    position_rad_ += n * kTwoPi * motor::kGearRatio;
+}
+
+void MotorModel::datum_zones(int j)
+{
+    // 板子换了基准（注入用）：datum 挪 j 个转子圈 ⇒ 上报值整体平移 -j×C
+    datum_abs_rad_ += static_cast<double>(j) * kTwoPi;
 }
 
 double MotorModel::output_deg() const

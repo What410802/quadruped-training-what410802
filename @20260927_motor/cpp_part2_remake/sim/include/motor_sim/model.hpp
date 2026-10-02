@@ -68,9 +68,24 @@ class MotorModel
     double line_wrapped_deg() const; // 当前位置与线的夹角，缠绕到 (-180, 180]
     double line_cumulative_deg() const; // 累计夹角（可超一圈，用于显示"±圈数 ±<360°"）
 
+    // ---------- 驱动板上电 / 断电（R13：上报层分层） ----------
+    // 真值层：position_rad_（连续、可多圈）；上报层：板子把"本次上电的 datum"记在
+    // datum_abs_rad_，报 raw = 真值 − datum（上电瞬间落在 [0, C)，此后是里程计。
+    bool powered() const { return powered_; }
+    /** 断电：不积分、不回帧（实验台的 PTY 线程据此跳过 step 与回帧） */
+    void set_powered(bool powered) { powered_ = powered; }
+    /** 上电复位：按当前真值重新选 datum（= 把整数部分清零） */
+    void power_cycle();
+    /** 模拟"断电期间净转 n 整输出圈"（只挪真值；datum 不动，下次上电自然折圈） */
+    void offturns(double n);
+    /** 直接换基准：datum 挪 j 个转子圈（注入"板子选了别的零点"） */
+    void datum_zones(int j);
+    double datum_rad() const { return datum_abs_rad_; }
+
     // ---------- 状态（打印与测试用） ----------
     motor::Counts true_counts() const; // 真实位置（转子计数）
-    motor::RawCounts reported_raw() const; // 板子上报的位置（本模型：里程计，与真实位置一致）
+    /** 板子上报的位置（本上电周期的里程计；上电瞬间 ∈ [0, C)） */
+    motor::RawCounts reported_raw() const;
     double speed_rotor_rad_s() const { return speed_rad_s_; }
     double torque_rotor_nm() const { return torque_rotor_nm_; }
     double output_deg() const; // 输出端角度（度）
@@ -89,6 +104,8 @@ class MotorModel
     double temp_c_ = 30.0;
     unsigned merror_ = 0;
     long frames_ = 0;
+    double datum_abs_rad_ = 0.0; // 本次上电的 datum（绝对角；上电时按真值折一圈选定）
+    bool powered_ = true;        // 断电后不积分、不回帧
 
     Interaction interaction_ = Interaction::kNone;
     double torque_out_nm_ = 0.0;

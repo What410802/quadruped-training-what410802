@@ -17,7 +17,7 @@
 | 子任务项二收尾：实机记录表 → 填回文档 → 提交 → 当面验收演示 | ⏳ 记录表与演示脚本已备好（[`../cpp_part2/docs/runbook.md`](../cpp_part2/docs/runbook.md) §5 / §7），等实机数据 |
 | 工程结构对齐：`include/<项目>/**/*.hpp` + `src/*.cpp`（+ `apps/`），C++17 | 🔧 **`cpp_part2/` 已完成**（2026-09-29：5 个头文件 + 4 个实现 + 4 个入口，Allman/C++17；理由见 [`../cpp_part2/docs/setup.md`](../cpp_part2/docs/setup.md) §1）；`cpp/` 与 `@20260923_mujoco/` 待做，规则见 [`../../docs/learn/cpp-cmake.md`](../../docs/learn/cpp-cmake.md) 的「工程目录与文件风格」一节 |
 | 文档分工与 README 瘦身：入口只做入口，细节进各自的 `docs/` | ✅ 完成（2026-09-29；`cpp_part2/`、`cpp/`、本任务 README 与 `@20260923_mujoco/` 都已按 [`../../docs/conventions.md`](../../docs/conventions.md) §2/§7 调整） |
-| 子任务项二**重做版**（[`../cpp_part2_remake/`](../cpp_part2_remake/)）：按参考工程分层重写 | 🔧 **M0 设计 + M1 在线简版 + M2b 虚拟实验台已完成**（2026-10-01）：core / SDK 后端 / `motor_ctl` / `sim` 模型 / `wire` 编解码 / `motor_sim` 实验台 + 垫片；自检全绿、零告警编译；**双终端离线演练已实测**（M1 主线 0 超时、`hold`/`torque`/记号线对照）。**实机首轮已跑通**（2026-10-01，`output/terminal/motor-real-202610011135-m1-ctl.txt`：25156 帧 0 超时、手转跨 3 个零点区间无跳变、`zero move` 语义按 D12 修正）。M2a（进程内确定性通道）记为可选思路、暂不实施。**设计升到 v2（2026-10-01）**：新增符号表、`check` / `fix` 与允许范围规则（v1 存 [`../cpp_part2_remake/docs/v1/`](../cpp_part2_remake/docs/v1/)）；需求、决策（D1–D18）与里程碑见 [`../cpp_part2_remake/docs/design.md`](../cpp_part2_remake/docs/design.md) |
+| 子任务项二**重做版**（[`../cpp_part2_remake/`](../cpp_part2_remake/)）：按参考工程分层重写 | 🔧 **M0 设计 + M1 在线简版 + M2b 虚拟实验台 + M4 基准修正已完成**（2026-10-02）：core / SDK 后端 / `motor_ctl` / `sim` 模型 / `wire` 编解码 / `motor_sim` 实验台 + 垫片；自检全绿、零告警编译。**M4（`check` / `fix` / 启动检查 + `--pose-ref` + 自动对齐护栏 D20 / 实验台 `power`·`offturns`·`datum` 注入 / 上报层分层）已实现并离线验证**：`ctest` 3/3（`motor_core_tests` 含 T19–T24、新增 `motor_sim_tests` 含 T15–T18）、实验台复现 ④b 全流程与两个反例（runbook §5.6）。**实机首轮已跑通**（2026-10-01，`output/terminal/motor-real-202610011135-m1-ctl.txt`：25156 帧 0 超时、手转跨 3 个零点区间无跳变、`zero move` 语义按 D12 修正）；实机批次 3 / 6b 待跑。M2a（进程内确定性通道）与 M3（会话内断线恢复）按 D19 记为可选、不进验收。**设计 v2**：符号表、`check` / `fix`、允许范围与自动对齐（v1 存 [`../cpp_part2_remake/docs/v1/`](../cpp_part2_remake/docs/v1/)）；需求、决策（D1–D20）与里程碑见 [`../cpp_part2_remake/docs/design.md`](../cpp_part2_remake/docs/design.md) |
 
 ## 2 阻滞项
 
@@ -29,7 +29,7 @@
 
 实机到手后的顺序：先 **S2**（[`../cpp_part2/docs/real.md`](../cpp_part2/docs/real.md) §3.7：手转找零点 + 定"里程计/锯齿" + 量断链行为 + 查上电基准），再用 `motor_ctl` 做 **S3–S5**（§3.8；标定与跳变的符号约定见 §5）。 现场照着 [`../cpp_part2/docs/runbook.md`](../cpp_part2/docs/runbook.md) 的批次 3–6 走，跑完把数字填回 §5 记录表。
 
-重做版（[`../cpp_part2_remake/`](../cpp_part2_remake/)）按 [design.md](../cpp_part2_remake/docs/design.md) §6 的"假设逐级放宽"主线推进：M1（在线简版）与 M2b（虚拟实验台：`sim/` 模型 + `wire/` 编解码 + `motor_sim` + 垫片，双终端人工演练与注入）已完成并离线实测；**M2a（进程内确定性测试通道）暂不实施、记为可选思路**；下一步 M2c（探针 / 旋转工具），再依次放宽"在线连续"（M3）与"基准正确"（M4，含 `check` / `fix` 与实验台 `power` / `datum` / `offturns` 注入）。实机执行卡（批次 0–7）见 [runbook.md](../cpp_part2_remake/docs/runbook.md)。
+重做版（[`../cpp_part2_remake/`](../cpp_part2_remake/)）按 [design.md](../cpp_part2_remake/docs/design.md) §6 的"假设逐级放宽"主线推进：M1（在线简版）、M2b（虚拟实验台）与 **M4（基准修正：`check` / `fix`、启动自动对齐护栏、实验台注入）** 已完成并验证（`ctest` 3/3；离线复现 ④b 见 [runbook.md](../cpp_part2_remake/docs/runbook.md) §5.6）；**M2a（进程内确定性测试通道）与 M3（会话内断线恢复）按 D19 记为可选、不进验收**；M2c（探针 / 旋转工具）未做（用 `motor_ctl` 的 `--no-send` / `move` 替代，见 runbook §9）。**下一步**：实机批次 3（手转形态 + 上电基准重复性）与批次 6b（④ 断电重上电验收），跑完把数字填进 runbook §6 记录表。实机执行卡（批次 0–7）见 [runbook.md](../cpp_part2_remake/docs/runbook.md)。
 
 ## 4 提交与分支
 

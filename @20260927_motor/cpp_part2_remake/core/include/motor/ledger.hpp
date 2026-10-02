@@ -15,7 +15,8 @@ namespace motor
 enum class LedgerEventKind
 {
     kAnchor,      // 上电锚定（turn_base = k 个转子圈）
-    kOffsetShift, // 标定 / 偏移改动（offset += delta）
+    kAlignFix,    // 区间重对齐（fix / 启动自动对齐：offset -= k 个转子圈）
+    kOffsetShift, // 标定 / 偏移改动（zero move / offset set：offset += delta）
 };
 
 /** 账本上发生过的一件事（打印与收尾汇总用） */
@@ -28,9 +29,7 @@ struct LedgerEvent
     double now_s = 0.0;
 };
 
-const char* ledger_event_name(LedgerEventKind kind);
-
-/**
+const char* ledger_event_name(LedgerEventKind kind);/**
  * 位置关系（全部是转子侧计数）：
  *   pos     = raw + turn_base               raw 是板子回帧的整数（上电后 ∈ [0, 32768)）
  *   q       = pos + offset                  软件零点坐标系（q = 0 就是软件零点）
@@ -51,6 +50,9 @@ class Ledger
 
     /** 软件零点平移 delta（只动账本；调用方负责把目标同步平移，保证物理目标不动） */
     void shift_offset(Counts delta, double now_s);
+
+    /** 区间重对齐：offset -= k×C（k = 板子基准相对参考挪动的格数），记 kAlignFix 事件 */
+    void align_fix(Counts k, double now_s);
 
     Counts turn_base() const { return turn_base_; }
     Counts offset() const { return offset_; }
