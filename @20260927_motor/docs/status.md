@@ -1,6 +1,6 @@
 # 任务推进情况（做到哪、还差什么）
 
-> 这是**本任务的推进记录**：阶段状态、下一步、阻滞项、提交与分支情况。 入口（任务书要求、怎么跑、文档地图）在 [`../README.md`](../README.md)；每个子任务项的细节在 [`../cpp/docs/`](../cpp/docs/) 与 [`../cpp_part2/docs/`](../cpp_part2/docs/)。 约定来源：[`../../docs/conventions.md`](../../docs/conventions.md) §2（README 只做入口，不记进度）。
+> 这是**本任务的推进记录**：阶段状态、下一步、阻滞项、提交与分支情况。 入口（任务书要求、怎么跑、文档地图）在 [`../README.md`](../README.md)；每个子任务项的细节在 [`../cpp/docs/`](../cpp/docs/) 与 [`../cpp_part2_remake/docs/`](../cpp_part2_remake/docs/)（子任务项二的**正式代码**是 [`../cpp_part2_remake/`](../cpp_part2_remake/)；[`../cpp_part2/`](../cpp_part2/) 是历史版本，只作对照）。 约定来源：[`../../docs/conventions.md`](../../docs/conventions.md) §2（README 只做入口，不记进度）。
 
 ## 1 阶段状态
 
@@ -11,25 +11,27 @@
 | 子任务项一精简版：`essential` / `essential_core` | ✅ 完成（[`../cpp/docs/essential.md`](../cpp/docs/essential.md)：差别、理由与对拍验证） |
 | 子任务项二 S0：端口探针（转接头能不能配 4 Mbaud、SDK 能不能开端口） | ✅ 通过（FT232H + `ftdi_sio`，4 Mbaud 整除） |
 | 子任务项二 S1：让电机转起来（带斜坡与限幅） | ✅ 通过（6 次实跑：0 丢帧、温度 30–31 °C、`merror=0`） |
-| 子任务项二 S2：零力矩手转找零点 + 定"里程计/锯齿" + kd 扫描 + 量断链行为 + 上电基准 | 🔧 **工具与手册已就绪**（[`../cpp_part2/docs/real.md`](../cpp_part2/docs/real.md) §3.7 的 S2a–S2f），待实机执行（执行卡：[`../cpp_part2/docs/runbook.md`](../cpp_part2/docs/runbook.md) §4 批次 3） |
-| 子任务项二 S1b：官方 SDK 例程（任务书第 1 条的字面要求） | 🔧 **命令与安全注意事项已就绪**（[`../cpp_part2/docs/runbook.md`](../cpp_part2/docs/runbook.md) §4 批次 2），待实机执行 |
-| 子任务项二 S3–S5：回归 0 + 键盘给角度 / 标零点 + 偏移 30° / 零点跳变 | 🔧 **程序已就绪**（[`../cpp_part2/apps/motor_ctl.cpp`](../cpp_part2/apps/motor_ctl.cpp)；离线自检八种情形都跑通，见 [`../cpp_part2/docs/cli.md`](../cpp_part2/docs/cli.md) §1 与 [`real.md`](../cpp_part2/docs/real.md) §3.8），待实机执行（执行卡：runbook §4 批次 4–6） |
-| 子任务项二收尾：实机记录表 → 填回文档 → 提交 → 当面验收演示 | ⏳ 记录表与演示脚本已备好（[`../cpp_part2/docs/runbook.md`](../cpp_part2/docs/runbook.md) §5 / §7），等实机数据 |
-| 工程结构对齐：`include/<项目>/**/*.hpp` + `src/*.cpp`（+ `apps/`），C++17 | 🔧 **`cpp_part2/` 已完成**（2026-09-29：5 个头文件 + 4 个实现 + 4 个入口，Allman/C++17；理由见 [`../cpp_part2/docs/setup.md`](../cpp_part2/docs/setup.md) §1）；`cpp/` 与 `@20260923_mujoco/` 待做，规则见 [`../../docs/learn/cpp-cmake.md`](../../docs/learn/cpp-cmake.md) 的「工程目录与文件风格」一节 |
-| 文档分工与 README 瘦身：入口只做入口，细节进各自的 `docs/` | ✅ 完成（2026-09-29；`cpp_part2/`、`cpp/`、本任务 README 与 `@20260923_mujoco/` 都已按 [`../../docs/conventions.md`](../../docs/conventions.md) §2/§7 调整） |
-| 子任务项二**重做版**（[`../cpp_part2_remake/`](../cpp_part2_remake/)）：按参考工程分层重写 | 🔧 **M0 设计 + M1 在线简版 + M2b 虚拟实验台 + M4 基准修正已完成**（2026-10-02）：core / SDK 后端 / `motor_ctl` / `sim` 模型 / `wire` 编解码 / `motor_sim` 实验台 + 垫片；自检全绿、零告警编译。**M4（`check` / `fix` / 启动检查 + `--pose-ref` + 自动对齐护栏 D20 / 实验台 `power`·`offturns`·`datum` 注入 / 上报层分层）已实现并离线验证**：`ctest` 3/3（`motor_core_tests` 含 T19–T24、新增 `motor_sim_tests` 含 T15–T18）、实验台复现 ④b 全流程与两个反例（runbook §5.6）。**实机首轮已跑通**（2026-10-01，`output/terminal/motor-real-202610011135-m1-ctl.txt`：25156 帧 0 超时、手转跨 3 个零点区间无跳变、`zero move` 语义按 D12 修正）；实机批次 3 / 6b 待跑。M2a（进程内确定性通道）与 M3（会话内断线恢复）按 D19 记为可选、不进验收。**设计 v2**：符号表、`check` / `fix`、允许范围与自动对齐（v1 存 [`../cpp_part2_remake/docs/v1/`](../cpp_part2_remake/docs/v1/)）；需求、决策（D1–D20）与里程碑见 [`../cpp_part2_remake/docs/design.md`](../cpp_part2_remake/docs/design.md) |
+| **子任务项二（实体电机控制）：正式代码 [`../cpp_part2_remake/`](../cpp_part2_remake/)** | ✅ **验收通过**（2026-10-03）：任务书四条（① 官方 SDK 例程 → ② 回 0 + 键盘给角度 → ③ 标零点 + 正向偏移 30° → ④ 零点跳变）全部完成。设计与决策（D1–D20、符号表）见 [design.md](../cpp_part2_remake/docs/design.md)，实机执行卡与记录表见 [runbook.md](../cpp_part2_remake/docs/runbook.md)；自检 `ctest` 3/3（`motor_core_tests` / `motor_sim_tests` / `motor_wire_tests`），实机日志在 [`../output/terminal/`](../output/terminal/) |
+| 子任务项二历史版本 [`../cpp_part2/`](../cpp_part2/) | 🗄 已被 `cpp_part2_remake/` 取代（正式化 2026-10-02，验收 2026-10-03）；保留初版实现、当时的实测记录与缩写表作对照，不再维护 |
+| 工程结构对齐：`include/<项目>/**/*.hpp` + `src/*.cpp`（+ `apps/`），C++17 | 🔧 **`cpp_part2_remake/` 已按该结构组织（现行）；`cpp_part2/`（历史）2026-09-29 完成**（当时的拆分理由见 [`../cpp_part2/docs/setup.md`](../cpp_part2/docs/setup.md) §1）；`cpp/` 与 `@20260923_mujoco/` 待做，规则见 [`../../docs/learn/cpp-cmake.md`](../../docs/learn/cpp-cmake.md) 的「工程目录与文件风格」一节 |
+| 文档分工与 README 瘦身：入口只做入口，细节进各自的 `docs/` | ✅ 完成（2026-09-29；`cpp_part2/`、`cpp/`、本任务 README 与 `@20260923_mujoco/` 都已按 [`../../docs/conventions.md`](../../docs/conventions.md) §2/§7 调整；`cpp_part2_remake/` 同样只做入口） |
 
 ## 2 阻滞项
 
 | 阻滞项 | 影响 | 现状 |
 |---|---|---|
-| **没有实体电机可用** | 子任务项二的 S1b / S2 / S3–S5 与收尾全部要上机才能推进；也是"验收当天演示"的唯一前置 | 唯一的硬阻滞；离线段（协议、控制律、零点账本、仿真电机、文档与执行卡）已全部做完 |
+| ~~没有实体电机可用~~ | ~~子任务项二的实机阶段全要上机才能推进；也是"验收当天演示"的唯一前置~~ | ✅ **已解除**（2026-10-01 起实机可用；2026-10-03 验收通过） |
 
 ## 3 下一步
 
-实机到手后的顺序：先 **S2**（[`../cpp_part2/docs/real.md`](../cpp_part2/docs/real.md) §3.7：手转找零点 + 定"里程计/锯齿" + 量断链行为 + 查上电基准），再用 `motor_ctl` 做 **S3–S5**（§3.8；标定与跳变的符号约定见 §5）。 现场照着 [`../cpp_part2/docs/runbook.md`](../cpp_part2/docs/runbook.md) 的批次 3–6 走，跑完把数字填回 §5 记录表。
+子任务项二（实体电机控制）已完结并验收：[`../cpp_part2_remake/`](../cpp_part2_remake/) 覆盖任务书四条与 ④ 的断电重上电（启动检查 + 自动对齐），现场步骤与记录表见 [runbook.md](../cpp_part2_remake/docs/runbook.md) §5–§6。初版执行卡（S2 / S3–S5 那套）在 [`../cpp_part2/docs/`](../cpp_part2/docs/)，之后只作对照。
 
-重做版（[`../cpp_part2_remake/`](../cpp_part2_remake/)）按 [design.md](../cpp_part2_remake/docs/design.md) §6 的"假设逐级放宽"主线推进：M1（在线简版）、M2b（虚拟实验台）与 **M4（基准修正：`check` / `fix`、启动自动对齐护栏、实验台注入）** 已完成并验证（`ctest` 3/3；离线复现 ④b 见 [runbook.md](../cpp_part2_remake/docs/runbook.md) §5.6）；**M2a（进程内确定性测试通道）与 M3（会话内断线恢复）按 D19 记为可选、不进验收**；M2c（探针 / 旋转工具）未做（用 `motor_ctl` 的 `--no-send` / `move` 替代，见 runbook §9）。**下一步**：实机批次 3（手转形态 + 上电基准重复性）与批次 6b（④ 断电重上电验收），跑完把数字填进 runbook §6 记录表。实机执行卡（批次 0–7）见 [runbook.md](../cpp_part2_remake/docs/runbook.md)。
+若继续推进（都不影响本次验收，按 [design.md](../cpp_part2_remake/docs/design.md) §6 的可选项）：
+
+- **M3**：会话内的断线恢复（`reanchor` / `--recover-hold`）——做了才需要 `turn_base` 非 0；
+- **M2a**：进程内确定性测试通道（虚拟时钟的 CTest）；
+- **M2c**：现场探针 / 旋转工具（当前用 `motor_ctl` 的 `--no-send` 与 `move` 替代，见 runbook §9）；
+- **`cpp/`（子任务项一）与 `@20260923_mujoco/` 的工程结构对齐**（规则见 [`../../docs/learn/cpp-cmake.md`](../../docs/learn/cpp-cmake.md) 的「工程目录与文件风格」一节）。
 
 ## 4 提交与分支
 

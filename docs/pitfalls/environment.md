@@ -222,4 +222,4 @@ stdbuf -oL sudo <程序> | tee log       # ❌ 无效
 
 **要记住的两点**：① 这是"程序的 stdout 不是终端"造成的，跟 `tee` 关系不大——任何重定向/管道都一样； ② 交互式程序（读 stdin 的那种）用 `stdbuf -oL` 只改 stdout/stderr，**stdin 仍是终端**，键盘输入不受影响。
 
-**落到本仓库**：实机命令统一走 `@20260927_motor/cpp_part2/docs/runbook.md` §2 里的 `run_log.sh` 包装 （`sudo stdbuf -oL … | tee`，按时间戳自动命名日志；`sudo` 写在脚本外面）。
+**落到本仓库**：实机命令统一走 `@20260927_motor/scripts/run_log.sh`（用法与理由见 `@20260927_motor/cpp_part2_remake/docs/runbook.md` §4；初版说明在历史版本 `@20260927_motor/cpp_part2/docs/runbook.md` §2） （`sudo stdbuf -oL … | tee`，按时间戳自动命名日志；`sudo` 写在脚本外面）。

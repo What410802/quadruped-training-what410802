@@ -1,6 +1,6 @@
-# cpp_part2 重做版（实体电机控制）
+# cpp_part2_remake（子任务项二 · 实体电机控制 · 正式代码）
 
-本目录是子任务项二的**重做版**：任务书目标不变（回编码器零点 → 键盘给角度 → 记号笔标零点并正向偏移 30° → 处理零点跳变），但按只读参考工程 `ReadOnly.d/quadruped_control/` 的分层与命名规范重写，并修掉旧版（[`../cpp_part2/`](../cpp_part2/README.md)）的缺陷。设计（需求、符号约定、伪代码、决策、测试矩阵、里程碑）在 [docs/design.md](docs/design.md)（v2；v1 在 [docs/v1/](docs/v1/)）。
+本目录是子任务项二（实体电机控制）的**正式代码**：任务书四条（回编码器零点 → 键盘给角度 → 记号笔标零点并正向偏移 30° → 处理零点跳变）全部完成并验收通过（2026-10-03）；按只读参考工程 `ReadOnly.d/quadruped_control/` 的分层与命名规范组织，并修掉历史版本（[`../cpp_part2/`](../cpp_part2/README.md)，仅作对照）的缺陷。设计（需求、符号约定、伪代码、决策、测试矩阵、里程碑）在 [docs/design.md](docs/design.md)（v2；v1 在 [docs/v1/](docs/v1/)）。
 
 ## 构建
 

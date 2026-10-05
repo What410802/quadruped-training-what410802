@@ -381,7 +381,7 @@
 
 **`apps/` 到底放什么**：它不是"随便放源文件"的第三个目录，判据只有一条—— **这份 `.cpp` 里有没有 `main()`（即能不能直接产出可执行文件）**：
 
-| 目录 | 判据 | 本次（`cpp_part2/`） |
+| 目录 | 判据 | 本次（`cpp_part2/`；历史版本，正式代码见 `cpp_part2_remake/`） |
 |---|---|---|
 | `apps/` | 有 `main()`，`add_executable()` 的源文件 → 直接产出可执行文件 | `motor_ctl.cpp`（验收程序）、`spin_test.cpp`（S1）、`serial_probe.cpp`（S2）、`sim_fake_motor_dryrun.cpp`（dry run） |
 | `src/` | 没有 `main()`：库实现（`add_library()` 的源文件）、平台垫片 | `motor_bus.cpp` / `zero_tracking.cpp` / `console.cpp`（链进静态库 `motor_bench_core`）、`pty_serial_shim.c`（编成 `.so`） |
@@ -400,7 +400,7 @@
 - **有**（被库、被别的应用、被测试用到）⇒ 它是**接口**，放 `include/<项目>/`；
 - **没有**（只有自己那个 `.cpp` 用）⇒ 它是**那个应用的实现细节**，留在 `apps/<名字>.cpp` 里。
 
-按这条判据，`cpp_part2/` 现在的分工是：
+按这条判据，`cpp_part2/`（历史版本）当时的分配是：
 
 | 东西 | 放哪 | 为什么 |
 |---|---|---|
@@ -422,7 +422,7 @@
 
 规则见上一节；**各任务按这套结构改到哪一步，记在各任务自己的进度文档里** （[`@20260927_motor/docs/status.md`](../../@20260927_motor/docs/status.md)、 [`@20260923_mujoco/docs/status.md`](../../@20260923_mujoco/docs/status.md)），本文只留规则与做法：
 
-- 参考实现：[`@20260927_motor/cpp_part2/`](../../@20260927_motor/cpp_part2/docs/setup.md) §1 （`include/motor_bench/*.hpp` + `src/*.cpp` + `apps/*.cpp`，C++17、Allman、100 列；`apps/` 与 `src/` 的分界见同节）。
+- 参考实现（现行）：[`@20260927_motor/cpp_part2_remake/`](../../@20260927_motor/cpp_part2_remake/README.md)（`core/` + `backends/` + `wire/` + `sim/` + `apps/` + `tests/`，C++17、Allman、100 列）；本文上面几节的分析是按历史版本 [`@20260927_motor/cpp_part2/`](../../@20260927_motor/cpp_part2/docs/setup.md) §1 写的（更简单的 `include/` + `src/` + `apps/` 布局，`apps/` 与 `src/` 的分界见同节）。
 - 搬迁步骤：先建 `include/<项目>/` 与 `src/`、把 `.h` 改成 `.hpp`（或 `.hpp` + 同名 `.cpp` 拆声明与实现）， 再改 `CMakeLists.txt`（`add_library` + `target_include_directories(PUBLIC include)`），最后全仓搜文档引用。
 - 每次收尾用 `pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py .` 兜住文档路径漂移， 并重建 + 跑各程序的 `--self-test`。
 

@@ -1,4 +1,6 @@
-# 子任务项二（实体电机控制）：程序与工具
+# 子任务项二（实体电机控制）：程序与工具（历史版本）
+
+> **历史版本**：从 2026-10-02 起，本部分的正式代码是 [`../cpp_part2_remake/`](../cpp_part2_remake/README.md)（设计见其 [docs/design.md](../cpp_part2_remake/docs/design.md)，实机执行卡见 [docs/runbook.md](../cpp_part2_remake/docs/runbook.md)）；本目录保留**初版实现与当时的实测记录**（协议标度、定点、零点语义、踩坑、缩写表）作对照，不再维护。下文描述的是初版程序（`motor_ctl` / `spin_test` / `serial_probe` / `sim_fake_motor_dryrun`）。
 
 真实电机是宇树 **GO-M8010-6**，走官方 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../ReadOnly.d/unitree_actuator_sdk)）。 本目录是任务书"二、实体电机控制"那部分的程序与工具：**让电机转起来 → 回 0 位 + 键盘给角度 → 标零点并正向偏移 30° → 处理零点跳变**。
 

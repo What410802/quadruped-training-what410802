@@ -1,5 +1,5 @@
 # 文件：CMakeLists.txt
-# 作用：配置 cpp_part2 重做版的工程入口：核心库、SDK 后端、motor_ctl 与测试。
+# 作用：配置 cpp_part2_remake（子任务项二正式实现）的工程入口：核心库、SDK 后端、motor_ctl 与测试。
 
 cmake_minimum_required(VERSION 3.16)
 

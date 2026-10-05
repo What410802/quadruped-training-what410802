@@ -1,4 +1,4 @@
-# 重做版（cpp_part2_remake）的 C++ 风格：Allman 大括号 + 4 空格 + 100 列 + C++17。
+# cpp_part2_remake（子任务项二的正式实现）的 C++ 风格：Allman + 4 空格 + 100 列 + C++17。
 # 与 cpp_part2 一致；仓库根的 .clang-format（ColumnLimit: 0）留给第一部分的施工区。
 # 用法：clang-format -i <file>
 BasedOnStyle: LLVM
