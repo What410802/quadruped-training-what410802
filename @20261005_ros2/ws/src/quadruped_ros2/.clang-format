@@ -1,0 +1,19 @@
+# 本次任务（@20261005_ros2）的 C++ 风格：Allman + 4 空格 + 100 列 + C++17。
+# 与 @20260927_motor/cpp_part2_remake/.clang-format 一致；仓库根的 .clang-format（ColumnLimit: 0）
+# 留给早期施工区。用法：clang-format -i <file>
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++17
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Allman       # if/for/函数/类 的花括号都另起一行
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+BreakStringLiterals: false      # 不拆字符串字面量（我们的日志文案很长）
+PointerAlignment: Left          # int* p
+IncludeBlocks: Preserve         # 不重排 include
+SortIncludes: false
