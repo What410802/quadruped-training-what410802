@@ -1,0 +1,19 @@
+# colcon 构建产物（根 .gitignore 已覆盖 build/、install/、log/，这里再写一遍是为了自说明）
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# 运行日志（自检脚本每次都会重写；能重跑出来的东西不入库）
+output/log/
+
+# 说明：models/meshes 是**目录软链接**，指向唯一一份真实 mesh
+# （@20260923_mujoco/assets/urdf/meshes，34 MB）。软链接本身要入库（几十字节），
+# 所以这里不做排除；models/black_description.xml 是本任务的真实副本（加了 imu site/传感器）。
+
+# 编辑器 / 系统
+.DS_Store
+.vscode/

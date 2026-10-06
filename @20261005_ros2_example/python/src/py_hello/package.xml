@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>py_hello</name>
+  <version>0.0.0</version>
+  <description>ROS 2 入门包（Python）：hello_node</description>
+  <maintainer email="what410802@126.com">What410802</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
