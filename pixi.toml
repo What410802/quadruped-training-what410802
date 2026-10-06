@@ -1,7 +1,14 @@
 [workspace]
+# 名字用 GitHub 远端名（https://github.com/What410802/quadruped-training-what410802），
+# 不再用本机目录名 MyMonoRepo.d：目录名是可以随便改的本地东西，仓库名才是这份代码的标识
+# （`pixi info` / `PIXI_PROJECT_NAME` 都会跟着变）。
 authors = ["What410802 <what410802@126.com>"]
-channels = ["conda-forge"]
-name = "MyMonoRepo.d"
+# 通道顺序有意义：RoboStack（ROS 2 Humble 的 conda 打包）必须排在 conda-forge 之前。
+# 用**稳定通道 robostack-humble**（不是 robostack-staging）：2026-10-05 的迁移评估逐条比过
+# 204 个 ROS 包，两边同名同版本同构建串；换通道不需要动版本号，实测见
+# @20261005_ros2/docs/environment.md §4。
+channels = ["robostack-humble", "conda-forge"]
+name = "quadruped-training-what410802"
 platforms = ["linux-64"]
 version = "0.1.0"
 
@@ -16,22 +23,70 @@ extra-index-urls = [
     "https://mirror.nju.edu.cn/pypi/web/simple",
 ]
 
+# 这个仓库只用一个 pixi 环境（default）：MuJoCo 与 ROS 2 Humble 在同一套 Python 3.12 下共存
+# （两边都是 np2py312 构建，numpy 2.x），所以"每加一个 ROS 任务就再来一个环境"没有必要——
+# 单环境也意味着 MuJoCo 的版本只写一处（下面 mujoco 那一行），不会再出现两处版本漂移。
+# 历史：2026-10-05～10-06 曾经用 `ros2` feature + `no-default-feature` 分开两个环境，
+# 2026-10-06 合并；当时的取舍与实测对照见 @20261005_ros2_example/docs/pixi-ros2.md。
+
 # 渲染后端（结论与实测见 docs/learn/mujoco.md 第 7 节，决策索引见 §7.6）：
 #   * `MUJOCO_GL` 必须在 `import mujoco` 之前生效，之后改无效 → 放在激活环境里最稳；
 #   * 统一定为 egl：不依赖显示服务，而且在双显卡机器上会落到更合适的那块 GPU 上。
 # 注意它只影响 Python 绑定，不影响 C++ 的 mujoco-simulate。
 # 想临时换后端：`pixi run env MUJOCO_GL=glfw python xxx.py`（命令行前缀会被这里覆盖）。
+#
+# ROS_LOCALHOST_ONLY 只在本机回环通信；要跨机时设为 "0"，且**对端（含系统 ROS 的节点）
+# 必须同值**，否则两端发现不到对方（实测现象与复现命令见 @20261005_ros2_example/docs/pixi-ros2.md）。
 [activation.env]
 MUJOCO_GL = "egl"
+ROS_LOCALHOST_ONLY = "1"
 
-
-[tasks]
+# 激活环境时自动发现并 source 仓库里所有已构建的 colcon 工作空间（没有 install/ 就跳过），
+# 于是 `pixi run ros2 …` 不必再手敲 `source install/setup.sh`。脚本在**仓库根**，
+# 根文件因此不必写任务级路径；三种用法（pixi run / pixi shell / 手动 source）见
+# @20261005_ros2_example/docs/pixi-ros2.md §2.2。
+[activation]
+scripts = ["scripts/activate_ros2_workspaces.sh"]
 
 [dependencies]
-python = "3.12.*"
-mujoco = ">=3.12.0,<4"
-# C++ 仿真程序（@20260923_mujoco/cpp_task2、@20260927_motor/cpp 等）的工具链，与 Python 侧共用同一个 pixi 环境：
+# ---- 语言与 C++ 工具链 ----
 # 用环境自带的编译器，避免系统 gcc 与 conda 版 libmujoco 混搭出 ABI 问题。
+python = "3.12.*"
 cxx-compiler = "*"
 cmake = "*"
 ninja = "*"
+
+# ---- MuJoCo（C++ 库 + Python 绑定）----
+# 锁 3.12.*：仓库里 C++ 与 Python 两份 MuJoCo 必须同版本，且 @20260923_mujoco /
+# @20260927_motor 量过的数字（末态 z=0.3836 m 等）都是 3.12.0 下的结果。
+# 不锁的话 conda-forge 现在会解析到 3.14.x（2026-10-05 实测）。
+mujoco = "3.12.*"
+# 官方 Simulate 窗口 / 我们的 C++ 仿真直接 find_package(glfw3) 并链接（mujoco 也会带它，
+# 但"我们自己链的东西"就自己声明，避免哪天上游去掉这条依赖就突然编不过）。
+glfw = "*"
+# Python 侧脚本直接 import 的三个包（渲染预览用 OpenGL，分析脚本用 numpy，仿真手柄 GUI 用 tkinter）；
+# 它们目前都是 mujoco 的传递依赖，显式声明是为了"用什么就写什么"。
+numpy = "*"
+pyopengl = "*"
+tk = "*"
+
+# ---- ROS 2 Humble（RoboStack）----
+ros-humble-ros-base = "*"
+# 教程示例（@20261005_ros2_example）里 talker/listener 用的是 demo 包，留着便于对照。
+ros-humble-demo-nodes-cpp = "*"
+ros-humble-demo-nodes-py = "*"
+# colcon 不在 RoboStack 通道里，走 conda-forge；元包 = 20 个 colcon 组件，
+# 覆盖原先手写清单 14 个中的 13 个；唯一例外是 `colcon-mixin`（不属于元包），
+# 需要 `colcon mixin` 子命令时再单独加回来。
+colcon-common-extensions = "*"
+
+# ---- 手柄 ----
+# 手柄节点与仿真手柄（uinput）都直接读 /dev/input 内核事件，用 python-evdev 一套就够
+# （不引 pygame/SDL：省一层 SDL 映射，轴/按钮顺序就是 xpad 的原始顺序）。
+evdev = "*"
+
+[tasks]
+# 编译仓库里**所有** colcon 工作空间：脚本自己发现（`<任务目录>/**/src/<包>/package.xml`），
+# 所以根 pixi.toml 里没有任务级路径——新增 ROS 任务照常建包即可，不必回来改这里。
+# 只编一个工作空间时不必用这个任务：`cd <工作空间> && pixi run colcon build --symlink-install`。
+ros2-build = { cmd = "scripts/build_ros2_workspaces.sh", description = "编译仓库里所有 colcon 工作空间（自动发现）" }
