@@ -115,7 +115,7 @@ sudo $RL s2e $T --port /dev/ttyUSB0 --id 0 --rev-per-s 0.1 --kd-out 0.5 --ramp 1
 官方例程是 `while(true)`、`kd=0.01`、`dq = -6.28×N`（输出端 1 圈/s）一直转，没有斜坡也没有异常处理， 所以用 `timeout` 掐表跑，别让它无人看管。
 
 ```bash
-S=../ReadOnly.d/unitree_actuator_sdk
+S=$(sed -n 's/^set(UNITREE_SDK_DIR "\(.*\)")$/\1/p' local_paths.cmake)   # 宇树 SDK：只读材料，路径从本机配置里读
 pixi run g++ -O2 -std=c++14 -I$S/include -I$S/include/unitreeMotor \
     $S/example/example_goM8010_6_motor.cpp -L$S/lib -lUnitreeMotorSDK_Linux64 \
     -Wl,-rpath,"$PWD/$S/lib" -o $B/example_go            # 产物落在 build/，不入库

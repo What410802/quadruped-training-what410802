@@ -46,7 +46,7 @@ $$\tau = \tau_{ff} + k_p(q_{des}-q) + k_d(\dot q_{des}-\dot q)$$
 2. 限幅是**输出端**的：本模型 `ctrlrange` 是 ±20 N·m、讲义说实机 black 配置是 33.5 N·m —— 这两个都是关节侧， 换成转子侧要 **÷N**（20/6.33 = 3.16 N·m）；反之实机 `data.tau` 是转子侧，换成关节侧要 **×N**；
 3. `--gravity-comp` 叠加的 `qfrc_bias` 也是 N·m，所以能直接加到 τ 上。
 
-**与官方 SDK 对得上**：Unitree 官方电机 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../../ReadOnly.d/unitree_actuator_sdk)， `unitreerobotics/unitree_actuator_sdk`，commit `5b79a42`）的 `MotorCmd{tau, dq, q, kp, kd}` / `MotorData{tau, dq, q}` 就是同一套量（全部**转子侧**），README 还专门写了 $kp_{rotor}=kp_{output}/r^2$、$kd_{rotor}=kd_{output}/r^2$ （`unitree_actuator_sdk/README.md` 第 53–57 行），与讲义 §2.3 一字不差；减速比用 `queryGearRatio(MotorType)` 查（`unitreeMotor.h:73`）。
+**与官方 SDK 对得上**：Unitree 官方电机 SDK（只读材料 `ReadOnly.d/unitree_actuator_sdk`，上游是 `unitreerobotics/unitree_actuator_sdk`，commit `5b79a42`）的 `MotorCmd{tau, dq, q, kp, kd}` / `MotorData{tau, dq, q}` 就是同一套量（全部**转子侧**），README 还专门写了 $kp_{rotor}=kp_{output}/r^2$、$kd_{rotor}=kd_{output}/r^2$ （`unitree_actuator_sdk/README.md` 第 53–57 行），与讲义 §2.3 一字不差；减速比用 `queryGearRatio(MotorType)` 查（`unitreeMotor.h:73`）。
 
 代码里两条都留了：`motor::Cmd`（关节侧，仿真真正算的）与 `motor::RotorCmd`（转子侧 SDK 字段）， `motor::ToRotor(cmd, gear)` 做换算。启动时会打印一次换算结果作为对照（默认 `N = 6.33`，$N^2 \approx 40.07$）：
 

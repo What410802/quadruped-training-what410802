@@ -492,7 +492,7 @@ update_scene → render()（GPU 画进离屏 FBO）→ tobytes()
 ## 8. 复现命令
 
 ```bash
-cd ~/BiS.d/Code.d/RoboCon/MyMonoRepo.d
+cd <本仓库根目录>            # 含 pixi.toml 的那一级
 
 # geom type / friction / condim 的全部实测数据
 pixi run python @20260923_mujoco/scripts/agent_scripts/mujoco_facts.py

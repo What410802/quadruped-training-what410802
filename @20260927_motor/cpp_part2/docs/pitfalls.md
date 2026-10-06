@@ -7,7 +7,7 @@
 任务书第 1 条要"用官方 SDK 例程让电机转起来"。**编译不需要硬件**（预编译的 `lib/libUnitreeMotorSDK_Linux64.so` 直接链），但例程不接没有设备时会直接死掉：
 
 ```bash
-S=../ReadOnly.d/unitree_actuator_sdk
+S=$(sed -n 's/^set(UNITREE_SDK_DIR "\(.*\)")$/\1/p' local_paths.cmake)   # 宇树 SDK：只读材料，路径从本机配置里读
 g++ -O2 -std=c++14 -I$S/include example/example_goM8010_6_motor.cpp -L$S/lib \
     -lUnitreeMotorSDK_Linux64 -Wl,-rpath,"$PWD/$S/lib" -o /tmp/example_go   # 能编译
 /tmp/example_go                                                            # 没有 /dev/ttyUSB0

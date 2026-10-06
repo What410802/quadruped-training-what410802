@@ -1,6 +1,6 @@
 # unitree_mujoco 研读笔记
 
-研读对象是 `unitreerobotics/unitree_mujoco`（本工作区克隆在 `ReadOnly.d/unitree_mujoco`，commit `1eb6642`，BSD-3-Clause）。目的是给任务 3（结构与线程设计）提供参考、给任务 4（C++ 重做）定结构，并明确**哪些抄、哪些不抄**。文中引用格式为 `文件:行`，文件路径相对该克隆目录。
+研读对象是 `unitreerobotics/unitree_mujoco`（BSD-3-Clause；本工作区克隆在 `ReadOnly.d/unitree_mujoco`，commit `1eb6642`）。想跟着看代码的话自己拿一份：`git clone https://github.com/unitreerobotics/unitree_mujoco && git -C unitree_mujoco checkout 1eb6642`。目的是给任务 3（结构与线程设计）提供参考、给任务 4（C++ 重做）定结构，并明确**哪些抄、哪些不抄**。文中引用格式为 `文件:行`，文件路径相对该克隆目录。
 
 > 相关文档：MuJoCo 本体知识见 [`mujoco.md`](mujoco.md)，图形栈见 [`graphics-stack.md`](graphics-stack.md)，图形后端与开销实测见 [`mujoco.md` 第 7 节](mujoco.md#7-渲染后端mujoco_gl与开销)。 任务背景与目标结构（这些笔记要服务的对象）见 [`../../@20260923_mujoco/README.md`](../../@20260923_mujoco/README.md)。 文档索引见 [`../../README.md`](../../README.md)。
 

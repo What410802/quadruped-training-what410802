@@ -2,7 +2,7 @@
 
 为了把「`LowCmd` 回调到底跑在哪个线程」从“读代码推断”变成运行期事实，也为了先把参考实现的**预期效果**摸清、给 Python 重构留对照基准，2026-09-25 在本机把上游 `unitree_mujoco` 的 `simulate_python/`、`simulate/`（C++）连同 `example/{python,cpp}/stand_go2.*` 都跑通了一遍。
 
-两个复现环境**不在本仓库内**，放在工作区同级的 `Replicate.d/`（相对本目录是 `../../../Replicate.d/`）：参考克隆仍是 `ReadOnly.d/unitree_mujoco`，只往里加了一个指向官方 MuJoCo 包的软链接，**源代码未改**。搭建过程与全部踩坑（Python 必须是 3.10、`cyclonedds==0.10.2` 只有 cp310 轮子、C++ 侧为何必须另下官方 MuJoCo 包、需要 `libgl-devel` 与 `eigen`、上游按可执行文件位置找配置与场景、退出时段错误）连完整命令一起记在 [`../../docs/pitfalls/environment.md`](../../docs/pitfalls/environment.md) 的「复现上游 unitree_mujoco」一节。
+两个复现环境**不在本仓库内**，放在工作区同级的 `Replicate.d/`（在本仓库之外，不进版本库）：参考克隆是上游 [`unitreerobotics/unitree_mujoco`](https://github.com/unitreerobotics/unitree_mujoco)（`git clone` 后切到 commit `1eb6642`；只往里加了一个指向官方 MuJoCo 3.12.0 发布包的软链接，**源代码未改**）。搭建过程与全部踩坑（Python 必须是 3.10、`cyclonedds==0.10.2` 只有 cp310 轮子、C++ 侧为何必须另下官方 MuJoCo 包、需要 `libgl-devel` 与 `eigen`、上游按可执行文件位置找配置与场景、退出时段错误）连完整命令一起记在 [`../../docs/pitfalls/environment.md`](../../docs/pitfalls/environment.md) 的「复现上游 unitree_mujoco」一节。
 
 两个终端各跑一边（仿真器与控制器通过域 1 的 DDS 在 `lo` 上通信，控制器都要按一次回车才开始）：
 

@@ -1,6 +1,6 @@
 # cpp_part2 重做版：需求、设计与伪代码
 
-> 本目录是子任务项二（实体电机控制）的**重做版**：功能目标不变（任务书四条 + 提前保护 + 插值），但按只读参考工程 `../../../../ReadOnly.d/quadruped_control/` 的分层、命名与文档规范重写，并修掉旧版（[`cpp_part2/`](../../../cpp_part2/README.md)）在无硬件阶段暴露的缺陷。
+> 本目录是子任务项二（实体电机控制）的**重做版**：功能目标不变（任务书四条 + 提前保护 + 插值），但按只读参考工程 `quadruped_control/`（只读材料 `ReadOnly.d` 下）的分层、命名与文档规范重写，并修掉旧版（[`cpp_part2/`](../../../cpp_part2/README.md)）在无硬件阶段暴露的缺陷。
 > 本文是**设计阶段**的产物：需求、设计、伪代码、待确认决策、测试矩阵与里程碑；决策确认后进入实现。
 
 依据：[任务书](../../../docs/teaching-materials/第三次培训任务.pdf.md) 与 [讲义](../../../docs/teaching-materials/motor.pdf.md)；旧版实测记录：[real.md](../../../cpp_part2/docs/real.md)、[protocol.md](../../../cpp_part2/docs/protocol.md)、[fixed-point.md](../../../cpp_part2/docs/fixed-point.md)、[zero-semantics.md](../../../cpp_part2/docs/zero-semantics.md)；仓库规范：[conventions.md](../../../../docs/conventions.md)、[AGENTS.md](../../../../AGENTS.md)。
@@ -73,7 +73,7 @@
 |---|---|---|
 | E1 | 代码风格按参考工程：C++17、Allman、100 列、`snake_case` 函数 / `kPascalCase` 常量、中文 `@file/@brief` 文件头 | 工程目录放一份自己的 `.clang-format` |
 | E2 | 依赖方向单向：`core` ← `backends` ← `apps`；`core` 不暴露 SDK 类型 | 参考工程 AGENTS.md 的依赖边界 |
-| E3 | 不写死绝对路径；SDK 路径可配（默认按"与本仓库根同级的 `ReadOnly.d/`"推算） | 仓库约定 §4 |
+| E3 | 不写死绝对路径；SDK 路径可配（从本机 `local_paths.cmake` 读，命令行/环境变量优先） | 仓库约定 §4 |
 | E4 | 编译产物 / 缓存不入库；文档单一权威、README 只做入口 | 仓库约定 §2/§4 |
 | E5 | 测试用零第三方框架，接入 CTest | 参考工程做法 |
 

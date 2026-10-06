@@ -1,0 +1,21 @@
+# local_paths.cmake 的模板：**本机**的"仓库之外只读资源"位置。
+# 真实文件叫 local_paths.cmake（同一目录），**不入库**（见根 .gitignore），照下面复制一份填好即可：
+#
+#     cp local_paths.cmake.example local_paths.cmake
+#
+# 为什么单独一个文件：仓库同步内容里不写"仓库之外的路径"（约定见 docs/conventions.md §4）。
+# 那些只读材料（ReadOnly.d 下的 unitree_actuator_sdk / unitree_mujoco、复现环境 Replicate.d）
+# 只存在于本机，别人 clone 仓库时不一定有；写进文档或代码既不可复现，也泄漏目录布局。
+#
+# 谁读它：
+#   * @20260927_motor/cpp_part2/CMakeLists.txt               → UNITREE_SDK_DIR
+#   * @20260927_motor/cpp_part2_remake/backends/unitree_sdk/ → MOTOR_SDK_DIR（没设时用它）
+# 两个工程都支持命令行覆盖（-DUNITREE_SDK_DIR=… / -DMOTOR_SDK_DIR=…）与环境变量，且命令行优先。
+#
+# 命令行工具（runbook 里那些 g++ / 直接跑例程的命令）也要用这个路径，写法是把值取出来：
+#     S=$(sed -n 's/^set(UNITREE_SDK_DIR "\(.*\)")$/\1/p' local_paths.cmake)
+# 这样只要这个文件配一次，CMake 与 shell 命令都跟着走，不必在文档里再写第二处路径。
+
+# 宇树官方电机 SDK（预编译 .so + 头文件；只读材料 ReadOnly.d/unitree_actuator_sdk）
+# 没有的话自己拿：git clone https://github.com/unitreerobotics/unitree_actuator_sdk
+set(UNITREE_SDK_DIR "")

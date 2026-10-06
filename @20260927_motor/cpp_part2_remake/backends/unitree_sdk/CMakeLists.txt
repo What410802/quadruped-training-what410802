@@ -1,14 +1,31 @@
 # 文件：CMakeLists.txt
 # 作用：构建链接宇树官方 SDK 的实机传输后端 motor_unitree。
 
-# SDK 默认与本仓库根同级（ReadOnly.d/unitree_actuator_sdk）：不在仓库里，也不写死绝对路径。
-get_filename_component(_kSdkDefault "${MOTOR_REPO_ROOT}/../ReadOnly.d/unitree_actuator_sdk" ABSOLUTE)
-set(MOTOR_SDK_DIR "${_kSdkDefault}" CACHE PATH "宇树官方电机 SDK 目录")
+# 宇树官方 SDK **不在本仓库里**（只读材料 ReadOnly.d/unitree_actuator_sdk）：路径来源，优先级从高到低：
+#   ① -DMOTOR_SDK_DIR=<路径>（或 -DUNITREE_SDK_DIR=<路径>）
+#   ② 环境变量 MOTOR_SDK_DIR / UNITREE_SDK_DIR
+#   ③ 仓库根的 local_paths.cmake（**不入库**，模板见 local_paths.cmake.example，与 cpp_part2 共用一份）
+# 仓库同步内容里刻意不出现"仓库之外的路径"（约定见 docs/conventions.md §4）。
+if(NOT MOTOR_SDK_DIR)
+    include("${MOTOR_REPO_ROOT}/local_paths.cmake" OPTIONAL)
+endif()
+if(NOT MOTOR_SDK_DIR AND UNITREE_SDK_DIR)
+    set(MOTOR_SDK_DIR "${UNITREE_SDK_DIR}")
+endif()
+if(NOT MOTOR_SDK_DIR AND DEFINED ENV{MOTOR_SDK_DIR})
+    set(MOTOR_SDK_DIR "$ENV{MOTOR_SDK_DIR}")
+endif()
+if(NOT MOTOR_SDK_DIR AND DEFINED ENV{UNITREE_SDK_DIR})
+    set(MOTOR_SDK_DIR "$ENV{UNITREE_SDK_DIR}")
+endif()
+set(MOTOR_SDK_DIR "${MOTOR_SDK_DIR}" CACHE PATH "宇树官方电机 SDK 目录（见仓库根 local_paths.cmake）")
 
 if(NOT EXISTS "${MOTOR_SDK_DIR}/include/unitreeMotor/unitreeMotor.h")
     message(FATAL_ERROR
         "找不到宇树 SDK：${MOTOR_SDK_DIR}\n"
-        "用 -DMOTOR_SDK_DIR=<路径> 指定，或 -DMOTOR_ENABLE_SDK=OFF 只构建 core 与测试。")
+        "  · 仓库根放一份 local_paths.cmake（cp local_paths.cmake.example local_paths.cmake 后填好）\n"
+        "  · 或 -DMOTOR_SDK_DIR=<只读材料 ReadOnly.d/unitree_actuator_sdk 的路径>\n"
+        "  · 或 -DMOTOR_ENABLE_SDK=OFF 只构建 core 与测试。")
 endif()
 
 # 预编译库：Linux64 / Arm64（与官方 CMakeLists 一致）

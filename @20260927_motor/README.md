@@ -41,7 +41,7 @@
 
 ## 环境
 
-两个子任务项都用仓库根 [`pixi.toml`](../pixi.toml) 的那一个 pixi 环境：子任务项一用里面的 MuJoCo C++ 库 + glfw； 子任务项二用里面的 g++/cmake，并链接 `ReadOnly.d/unitree_actuator_sdk` 里**预编译**的宇树 SDK（不需要额外安装东西）。 实机跑程序需要串口权限（当前 `/dev/ttyUSB0` 是 `root:dialout 660`），见 [`cpp_part2_remake/docs/runbook.md`](cpp_part2_remake/docs/runbook.md) §2（前置）与 §4（构建、日志与运行）。
+两个子任务项都用仓库根 [`pixi.toml`](../pixi.toml) 的那一个 pixi 环境：子任务项一用里面的 MuJoCo C++ 库 + glfw； 子任务项二用里面的 g++/cmake，并链接 `ReadOnly.d/unitree_actuator_sdk` 里**预编译**的宇树 SDK（不需要额外安装东西）。 那个 SDK 不在仓库里：构建前先按 [`../local_paths.cmake.example`](../local_paths.cmake.example) 在本机放一份 `local_paths.cmake`（机制与优先级的说明都在那个模板里，本文不重复）。 实机跑程序需要串口权限（当前 `/dev/ttyUSB0` 是 `root:dialout 660`），见 [`cpp_part2_remake/docs/runbook.md`](cpp_part2_remake/docs/runbook.md) §2（前置）与 §4（构建、日志与运行）。
 
 与第二次培训的关系：模型、场景、站姿搜索、录像管线这套基础设施沿用 [`@20260923_mujoco/`](../@20260923_mujoco/)；控制程序是重写的，逐条对照见 [`cpp/docs/sim.md`](cpp/docs/sim.md) §6。子任务项二与第二次培训没有代码关系（同一系列电机而已）。
 

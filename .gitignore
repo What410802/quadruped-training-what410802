@@ -8,5 +8,13 @@
 build/
 build_test/
 
+# colcon 构建产物（install/ 与 log/；build/ 已被上一条覆盖）
+install/
+log/
+
 # clangd 索引缓存（写在含 compile_commands.json 的那个目录下）
 .cache/
+
+# 本机路径（仓库之外的只读资源位置）：只入库模板，真实文件各人自己填
+# 模板与说明见 local_paths.cmake.example，谁在读它见 docs/conventions.md §4
+local_paths.cmake

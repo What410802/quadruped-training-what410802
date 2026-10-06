@@ -2,7 +2,7 @@
 
 > **历史版本**：从 2026-10-02 起，本部分的正式代码是 [`../cpp_part2_remake/`](../cpp_part2_remake/README.md)（设计见其 [docs/design.md](../cpp_part2_remake/docs/design.md)，实机执行卡见 [docs/runbook.md](../cpp_part2_remake/docs/runbook.md)）；本目录保留**初版实现与当时的实测记录**（协议标度、定点、零点语义、踩坑、缩写表）作对照，不再维护。下文描述的是初版程序（`motor_ctl` / `spin_test` / `serial_probe` / `sim_fake_motor_dryrun`）。
 
-真实电机是宇树 **GO-M8010-6**，走官方 SDK（[`../../../ReadOnly.d/unitree_actuator_sdk`](../../../ReadOnly.d/unitree_actuator_sdk)）。 本目录是任务书"二、实体电机控制"那部分的程序与工具：**让电机转起来 → 回 0 位 + 键盘给角度 → 标零点并正向偏移 30° → 处理零点跳变**。
+真实电机是宇树 **GO-M8010-6**，走官方 SDK（只读材料 `ReadOnly.d/unitree_actuator_sdk`）。 本目录是任务书"二、实体电机控制"那部分的程序与工具：**让电机转起来 → 回 0 位 + 键盘给角度 → 标零点并正向偏移 30° → 处理零点跳变**。
 
 ```
 上位机（我们的控制律）          官方 SDK                            假电机 / 真电机
@@ -26,8 +26,10 @@
 
 ## 2 怎么建、怎么跑
 
+前置一步：**在本机配好 SDK 路径**——SDK（只读材料 `ReadOnly.d/unitree_actuator_sdk`）不在仓库里， 先在仓库根放一份 `local_paths.cmake`（`cp local_paths.cmake.example local_paths.cmake` 后填好；说明与优先级见该模板）。 没配时 CMake 会直接报"没给宇树官方电机 SDK 的路径"并列出三种给法。
+
 ```bash
-cd ..                       # 仓库根目录（有 pixi.toml；ReadOnly.d 与它同级）
+cd ..                       # 仓库根目录（有 pixi.toml）
 pixi run cmake -S @20260927_motor/cpp_part2 -B @20260927_motor/cpp_part2/build
 pixi run cmake --build @20260927_motor/cpp_part2/build
 

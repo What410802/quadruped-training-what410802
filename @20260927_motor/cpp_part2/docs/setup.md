@@ -48,7 +48,7 @@ cpp_part2/
 
 | 依赖 | 从哪来 | 说明 |
 |---|---|---|
-| 宇树电机 SDK | 与仓库根同级的 `ReadOnly.d/unitree_actuator_sdk`（**预编译** `.so` + 头文件） | 不重新编译 SDK；`-DUNITREE_SDK_DIR=<路径>` 可覆盖 |
+| 宇树电机 SDK | `git clone https://github.com/unitreerobotics/unitree_actuator_sdk`（BSD-3-Clause，本轮用 commit `5b79a42`；**预编译** `.so` + 头文件，不必重编）；本机放在哪里由仓库根的 `local_paths.cmake` 给（不入库） | 不重新编译 SDK；`-DUNITREE_SDK_DIR=<路径>` 可覆盖 |
 | g++ / CMake | 仓库根 `pixi.toml` 的 pixi 环境 | 不需要 apt 包、不需要 MuJoCo |
 | POSIX（PTY、ioctl） | 系统 | 只在 `--self-test` 与 `src/pty_serial_shim.c` 里用到 |
 
@@ -56,8 +56,10 @@ SDK 的 include 分两层（`crc/crc_ccitt.h` 按 `include/` 为根、`unitreeMo
 
 ## 3 构建（三条命令，细节）
 
+前置：本机的 SDK 路径要配好——`local_paths.cmake` 放在仓库根（模板 [`../../../local_paths.cmake.example`](../../../local_paths.cmake.example)，说明与优先级都在那里）。 没配时 CMake 会报错并列出三种给法（`-DUNITREE_SDK_DIR=` / 环境变量 / 那个文件）。
+
 ```bash
-cd ..                       # 仓库根目录（有 pixi.toml；ReadOnly.d 与它同级）
+cd ..                       # 仓库根目录（有 pixi.toml）
 pixi run cmake -S @20260927_motor/cpp_part2 -B @20260927_motor/cpp_part2/build
 pixi run cmake --build @20260927_motor/cpp_part2/build
 ```

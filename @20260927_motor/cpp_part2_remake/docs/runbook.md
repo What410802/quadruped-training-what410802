@@ -112,7 +112,7 @@ sudo $RL b1 $B --port /dev/ttyUSB0 --id 0
 例程是 `while(true)`、无斜坡、无异常处理（`dq = -6.28×N`，输出端 1 圈/s），用 `timeout` 掐表跑，**不要无人看管**：
 
 ```bash
-S=../ReadOnly.d/unitree_actuator_sdk             # 与本仓库根同级
+S=$(sed -n 's/^set(UNITREE_SDK_DIR "\(.*\)")$/\1/p' local_paths.cmake)   # 宇树 SDK：只读材料，路径从本机配置里读
 B0=@20260927_motor/cpp_part2_remake/build
 pixi run g++ -O2 -std=c++14 -I$S/include -I$S/include/unitreeMotor \
     $S/example/example_goM8010_6_motor.cpp -L$S/lib -lUnitreeMotorSDK_Linux64 \

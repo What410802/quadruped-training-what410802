@@ -179,6 +179,6 @@ cmd.q_ticks   = q_des_ticks − offset_ticks
   <https://oss-global-cdn.unitree.com/static/ba47968cb8b54cc0a602d672e51d15c3.pdf>
 * 官方产品页规格表（15 bit 编码器、1:6.33、23.7 N·m、30 rad/s、0.63895 N·m/A、4 Mbps、6000 Hz）：
   <https://www.unitree.com/cn/go1/motor/>
-* 官方 SDK（头文件注释、例程、`example_goM8010_6_motor.cpp` 的 `-6.28*N`）、本地副本 [`../../../../ReadOnly.d/unitree_actuator_sdk`](../../../../ReadOnly.d/unitree_actuator_sdk)（BSD-3-Clause）， 及其 `lib/libUnitreeMotorSDK_Linux64.so`（本轮实测对象）
+* 官方 SDK（头文件注释、例程、`example_goM8010_6_motor.cpp` 的 `-6.28*N`）、本地副本（只读材料 `ReadOnly.d/unitree_actuator_sdk`，BSD-3-Clause）， 及其 `lib/libUnitreeMotorSDK_Linux64.so`（本轮实测对象）
 * 讲义《关节电机培训》§2.3–§2.6（19:3、候选零点间距、认错零点）：[`../../docs/teaching-materials/motor.pdf.md`](../../docs/teaching-materials/motor.pdf.md)
 * 我们自己的实测：报文/CRC/定点标度（[`protocol.md`](protocol.md)）、S1 六次实跑（[`real.md`](real.md) §3.6）、 dry run 五种情形（tick 版：[`../output/terminal/motor-ctl-dryrun-20260929.txt`](../../output/terminal/motor-ctl-dryrun-20260929.txt)）

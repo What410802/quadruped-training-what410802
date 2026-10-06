@@ -1,10 +1,10 @@
 # AGENTS.md —— 面向 AI 助手的仓库规范（仓库记忆）
 
-> 这是**给 AI 助手看的**最小必要版规范；人向的完整约定在 [`docs/conventions.md`](docs/conventions.md)， 两者不重复：本文只写"助手每次动手前必须知道、且容易做错"的那些。 仓库内容（架构说明、实现思路、实测数据、学习记录）放各处的 Markdown，不放这里。
+> 这是**给 AI 助手看的简版**：每条尽量一句话，细则一律引到末尾的 `conventions §N`； **全量约定**在人向的 [`docs/conventions.md`](docs/conventions.md)，两边不重复—— 本文只写"助手每次动手前必须知道、且容易做错"的那些。 仓库内容（架构说明、实现思路、实测数据、学习记录）放各处的 Markdown，不放这里。
 
 ## 每次开始时
 
-1. 读 [`docs/conventions.md`](docs/conventions.md)（提交 / 文档 / 目录 / 环境 / 验证五节），再读**当前任务目录**的 `README.md`（入口）、`docs/status.md`（做到哪、下一步、阻滞项）与其 `docs/` 下的细节文档。
+1. 读 [`docs/conventions.md`](docs/conventions.md)（提交 / 文档 / 目录 / 环境 / 验证等七节），再读**当前任务目录**的 `README.md`（入口）、`docs/status.md`（做到哪、下一步、阻滞项）与其 `docs/` 下的细节文档。
 2. 判断改动落在哪一层：仓库 `docs/`（换个任务也成立）还是任务目录（只对这份模型/这次验收成立）—— 判定标准见 conventions §7；**同一句话只写一处，其他地方放飞指针**。
 3. 新建文件的命名与排版（两条最容易做错，详见 conventions §2/§3）：**程序 / 脚本及其目录用下划线，文档（`.md`）及其目录用连字符**，其余优先连字符；**Markdown 每段单行**（含列表项与引用块里的段落），不要按宽度硬折行。
 
@@ -19,13 +19,14 @@
 
 * 每段**单行**（不按宽度硬折行）；代码围栏内逐字节保持原样；小图可写 ASCII，规模大或需时序/甘特等专有表达时用 Mermaid。
 * 文档里出现的路径、目录树**必须与仓库实际一致**；移动/重命名文件时**全仓搜引用**并把对方改对。
+* 复现步骤**前面先写"先怎么准备"**（clone / 下载什么、`local_paths.cmake` 怎么配），解释只留一处——见 conventions §4。
 * 结论必须带**可复现命令**与**实测数字**；引用外部代码给 `文件:行`。
 * 文档改动后自检：`pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py <任务目录>` （断链 / 锚点 / 表格列数）。
 
 ## 代码与环境
 
 * C/C++ 一律 **4 空格、不用 Tab、`.clang-format` 说了算**（`ColumnLimit: 0` = 不自动折行）。
-* 环境只有仓库根 [`pixi.toml`](pixi.toml) 一个：用 `pixi run …`；**不写死绝对路径**， 外部只读资源按"与本仓库根同级"（如 `ReadOnly.d/unitree_actuator_sdk`）推算。
+* 环境只有仓库根 [`pixi.toml`](pixi.toml) 一个：用 `pixi run …`；不写死绝对路径，也不写 `../ReadOnly.d/…` 这类仓库外路径——见 conventions §4。
 * 改完代码/脚本要跑**对应的自检**并在文档里更新状态：C++ 侧用各任务的 `--self-test`（不接硬件就能跑）， Python 侧用 `scripts/agent_scripts/` 下的分析脚本。
 * 用外部代码/资料时保留来源说明（BSD-3-Clause 的宇树 SDK、Apache-2.0 的 MuJoCo 官方示例等）。
 

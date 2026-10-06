@@ -4,7 +4,7 @@
 
 ## 构建
 
-下面命令里的 `<仓库路径>` 都要换成**你自己的仓库根目录**（含 `pixi.toml` 与 `@20260927_motor/` 的那一级，例如 `/home/<用户名>/.../MyMonoRepo.d`）。
+下面命令里的 `<仓库路径>` 都要换成**你自己的仓库根目录**（含 `pixi.toml` 与 `@20260927_motor/` 的那一级，例如 `/home/<用户名>/.../MyMonoRepo.d`）。 另外先在本机配一次 SDK 路径：仓库根的 `local_paths.cmake`（`cp local_paths.cmake.example local_paths.cmake` 后填好，说明与优先级见该模板）； 不配时 CMake 会报错并列出三种给法。SDK 本身要自己拿（[`cpp_part2/docs/setup.md`](../cpp_part2/docs/setup.md) 有来源与 commit）。
 
 ```bash
 cd <仓库路径>                                        # 构建在仓库根做（pixi 环境按仓库根的 pixi.toml）
@@ -13,7 +13,7 @@ pixi run cmake --build @20260927_motor/cpp_part2_remake/build
 ```
 
 不需要宇树 SDK 的环境（只构建核心与测试）：给 cmake 加 `-DMOTOR_ENABLE_SDK=OFF`。
-SDK 默认按"与本仓库根同级的 `ReadOnly.d/unitree_actuator_sdk`"推算，可用 `-DMOTOR_SDK_DIR=<路径>` 覆盖。
+SDK 路径从仓库根的 `local_paths.cmake` 读（**不入库**，模板 `local_paths.cmake.example`，里面只写只读材料 `ReadOnly.d/unitree_actuator_sdk` 的位置），也可以用 `-DMOTOR_SDK_DIR=<路径>` / 环境变量覆盖。
 
 ## 运行
 

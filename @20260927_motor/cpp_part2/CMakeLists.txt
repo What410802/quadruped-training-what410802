@@ -2,11 +2,26 @@ cmake_minimum_required(VERSION 3.22)
 project(motor_real LANGUAGES C CXX)
 
 # 第三部分（实机）要用的东西：官方宇树电机 SDK（预编译 .so + 头文件）。
-# SDK 不在本仓库里（克隆到 ReadOnly.d/unitree_actuator_sdk，与本仓库根同级），默认按这个位置算**绝对路径**
-# （相对路径会被 CMake 当成相对源码目录解析，很容易找错），要换就传 -DUNITREE_SDK_DIR=<路径>。
-set(_kRepoRoot "${CMAKE_CURRENT_SOURCE_DIR}/../..")
-get_filename_component(_kSdkDefault "${_kRepoRoot}/../ReadOnly.d/unitree_actuator_sdk" ABSOLUTE)
-set(UNITREE_SDK_DIR "${_kSdkDefault}" CACHE PATH "宇树官方电机 SDK 目录")
+# SDK **不在本仓库里**（只读材料 ReadOnly.d/unitree_actuator_sdk）：路径来源，优先级从高到低：
+#   ① -DUNITREE_SDK_DIR=<路径>
+#   ② 环境变量 UNITREE_SDK_DIR
+#   ③ 仓库根的 local_paths.cmake（**不入库**，模板见 local_paths.cmake.example）
+# 仓库同步内容里刻意不出现"仓库之外的路径"（约定见 docs/conventions.md §4）。
+if(NOT UNITREE_SDK_DIR)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/../../local_paths.cmake" OPTIONAL)
+endif()
+if(NOT UNITREE_SDK_DIR AND DEFINED ENV{UNITREE_SDK_DIR})
+    set(UNITREE_SDK_DIR "$ENV{UNITREE_SDK_DIR}")
+endif()
+set(UNITREE_SDK_DIR "${UNITREE_SDK_DIR}" CACHE PATH "宇树官方电机 SDK 目录（见仓库根 local_paths.cmake）")
+if(NOT UNITREE_SDK_DIR)
+    message(FATAL_ERROR
+        "没给宇树官方电机 SDK 的路径。三种给法（任选）：\n"
+        "  · 仓库根放一份 local_paths.cmake（cp local_paths.cmake.example local_paths.cmake 后填好）\n"
+        "  · cmake ... -DUNITREE_SDK_DIR=<只读材料 ReadOnly.d/unitree_actuator_sdk 的路径>\n"
+        "  · export UNITREE_SDK_DIR=<同上>")
+endif()
+get_filename_component(UNITREE_SDK_DIR "${UNITREE_SDK_DIR}" ABSOLUTE)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

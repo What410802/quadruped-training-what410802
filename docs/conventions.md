@@ -39,7 +39,10 @@
 ## 4. 环境与依赖
 
 - Python / C++ / MuJoCo 的依赖都在根 `pixi.toml` 里声明，用 `pixi run …` 执行；不把环境相关参数全部硬编码（验收规范 §9）。
+- **复现指令要与"本机路径"机制同步**：凡是用到仓库里没有的东西（[`../local_paths.cmake.example`](../local_paths.cmake.example) 里的本机路径、只读材料的位置），复现步骤**前面必须先写一句"先怎么准备"**（例如 `cp local_paths.cmake.example local_paths.cmake` 后填好），并让它与命令里用的变量一致（命令里用 `$(sed -n 's/^set(UNITREE_SDK_DIR "\(.*\)")$/\1/p' local_paths.cmake)` 取值，不要在文档里再写第二处路径）。**解释只写一处**：完整机制放在 `local_paths.cmake.example` 里，各 README / 任务文档只放一行指针（conventions §7 的单一信息源原则同样适用于这里）。
+- **要复现者自己准备的外部资源，必须写明来源**：上游仓库给 `git clone <URL>`（重要时补 commit / 版本，如 `unitree_mujoco` 的 `1eb6642`），官方发布包给下载页与版本（如 MuJoCo **3.12.0** 的 release 包）。不能默认读者手上有那份只读材料，也不能只写"按上游说明来"——命令要能照着敲通。
 - **路径与可移植性**：代码 / 脚本 / 配置里**不写死绝对路径**（尤其不要写本机家目录，如 `/home/<用户名>/…`）——它会泄漏本机目录布局、换台机器就复现不了，也是验收时的冗余信息；用相对路径、环境变量或命令行参数。文档里的**示例命令**可以用 `/tmp/…`（临时产物）或"从仓库根执行"的相对路径；确实要展示某台机器上的实际路径时，写明它只是示例。
+- **仓库之外的路径一律不写进同步内容**（文档、注释、命令、配置、代码都算）：`../ReadOnly.d/…`、`../../../Replicate.d/…`、`/home/…/Replicate.d/…` 这类写法既泄漏本机目录布局，别人 clone 后也复现不了（那些材料根本不在仓库里）。引用只读材料（`ReadOnly.d` 下的任务书 / 讲义 / `unitree_actuator_sdk` / `unitree_mujoco` / `quadruped_control` 等）**只写名字或相关内容**，例如 `` `ros2任务.pdf.md`（本机只读材料） ``、`` `ReadOnly.d/unitree_actuator_sdk` ``、`` `quadruped_control/configs/input/gamepads.yaml`（只读材料里） ``——它是只读的、不进版本库，所以**不存在双向链接要不要维护的问题**，写名字就够了；命令里确实需要那个路径时用变量或占位符（`$UNITREE_SDK_DIR`、`<只读材料里的 unitree_mujoco>`）。**程序真的要用仓库之外的资源时**（如实体电机工程要链宇树 SDK），路径由**本机、不入库**的 [`local_paths.cmake`](../local_paths.cmake.example) 提供（模板 `local_paths.cmake.example` 入库，真实文件在 `.gitignore` 里），并在命令行 `-D<变量>=<路径>` 与环境变量之上——仓库里只留这个机制，不留任何具体路径。
 - 版本一致性优先：C++ 与 Python 用同一个 MuJoCo 版本（当前 3.12.0）。
 - 必须在进程早期生效的环境变量写进 `[activation.env]`（如 `MUJOCO_GL`）。
 - 环境选择的理由集中在 [`pitfalls/environment.md`](pitfalls/environment.md)，任务 README 只写怎么用。

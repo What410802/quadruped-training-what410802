@@ -1,6 +1,6 @@
 # 子任务项二（实体电机控制）：需求、设计与伪代码（v2）
 
-> 本目录是子任务项二（实体电机控制）的**正式实现**：功能目标（任务书四条 + 提前保护 + 插值）已完成并验收通过（2026-10-03）；按只读参考工程 `../../../../ReadOnly.d/quadruped_control/` 的分层、命名与文档规范组织，并修掉历史版本（[`cpp_part2/`](../../cpp_part2/README.md)，仅作对照）在无硬件阶段暴露的缺陷。
+> 本目录是子任务项二（实体电机控制）的**正式实现**：功能目标（任务书四条 + 提前保护 + 插值）已完成并验收通过（2026-10-03）；按只读参考工程 `quadruped_control/`（只读材料 `ReadOnly.d` 下）的分层、命名与文档规范组织，并修掉历史版本（[`cpp_part2/`](../../cpp_part2/README.md)，仅作对照）在无硬件阶段暴露的缺陷。
 > 本文是**当前有效的设计文档**（v2）：需求、符号约定、设计、伪代码、决策、测试矩阵与里程碑，内容即"标准"，不再按"改了什么"组织。
 > 相对 v1（[`v1/design.md`](v1/design.md)）的差异集中在五处：① 新增 §2.6 **符号与变量约定**（唯一权威）；② 明确**转子零点 / 软件零点**两个概念与"整格不可判"边界（§2.5、§3.2）；③ ④ 的验收改为 `check` / `fix`（半格前提、模糊即停，§3.4–§3.6、§5）；④ 标定改为**启动参数化**（`--pose-ref` 等），不落文件（D13）；⑤ 手动转动**允许范围**与红黄绿现场规则（§5.2）。
 
@@ -84,7 +84,7 @@
 |---|---|---|
 | E1 | 代码风格按参考工程：C++17、Allman、100 列、`snake_case` 函数 / `kPascalCase` 常量、中文 `@file/@brief` 文件头 | 工程目录放一份自己的 `.clang-format` |
 | E2 | 依赖方向单向：`core` ← `backends` ← `apps`；`core` 不暴露 SDK 类型 | 参考工程 AGENTS.md 的依赖边界 |
-| E3 | 不写死绝对路径；SDK 路径可配（默认按"与本仓库根同级的 `ReadOnly.d/`"推算） | 仓库约定 §4 |
+| E3 | 不写死绝对路径；SDK 路径可配（从本机 `local_paths.cmake` 读，命令行/环境变量优先） | 仓库约定 §4 |
 | E4 | 编译产物 / 缓存不入库；文档单一权威、README 只做入口 | 仓库约定 §2/§4 |
 | E5 | 测试用零第三方框架，接入 CTest | 参考工程做法 |
 
@@ -176,7 +176,7 @@ offset + pose_ref = q_default − Δθ          # Δθ = θ_Stand − θ_Rest（
 - **为什么 `offset` 里必然含 $-\rho_R$**：`raw` 是"从**上电那一刻**起累计的转子角"，而我们要让**物理上的 Stand** 落在 $q = 0$；上电那一刻的相位正是 $\rho_R$，所以 `offset` 必须把它抵消掉。
 - **缺一个会怎样**：只给 `--offset-deg` ⇒ 命令与显示都对，但某关节错一格时**检查不出来**（`move 0` 静默偏 $L$）；只给 `--pose-ref` ⇒ 能修跳格，但 $q = 0$ 落在**转子零点**而不是 Stand（整体偏 $\Delta\theta$）。
 - **精度要求很松**：`pose_ref` 只需让 $k$ 判对（±半格 $= \pm 28.4211°$）；$\varepsilon$ 落在干净带（$\pm T_w$）内即可，不影响 `fix` 结果。
-- 参考工程的原型：[REAL_HARDWARE_BASELINE.md](../../../../ReadOnly.d/quadruped_control/docs/real_migration/REAL_HARDWARE_BASELINE.md) 第 7 节的 `P0 / C / S`（我们的"首帧 `raw` / `pose-ref` / 标定 Stand 读数"），其第 9 节的实测数据也印证了两量纲：`creep`（≈ 我们的 `pose-ref`）全在一圈内，`straight`（≈ 我们的 `S`）最大到 $\pm 5.2$ 转子圈。
+- 参考工程的原型：`REAL_HARDWARE_BASELINE.md`（只读参考工程 `ReadOnly.d/quadruped_control/docs/real_migration/` 下） 第 7 节的 `P0 / C / S`（我们的"首帧 `raw` / `pose-ref` / 标定 Stand 读数"），其第 9 节的实测数据也印证了两量纲：`creep`（≈ 我们的 `pose-ref`）全在一圈内，`straight`（≈ 我们的 `S`）最大到 $\pm 5.2$ 转子圈。
 
 **换算（唯一入口，别处不再重复）**：
 
@@ -425,7 +425,7 @@ Handshake 的出口（D5 / D20 的落地）：首帧锚定后，若给了 `--pos
 
 - 板子侧：一上电就把整数圈清零，只从**自己选的 datum** 报 $[0, C)$，会话内是里程计——**板子永远不知道我们账本的原点在哪**，也不会替我们记住。
 - 我们侧：下发的目标是**绝对计数** `p_des`。若账本原点与板子本次上电的 datum 差 $k_b$ 个整转子圈而不补，`q` 会整体差 $k_bC$，`p_des` 随之偏 $k_b$ 格，板子按最短弧去追 ⇒ 力矩冲击（旧版实测 52.5 N·m；这正是 P5"账本未对齐只发零力矩"的来由）。
-- `turn_base` 就是补这个"整圈差"：`pos = raw + turn_base`。它是**运行时状态**，不是标定：标定是 `offset`（可复现、可持久），圈基准只在会话内有意义——参考工程的同一结论见 [REAL_ROBOT_BACKEND_MIGRATION_REFERENCE.md](../../../../ReadOnly.d/quadruped_control/docs/real_migration/REAL_ROBOT_BACKEND_MIGRATION_REFERENCE.md) §2："启动多圈补偿是运行时状态，不能与持久标定合并成一个不透明 `zero_offset`"。
+- `turn_base` 就是补这个"整圈差"：`pos = raw + turn_base`。它是**运行时状态**，不是标定：标定是 `offset`（可复现、可持久），圈基准只在会话内有意义——参考工程的同一结论见 `REAL_ROBOT_BACKEND_MIGRATION_REFERENCE.md`（只读参考工程 `ReadOnly.d/quadruped_control/docs/real_migration/` 下） §2："启动多圈补偿是运行时状态，不能与持久标定合并成一个不透明 `zero_offset`"。
 - 唯一会让它非 0 的真实场景：**板子断电、我们的程序还在**（M3 离线恢复）。算例：程序运行中已累计 `raw` = 622592 计数（$= 19C$ $= 3$ 整输出圈），此时板子掉电；重新上电、位置未动，板子报 `raw` = 0（$622592 \bmod C$）。`reanchor` 按"位置没动"算出 $k_b = 19$ ⇒ `turn_base` = 622592 ⇒ `q` 继续 = 622592：位置连续、目标不动、电机不动（公式与代码见本节上面的代码块；若断电期间确实动过，那部分只会以 $\lvert\text{residual}\rvert \le C/2$ 报告，见下面的"诚实说法"）。若这里错写成 0，`q` 会从 622592 突降到 0，此后任何 `move` 都会让板子按最短弧冲一整段。
 - 改动 `turn_base` 时，目标与插值位置必须**同步平移同样量**（同 I3 的做法），于是 `p_des` 不变、物理目标不动。
 - 验收主线（程序与板子同时上电、中途不拔板子）里它**恒为 0**，所以现场看不到它变化——这是正常的：它是 M3 才启用的状态量；M1 里它只出现在 `p_des` 的公式中，防止恢复路径写错。
@@ -780,7 +780,7 @@ send(cmd, &fb):
 | D10 | 角度显示与输入单位 | ✅ 显示"±圈数 ±<360°"（截断式，见 §3.8）；输入支持 `deg` / `rad` / `r` / `rev` / `tick` 后缀、默认 `deg` | `tick` = 转子计数；不实现表达式运算 |
 | D11 | 离线仿真的形态 | ✅ **修订（2026-09-30）**：只实施**实验台**一条通道（`sim/` 模型 + `wire/` 编解码 + `apps/motor_sim` + `tools/pty_shim`，双终端人工演练）；进程内确定性通道（M2a）**暂不实施**，记为可选思路。理由：功能被实验台覆盖；正确性以定性为准、不依赖严格时序；测试总时长可控 | 报文层一致性由实验台另一头的**真实 SDK** + T13 往返测试保障；将来若需要严格确定性回归，再按 §3.6.3 落地 M2a |
 | D12 | ③ 的"零点正向偏移 30°"语义 | ✅ 采用"移动零点"（任务书字面）：`zero move +30deg` 把软件零点沿正方向移 30° ⇒ 标记点读数 **−30.000°**、同一个角度命令的落点比标定前多 30°；`offset add` 命令取消，`offset set` 保留为"直接设 offset 变量"的高级命令 | 依据：任务书字面 + 实机数据（旧实现 `offset add 30` 让标记点读数 +30.000°，即零点沿负方向移动，与字面相反）；内部公式 `q = pos + offset` 不变（讲义 §2.5） |
-| D13 | 标定的持久化形态 | ✅ **参数化，不落文件**：`--offset-deg`（已有）+ `--pose-ref`（新）。理由：① 单电机单会话，不需要跨机复用；② 参数在命令行与日志里，比"陈旧的标定文件"可审计（参考工程吃过"缺失静默按 0 / 部分读入"的亏，见 [REAL_HARDWARE_BASELINE.md](../../../../ReadOnly.d/quadruped_control/docs/real_migration/REAL_HARDWARE_BASELINE.md) §7.3 与 [REAL_ROBOT_BACKEND_MIGRATION_REFERENCE.md](../../../../ReadOnly.d/quadruped_control/docs/real_migration/REAL_ROBOT_BACKEND_MIGRATION_REFERENCE.md) §2）；③ 文件化还要求严格解析 / 全有或全无 / 拒绝部分读入 | 备选：文件方案（严格解析 + `[calib]` / `[session]` 两段）放附录 A；可选增强：退出时打印一行可直接粘贴的参数 |
+| D13 | 标定的持久化形态 | ✅ **参数化，不落文件**：`--offset-deg`（已有）+ `--pose-ref`（新）。理由：① 单电机单会话，不需要跨机复用；② 参数在命令行与日志里，比"陈旧的标定文件"可审计（参考工程吃过"缺失静默按 0 / 部分读入"的亏，见 `REAL_HARDWARE_BASELINE.md`（只读参考工程 `ReadOnly.d/quadruped_control/docs/real_migration/` 下） §7.3 与 `REAL_ROBOT_BACKEND_MIGRATION_REFERENCE.md`（只读参考工程 `ReadOnly.d/quadruped_control/docs/real_migration/` 下） §2）；③ 文件化还要求严格解析 / 全有或全无 / 拒绝部分读入 | 备选：文件方案（严格解析 + `[calib]` / `[session]` 两段）放附录 A；可选增强：退出时打印一行可直接粘贴的参数 |
 | D14 | 手动转动允许范围 | ✅ 断电净位移 $\lvert\delta\rvert < H$（建议 $\le 20°$），且**不得净转整输出圈**；带电（`free`）手转不受限；断电重上电后必须先 `check` 再动 | 依据：§3.2 边界事实 4（$\lvert\delta\rvert < H$ 时 $r = \delta$、$k = -j$）；超出时解释翻转（反例见 §5.3） |
 | D15 | `fix` 的适用前提 | ✅ 只在 $\lvert\delta\rvert < H$ 时做区间重对齐；打印前提与免责句；二义 / 超半格 / 无法归因时拒绝（模糊即停） | 与 D5 同一原则；`fix` 不声称"已确认姿态正确"（P7） |
 | D16 | ④ 的两档演示 | ✅ ④a 带电 `free` 手转跨标记点前后（必演，零风险）；④b 断电重上电 + `check` / `fix`（必演，任务书 ④ 的真考点）；④c "不 `fix` 直接 `move`"反例（可选） | 步骤卡见 §5.3 |
@@ -952,7 +952,7 @@ send(cmd, &fb):
 
 ## 附录 A：可选（不做也能验收）
 
-**A.1 文件化标定**：`profile` 文件含 `version / motor_id / ratio / recorded_at / pose_ref_raw / offset / mark`，严格解析、**全有或全无**；缺失或损坏时打印"未标定"并**不得静默按 0 代替**（参考工程 [REAL_HARDWARE_BASELINE.md](../../../../ReadOnly.d/quadruped_control/docs/real_migration/REAL_HARDWARE_BASELINE.md) §7.3 的教训：缺失文件保留零初始化值、格式错误留下部分读入值）。`[session]` 快照（`turn_base / last_raw / last_q`）只作**诊断证据**，恢复必须由 `restore` 显式发出（`restore` 只在"电机没断电、只是程序重启"时精确）。本任务不做（D13）。
+**A.1 文件化标定**：`profile` 文件含 `version / motor_id / ratio / recorded_at / pose_ref_raw / offset / mark`，严格解析、**全有或全无**；缺失或损坏时打印"未标定"并**不得静默按 0 代替**（参考工程 `REAL_HARDWARE_BASELINE.md`（只读参考工程 `ReadOnly.d/quadruped_control/docs/real_migration/` 下） §7.3 的教训：缺失文件保留零初始化值、格式错误留下部分读入值）。`[session]` 快照（`turn_base / last_raw / last_q`）只作**诊断证据**，恢复必须由 `restore` 显式发出（`restore` 只在"电机没断电、只是程序重启"时精确）。本任务不做（D13）。
 
 **A.2 `predict`**：打印 $n = 0..3$ 的漂移表（$0 / +18.9474° / -18.9474° / 0$），用于说明 §5.4 表 B 的"整圈现象"（教学 / 现场话术）。
 

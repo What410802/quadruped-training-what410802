@@ -24,7 +24,7 @@
 ### 1.1 无硬件也能先验的东西（已做）
 
 ```bash
-cd .. && S=../ReadOnly.d/unitree_actuator_sdk
+cd .. && S=$(sed -n 's/^set(UNITREE_SDK_DIR "\(.*\)")$/\1/p' local_paths.cmake)   # 宇树 SDK：只读材料，路径从本机配置里读
 gcc -O2 -fPIC -shared -o /tmp/pty_serial_shim.so @20260927_motor/cpp_part2/src/pty_serial_shim.c -ldl
 g++ -O2 -std=c++14 -I$S/include -I$S/include/unitreeMotor -I@20260927_motor/cpp_part2/include @20260927_motor/cpp_part2/apps/serial_probe.cpp \
     -L$S/lib -lUnitreeMotorSDK_Linux64 -Wl,-rpath,"$PWD/$S/lib" -pthread -o /tmp/serial_probe

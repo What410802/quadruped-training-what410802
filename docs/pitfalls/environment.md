@@ -176,21 +176,30 @@ curl -s -o /dev/null -m 10 -w '%{http_code} %{speed_download}\n' "$FILE_URL"
 - **被动 viewer 需要真实窗口**：Python 侧得 `MUJOCO_GL=glfw`（主环境默认是 `egl`，无窗口）；本机 Wayland 会话下会有一条 `GLFWError: (65548) Wayland: The platform does not provide the window position` 警告，不影响显示。
 - **退出阶段会段错误**：Python 侧两次复现，`viewer.close()` 之后进程以 `segmentation fault (core dumped)` 收场——上游退出路径本身缺同步，不影响前面的运行。
 
-复现时要敲的关键命令（在 `Replicate.d/unitree_mujoco/{python,cpp}` 下执行，两个环境各自 `pixi install` 一次）：
+复现时要敲的关键命令（在 `Replicate.d/unitree_mujoco/{python,cpp}` 下执行，两个环境各自 `pixi install` 一次）。下面是**本机实际敲过的命令**，只把两处仓库之外的只读资源换成了变量（`REF` = 只读材料里的 `unitree_mujoco`，`SDK`/`MJ` = 复现环境里的 SDK 与官方 MuJoCo 包），具体路径按自己的机器填，仓库里不写：
+
+三样东西**都不在仓库里，要自己准备**（别指望哪来的现成副本）：
+
+| 变量 | 是什么 | 怎么拿 |
+|---|---|---|
+| `REF` | 上游仿真器源码 | `git clone https://github.com/unitreerobotics/unitree_mujoco`（BSD-3-Clause；本轮用 commit `1eb6642`） |
+| `SDK` | `unitree_sdk2`（DDS 通信库） | `git clone https://github.com/unitreerobotics/unitree_sdk2`（自带上游预编译 `lib/x86_64/libunitree_sdk2.a`，**不用**自己编 Cyclone DDS） |
+| `MJ` | 官方 MuJoCo **3.12.0** 发布包 | 到 <https://github.com/google-deepmind/mujoco/releases> 下 `mujoco-3.12.0-linux-x86_64.tar.gz` 解开即可（conda 的 `mujoco` 只有头文件，编不了上游 `simulate/`） |
 
 ```bash
+REF=<unitree_mujoco 的路径>
 # Python：仿真器（探针在启动器里，会打印线程清单与 LowCmd 回调所在线程）
 pixi run python run_sim.py                 # 加 --seconds 10 可自动关窗退出
 # 控制器另开终端（回车开始，无限循环）
-printf '\n' | pixi run python ../../../ReadOnly.d/unitree_mujoco/example/python/stand_go2.py
+printf '\n' | pixi run python "$REF/example/python/stand_go2.py"
 
 # C++：编上游仿真器与控制器（SDK 安装前缀与官方 MuJoCo 包按上面两条准备）
-SDK=/home/bis/BiS.d/Code.d/RoboCon/Replicate.d/unitree_sdk2 ; MJ=/home/bis/BiS.d/Code.d/RoboCon/Replicate.d/mujoco-3.12.0
-cmake -S ../../../ReadOnly.d/unitree_mujoco/simulate -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+SDK=<unitree_sdk2 的路径> ; MJ=<官方 MuJoCo 3.12.0 发布包的路径>
+cmake -S "$REF/simulate" -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$SDK/lib/cmake;$CONDA_PREFIX" \
   -DCMAKE_EXE_LINKER_FLAGS="-L$CONDA_PREFIX/lib -L$MJ/lib -L$SDK/lib -Wl,-rpath,$CONDA_PREFIX/lib -Wl,-rpath,$MJ/lib -Wl,-rpath,$SDK/lib"
 cmake --build build --target unitree_mujoco -j8
-cmake -S ../../../ReadOnly.d/unitree_mujoco/example/cpp -B build-stand -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$SDK/lib/cmake;$CONDA_PREFIX"
+cmake -S "$REF/example/cpp" -B build-stand -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$SDK/lib/cmake;$CONDA_PREFIX"
 cmake --build build-stand -j8
 # 跑：仿真器（带官方 Simulate 界面）+ 控制器（另开终端，回车开始）
 LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$SDK/lib:$MJ/lib" ./build/unitree_mujoco
