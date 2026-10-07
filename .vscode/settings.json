@@ -14,4 +14,8 @@
     },
     "python-envs.defaultEnvManager": "renan-r-santos.pixi-code:pixi",
     "python-envs.defaultPackageManager": "renan-r-santos.pixi-code:pixi",
+    "cSpell.words": [
+        "evdev",
+        "rclpy"
+    ],
 }

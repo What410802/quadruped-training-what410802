@@ -64,7 +64,7 @@ RPATH 是**本机绝对路径**，因此：
 
 - 不再需要每开一个终端 `source /opt/ros/humble/setup.bash`：`pixi run …` / `pixi shell` 自动进入环境；
 - 不再需要 `sudo apt install`：装 / 删 / 换版本都改 `pixi.toml`（RoboStack + conda-forge），环境在 `.pixi/envs/default`，不碰系统；
-- 工作空间的 `install/setup.sh` 也省了：根 `pixi.toml` 的 `[feature.ros2.activation]` 在环境激活时调用**仓库级** [`../../scripts/activate_ros2_workspaces.sh`](../../scripts/activate_ros2_workspaces.sh)，它**自动发现**仓库里所有 `@<任务>/**/install/setup.sh` 并依次 source（没构建过的跳过），`colcon build` 之后自动接上（官方 robotics 文档的 `[activation] scripts` 就是同样做法）；脚本放在仓库根而不是某个任务目录里，是为了让根 `pixi.toml` 不写任务级路径——新增 ROS 任务再也不用改根文件。
+- 工作空间的 `install/setup.sh` 也省了：根 `pixi.toml` 的 `[activation] scripts`（当时还叫 `[feature.ros2.activation]`，现在只有单环境）在环境激活时调用**仓库级** [`../../scripts/activate_ros2_workspaces.sh`](../../scripts/activate_ros2_workspaces.sh)，它**自动发现**仓库里所有 `@<任务>/**/install/setup.sh` 并依次 source（没构建过的跳过），`colcon build` 之后自动接上（官方 robotics 文档的 `[activation] scripts` 就是同样做法）；脚本放在仓库根而不是某个任务目录里，是为了让根 `pixi.toml` 不写任务级路径——新增 ROS 任务再也不用改根文件。
 - 常用操作固化成任务：`pixi run ros2-build`——脚本**自动发现**仓库里所有 colcon 工作空间并逐个 `colcon build --symlink-install`（根 `pixi.toml` 里因此没有任务级路径）；只编一个时 `cd <工作空间> && pixi run colcon build --symlink-install`；
 - 依赖可复现：`pixi.lock` 固化到具体构建号，换机器/换人重建结果一致；**只有一个环境**，MuJoCo 与 ROS 2 共用同一套 Python/编译器，不会出现两份库版本漂移。
 

@@ -270,3 +270,28 @@ FormatStyle: file
 **一句话结论**：clangd = 什么都不配，只要目录叫 `build/` 且不设 `--compile-commands-dir`；cpptools = 必须在 `c_cpp_properties.json` 里把所有子项目的数据库**列成数组**。
 
 **本项目的实际配置**：conda／pixi 工具链特有的问题（`--query-driver` 要写在工作区文件里、clangd 找不到 conda 头文件）与最终采用的写法，见 [`../pitfalls/environment.md`](../pitfalls/environment.md) 的「C++ 工具链（pixi 提供）与编辑器提示」一节。 C++ 语法侧的问答笔记见 [`cpp-cmake.md`](cpp-cmake.md)；文档索引见 [`../../README.md`](../../README.md)。
+
+## 附：`viewer.hpp` 报 `'mujoco/mujoco.h' file not found` 的成因与修法（2026-10-06 实测）
+
+现象：`compile_commands.json` 明明存在、命令行构建也过，但 IDE 里 MuJoCo / GLFW 的头文件全红。
+
+**成因**：MuJoCo 与 GLFW 的头文件在 `$CONDA_PREFIX/include` 下，而这份路径**不在编译数据库里** —— 命令行构建能找到它，是因为 conda 的 g++ 把 `$CONDA_PREFIX/include` 当作**内置搜索路径**，而内置路径不会写进 `compile_commands.json`。clangd 不知道 conda 工具链的内置路径（它默认按系统 GCC/clang 的路径解析），于是 `'mujoco/mujoco.h' file not found`。复现（不需要 IDE）：
+
+```bash
+clangd --check=@20261005_ros2/ws/src/quadruped_ros2/src/sim_node.cpp \
+       --compile-commands-dir=@20261005_ros2/ws/build/quadruped_ros2
+# 修复前：68 个错误，第一条就是 pp_file_not_found 'mujoco/mujoco.h'
+# 修复后：0 个编译/检查诊断（只剩若干 code-action "tweak … FAIL" 的日志，那不是代码问题）
+```
+
+**修法（已实施，build 侧）**：在该包的 `CMakeLists.txt` 里把环境前缀显式加进编译命令：
+
+```cmake
+if(DEFINED ENV{CONDA_PREFIX})
+    target_compile_options(sim_node PRIVATE "-I$ENV{CONDA_PREFIX}/include")
+endif()
+```
+
+两个坑：① **不能用 `target_include_directories`**——CMake 会把"编译器已内置的目录"过滤掉（conda g++ 正好把它报成内置目录），那样写等于没写，实测 `compile_commands.json` 里依然没有；② 用 `target_compile_options` 直接传 `-I` 才不会被过滤。
+
+**头文件的残留情况**：clangd 对**源文件**零诊断 ✓；但对"不在数据库里的头文件"（`viewer.hpp`）它要**推断**编译命令，某些版本（本机 clangd 14 实测）会在这一步丢掉那条 `-I`，头文件里仍报 include 找不到。这种情形用 IDE 侧的 `--query-driver` 兜底：**glob 必须匹配编译数据库里出现的那个编译器路径**（是 `…/.pixi/envs/default/bin/c++`，不是 `…/bin/x86_64-conda-linux-gnu-g++`）——写成 `--query-driver=**/bin/*` 最稳。同时提醒：那条参数现在放在**不入库**的 `RoboCon.code-workspace` 里，换个窗口就失效；要稳就写进入库的 `.vscode/settings.json` 的 `clangd.arguments`。

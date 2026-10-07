@@ -11,6 +11,7 @@
 | 2026-09-22 | C++ / OOP / CMake 基础 | [`@20260922_robot_cpp_training/robot_cpp_oop_cmake_training/`](@20260922_robot_cpp_training/robot_cpp_oop_cmake_training/) | [`验收.md`](@20260922_robot_cpp_training/验收.md) |
 | 2026-09-23 | URDF 转换、MuJoCo 仿真（含 C++ 复刻） | [`@20260923_mujoco/`](@20260923_mujoco/) | [`README.md`](@20260923_mujoco/README.md) |
 | 2026-09-27 | 关节电机：MIT 混合控制 + 状态机（阻尼/站立）仿真 | [`@20260927_motor/`](@20260927_motor/) | [`README.md`](@20260927_motor/README.md) |
+| 2026-10-05 | ROS 2：自定义消息 + 控制器/仿真/手柄三节点 + launch | [`@20261005_ros2/`](@20261005_ros2/) | [`README.md`](@20261005_ros2/README.md)（教程工作区在同期的 [`@20261005_ros2_example/`](@20261005_ros2_example/README.md)） |
 
 ## 快速开始
 
@@ -20,19 +21,21 @@
 # ① 装 pixi（装完重开终端或 source 一下 shell 配置以更新 PATH；以后升级用 pixi self-update）
 curl -fsSL https://pixi.sh/install.sh | sh
 
-# ② 在仓库根目录还原环境：Python + MuJoCo（含 C++ 头文件/库/CMake 配置）+ C++ 工具链
+# ② 在仓库根目录还原环境：Python + MuJoCo（含 C++ 头文件/库/CMake 配置）+ C++ 工具链 + ROS 2 Humble
 cd <本仓库根目录>            # 有 pixi.toml 的地方
 pixi install
 
 # ③ 验证：版本号，以及 C++ 侧要用的头文件与 CMake 配置都在
 pixi run python -c "import mujoco; print(mujoco.__version__)"                        # 期望 3.12.0
+pixi run printenv ROS_DISTRO                                                        # 期望 humble
+pixi run ros2 pkg list | wc -l                                                      # 期望 190+（含本仓库的包）
 pixi run bash -lc 'ls "$CONDA_PREFIX/include/mujoco/mujoco.h" "$CONDA_PREFIX/lib/cmake/mujoco"'
 
 # ④ 跑一个例子：平地场景零力矩仿真（开窗口，需显示服务；仓库默认 egl 无窗口）
 pixi run env MUJOCO_GL=glfw python @20260923_mujoco/scripts/simulate.py
 ```
 
-各任务的完整运行方式（脚本参数、C++ 构建与运行、产物位置）见对应任务文档；为什么这么搭环境、踩过哪些坑见 [`docs/pitfalls/environment.md`](docs/pitfalls/environment.md)。
+各任务的完整运行方式（脚本参数、C++ 构建与运行、产物位置）见对应任务文档；为什么这么搭环境、踩过哪些坑见 [`docs/pitfalls/environment.md`](docs/pitfalls/environment.md)；ROS 2 与 MuJoCo **合用一个环境**的理由、版本口径、从零重建与稳定通道迁移记录见 [`@20261005_ros2/docs/environment.md`](@20261005_ros2/docs/environment.md)。
 
 ## 文档索引
 
@@ -48,6 +51,9 @@ pixi run env MUJOCO_GL=glfw python @20260923_mujoco/scripts/simulate.py
 | [`runtime-timing.md`](docs/learn/runtime-timing.md) | 同上，展开到进程 / 线程 / 通信的时序细节；§11 是五种方案的每帧阻滞对比 |
 | [`cpp-cmake.md`](docs/learn/cpp-cmake.md) | C++ 与 CMake 问答笔记（`virtual` / `explicit` / `override`、`const` 成员函数、`= delete` 特殊成员函数与 Rule of Three、头文件扩展名、类内 vs 类外定义、CMake target） |
 | [`cmake-intellisense.md`](docs/learn/cmake-intellisense.md) | VSCode C++ / CMake 智能提示配置（语言模式、clangd / cpptools、编译数据库） |
+| [`ros2-graph-and-clock.md`](docs/learn/ros2-graph-and-clock.md) | ROS 2 两件小事：`/parameter_events` 为什么在 `rqt_graph` 里"有的节点只有去程"（图缓存假象，权威判断用 `ros2 topic info --verbose`）、以及 `/clock` + `use_sim_time` 的机制、好处、四个坑与本任务的取舍 |
+| [`mujoco-viewer-keys.md`](docs/learn/mujoco-viewer-keys.md) | MuJoCo 官方窗口的**全量按键与显示开关**：12 个框架按键（含 `F6`/`F7`、`-`/`=` 速度 31 档、`[`/`]` 相机、Tab 收面板）、**42 个显示开关快捷键**（`mjVISSTRING`/`mjRNDSTRING` 两张表，含默认开关状态）、鼠标映射与扰动；并给出移植到自建窗口的**代价分档**（显示那组 ~55 行、扰动 ~100 行、面板类不建议）；**显示那组已实施**——我们的窗口现在有 33 个显示开关快捷键、`F6`/`F7`/`Home`、暂停单步与 31 档速度，键位是数据表（`kRemap` 一行可改） |
+| [`ros2-params-and-launch.md`](docs/learn/ros2-params-and-launch.md) | ROS 2 的 launch 参数 / 节点参数 / 命令行参数：两套机制与五个名字、值怎么流（Mermaid）、三个坑、优先级；**核对版**——更正了「launch 把 parameters 写成临时文件后用 `--params-file` 传」这一处机制细节，并补了本仓库的实测证据 |
 
 **踩坑记录（`docs/pitfalls/`）**
 

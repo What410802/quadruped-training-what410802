@@ -312,6 +312,8 @@ C++ 侧同一条规则：`cpp_task2/src/record.h` 的 `OffscreenRecorder` 也在
 
 ### 6.9 官方 `Simulate` 界面的两个坑（`Load` 的顺序、程序化退出）
 
+官方窗口的**按键与显示开关全量映射**（谁绑了哪个键、默认开不开、搬到自建窗口要多少行）另见 [`mujoco-viewer-keys.md`](mujoco-viewer-keys.md)。
+
 用 C++ 调 MuJoCo 自带的界面库（`mujoco::libmujoco_simulate`，即 `mj::Simulate` + `mj::GlfwAdapter`）时踩到的两条， 两个任务都撞过（[`../../@20260927_motor/cpp/docs/essential.md`](../../@20260927_motor/cpp/docs/essential.md) §5 与 [`../../@20260923_mujoco/docs/cpp.md`](../../@20260923_mujoco/docs/cpp.md) §3）：
 
 - **`Simulate::Load()` 会阻塞等渲染线程来接模型**（内部条件变量 `cond_loadrequest`），所以顺序必须是 「主线程先跑 `RenderLoop()`，再由物理线程 `Load()`」（官方 `main.cc` 就是把加载放在 `PhysicsThread` 里）。

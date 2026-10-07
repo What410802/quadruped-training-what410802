@@ -208,6 +208,40 @@ LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$SDK/lib" ./build-stand/stand_go2
 
 两边的运行结果（基座高度采样）见 [`../../@20260923_mujoco/README.md`](../../@20260923_mujoco/README.md) 的「复现上游参考实现」一节。
 
+## 2026-10-07 conda 里的 Qt 程序（rqt 等）：平台插件缺 wayland、图标主题取不到
+
+**两条现象**（都在 rqt_graph 上复现，KDE/Wayland 本机）：
+
+1. 启动打一行 `Could not find the Qt platform plugin "wayland" in ""`，然后照常起来（退回 XWayland）；
+2. 界面里**所有工具栏按钮都是空白**（鼠标悬浮有 tooltip），dock 标题栏退化成 `D` / `R` / `X` 这类字母兜底。
+
+**① 平台插件**：rqt 是 **Qt5**（PyQt5），而环境里原先只装了 `qt6-wayland`；conda 的 qt5 编译默认平台是 wayland，找不到插件就退回 xcb 并告警。修法是补 Qt5 的那份：`pixi add qt-wayland`（conda-forge，5.15.15，约 1 MB）——实测装完 `QApplication.platformName()` 就是 `wayland`，告警消失（[`pixi.toml`](../../pixi.toml) 已加）。
+
+**② 图标取不到**：不是"Wayland 的锅"，是**搜索路径被 rqt 自己冻结**。`qt_gui/main.py` 的 `_set_theme_if_necessary()` 在 `QApplication` **创建之前**就调 `QIcon.setThemeSearchPaths()`，而那时 Qt 的默认列表只有 `[':/icons']` —— 宿主（`XDG_DATA_DIRS` / `~/.local/share/icons`）的目录**永远进不来**。冻结后的列表是：
+
+```text
+['<env>/share/tango_icons_vendor/resource/icons', ':/icons', '<env>/share/icons/']
+```
+
+而这两个能进去的目录都不给力：`adwaita-icon-theme 51` 只带 `*-symbolic.svg`（rqt 找的是 `view-refresh`、`document-open` 这类老名字），`ros-humble-tango-icons-vendor` 那个路径**根本不存在**（实测该 conda 包只装了 ament/cmake 元数据共 15 个文件，**一个图标文件都没有**，属打包缺口）。于是 `QIcon.fromTheme(...)` 全部返回空图标 → 按钮空白。
+
+**怎么量**（不需要截屏工具）：在真实进程里把窗口抓成图并遍历按钮，注意 rqt 的工具栏按钮**本来就只画图标、不写字**（文字在 tooltip）：
+
+```python
+# 让 rqt 的 QApplication.exec_ 在启动 N 秒后执行这段，再 QApplication.quit()
+for b in window.findChildren(QAbstractButton):
+    print(b.toolTip(), b.icon().isNull(), b.icon().availableSizes()[:1])
+```
+
+**兜底（本地有效、不入库）**：把宿主的完整图标主题软链进环境的搜索路径，`fromTheme` 立刻能取到：
+
+```bash
+ln -s /usr/share/icons/Tango "$CONDA_PREFIX/share/icons/Tango"    # 实测 6/6 图标都出来（含 image）
+ln -s /usr/share/icons/breeze "$CONDA_PREFIX/share/icons/breeze"  # 5/6：image 仍缺
+```
+
+`image` 这个空按钮是**上游**的问题：rqt_graph 要的是 `QIcon.fromTheme('image')`，而 Adwaita / breeze / hicolor 里都没有这个名字（正确写法应是 `image-x-generic`）。另外 `breeze-icons` / `gnome-icon-theme` 在本仓库用的两个通道（`robostack-humble` + `conda-forge`）里都没有候选，所以没写进 `pixi.toml`；**重建环境后软链会被清掉，需要重做**。
+
 ## 2026-09-29 管道（`| tee`）让程序输出变"卡顿"：`stdbuf -oL`
 
 **症状**：给命令接了 `2>&1 | tee log.txt`（实机日志留档）之后，终端不再逐行刷新——要攒一大段才出现一次， 而且经常从半行中间断开；不接 `tee` 时一切正常。实机调零/手转那些"看着读数变化"的操作因此很难受。
