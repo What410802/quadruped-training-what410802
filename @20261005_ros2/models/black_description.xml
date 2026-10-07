@@ -37,7 +37,9 @@
   </asset>
 
     <!--
-    由 scripts/onetime_tools/measure_and_fix_base_height.py 从
+    本文件是 @20260927_motor/models/black_description.xml 的副本（本任务只加了 imu site 与
+    <sensor> 三项，见下面的注释）；那份又是 @20260923_mujoco 的
+    scripts/onetime_tools/measure_and_fix_base_height.py 从
     assets/black_description/black_description.xml 整理而来。
     原始来源：assets/urdf/black_description.urdf
               （N-W-wolf/Training_Materials@main: 第二次培训/black/black_description.urdf，
