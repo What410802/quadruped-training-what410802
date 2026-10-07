@@ -123,7 +123,7 @@ def main() -> int:
     rclpy.init()
     probe = JoyProbe()
 
-    print("① 起 sim_node / controller_node / joy_node（无窗口）")
+    print("① 起 sim_node / controller_node，并先造好这个自检自己的仿真手柄")
     sim = start(
         ["ros2", "run", "quadruped_ros2", "sim_node", "--ros-args", "-p", "viewer:=false", "-p",
          "status_period_s:=0.5", "-p", "start:=rest"],
@@ -131,26 +131,36 @@ def main() -> int:
     )
     time.sleep(3.0)
     ctl = start(["ros2", "run", "quadruped_ros2", "controller_node"], ctl_log)
-    joy = start(["ros2", "run", "quadruped_ros2", "joy_node"], joy_log)
-    time.sleep(2.0)
 
-    print("② 造一个仿真手柄（uinput）并等 joy_node 认领")
+    # **先把 uinput 设备造出来**：手柄节点要用 `-p device:=` 钉住它。
+    # 不钉的话，机器上还插着实体手柄时，节点会按路径顺序认领到真手柄（实测踩过：
+    # 真手柄是 event15、仿真手柄新分配 event16），于是脚本按的按钮根本没进 /joy。
     ui = sim_joy.build_uinput()
     state = sim_joy.XboxState()
     threading.Thread(target=sim_joy.uinput_loop, args=(ui, state, 100.0), daemon=True).start()
-    print(f"  设备：{ui.name} → {ui.device.path}")
+    print(f"  仿真手柄：{ui.name} → {ui.device.path}")
+
+    print("② 起 joy_node（钉住上面那个设备）并等它认领")
+    joy = start(
+        ["ros2", "run", "quadruped_ros2", "joy_node", "--ros-args", "-p",
+         f"device:={ui.device.path}"],
+        joy_log,
+    )
+    time.sleep(2.0)
 
     connected = False
     deadline = time.monotonic() + 8.0
     while time.monotonic() < deadline:
         rclpy.spin_once(probe, timeout_sec=0.1)
-        if "手柄已连接" in joy_log.read_text(encoding="utf-8", errors="replace"):
+        # 认领的必须是**我们造的这台**：只看到"手柄已连接"不够（那可能是真手柄）
+        if any("手柄已连接" in line and ui.name in line
+               for line in joy_log.read_text(encoding="utf-8", errors="replace").splitlines()):
             connected = True
             break
     print(f"  joy_node 认领：{'是' if connected else '否'}")
     dev_line = next(
         (line for line in joy_log.read_text(encoding="utf-8", errors="replace").splitlines()
-         if "手柄已连接" in line),
+         if "手柄已连接" in line and ui.name in line),
         "",
     )
     dev_line = dev_line.replace(str(joy_log), "")

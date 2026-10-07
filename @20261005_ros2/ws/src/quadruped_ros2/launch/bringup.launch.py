@@ -134,7 +134,9 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 "name",
-                default_value="xbox,x-box,xinput",
+                # 与 joy_node.py 的 DEFAULT_NAME_FRAGMENTS 保持一致：第三方 HID 手柄常只报 "… gamepad" /
+                # "… joystick"（实测那台叫 "Zikway HID gamepad"），少了它们 launch 路径下认不到真手柄
+                default_value="xbox,x-box,xinput,gamepad,joystick",
                 description="手柄名字里要含的片段（逗号分隔）；空 = 任何手柄都收",
             ),
             DeclareLaunchArgument(
