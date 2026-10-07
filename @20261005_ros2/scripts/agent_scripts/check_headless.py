@@ -5,7 +5,7 @@
 
     1. 起 sim_node（viewer:=false，起点默认 raw，按真实时间节流）
     2. 起 controller_node
-    3. 用 scripts/pub_joy_sequence.py 按脚本发 /joy：1:A（站立）→ 6:B（阻尼）→ 8:X（复位）→ 9:A（再站立）
+    3. 用 scripts/agent_scripts/pub_joy_sequence.py 按脚本发 /joy：1:A（站立）→ 6:B（阻尼）→ 8:X（复位）→ 9:A（再站立）
     4. 读仿真节点打印的状态行（`t=… z=… tilt=… ncon=… cmd=…`）判定：
 
        * 两条 /mit_command 都在发（cmd=ok，没有触发看门狗）；
@@ -17,8 +17,7 @@
 
 用法（仓库根目录）：
 
-    pixi run python @20261005_ros2/scripts/check_headless.py
-    pixi run python @20261005_ros2/scripts/check_headless.py --keep-logs   # 保留日志
+    pixi run python @20261005_ros2/scripts/agent_scripts/check_headless.py
 """
 
 from __future__ import annotations
@@ -32,7 +31,7 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]  # @20261005_ros2/
+ROOT = Path(__file__).resolve().parents[2]  # @20261005_ros2/（本文件在 scripts/agent_scripts/ 下）
 LOG_DIR = ROOT / "output" / "log"
 
 STATUS_RE = re.compile(r"^t=(?P<t>[\d.]+) z=(?P<z>[\d.-]+) tilt=(?P<tilt>[\d.-]+) ncon=(?P<ncon>\d+) cmd=(?P<cmd>\w+)")
@@ -219,7 +218,6 @@ def find_events(rows: list[dict], low: float, high: float) -> list[dict]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="无头自检（控制器 ⇄ 仿真 + 脚本化 /joy）")
-    parser.add_argument("--keep-logs", action="store_true", help="保留日志（默认也保留，打印路径）")
     parser.add_argument("--start", default="raw", help="仿真起点：raw（默认，与节点默认一致）/ rest")
     parser.add_argument("--force", action="store_true",
                         help="清掉已经在跑的本任务节点再自检（默认只提示、不动它们）")
@@ -246,7 +244,7 @@ def main() -> int:
 
     print("② 按脚本发 /joy：" + SEQUENCE)
     joy = start(
-        ["python", str(ROOT / "scripts" / "pub_joy_sequence.py"), "--sequence", SEQUENCE,
+        ["python", str(ROOT / "scripts" / "agent_scripts" / "pub_joy_sequence.py"), "--sequence", SEQUENCE,
          "--seconds", str(TOTAL_SECONDS)],
         joy_log,
     )
@@ -262,7 +260,6 @@ def main() -> int:
     stands = [e for e in events if e["kind"] == "stand"]
     lies = [e for e in events if e["kind"] == "lie"]
     ok_rows = [r for r in rows if r["cmd"] == "ok"]
-    damping_rows = [r for r in rows if r["cmd"] == "damping"]
     result = Result()
 
     result.check(bool(rows), "仿真节点打了状态行", f"共 {len(rows)} 行（{sim_log.name}）")
@@ -302,8 +299,6 @@ def main() -> int:
                  "、".join(f"{r:.3f}x" for r in rates) or "没量到")
 
     passed = result.report()
-    if not args.keep_logs:
-        print("（日志已保留在 output/log/，--keep-logs 只影响是否额外提示）")
     return 0 if passed else 1
 
 

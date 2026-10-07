@@ -71,7 +71,7 @@ DEFAULT_NAME_FRAGMENTS = ("xbox", "x-box", "xinput")
 
 # 读设备权限不足时给出的补救命令（写在报错里，省得再翻文档）
 PERMISSION_HINT = (
-    "读 /dev/input/* 需要权限：跑一次 scripts/setup_joy_devices.sh（需要 sudo），"
+    "读 /dev/input/* 需要权限：跑一次 @20261005_ros2/scripts/setup_joy_devices.sh（需要 sudo），"
     "或把当前用户加进 input 组后重新登录"
 )
 
@@ -142,7 +142,6 @@ class JoyNode(Node):
         self.frame_id = "joy_disconnected"
         self.last_status_log = 0.0
         self.last_mode = ""
-        self.status: ControlStatus | None = None
 
         self.create_timer(1.0 / rate_hz, self.poll)
         self.create_timer(1.0, self.try_connect)  # 没插 / 被拔掉时每秒重试一次
@@ -268,7 +267,6 @@ class JoyNode(Node):
     # ------------------------------------------------------------------ 回程
     def on_status(self, msg) -> None:
         """控制器发来的状态（回程）。模式一变就打印，其余每 2 s 打一行。"""
-        self.status = msg
         now = self.get_clock().now().nanoseconds / 1e9
         changed = msg.mode != self.last_mode
         if not changed and now - self.last_status_log < 2.0:

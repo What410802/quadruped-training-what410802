@@ -2,14 +2,14 @@
 """仿真手柄**端到端**自检：/dev/uinput → joy_node → /joy → 控制器 → 狗起身/趴下。
 
 与 [`check_headless.py`](check_headless.py) 的区别：那条是"脚本直接发 /joy"，绕过了设备层；
-这条**真的造一个内核输入设备**（用 [`../sim_joy/xbox_sim_joy.py`](../sim_joy/xbox_sim_joy.py)
+这条**真的造一个内核输入设备**（用 [`../../sim_joy/xbox_sim_joy.py`](../../sim_joy/xbox_sim_joy.py)
 的 uinput 部分，但不点 GUI——直接程序化按按钮），让 `joy_node` 从 /dev/input 里认领它。
 所以它验证的是"真手柄插上也能用"的那条路径。
 
-前提：先跑一次 `sudo scripts/setup_joy_devices.sh`（原因见 [`../docs/joystick.md`](../docs/joystick.md) §2）。
+前提：先跑一次 `sudo scripts/setup_joy_devices.sh`（原因见 [`../../docs/joystick.md`](../../docs/joystick.md) §2）。
 用法（仓库根）：
 
-    pixi run python @20261005_ros2/scripts/check_joystick_device.py
+    pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py
 
 判定：joy_node 认到设备 → /joy 上看到 A/B/X 各按下过 → 仿真里两次起身、一次塌下、
 末态高度与上次一致 → 没有看门狗。
@@ -31,7 +31,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
 
-ROOT = Path(__file__).resolve().parents[1]  # @20261005_ros2/
+ROOT = Path(__file__).resolve().parents[2]  # @20261005_ros2/（本文件在 scripts/agent_scripts/ 下）
 LOG_DIR = ROOT / "output" / "log"
 SIM_JOY = ROOT / "sim_joy" / "xbox_sim_joy.py"
 
@@ -105,7 +105,6 @@ def check_uinput() -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="仿真手柄端到端自检")
-    parser.add_argument("--keep-logs", action="store_true")
     parser.add_argument("--force", action="store_true",
                         help="清掉已经在跑的本任务节点再自检（默认只提示、不动它们）")
     args = parser.parse_args()
@@ -120,7 +119,6 @@ def main() -> int:
     sim_log = LOG_DIR / "check-joy-sim.log"
     ctl_log = LOG_DIR / "check-joy-controller.log"
     joy_log = LOG_DIR / "check-joy-node.log"
-    simjoy_log = LOG_DIR / "check-joy-gamepad.log"
 
     rclpy.init()
     probe = JoyProbe()
@@ -190,7 +188,7 @@ def main() -> int:
     # ------------------------------------------------ 判定
     sim_text = sim_log.read_text(encoding="utf-8", errors="replace")
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from check_headless import find_events, parse_status  # 复用同一套轨迹判定
+    from check_headless import TILT_MAX_DEG, find_events, parse_status  # 复用同一套轨迹判定
 
     rows = parse_status(sim_log)
     events = find_events(rows, LIE_Z_MAX, STAND_Z_MIN)
@@ -214,7 +212,7 @@ def main() -> int:
             (stands[0]["peak_z"] > STAND_Z_MIN and stands[0]["ncon"] == 4,
              "站起来的高度与四足触地", f"峰值 z={stands[0]['peak_z']:.4f} m、接触点={stands[0]['ncon']}"),
         )
-        rows_out.append((abs(stands[0]["ncon"]) == 4 and stands[0]["tilt"] < 10.0,
+        rows_out.append((stands[0]["tilt"] < TILT_MAX_DEG,
                          "机身没翻", f"峰值处倾角 {stands[0]['tilt']:.1f}°"))
         if len(stands) >= 2:
             rows_out.append(
@@ -230,8 +228,7 @@ def main() -> int:
     print("===============================================")
     passed = all(ok for ok, _, _ in rows_out)
     print("结论：" + ("全部通过 ✓" if passed else "有失败项 ✗"))
-    if args.keep_logs:
-        print(f"日志：{LOG_DIR}")
+    print(f"日志：{LOG_DIR}")
     return 0 if passed else 1
 
 

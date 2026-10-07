@@ -5,8 +5,8 @@
 做法与主办者仓库的 quadruped_control/scripts/test/ros2_headless_test.py 一致：它也是在测试里
 直接 publish_joy(buttons=...)，而不是去伪造一个设备——本任务把它固化成一个小工具。
 
-    pixi run python @20261005_ros2/scripts/pub_joy_sequence.py --seconds 12
-    pixi run python @20261005_ros2/scripts/pub_joy_sequence.py --sequence "1:A,6:B,8:X,9:A"
+    pixi run python @20261005_ros2/scripts/agent_scripts/pub_joy_sequence.py --seconds 12
+    pixi run python @20261005_ros2/scripts/agent_scripts/pub_joy_sequence.py --sequence "1:A,6:B,8:X,9:A"
 
 序列写法：`时刻:动作`（时刻是启动后的秒数，动作 = A/B/X 单键，或 `none` 表示松开）。
 默认序列 1:A,6:B,8:X,9:A 正好是"起身 → 趴下 → 复位 → 再起身"。
