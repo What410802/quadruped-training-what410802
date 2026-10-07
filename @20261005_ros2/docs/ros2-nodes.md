@@ -42,7 +42,7 @@ pixi run ros2 node info /sim_node             # 订阅/发布/服务一览
 
 ### 1.2 参数表：人 / 外部程序与这个包的接口
 
-三个节点一共 **34 个参数**（`ros2 param list` 的权威输出，另有框架自带的 `use_sim_time` 与 `qos_overrides.*` 未列）：仿真 18 / 控制器 9 / 手柄 7。「launch 参数」与「节点参数」是两套东西（前者只在 launch 脚本里，**必须显式桥接**才会变成后者）——机制、三个坑与优先级见 [`../../docs/learn/ros2-params-and-launch.md`](../../docs/learn/ros2-params-and-launch.md)。**"launch" 一列写的是 launch 参数名**——`ros2 launch quadruped_ros2 bringup.launch.py <名字>:=<值>` 就能改；写 `—` 的表示只在节点参数里（改法：运行时 `ros2 param set`，或单节点起时 `ros2 run … --ros-args -p 名:=值`）。
+三个节点一共 **35 个参数**（`ros2 param list` 的权威输出，另有框架自带的 `use_sim_time` 与 `qos_overrides.*` 未列）：仿真 18 / 控制器 10 / 手柄 7。
 
 **仿真节点 `sim_node`（18 个）**
 
@@ -67,7 +67,7 @@ pixi run ros2 node info /sim_node             # 订阅/发布/服务一览
 | `command_timeout_ms` | int | `200` | 多少毫秒没收到 `/mit_command` 就退回阻尼（换算成**步数**判定，见 §3） | — |
 | `status_period_s` | double | `1.0` | 每多少**仿真秒**打一行状态（`t=… z=… tilt=… ncon=…`）；`0` = 不打 | — |
 
-**控制器节点 `controller_node`（9 个）**
+**控制器节点 `controller_node`（10 个）**
 
 | 参数 | 类型 | 默认 | 说明 | launch |
 |---|---|---|---|---|
@@ -78,7 +78,8 @@ pixi run ros2 node info /sim_node             # 订阅/发布/服务一览
 | `button_stand` | int | `0` | 站立键索引（xpad：A=0 B=1 X=2 Y=3 LB=4 RB=5 …） | `button_stand` |
 | `button_damp` | int | `1` | 阻尼键索引 | `button_damp` |
 | `button_reset` | int | `2` | 复位键索引（调 `/sim_reset` 并切回阻尼） | `button_reset` |
-| `tilt_warn_deg` | double | `60.0` | 倾角告警阈值 [deg]（超过就打警告，不改变控制） | `tilt_warn_deg` |
+| `tilt_warn_deg` | double | `60.0` | 倾角告警阈值 [deg]（超过就打 `WARN`，不改变控制）；**`0` = 关掉告警** | `tilt_warn_deg` |
+| `imu_log_period_s` | double | `0.0` | `/imu` 的低频打印周期 [s]；**`0` = 不打**（默认静默）。验收现场用 `-p imu_log_period_s:=1.0` 就能看到「IMU 回传：倾角=…」每秒一行 | — |
 | `status_period_ms` | int | `200` | `/control_status` 的发布周期 [ms]（5 Hz） | — |
 
 **手柄节点 `joy_node`（7 个）**
@@ -86,7 +87,7 @@ pixi run ros2 node info /sim_node             # 订阅/发布/服务一览
 | 参数 | 类型 | 默认 | 说明 | launch |
 |---|---|---|---|---|
 | `device` | string | `""` | 指定设备路径（如 `/dev/input/event15`）；空 = 自动找 | `device` |
-| `name` | string | `xbox,x-box,xinput` | 自动找时要求设备名含其中任一子串（逗号分隔）；空 = 任何手柄都收 | `name` |
+| `name` | string | `xbox,x-box,xinput,gamepad,joystick` | 自动找时要求设备名含其中任一子串（逗号分隔）；空 = 任何手柄都收。加 `gamepad`/`joystick` 是为了第三方手柄（实测那台叫 `Zikway HID gamepad`）；认哪台还要过“有 A 键 + 左摇杆两轴”的判据，所以放宽片段不会把键盘鼠标收进来 | `name` |
 | `deadband` | double | `0.08` | 摇杆死区（0..1）；磨损摇杆自漂时调大 | `deadband` |
 | `device_dir` | string | `/dev/input` | 扫描哪个目录 | — |
 | `rate_hz` | double | `100.0` | `/joy` 发布频率 | — |
@@ -95,26 +96,19 @@ pixi run ros2 node info /sim_node             # 订阅/发布/服务一览
 
 **launch 参数共 25 个**：上表"launch"列里出现的 24 个，加上 `joy`（`true`/`false`，决定起不起手柄节点——它不是节点参数，而是 launch 的条件开关）。**划分口径**：随外部世界变化或要现场整定的（场景/形态、协议口径、整定增益、手柄与按键映射、倾角阈值）都从 launch 给；模型常数（`tau_max`）与实现细节（看门狗、日志频率、话题名）留在节点参数里（`viewer_shadow*` 三个是"视口画质"，属于会随机器/显示器变化的旋钮，所以也放进 launch），因为它们有合理默认值、改它们的场合是开发调试。
 
-### 1.3 IMU：什么时候加进模型的、本任务拿它做什么
+### 1.3 IMU：任务书要求的反馈项，以及模型里怎么加
 
-**加的时间**：`imu_link` 本身从第二次培训（`@20260923_mujoco` 的 URDF 转换）就在模型里，但**传感器是本次任务加的**——`@20260923_mujoco` 与 `@20260927_motor` 的 `black_description.xml` 里 `<sensor>` 段计数都是 **0**，本次在 [`../models/black_description.xml`](../models/black_description.xml) 里补了：
+**它是接口要求，不是可选装饰**：任务书第 2 项写明"仿真节点向控制器返回 12 个电机的 `{q, dq, ddq, tau, cur}` **以及 imu 的数据**，imu 的消息类型可以采用 ros2 自带的消息类型"。所以 `/imu`（`sensor_msgs/Imu`，500 Hz、best_effort、机体系原始量）在接口里是必需的，控制器也订阅它（话题总表见 §1）。
 
-* `<site name="imu" pos="0 0 0" size="0.005"/>`（第 68 行，挂在 `imu_link` 下）——MuJoCo 3.12 的 `gyro`/`accelerometer` 只能挂 site，`framequat` 用 `objtype="body"` 又对不上（见 §7 坑 5）；
-* `<sensor>` 三项（第 197 行起）：`framequat name="imu_quat"`（世界系姿态，四元数 **w x y z**）、`gyro name="imu_gyro"`、`accelerometer name="imu_acc"`。
+**控制律不用它**——`controller_node` 是纯关节空间的 MIT/PD 控制，决策只看按键与 `MotorState` 的关节量。`OnImu()` 里算一次倾角（`attitude.hpp` 的 `TiltDeg()` = `max(|roll|, |pitch|)`），然后**只做两件事，都不改变控制输出**：
 
-站点无质量、无碰撞、不参与物理：同场景同起点各跑 1000 步，`qpos`/`qvel` 最大差 **0.0**，`nsensordata` 从 0 变 10（复现见 §7 坑 4）。
-
-**为什么加**：任务书要求仿真→控制器方向的反馈除了 `{q, dq, ddq, tau, cur}` 还有 IMU；顺带把"姿态"这条链路补全，好让上位机能知道机身歪没歪。
-
-**本任务拿它做什么（这一点容易误解）**：控制律**不用** IMU——`controller_node` 是纯关节空间的 MIT/PD 控制，只用 `MotorState` 里的关节量。IMU 目前是**安全与监控量**：
-
-| 用途 | 代码位置 | 说明 |
+| `OnImu()` 的用途 | 怎么开 | 说明 |
 |---|---|---|
-| 算倾角 | `include/quadruped_ros2/attitude.hpp` 的 `TiltDeg()` | `max(abs(roll), abs(pitch))`，从四元数取欧拉角，单位度 |
-| 超阈值告警 | `src/controller_node.cpp` `OnImu()` | 超过 `tilt_warn_deg`（默认 60°）打 `WARN`，**不改变控制输出** |
-| 回程显示 | 同上 + `ControlStatus.tilt_deg` | 手柄节点订阅 `/control_status` 后会打印"倾角=…"，就是这里的数 |
+| 安全告警 | `tilt_warn_deg`（默认 `60`） | 倾角超阈值打一条 `WARN`（2 s 节流）；**设 `0` 关掉**。狗翻倒时纯 PD 不会自己翻身，这条告警是唯一的提示 |
+| 低频打印（可选） | `imu_log_period_s > 0`（默认 `0` = 静默） | 按该周期打一行 `IMU 回传：倾角=…°`，用途是验收现场**证明这条链路真的在传数据**（也可以直接 `ros2 topic echo /imu`） |
 
-换句话说：现在的"狗站起来了、倾角 0.0°"是**监控**结论；将来若要做倒地检测、姿态闭环或状态估计，接的也是这条链路（`/imu` 500 Hz、best_effort、机体系原始量）。IMU 的方向约定与坑（`gyro`/`accelerometer` 是机体系、静止时加速度计 z ≈ +9.81、四元数顺序与 ROS `Imu` 相反）见 §7 坑 5、6。
+
+**模型里怎么加的**：`imu_link` 从第二次培训的 URDF 转换就在，**传感器是本次任务加的**（`@20260923_mujoco` 与 `@20260927_motor` 的 `black_description.xml` 里 `<sensor>` 计数都是 0）——[`../models/black_description.xml`](../models/black_description.xml) 第 70 行一个 `<site name="imu">`（挂在 `imu_link` 下：MuJoCo 3.12 的 `gyro`/`accelerometer` 只能挂 site，`framequat` 用 `objtype="body"` 又对不上，见 §7 坑 5），第 199 行起三个 `<sensor>`（`framequat` = 世界系姿态、四元数 **w x y z**；`gyro`；`accelerometer`）。站点无质量、无碰撞、不参与物理：同场景同起点各跑 1000 步，`qpos`/`qvel` 最大差 **0.0**、`nsensordata` 0 → 10（见 §7 坑 4）。方向约定与坑（机体系、静止时加速度计 z ≈ +9.81、ROS `Imu` 的四元数是 **x y z w**）见 §7 坑 6。
 
 ## 2 控制周期与线程模型
 
@@ -194,9 +188,7 @@ HUD 右上角三行：`状态 + 实时倍率 + 当前速度档`、`flags: 当前
 - **复位**（手柄 X → `/sim_reset`）：回到起点姿态（`start:=rest` 就是场景里的趴卧 keyframe），控制器同时切回阻尼。**保留仿真时间轴**（`d->time` 不清零）：斜坡按 `sim_time` 算，清零会让"复位后再起身"先卡住——这个坑上一版也踩过，注释留在 [`../../@20260927_motor/cpp/essential_core/src/main.cpp`](../../@20260927_motor/cpp/essential_core/src/main.cpp)。
 - **起点** `start:=raw|rest`：`raw` = 模型原姿态（**默认**，与上次任务一致：直腿、脚底刚好触地，零力矩下自己塌成趴卧，实测 0.5 s 内从 z=0.277 落到 0.145），`rest` = 场景 keyframe（趴卧）。keyframe 不会自动加载，见仓库 [`../../docs/learn/mujoco.md`](../../docs/learn/mujoco.md) §6.2。
 
-### 3.0 两个"知道了就不影响用"的机制（2026-10-06 调查）
-
-**`ControlStatus.tilt_deg` 目前没有任何控制用途**：它由控制器的 `OnImu()` 从 `/imu` 算出来，用途只有两个——① 控制器自己超过 `tilt_warn_deg`（默认 60°）时打一条 `WARN`（**这个判断只看传感器，不看这条消息**）；② 手柄节点收到 `/control_status` 后打印"倾角=…°"这一行状态。**站姿/起身/趴下等所有决策都只看按键**，没有任何下游消费 tilt_deg。所以这一路（msg 字段 + 回传 + 显示）属于"可删的展示信息"：如要删，改动是 `ControlStatus.msg` 去掉字段、控制器 `status.tilt_deg` 与 `joy_node.py` 那行打印各删一处；倾角告警本身**不受影响**（它算的是同一个本地量）。按你的安排，先提交当前状态再删。
+### 3.0 两个"知道了就不影响用"的机制
 
 **`/clock`（仿真时间）我们不用**：时序契约是**步数**（500 Hz 步进 + `/motor_state.sim_time` + 事件驱动的控制器 + 按控制周期数的看门狗），引入 `/clock`/`use_sim_time` 只会多一层耦合。机制、好处、坑与"真要用时怎么加（约 30 行）"记在 [`docs/learn/ros2-graph-and-clock.md`](../../docs/learn/ros2-graph-and-clock.md)；同一篇还解释了 `/parameter_events` 在 `rqt_graph` 里"有的节点只有去程"其实是图缓存假象（权威判断用 `ros2 topic info --verbose`）。
 
@@ -258,7 +250,7 @@ t=14.524 z=0.3340 tilt=0.8 ncon=4 cmd=ok     ← 复位后再按 A，又一次�
 |---|---|
 | `ros2 node list` | `/sim_node`、`/controller_node`、`/joy_node` |
 | `ros2 topic list -t` | 五条业务话题 + 类型；`/sim_reset` 是服务，不在这个话题列表里 |
-| `ros2 topic echo /control_status` | 控制器视角：模式 / 斜坡进度 / 倾角 / 已发指令条数 |
+| `ros2 topic echo /control_status` | 控制器视角：模式 / 斜坡进度 / 已发指令条数（回程消息，手柄节点也订阅它） |
 | `ros2 topic echo /motor_state --once` | 12 个电机的 q/dq/ddq/tau/cur + sim_time |
 | `ros2 topic echo /joy` | 8 轴 / 12 按钮（A/B/X 是 `buttons[0]/[1]/[2]`） |
 | `ros2 topic hz /motor_state` | 500 Hz |

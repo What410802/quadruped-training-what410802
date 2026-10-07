@@ -71,7 +71,7 @@ pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py  #
 ```bash
 pixi run ros2 node list                               # /sim_node /controller_node /joy_node
 pixi run ros2 topic list -t                           # 五条业务话题与它们的类型
-pixi run ros2 topic echo /control_status              # 控制器的模式/斜坡/倾角/指令条数（低频）
+pixi run ros2 topic echo /control_status              # 控制器的模式/斜坡进度/指令条数（低频回程）
 pixi run ros2 topic echo /motor_state --once          # 电机反馈（500 Hz，加 --once 只看一条）
 pixi run ros2 topic hz /motor_state                   # 实测 499.98 Hz
 pixi run ros2 interface show quadruped_ros2/msg/MitCommand   # 自定义消息长什么样
@@ -95,7 +95,7 @@ pixi run ros2 service call /sim_reset std_srvs/srv/Empty {}  # 不开手柄也�
 
 | 入口 | 是什么 | 怎么用 |
 |---|---|---|
-| **节点参数** | 三个节点一共 **34 个**（仿真 18 / 控制器 9 / 手柄 7） | 运行时 `pixi run ros2 param set /controller_node kp 100`；单节点起时 `pixi run ros2 run … --ros-args -p kp:=100`；看现状 `pixi run ros2 param list /controller_node` |
+| **节点参数** | 三个节点一共 **35 个**（仿真 18 / 控制器 10 / 手柄 7） | 运行时 `pixi run ros2 param set /controller_node kp 100`；单节点起时 `pixi run ros2 run … --ros-args -p kp:=100`；看现状 `pixi run ros2 param list /controller_node` |
 | **launch 参数** | 其中"会随外部世界变、要现场整定"的 **25 个**（24 个直接对应节点参数，另 1 个 `joy` 是起不起手柄节点的开关）：场景/形态、视口画质、整定增益、手柄与按键映射、倾角阈值 | `pixi run ros2 launch quadruped_ros2 bringup.launch.py kd_damp:=0.8 ramp:=2.0`；全部列出 `pixi run ros2 launch quadruped_ros2 bringup.launch.py --show-args` |
 | **手柄设备** | `/dev/input/event*` 上的真实手柄，或 `sim_joy/xbox_sim_joy.py` 造的 uinput 设备（**不经过 ROS**） | 插上就能被认；认哪台由 `device` / `name` 参数决定，见 [`docs/joystick.md`](docs/joystick.md) §2 |
 

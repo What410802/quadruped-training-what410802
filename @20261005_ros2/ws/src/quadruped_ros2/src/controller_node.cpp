@@ -30,8 +30,11 @@
 #include <sensor_msgs/msg/joy.hpp>
 #include <std_srvs/srv/empty.hpp>
 
+#include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -72,7 +75,14 @@ class ControllerNode : public rclcpp::Node
         button_damp_ = declare_parameter<int>("button_damp", 1);
         button_reset_ = declare_parameter<int>("button_reset", 2);
         tilt_warn_deg_ = declare_parameter<double>("tilt_warn_deg", 60.0);
+        const auto imu_log_s = declare_parameter<double>("imu_log_period_s", 0.0);
         const auto status_ms = declare_parameter<int>("status_period_ms", 200);
+        if (imu_log_s < 0.0)
+        {
+            throw std::invalid_argument("参数 imu_log_period_s 不能为负（0 = 不打 IMU 日志）");
+        }
+        // RCLCPP_*_THROTTLE 的周期单位是 ms；>0 但不足 1 ms 的写法夹到 1 ms，避免静默失效
+        imu_log_period_ms_ = imu_log_s > 0.0 ? std::max(1, static_cast<int>(imu_log_s * 1000.0)) : 0;
         param_ = param;
         sm_ = std::make_unique<ctrl::StateMachine>(param);
 
@@ -175,15 +185,24 @@ class ControllerNode : public rclcpp::Node
         ++command_count_;
     }
 
+    /// `/imu` 是任务书要求的反馈项（仿真节点 → 控制器），控制律**不用**它。这个回调只做两件事，
+    /// 都不改变控制输出（见 docs/ros2-nodes.md §1.3）：
+    ///   * 安全告警：倾角 > `tilt_warn_deg` 打 WARN（`tilt_warn_deg <= 0` = 关掉）；
+    ///   * 可选低频打印：`imu_log_period_s > 0` 时按该周期打一行，用来在验收现场证明这条链路在传数据。
     void OnImu(const Imu::SharedPtr& msg)
     {
-        tilt_deg_ = quadruped::attitude::TiltDeg(msg->orientation.w, msg->orientation.x,
-                                                 msg->orientation.y, msg->orientation.z);
-        if (tilt_deg_ > tilt_warn_deg_)
+        const double tilt_deg = quadruped::attitude::TiltDeg(
+            msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z);
+        if (tilt_warn_deg_ > 0.0 && tilt_deg > tilt_warn_deg_)
         {
             RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
                                  "机身倾角 %.1f° 超过 %.1f°：狗可能已经翻倒（纯 PD 不会自己翻身）",
-                                 tilt_deg_, tilt_warn_deg_);
+                                 tilt_deg, tilt_warn_deg_);
+        }
+        if (imu_log_period_ms_ > 0)
+        {
+            RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), imu_log_period_ms_,
+                                 "IMU 回传：倾角=%.1f°（/imu 500 Hz 在传，控制律不用它）", tilt_deg);
         }
     }
 
@@ -270,7 +289,6 @@ class ControllerNode : public rclcpp::Node
         status.header.stamp = now();
         status.mode = ctrl::Name(sm_->state());
         status.ramp_progress = sm_->RampProgress(sim_time_);
-        status.tilt_deg = tilt_deg_;
         status.command_count = command_count_;
         status_pub_->publish(status);
     }
@@ -288,8 +306,8 @@ class ControllerNode : public rclcpp::Node
 
     std::array<double, ctrl::kNu> last_q_{}; ///< 最近一次的关节角（切站立时的斜坡起点）
     double sim_time_ = 0.0;                  ///< 最近一次反馈的仿真时间 [s]
-    double tilt_deg_ = 0.0;
-    double tilt_warn_deg_ = 60.0;
+    double tilt_warn_deg_ = 60.0; ///< 倾角告警阈值 [deg]；<= 0 = 不告警
+    int imu_log_period_ms_ = 0;   ///< /imu 的低频打印周期 [ms]；0 = 不打（验收现场可用 -p 打开）
     uint64_t command_count_ = 0;
     int button_stand_ = 0;
     int button_damp_ = 1;
@@ -304,7 +322,19 @@ class ControllerNode : public rclcpp::Node
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<ControllerNode>());
+    // 参数非法时给一句人话再退出（与 sim_node 同一口径），别让异常直接 abort
+    std::shared_ptr<ControllerNode> node;
+    try
+    {
+        node = std::make_shared<ControllerNode>();
+    }
+    catch (const std::exception& e)
+    {
+        std::fprintf(stderr, "参数有问题：%s\n", e.what());
+        rclcpp::shutdown();
+        return 1;
+    }
+    rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;
 }
