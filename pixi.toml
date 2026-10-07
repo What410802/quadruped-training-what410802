@@ -59,7 +59,7 @@ ninja = "*"
 # ---- MuJoCo（C++ 库 + Python 绑定）----
 # 锁 3.12.*：仓库里 C++ 与 Python 两份 MuJoCo 必须同版本，且 @20260923_mujoco /
 # @20260927_motor 量过的数字（末态 z=0.3836 m 等）都是 3.12.0 下的结果。
-# 不锁的话 conda-forge 现在会解析到 3.14.x（2026-10-05 实测）。
+# 不锁的话 conda-forge 现在会解析到 3.14.x（实测与复现见 @20261005_ros2/docs/environment.md §2）。
 mujoco = "3.12.*"
 # 官方 Simulate 窗口 / 我们的 C++ 仿真直接 find_package(glfw3) 并链接（mujoco 也会带它，
 # 但"我们自己链的东西"就自己声明，避免哪天上游去掉这条依赖就突然编不过）。
@@ -75,6 +75,8 @@ ros-humble-ros-base = "*"
 # 教程示例（@20261005_ros2_example）里 talker/listener 用的是 demo 包，留着便于对照。
 ros-humble-demo-nodes-cpp = "*"
 ros-humble-demo-nodes-py = "*"
+ros-humble-rqt-graph = ">=1.3.2,<2"
+qt-wayland = ">=5.15.15,<6"
 # colcon 不在 RoboStack 通道里，走 conda-forge；元包 = 20 个 colcon 组件，
 # 覆盖原先手写清单 14 个中的 13 个；唯一例外是 `colcon-mixin`（不属于元包），
 # 需要 `colcon mixin` 子命令时再单独加回来。
