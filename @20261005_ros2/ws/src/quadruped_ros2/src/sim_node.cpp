@@ -6,24 +6,24 @@
  * MIT 五参数（/mit_command），本节点用电机模型（include/quadruped_ros2/motor.hpp）把它算成
  * 关节力矩写进 `data.ctrl`，步进物理，再把 {q, dq, ddq, tau, cur} 与 IMU 发回去。
  *
- * 线程（窗口用 MuJoCo **官方** Simulate 界面，与 @20260927_motor/cpp/essential_core 同一套形状）：
- *   * 主线程：`sim->RenderLoop()` —— 窗口与渲染。GLFW 要求"谁建窗口谁用它"，窗口只能在主线程；
- *   * 物理线程：装现场 → `sim->Load()` 把模型交给界面 → 一步一循环（取指令 → 算力矩 →
- *     `mj_step` → 发反馈）。**顺序要紧**：`Load()` 会阻塞等渲染线程来接模型，所以必须先让主线程
- *     进 `RenderLoop()` 再起物理线程，反了就是"开一个空窗口然后死等"；
- *   * ROS 执行器线程：只收 `/mit_command`（单线程执行器）。物理线程不 spin，专心跑 `mj_step`。
- *   两边共享 `mjModel/mjData`，所有访问都在官方那个递归锁 `sim->mtx` 里。
+ * 线程（**两条**，2026-10-06 从"官方界面 + 三线程"改成自建窗口的单线程仿真）：
+ *   * **主线程 = 仿真 + 渲染**：装现场 → 建窗口（`include/quadruped_ros2/viewer.hpp`）→
+ *     一个循环里"按墙钟补齐物理步（取指令 → 算力矩 → `mj_step` → 发反馈）→ 画一帧"。
+ *     `mjModel`/`mjData` **只被这一条线程碰**，所以不需要任何锁——比"到处加锁"更安全，
+ *     因为根本不存在共享可变状态（换来的是窗口必须在这个线程里建，GLFW 本来也这么要求）；
+ *   * **ROS 执行器线程**：只收 `/mit_command`、答 `/sim_reset`。它只碰 `SimNode` 自己的
+ *     命令行槽位（一把只护 12 个 double 的小锁）与一个原子复位标志，**不碰 `mjData`**。
  *
- * 为什么仿真也用 C++：官方界面的 `RenderLoop()` 在 `Render()` **之前**就放锁
- * （@20260923_mujoco/README.md 实测 1.00x 实时），物理线程不会被渲染顶住；Python 版
- * （launch_passive）受 GIL 限制，开窗口实测只有 0.93x。
+ * 为什么不用官方 `Simulate` 界面了：实测鼠标一动它就掉到 43 fps（p95 41.8 ms）、
+ * 自建窗口同样负载 56 fps；差别来自"两线程共享递归锁 + 每事件控件命中测试/重绘"这套结构。
+ * 数据、复现命令与取舍见 docs/ros2-nodes.md §2.1。
  *
- * 时间：物理按墙钟节流（deadline pacing，与 @20260923_mujoco/python/simulator.py 同一套：
- * 误差不累积、落后就重新对齐不追赶）。`realtime:=false` 时全速跑，专供回归脚本。
+ * 为什么仿真用 C++（没变）：Python 版（`launch_passive`）开窗口受 GIL 限制，实测只有 0.93x 实时。
+ *
+ * 时间：无窗口时物理按墙钟节流（deadline pacing，误差不累积、落后就重新对齐不追赶）；
+ * 有窗口时"每帧把物理补齐到当前墙钟再画"，于是物理仍是 500 Hz、渲染是 vsync 的帧率。
+ * `realtime:=false` 只对无窗口有意义（全速跑，专供回归脚本）。
  * 控制周期 = 物理步长 = 0.002 s（500 Hz，与实机主控同量级）。
- *
- * 看门狗：超过 `command_timeout_ms` 没收到指令（控制器挂了 / 还没起来），自动退回阻尼模式
- * （kp=0、kd=damp_kd），不是"保持最后一条"——真机上失联也是让它软下来，不是僵在那里。
  */
 
 #include "quadruped_ros2/attitude.hpp" // 状态行里的倾角
@@ -35,8 +35,7 @@
 
 #include <mujoco/mujoco.h>
 
-#include <simulate/glfw_adapter.h> // mujoco::GlfwAdapter
-#include <simulate/simulate.h> // mujoco::Simulate（官方界面，由 mujoco::libmujoco_simulate 提供）
+#include "quadruped_ros2/viewer.hpp" // 自建窗口（GLFW + mjv/mjr），见文件头
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -47,6 +46,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -82,7 +82,7 @@ rclcpp::QoS LatestQoS()
 }
 
 /// 一次仿真要用的东西：模型 + 数据 + 实际加载的场景路径。
-/// 自己持有 m/d、析构里释放；交给官方界面之后用 Release() 把所有权让出去，
+/// 自己持有 m/d、析构里释放（窗口只是拿它渲染，不改所有权）。
 /// 否则同一个指针会被释放两次（官方的析构里也会 mj_delete*）。
 struct Scene
 {
@@ -130,21 +130,47 @@ struct ImuAddress
     bool ok() const { return quat >= 0 && gyro >= 0 && acc >= 0; }
 };
 
-/// 官方界面的"关窗"只有两条路：用户点掉窗口，或者我们自己把窗口标记成该关。
-/// GlfwAdapter 把 GLFWwindow* 藏在私有成员里，但 ShouldCloseWindow() 是虚函数 ——
-/// 子类加一个标志位就能从物理线程里体面地关窗（Ctrl-C 走这条）。
-class ClosableAdapter : public mujoco::GlfwAdapter
-{
-  public:
-    bool ShouldCloseWindow() const override
-    {
-        return quit_.load() || mujoco::GlfwAdapter::ShouldCloseWindow();
-    }
-    void RequestClose() { quit_ = true; }
+/// 视口尺寸（逻辑像素）。本机是 2x 缩放显示，**framebuffer 会是这里的两倍**，
+/// 渲染开销按 framebuffer 算——这也是"阴影贴图别开太大"的原因，见 §2.1 的实测。
+constexpr int kViewerWidth = 1280;
+constexpr int kViewerHeight = 720;
 
-  private:
-    mutable std::atomic_bool quit_{false};
-};
+/// 视口里的阴影贴图边长（默认值，可被 `viewer_shadow_size` 覆盖）。取 4096 = 模型自己的默认值：
+/// 2026-10-07 用 [`scripts/agent_scripts/shadow_probe.py`] 重测后**推翻**了原先"4096 太贵所以降到
+/// 1024"的判断——那次 15.5 ms 是透过真实窗口（含 vsync/blit）量的，两者不可比；离屏同一路径
+/// （2× 超采样缓冲 2560×1440、offsamples=0、11 次中位）的净阴影开销是
+/// 1024 → 2.67 ms、2048 → 2.34 ms、4096 → 3.12 ms/帧，即 4096 只多 0.2~0.6 ms，换来的却是
+/// 阴影边界偏移 0.728 → **0.171 px**（4.3×，见 docs/learn/graphics-stack.md §8.3）。
+/// **必须在建 GL 上下文之前设**（上下文建好后改无效，`mjr_makeContext` 只读一次）。
+constexpr int kViewerShadowSize = 4096;
+
+/// 阴影正交盒的半宽 = `stat.extent × 这个值`（**只对平行光有效**）。默认 1.0 = 与 MuJoCo 一致
+/// （本场景覆盖半径 ±1.33 m）。成因见 docs/learn/graphics-stack.md §8.3：MuJoCo 的阴影是
+/// **逐片元硬比较**（shadow map 用 `GL_NEAREST` + `COMPARE_R_TO_TEXTURE` 采样，
+/// `render/classic/render_context.c` 的 makeShadow），于是阴影边界被量化到**纹素格子**上：
+/// 纹素 = 2·extent·clip/(shadowsize−2)，画质只取决于 `clip/shadowsize` 的**比值**。
+/// 所以收紧这个值能换画质（clip 0.5 → 纹素减半），代价是覆盖范围同比缩小：狗走远一点就
+/// 不在阴影盒里、阴影整块消失（实测 clip=1.0、狗 x=1.5 m 时阴影已经是 0 像素）。
+/// 本任务用"不动覆盖范围、只把 shadowsize 回到 4096"来换画质，这个参数留作现场旋钮。
+/// 与 shadowsize 同理，它在 `mjr_makeContext` 里只读一次，**必须在建 GL 上下文之前设**。
+constexpr double kViewerShadowClip = 1.0;
+
+/// 视口速度档位（`-` / `=` 在它上面走）：照官方 `Simulate::percentRealTime` 的 31 档
+/// （`simulate/simulate.h:241`，100 → 80 → 63 → … → 0.1 %），下标越大越慢。
+/// 只作用于**窗口模式**的墙钟推进（目标时刻 = 锚点 + 经过的时间 × 倍率）；
+/// 无窗口时由 `realtime` 参数决定快慢。
+constexpr double kSpeedLevels[] = {100, 80,  63,  50,  40,  32,  25,  20,  16,  13, 10,
+                                   8,   6.3, 5.0, 4,   3.2, 2.5, 2,   1.6, 1.3, 1,  .8,
+                                   .63, .5,  .4,  .32, .25, .2,  .16, .13, .1};
+constexpr int kSpeedLevelsCount = static_cast<int>(sizeof(kSpeedLevels) / sizeof(double));
+
+/// 窗口模式下"落后"超过这么多秒就重新对齐，不去追赶（窗口被拖住/系统卡一下之后不该让物理
+/// 在后面狂追；与无窗口的 deadline pacing 同一口径：误差不累积）
+constexpr double kMaxLagSeconds = 0.2;
+
+/// 一帧最多补多少物理步：防止"窗口被拖住/系统卡了一下"之后一帧里追赶成千上万步
+/// （那会让画面看起来"瞬移"）。60 fps × 2 ms 只需 ~8 步，这里给足余量。
+constexpr int kMaxCatchupSteps = 200;
 
 /// 节点参数（启动时读一次，之后不变）。
 struct Options
@@ -159,6 +185,24 @@ struct Options
     double tau_max = quadruped::motor::kDefaultTauMax;
     double damp_kd = 0.5; ///< 看门狗退回阻尼模式时的 kd [N·m·s/rad]
     int command_timeout_ms = 200; ///< 多少个控制周期没收到指令就退回阻尼（折算成步数，见下）
+    /// 视口阴影：`viewer_shadow` 是**运行时可改**的渲染标志（窗口里按 S 也能切）；
+    /// `viewer_shadow_size` / `viewer_shadow_clip` 是阴影贴图边长与正交盒半宽系数，
+    /// 只在建窗口（GL 上下文）时用一次，改它们要重启（见 kViewerShadowClip 的注释）。
+    bool viewer_shadow = true;
+    int viewer_shadow_size = kViewerShadowSize;
+    double viewer_shadow_clip = kViewerShadowClip;
+    /// 视口多重采样（抗锯齿）：官方界面建窗时也用 4；0 = 关（放大观察会有明显锯齿）
+    int viewer_msaa = quadruped::viewer::Window::kDefaultMsaa;
+    /// 视口超采样倍率：离屏按 倍率×framebuffer 渲染再 GL_LINEAR 缩回窗口（1 = 关）
+    int viewer_render_scale = quadruped::viewer::Window::kDefaultRenderScale;
+
+    /// 电机非理想项（默认全关 = 理想力矩源，行为与之前逐位一致）。语义与计数口径照搬
+    /// 第三次培训的完整版（`@20260927_motor/cpp/src/motor.h` 的 JointMotors），见
+    /// docs/motor-model.md。
+    double motor_deadzone = 0.0; ///< 静摩擦死区 [N·m]：0 < |τ| < 死区 → 推不动，输出 0
+    int motor_delay_cycles = 0; ///< 指令延迟 [控制周期]：用 N 个周期之前下发的那条指令
+    double motor_noise = 0.0; ///< 力矩噪声标准差 [N·m]（高斯白噪声，固定种子可复现）
+    int motor_seed = 12345; ///< 噪声种子（同参数 + 同 seed → 同一条噪声序列）
     double status_period_s = 1.0; ///< 每多少仿真秒打一行状态（基座高度/倾角/接触点）；0 = 不打
 };
 
@@ -177,6 +221,19 @@ class SimNode : public rclcpp::Node
         opt.damp_kd = declare_parameter<double>("damp_kd", opt.damp_kd);
         opt.command_timeout_ms =
             declare_parameter<int>("command_timeout_ms", opt.command_timeout_ms);
+        opt.viewer_shadow = declare_parameter<bool>("viewer_shadow", opt.viewer_shadow);
+        opt.viewer_shadow_size =
+            declare_parameter<int>("viewer_shadow_size", opt.viewer_shadow_size);
+        opt.viewer_shadow_clip =
+            declare_parameter<double>("viewer_shadow_clip", opt.viewer_shadow_clip);
+        opt.viewer_msaa = declare_parameter<int>("viewer_msaa", opt.viewer_msaa);
+        opt.viewer_render_scale =
+            declare_parameter<int>("viewer_render_scale", opt.viewer_render_scale);
+        opt.motor_deadzone = declare_parameter<double>("motor_deadzone", opt.motor_deadzone);
+        opt.motor_delay_cycles =
+            declare_parameter<int>("motor_delay_cycles", opt.motor_delay_cycles);
+        opt.motor_noise = declare_parameter<double>("motor_noise", opt.motor_noise);
+        opt.motor_seed = declare_parameter<int>("motor_seed", opt.motor_seed);
         opt.status_period_s = declare_parameter<double>("status_period_s", opt.status_period_s);
 
         if (opt.start != "rest" && opt.start != "raw")
@@ -187,7 +244,35 @@ class SimNode : public rclcpp::Node
         {
             throw std::runtime_error("参数 publish_every 必须 ≥ 1");
         }
-        // 没有显示服务时（纯 ssh / 无窗口环境）不能开官方界面，自动降级成无窗口跑，
+        if (opt.motor_deadzone < 0.0 || opt.motor_noise < 0.0)
+        {
+            throw std::runtime_error("参数 motor_deadzone / motor_noise 不能为负");
+        }
+        if (opt.motor_delay_cycles < 0)
+        {
+            throw std::runtime_error("参数 motor_delay_cycles 不能为负");
+        }
+        if (opt.motor_seed < 0)
+        {
+            throw std::runtime_error("参数 motor_seed 不能为负");
+        }
+        if (opt.viewer_render_scale < 1)
+        {
+            throw std::runtime_error("参数 viewer_render_scale 必须 ≥ 1（1 = 不超采样）");
+        }
+        if (opt.viewer_msaa < 0)
+        {
+            throw std::runtime_error("参数 viewer_msaa 不能为负（0 = 关抗锯齿）");
+        }
+        if (opt.viewer_shadow_size < 0)
+        {
+            throw std::runtime_error("参数 viewer_shadow_size 不能为负（0 = 用模型里的默认值）");
+        }
+        if (opt.viewer_shadow_clip <= 0.0)
+        {
+            throw std::runtime_error("参数 viewer_shadow_clip 必须 > 0（阴影正交盒半宽系数）");
+        }
+        // 没有显示服务时（纯 ssh / 无窗口环境）不能建窗口，自动降级成无窗口跑，
         // 而不是让 GLFW 在 glfwInit 里把节点整个搞崩。
         if (opt.viewer && std::getenv("DISPLAY") == nullptr &&
             std::getenv("WAYLAND_DISPLAY") == nullptr)
@@ -237,6 +322,9 @@ class SimNode : public rclcpp::Node
 
     bool TakeReset() { return reset_requested_.exchange(false); }
 
+    /// 窗口里按 R：与 `/sim_reset` 服务同一条路径（都只是置标志，复位在主线程做）
+    void RequestReset() { reset_requested_.store(true); }
+
     void PublishMotorState(const MotorState& msg) { state_pub_->publish(msg); }
 
     void PublishImu(const Imu& msg) { imu_pub_->publish(msg); }
@@ -246,7 +334,6 @@ class SimNode : public rclcpp::Node
     {
         std::lock_guard<std::mutex> lock(cmd_mutex_);
         cmd_ = *msg;
-        cmd_wall_ = WallNow();
         if (!have_cmd_)
         {
             have_cmd_ = true;
@@ -262,7 +349,6 @@ class SimNode : public rclcpp::Node
     std::mutex cmd_mutex_;
     MitCommand cmd_;
     bool have_cmd_ = false;
-    double cmd_wall_ = 0.0;
 
     rclcpp::Subscription<MitCommand>::SharedPtr command_sub_;
     rclcpp::Publisher<MotorState>::SharedPtr state_pub_;
@@ -398,7 +484,7 @@ MitCommand DampingCommand(double kd)
 }
 
 void PublishFeedback(SimNode* node, const mjData* d, const ActuatorIndex& idx,
-                     const ImuAddress& imu, const Options& opt)
+                     const ImuAddress& imu)
 {
     MotorState state;
     state.header.stamp = node->now();
@@ -442,7 +528,170 @@ void PublishFeedback(SimNode* node, const mjData* d, const ActuatorIndex& idx,
 }
 
 /// 物理线程主体：装现场 → 递给界面 → 一步一循环。返回值 = 进程退出码（0 正常 / 1 装配失败）。
-int PhysicsLoop(SimNode* node, ClosableAdapter* adapter, mujoco::Simulate* sim)
+/// 电机非理想项自检（`sim_node --self-test`）：
+/// 不需要模型、窗口、硬件，跑完就退。检查口径与数字见 docs/motor-model.md。
+int MotorSelfTest()
+{
+    using quadruped::control::kNu;
+    using quadruped::motor::Bank;
+    using quadruped::motor::Cmd;
+    using quadruped::motor::NonIdeal;
+
+    int bad = 0;
+    const auto check = [&bad](const char* what, bool ok)
+    {
+        std::printf("  %-54s %s\n", what, ok ? "✓" : "✗");
+        if (!ok)
+        {
+            ++bad;
+        }
+    };
+    std::printf("电机非理想项自检（不需要硬件/窗口）\n");
+
+    // ① 全关 = 理想公式（逐位一致，保证"不引入非理想项"的回归结果一字不差）
+    {
+        Bank bank(NonIdeal{}, quadruped::motor::kDefaultTauMax);
+        bool same = true;
+        for (int i = 0; i < kNu && same; ++i)
+        {
+            for (const double q : {-1.0, -0.3, 0.0, 0.37, 2.0})
+            {
+                for (const double dq : {-4.0, -0.2, 0.0, 0.9, 6.0})
+                {
+                    std::array<Cmd, kNu> c{};
+                    std::array<double, kNu> jq{};
+                    std::array<double, kNu> jdq{};
+                    std::array<double, kNu> tau{};
+                    c[static_cast<std::size_t>(i)] = Cmd{0.5, 30.0, 0.2, 1.5, -0.1};
+                    jq[static_cast<std::size_t>(i)] = q;
+                    jdq[static_cast<std::size_t>(i)] = dq;
+                    bank.Apply(c, jq, jdq, &tau);
+                    if (tau[static_cast<std::size_t>(i)] !=
+                        quadruped::motor::Torque(c[static_cast<std::size_t>(i)], q, dq,
+                                                 quadruped::motor::kDefaultTauMax))
+                    {
+                        same = false;
+                    }
+                }
+            }
+        }
+        check("全关时与理想公式 Torque() 逐位一致", same);
+    }
+
+    // ② 死区：0 < |τ| < 死区 → 0；τ 正好 0 不算落死区（完整版踩过的坑）
+    {
+        Bank bank(NonIdeal{0.5, 0, 0.0, 1}, 100.0);
+        std::array<Cmd, kNu> c{};
+        std::array<double, kNu> jq{};
+        std::array<double, kNu> jdq{};
+        std::array<double, kNu> tau{};
+        c[0].kp = 100.0;
+        c[0].q_des = 0.001; // τ = 0.1 N·m < 0.5
+        c[1].kp = 100.0;
+        c[1].q_des = 0.02; // τ = 2 N·m
+        bank.Apply(c, jq, jdq, &tau);
+        check("死区：0.1 N·m（< 0.5）被削成 0", tau[0] == 0.0);
+        check("死区：2 N·m 原样通过", tau[1] == 2.0);
+        check("死区：只统计被削掉的那 1 个电机·步", bank.stats().dead == 1);
+
+        Bank damp_bank(NonIdeal{0.5, 0, 0.0, 1}, 100.0);
+        std::array<Cmd, kNu> damp{};
+        for (Cmd& d : damp)
+        {
+            d.kd = 2.0; // 阻尼模式，dq 全 0 ⇒ τ 正好 0
+        }
+        for (int s = 0; s < 100; ++s)
+        {
+            damp_bank.Apply(damp, jq, jdq, &tau);
+        }
+        check("死区：τ 正好 0 不计入 dead（否则会报出上万次假计数）",
+              damp_bank.stats().dead == 0 && damp_bank.stats().dead_events == 0);
+    }
+
+    // ③ 指令延迟：N 个周期之前的指令，前 N 步还是"没收到指令"（0）
+    {
+        Bank bank(NonIdeal{0.0, 3, 0.0, 1}, 1000.0);
+        std::array<Cmd, kNu> c{};
+        std::array<double, kNu> jq{};
+        std::array<double, kNu> jdq{};
+        std::array<double, kNu> tau{};
+        double first = -1.0;
+        double fourth = -1.0;
+        for (int s = 0; s <= 3; ++s)
+        {
+            for (Cmd& cc : c)
+            {
+                cc.tau_ff = (s == 0) ? 1.0 : 5.0;
+            }
+            bank.Apply(c, jq, jdq, &tau);
+            if (s == 0)
+            {
+                first = tau[0];
+            }
+            if (s == 3)
+            {
+                fourth = tau[0];
+            }
+        }
+        check("延迟 3 周期：第 1 步仍是 0（还没收到指令）", first == 0.0);
+        check("延迟 3 周期：第 4 步才用上第 1 步的 1 N·m", fourth == 1.0);
+    }
+
+    // ④ 噪声：同 seed 可复现、不同 seed 不同、RMS ≈ 标准差
+    {
+        Bank a(NonIdeal{0.0, 0, 0.1, 7}, 100.0);
+        Bank b(NonIdeal{0.0, 0, 0.1, 7}, 100.0);
+        Bank c(NonIdeal{0.0, 0, 0.1, 8}, 100.0);
+        std::array<Cmd, kNu> zero{};
+        std::array<double, kNu> jq{};
+        std::array<double, kNu> jdq{};
+        std::array<double, kNu> ta{};
+        std::array<double, kNu> tb{};
+        std::array<double, kNu> tc{};
+        bool same = true;
+        bool differ = false;
+        double sum_sq = 0.0;
+        int n = 0;
+        for (int s = 0; s < 200; ++s)
+        {
+            a.Apply(zero, jq, jdq, &ta);
+            b.Apply(zero, jq, jdq, &tb);
+            c.Apply(zero, jq, jdq, &tc);
+            same = same && (ta[0] == tb[0]);
+            differ = differ || (ta[0] != tc[0]);
+            sum_sq += ta[0] * ta[0];
+            ++n;
+        }
+        const double rms = std::sqrt(sum_sq / n);
+        check("噪声：同 seed 两条序列逐位一致（可复现）", same);
+        check("噪声：换 seed 序列就不同", differ);
+        check("噪声：RMS ≈ 标准差 0.1 N·m（±30%）", rms > 0.07 && rms < 0.13);
+    }
+
+    // ⑤ 限幅 + 统计
+    {
+        Bank bank(NonIdeal{}, 5.0);
+        std::array<Cmd, kNu> c{};
+        std::array<double, kNu> jq{};
+        std::array<double, kNu> jdq{};
+        std::array<double, kNu> tau{};
+        c[0].tau_ff = 100.0;
+        bank.Apply(c, jq, jdq, &tau);
+        check("限幅：100 N·m 压到 tau_max=5 N·m 且计入 sat",
+              tau[0] == 5.0 && bank.stats().sat == 1);
+    }
+
+    std::printf("电机自检：%s（失败 %d 项）\n", bad == 0 ? "全部通过 ✓" : "有失败项 ✗", bad);
+    return bad == 0 ? 0 : 1;
+}
+
+/// 仿真主循环：**物理 + 渲染都在这一条线程**（主线程），`mjModel`/`mjData` 不被别人碰。
+///
+/// 两种节奏：
+///   * 有窗口：每帧把物理"补齐到当前墙钟"（上限 `kMaxCatchupSteps` 步）再画一帧 —— 物理仍是
+///     500 Hz，渲染跟 vsync 走；窗口/系统卡一下之后不会攒出一大堆步一次补完；
+///   * 无窗口：一步一节流（deadline pacing），与自检脚本、回归脚本的口径完全一致。
+int SimLoop(SimNode* node)
 {
     const Options& opt = node->options();
 
@@ -451,14 +700,6 @@ int PhysicsLoop(SimNode* node, ClosableAdapter* adapter, mujoco::Simulate* sim)
     if (!LoadScene(opt, &scene, &err))
     {
         std::fprintf(stderr, "仿真节点装配失败：%s\n", err.c_str());
-        if (adapter != nullptr)
-        {
-            adapter->RequestClose(); // 让主线程的 RenderLoop 收工（它只看窗口该不该关）
-        }
-        if (sim != nullptr)
-        {
-            sim->exitrequest = 1;
-        }
         return 1;
     }
     mjModel* m = scene.m;
@@ -476,14 +717,61 @@ int PhysicsLoop(SimNode* node, ClosableAdapter* adapter, mujoco::Simulate* sim)
                              "/imu 不会发（见 models/black_description.xml 的 <sensor>）\n");
     }
 
-    if (sim != nullptr)
+    // 窗口（可选）：GLFW 要求"谁建窗口谁用它"，本函数就在主线程，所以在这里建。
+    std::unique_ptr<quadruped::viewer::Window> win;
+    if (opt.viewer)
     {
-        sim->Load(m, d, scene.path.c_str()); // 交给官方界面（之后 m/d 归它释放）
-        scene.Release();
+        if (opt.viewer_shadow_size > 0)
         {
-            const mujoco::MutexLock lock(sim->mtx);
-            mj_forward(m, d); // 与官方一致：先算一遍派生量，窗口第一帧才不是空的
+            m->vis.quality.shadowsize = opt.viewer_shadow_size; // 必须在建 GL 上下文之前设
         }
+        // 阴影正交盒半宽：只对平行光有效；收紧它是"提高阴影有效分辨率"的免费手段，
+        // 代价是覆盖范围变小（盒子以**光源的 xy** 为中心）——见 kViewerShadowClip 的注释。
+        m->vis.map.shadowclip = opt.viewer_shadow_clip;
+        // **超采样与 MSAA 互斥**（本机实测、可复现：两者同开时窗口只剩 HUD、画面全黑）：
+        // 走超采样时，离屏采样数与**窗口的 MSAA hint** 都要关——只关离屏那个仍然黑屏，
+        // 说明触发点在"多重采样窗口 + 离屏 blit"这条路上。见 docs/learn/graphics-stack.md。
+        const int window_msaa = opt.viewer_render_scale > 1 ? 0 : std::max(0, opt.viewer_msaa);
+        // 离屏缓冲的多重采样数在建 GL 上下文时被读走（与 shadowsize 同理，晚了没用）
+        m->vis.quality.offsamples = window_msaa;
+        if (opt.viewer_render_scale > 1 && opt.viewer_msaa > 0)
+        {
+            std::printf("提示：viewer_render_scale=%d（超采样）已生效，MSAA 自动关掉"
+                        "（两者同开在本机驱动上画面全黑，实测见 docs/learn/graphics-stack.md）\n",
+                        opt.viewer_render_scale);
+        }
+        win = std::make_unique<quadruped::viewer::Window>(
+            m, "quadruped_ros2 sim_node", kViewerWidth, kViewerHeight, opt.viewer_shadow,
+            window_msaa, opt.viewer_render_scale);
+        std::printf("视口：阴影=%s（运行中按 S 切换）、阴影贴图 %d×%d、正交盒半宽 %.3f m"
+                    "（纹素 %.2f mm，改这两个要重启；成因与实测见 docs/learn/graphics-stack.md §8.3）\n",
+                    opt.viewer_shadow ? "开" : "关", m->vis.quality.shadowsize,
+                    m->vis.quality.shadowsize, m->stat.extent * m->vis.map.shadowclip,
+                    2000.0 * m->stat.extent * m->vis.map.shadowclip /
+                        std::max(1, m->vis.quality.shadowsize - 2));
+        std::printf("节点按键：空格 暂停/继续、→ 暂停时单步、Ctrl+R 复位、Ctrl+Q 或 Esc 退出、"
+                    "-/= 速度（31 档，当前 %.4g%%）；HUD 右上角显示当前开着的显示开关\n",
+                    kSpeedLevels[0]);
+        if (!opt.realtime)
+        {
+            std::printf("注意：窗口模式下仍按墙钟节流（要全速跑请 viewer:=false）\n");
+        }
+    }
+    mj_forward(m, d); // 先算一遍派生量，第一帧才不是空的
+
+    // 电机（含非理想项）：全关时 Bank 内部直接走理想公式，行为与改动前逐位一致
+    quadruped::motor::Bank motors(
+        quadruped::motor::NonIdeal{opt.motor_deadzone, opt.motor_delay_cycles, opt.motor_noise,
+                                   static_cast<unsigned>(opt.motor_seed)},
+        opt.tau_max);
+    if (motors.ideal())
+    {
+        std::printf("电机：理想力矩源（死区/延迟/噪声全关）\n");
+    }
+    else
+    {
+        std::printf("电机非理想项：死区 %.4g N·m、指令延迟 %d 周期、力矩噪声 %.4g N·m（seed %d）\n",
+                    opt.motor_deadzone, opt.motor_delay_cycles, opt.motor_noise, opt.motor_seed);
     }
 
     long steps = 0;
@@ -492,36 +780,25 @@ int PhysicsLoop(SimNode* node, ClosableAdapter* adapter, mujoco::Simulate* sim)
     const long timeout_steps =
         std::max(1L, static_cast<long>(opt.command_timeout_ms / (dt * 1000.0)));
     bool warned_stale = false;
+    bool paused = false;
+    int speed_level = 0; // 100% 起步（下标越大越慢，见 kSpeedLevels）
     double status_sim = d->time;
-    double report_wall = WallNow(); // 每 5 s 墙钟打一行吞吐统计；两个基准要一起推进
+    double report_wall = WallNow();
     double report_sim = d->time;
-    double wall0 = report_wall; // 暂停后重新对齐用的墙钟基准
-    double deadline = wall0;
-    // 无窗口时没有官方那个递归锁，用一个本地互斥占位（没人和它抢，等价于不加锁；
-    // 这样下面两条路径共用同一段循环体，不必写两遍）。
-    mujoco::SimulateMutex local_mtx;
+    double realtime_factor = 1.0;
+    // 有窗口：墙钟与仿真时间的一对锚点 —— "墙钟走到 wall_ref 时，仿真该到 sim_ref"。
+    // 不能只用"循环开始以来的墙钟差"：复位保留仿真时间轴（d->time 不清零），一旦把基准重置成
+    // "现在"，d->time 就永远大于"已经过的时间"，物理再也不步进 —— 2026-10-06 实测 bug：
+    // 手柄按 X 复位后狗卡在 raw 姿势不动（暂停后恢复也会同样卡住）。
+    double wall_ref = report_wall;
+    double sim_ref = d->time;
+    double deadline = report_wall; // 无窗口：deadline pacing 的下一次期限
 
-    while (!node->quit_requested())
+    // 一步：取指令（含看门狗）→ 电机力矩 → `mj_step` → 反馈 → 状态行。
+    // 看门狗按**控制周期数**算（不是墙上时间）：500 Hz 下 200 ms = 100 步；这样
+    // `realtime:=false` 的全速回归与实时跑行为一致（实机上驱动板也是数控制周期的）。
+    const auto step_once = [&]()
     {
-        if (sim != nullptr && sim->run == 0) // 窗口里按了空格：暂停。这段时间不算"落后"
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            wall0 = WallNow();
-            deadline = wall0;
-            continue;
-        }
-
-        if (node->TakeReset())
-        {
-            const mujoco::MutexLock lock(sim != nullptr ? sim->mtx : local_mtx);
-            ResetToStart(opt, m, d);
-            std::printf("复位：回到起点（%s），保留仿真时间轴 t=%.3f s\n", opt.start.c_str(),
-                        d->time);
-        }
-
-        // ① 取最近一条 MIT 指令；看门狗按**控制周期数**算（不是墙上时间）：
-        //    500 Hz 下 200 ms = 100 步。用步数而不是墙钟，是为了让 realtime:=false 的
-        //    全速回归与实时跑的行为完全一致（实机上驱动板也是数控制周期的）。
         MitCommand cmd;
         const bool got = node->TakeCommand(&cmd);
         if (got)
@@ -554,42 +831,30 @@ int PhysicsLoop(SimNode* node, ClosableAdapter* adapter, mujoco::Simulate* sim)
             warned_stale = false;
         }
 
-        // ② 电机模型：MIT 五参数 → 关节力矩（含限幅）→ data.ctrl
-        //    ③ 步进。共享数据（含渲染线程读的）都在官方那把递归锁里。
+        std::array<quadruped::motor::Cmd, kNu> cmds{};
+        std::array<double, kNu> joint_q{};
+        std::array<double, kNu> joint_dq{};
+        std::array<double, kNu> tau{};
+        for (int i = 0; i < kNu; ++i)
         {
-            const mujoco::MutexLock lock(sim != nullptr ? sim->mtx : local_mtx);
-            for (int i = 0; i < kNu; ++i)
-            {
-                const auto k = static_cast<std::size_t>(i);
-                const quadruped::motor::Cmd one{cmd.tau[k], cmd.kp[k], cmd.q[k], cmd.kd[k],
-                                                cmd.w[k]};
-                d->ctrl[i] = quadruped::motor::Torque(one, d->qpos[idx.qpos[k]],
-                                                      d->qvel[idx.dof[k]], opt.tau_max);
-            }
-            mj_step(m, d);
+            const auto k = static_cast<std::size_t>(i);
+            cmds[k] = quadruped::motor::Cmd{cmd.tau[k], cmd.kp[k], cmd.q[k], cmd.kd[k], cmd.w[k]};
+            joint_q[k] = d->qpos[idx.qpos[k]];
+            joint_dq[k] = d->qvel[idx.dof[k]];
         }
+        // 每步只调一次：指令延迟靠它推进历史（按关节调会把 N 周期延迟变成 N/12 周期）
+        motors.Apply(cmds, joint_q, joint_dq, &tau);
+        for (int i = 0; i < kNu; ++i)
+        {
+            d->ctrl[i] = tau[static_cast<std::size_t>(i)];
+        }
+        mj_step(m, d);
         ++steps;
 
-        // ④ 反馈（默认每步一次 = 500 Hz）
         if (steps % opt.publish_every == 0)
         {
-            PublishFeedback(node, d, idx, imu, opt);
+            PublishFeedback(node, d, idx, imu);
             ++published;
-        }
-
-        // ⑤ 按墙钟节流（deadline pacing：误差不累积，落后就重新对齐不追赶）
-        if (opt.realtime)
-        {
-            deadline += dt;
-            const double delay = deadline - WallNow();
-            if (delay > 0.0)
-            {
-                std::this_thread::sleep_for(std::chrono::duration<double>(delay));
-            }
-            else
-            {
-                deadline = WallNow();
-            }
         }
 
         // 状态行（默认每秒仿真时间一行，回归脚本就 grep 它）：基座高度 / 倾角 / 接触点数
@@ -606,19 +871,179 @@ int PhysicsLoop(SimNode* node, ClosableAdapter* adapter, mujoco::Simulate* sim)
             std::printf("t=%.3f z=%.4f tilt=%.1f ncon=%d cmd=%s\n", d->time, d->qpos[2], tilt,
                         d->ncon, (!stale && got) ? "ok" : "damping");
         }
+    };
 
-        // 每 5 s 墙钟打一行：仿真秒 / 实时率 / 步数 / 发出去的反馈条数
+    // 每 5 s 墙钟打一行：仿真秒 / 实时率 / 步数 / 发出去的反馈条数
+    const auto report_throughput = [&]()
+    {
         const double wall = WallNow() - report_wall;
-        if (wall >= 5.0)
+        if (wall < 5.0)
         {
-            const double sim_seconds = d->time - report_sim;
-            std::printf("仿真 %.2f s / 墙钟 %.2f s = %.3fx 实时；%ld 步，发反馈 %ld 条\n",
-                        sim_seconds, wall, sim_seconds / wall, steps, published);
-            report_wall = WallNow();
-            report_sim = d->time;
+            return;
+        }
+        const double sim_seconds = d->time - report_sim;
+        realtime_factor = sim_seconds / wall;
+        std::printf("仿真 %.2f s / 墙钟 %.2f s = %.3fx 实时；%ld 步，发反馈 %ld 条\n", sim_seconds,
+                    wall, realtime_factor, steps, published);
+        report_wall = WallNow();
+        report_sim = d->time;
+    };
+
+    const auto draw_frame = [&]()
+    {
+        if (win == nullptr)
+        {
+            return;
+        }
+        double tilt = 0.0;
+        if (imu.ok())
+        {
+            tilt = quadruped::attitude::TiltDeg(
+                d->sensordata[imu.quat + 0], d->sensordata[imu.quat + 1],
+                d->sensordata[imu.quat + 2], d->sensordata[imu.quat + 3]);
+        }
+        // HUD 一律 ASCII（MuJoCo 内置字体画不出中文，见 viewer.hpp）
+        char left[200];
+        std::snprintf(left, sizeof(left), "t=%.2fs  z=%.3fm  tilt=%.1fdeg  ncon=%d  steps=%ld",
+                      d->time, d->qpos[2], tilt, d->ncon, steps);
+        char right[400];
+        const std::string flags = win->FlagsSummary();
+        std::snprintf(right, sizeof(right),
+                      "%s  %.2fx realtime  %.4g%%\n"
+                      "flags: %s\n"
+                      "[space]pause [right]step [ctrl+r]reset [ctrl+q]/[esc]quit "
+                      "[-/=]speed [f6/f7]frame/label [home]view",
+                      paused ? "PAUSED" : "running", realtime_factor, kSpeedLevels[speed_level],
+                      flags.c_str());
+        win->Draw(m, d, left, right);
+    };
+
+    while (!node->quit_requested())
+    {
+        if (win != nullptr)
+        {
+            if (!win->Poll())
+            {
+                break; // 用户点掉窗口
+            }
+            quadruped::viewer::KeyEvent event;
+            while (win->TakeKey(&event))
+            {
+                // 顺序：Ctrl 组合（节点动作）→ 窗口的显示开关表 → 剩下的节点动作
+                if ((event.mods & GLFW_MOD_CONTROL) != 0)
+                {
+                    if (event.key == GLFW_KEY_R)
+                    {
+                        node->RequestReset();
+                    }
+                    else if (event.key == GLFW_KEY_Q)
+                    {
+                        node->RequestQuit();
+                    }
+                }
+                else if (win->HandleKey(event))
+                {
+                    // 显示开关/F6/F7/Home：窗口自己消化了，HUD 里能看到变化
+                }
+                else if (event.key == GLFW_KEY_SPACE)
+                {
+                    paused = !paused;
+                    std::printf("%s\n", paused ? "暂停（空格继续）" : "继续");
+                }
+                else if (event.key == GLFW_KEY_RIGHT)
+                {
+                    if (paused) // 官方语义：暂停时单步前进
+                    {
+                        step_once();
+                        draw_frame();
+                    }
+                }
+                else if (event.key == GLFW_KEY_MINUS)
+                {
+                    if (speed_level < kSpeedLevelsCount - 1)
+                    {
+                        std::printf("速度：%.4g%%\n", kSpeedLevels[++speed_level]);
+                    }
+                }
+                else if (event.key == GLFW_KEY_EQUAL)
+                {
+                    if (speed_level > 0)
+                    {
+                        std::printf("速度：%.4g%%\n", kSpeedLevels[--speed_level]);
+                    }
+                }
+                else if (event.key == GLFW_KEY_Q || event.key == GLFW_KEY_ESCAPE)
+                {
+                    node->RequestQuit();
+                }
+            }
+            if (node->quit_requested())
+            {
+                break;
+            }
+        }
+
+        if (node->TakeReset())
+        {
+            ResetToStart(opt, m, d);
+            std::printf("复位：回到起点（%s），保留仿真时间轴 t=%.3f s\n", opt.start.c_str(),
+                        d->time);
+            wall_ref = WallNow(); // 重新锚定：d->time 保留，等价于"接着走"
+            sim_ref = d->time;
+            deadline = wall_ref;
+        }
+
+        if (paused)
+        {
+            draw_frame(); // 暂停时也画：HUD 上能看到 PAUSED
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            wall_ref = WallNow(); // 暂停的这段时间不算"落后"：锚点一起前移
+            sim_ref = d->time;
+            deadline = wall_ref;
+            continue;
+        }
+
+        if (win != nullptr)
+        {
+            const double target =
+                sim_ref + (WallNow() - wall_ref) * kSpeedLevels[speed_level] / 100.0;
+            int guard = 0;
+            while (d->time < target && guard < kMaxCatchupSteps && !node->quit_requested())
+            {
+                step_once();
+                ++guard;
+            }
+            if (target - d->time > kMaxLagSeconds) // 落后太多：重新对齐，不追这一段
+            {
+                wall_ref = WallNow();
+                sim_ref = d->time;
+            }
+            report_throughput();
+            draw_frame();
+        }
+        else
+        {
+            step_once();
+            if (opt.realtime)
+            {
+                deadline += dt;
+                const double delay = deadline - WallNow();
+                if (delay > 0.0)
+                {
+                    std::this_thread::sleep_for(std::chrono::duration<double>(delay));
+                }
+                else
+                {
+                    deadline = WallNow();
+                }
+            }
+            report_throughput();
         }
     }
-
+    if (!motors.ideal())
+    {
+        quadruped::motor::PrintStats(motors);
+    }
     std::printf("仿真节点退出：%ld 步、发反馈 %ld 条、仿真时间 %.3f s\n", steps, published,
                 d->time);
     return 0;
@@ -629,6 +1054,15 @@ int PhysicsLoop(SimNode* node, ClosableAdapter* adapter, mujoco::Simulate* sim)
 int main(int argc, char** argv)
 {
     std::setvbuf(stdout, nullptr, _IOLBF, 0); // 交互式运行：日志要立刻可见，别等缓冲区满
+    // `--self-test`：只跑电机模型的离线自检（不需要模型/窗口/硬件/ROS），跑完即退，口径与其他任务一致。
+    // 放在 rclcpp::init 之前，免得把未知参数塞给它。
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::string(argv[i]) == "--self-test")
+        {
+            return MotorSelfTest();
+        }
+    }
     rclcpp::init(argc, argv);
 
     std::shared_ptr<SimNode> node;
@@ -643,45 +1077,14 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    // ROS 执行器自己一条线程：物理线程专心跑 mj_step，不被回调打断（回调只写一个槽位）。
+    // ROS 执行器自己一条线程：只收 /mit_command、答 /sim_reset，不碰 mjData（见文件头）。
     rclcpp::executors::SingleThreadedExecutor executor;
     executor.add_node(node);
     std::thread ros_thread([&executor] { executor.spin(); });
 
-    const Options& opt = node->options();
-    int rc = 0;
-    if (opt.viewer)
-    {
-        // 官方界面：相机/选项/扰动给默认值（之后都在窗口里改）
-        mjvCamera cam;
-        mjvOption ui_opt;
-        mjvPerturb pert;
-        mjv_defaultCamera(&cam);
-        mjv_defaultOption(&ui_opt);
-        mjv_defaultPerturb(&pert);
+    const int rc = SimLoop(node.get()); // 主线程：物理 + 渲染（单线程，无锁）
 
-        auto adapter = std::make_unique<ClosableAdapter>();
-        ClosableAdapter* adapter_raw = adapter.get();
-        auto sim = std::make_unique<mujoco::Simulate>(std::move(adapter), &cam, &ui_opt, &pert,
-                                                      /*is_passive=*/false);
-
-        // 顺序要紧：物理线程里的 Load() 在等渲染线程，所以主线程先跑 RenderLoop 再起物理线程
-        std::thread physics(
-            [&]
-            {
-                rc = PhysicsLoop(node.get(), adapter_raw, sim.get());
-                adapter_raw->RequestClose(); // 物理线程先退出（Ctrl-C）时，让主线程的窗口也收工
-                sim->exitrequest = 1;
-            });
-        sim->RenderLoop(); // 阻塞：直到窗口被关（用户点掉，或上面这行把标志置上）
-        node->RequestQuit();
-        physics.join();
-    }
-    else
-    {
-        rc = PhysicsLoop(node.get(), nullptr, nullptr);
-    }
-
+    node->RequestQuit();
     executor.cancel();
     if (ros_thread.joinable())
     {

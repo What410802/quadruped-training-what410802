@@ -30,12 +30,9 @@
 #include <sensor_msgs/msg/joy.hpp>
 #include <std_srvs/srv/empty.hpp>
 
-#include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace

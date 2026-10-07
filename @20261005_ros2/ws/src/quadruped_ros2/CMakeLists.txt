@@ -23,11 +23,14 @@ find_package(rosidl_default_generators REQUIRED)
 
 # MuJoCo / glfw 由 pixi 环境（`pixi run …`，见仓库根 pixi.toml）提供：它们的 CMake 配置
 # 就在 $CONDA_PREFIX 下。CMake 默认不会去搜 conda 前缀，所以显式加进来——用环境变量而不是写死
-# 路径（换机器 / 换环境名都对）。mujoco::libmujoco_simulate 就是官方 Simulate 界面那个库。
+# 路径（换机器 / 换环境名都对）。只链 mujoco::mujoco：窗口是自己用 GLFW + mjv/mjr 开的
+# （include/quadruped_ros2/viewer.hpp），不再需要官方界面那个 libmujoco_simulate。
 if(DEFINED ENV{CONDA_PREFIX})
     list(APPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
 endif()
 find_package(mujoco REQUIRED)
+# 截图诊断（viewer.hpp 的 SavePpm）直接用 glReadPixels/glPixelStorei，所以要显式链 OpenGL
+find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -46,9 +49,19 @@ add_executable(controller_node src/controller_node.cpp)
 target_include_directories(controller_node PRIVATE include)
 ament_target_dependencies(controller_node rclcpp std_msgs sensor_msgs std_srvs)
 
-# ②b 仿真节点（任务第 2 项）：MuJoCo + 电机模型，链官方 Simulate 界面与 glfw。
+# ②b 仿真节点（任务第 2 项）：MuJoCo + 电机模型，窗口自建（GLFW + mjv/mjr）。
 add_executable(sim_node src/sim_node.cpp)
 target_include_directories(sim_node PRIVATE include)
+# 这条不是给编译器用的（conda g++ 内置就搜 $CONDA_PREFIX/include），而是给**读编译数据库的工具**：
+# MuJoCo / GLFW 的头文件在 $CONDA_PREFIX/include 下，而"编译器的内置搜索路径"不会出现在
+# compile_commands.json 里，于是 clangd 会报 'mujoco/mujoco.h' file not found（实测 68 个错误）。
+# 注意两点：① 用 target_compile_options 直接传 -I——CMake 会把 target_include_directories 里
+# "编译器已内置的目录"过滤掉，那样写等于没写；② 修复后源文件在 clangd 下 0 错误，
+# 但 clangd 对"头文件"推断编译命令时仍可能丢这条 -I，头文件若还报错就给 clangd 传
+# `--query-driver=**/bin/*`（glob 要匹配编译数据库里出现的 …/bin/c++）。
+if(DEFINED ENV{CONDA_PREFIX})
+    target_compile_options(sim_node PRIVATE "-I$ENV{CONDA_PREFIX}/include")
+endif()
 ament_target_dependencies(sim_node rclcpp std_msgs sensor_msgs std_srvs)
 
 # 自己生成的消息类型支持（Humble 的推荐写法；rosidl_target_interfaces 已弃用）
@@ -57,8 +70,8 @@ target_link_libraries(controller_node "${cpp_typesupport_target}")
 target_link_libraries(sim_node
     "${cpp_typesupport_target}"
     mujoco::mujoco
-    mujoco::libmujoco_simulate
     glfw
+    OpenGL::GL
     Threads::Threads
 )
 
