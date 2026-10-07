@@ -63,7 +63,7 @@ sudo @20261005_ros2/scripts/setup_joy_devices.sh          # 需要 sudo 密码
 
 还有一条护栏：控制器**忽略 `frame_id` 以 `joy_disconnected` 开头的帧**（手柄没找到设备时手柄节点发的就是它，"全 0"不会被当成"松手"或"按了什么"）。这与主办者仓库 gateway 的 `joy_require_connection_frame` 是同一个设计，理由也一样：动作要建立在"输入源确实是活的"之上。
 
-**设备认领规则**（`joy_node` 的参数）：`device` 给了就只认这个路径；没给就扫 `/dev/input/event*`，要求"有 `BTN_A` + 左摇杆两个轴"，并且名字里含 `name` 参数里的某个片段（默认 `xbox,x-box,xinput`，`name:=` 空表示任何手柄都收）。名字片段有两种写法是必须的：内核 xpad 驱动给 360 手柄起的名是 `Microsoft X-Box 360 pad`，大写后是 **X-BOX** 而不是 XBOX——只匹配 `xbox` 会漏掉实体手柄（调研笔记 `xbox_sim_joy.py` 里记过这个坑，本机只读材料）。
+**设备认领规则**（`joy_node` 的参数）：`device` 给了就只认这个路径；没给就扫 `/dev/input/event*`，要求"有 `BTN_A` + 左摇杆两个轴"，并且名字里含 `name` 参数里的某个片段（默认 `xbox,x-box,xinput,gamepad,joystick`，`name:=` 空表示任何手柄都收）。名字片段有两种写法是必须的：内核 xpad 驱动给 360 手柄起的名是 `Microsoft X-Box 360 pad`，大写后是 **X-BOX** 而不是 XBOX——只匹配 `xbox` 会漏掉实体手柄（调研笔记 `xbox_sim_joy.py` 里记过这个坑，本机只读材料）。**2026-10-07 真机复验**又补了一类：第三方 HID 手柄常常只报 `… gamepad` / `… joystick`（实测那台是 `Zikway HID gamepad`），所以默认片段加了 `gamepad,joystick`。
 
 ### 3.1 为什么 `/joy` 按频率发（快照），而不是事件触发
 
@@ -127,8 +127,14 @@ pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py
 
 ## 7 未验证 / 下一步
 
-- **④ 实体手柄复验**：没有硬件，未跑。插上后 `joy_node` 会按名字自动认（真手柄名是 `Microsoft X-Box 360 pad`，也在默认片段里）；如果认不到，用 `pixi run ros2 run quadruped_ros2 joy_node --ros-args -p device:=/dev/input/eventN` 显式指定（完整的真机核对清单见 §8）。
-- **未验证**：非 xbox 协议手柄（北通、盖世小鸡等）的 profile——若以后要用，照 `gamepads.yaml` 加一张索引表即可，`joy_node` 现在的 `name` 参数是它的最小版本。
+- **④ 实体手柄复验**：✅ **已做（2026-10-07，Zikway HID gamepad，USB）**——设备层、`joy_node`、控制器、仿真四层逐项实测通过：
+  * 认领：名字是 `Zikway HID gamepad`（不含 `xbox`），加 `gamepad` 片段后**自动认领**；也可以 `-p device:=/dev/input/event15` 钉住（两者都实测过）；
+  * 摇杆：`/joy` 的 `axes[0]/[1]`（左）与 `axes[3]/[4]`（右）都到 **±1.000**；
+  * 扳机：LT/RT → `axes[2]/[5]` 到 **±1.000**（这台同时上报 `BTN_TL2/TR2` 数字键）；
+  * 十字键：`axes[6]/[7]` 到 **±1**（`ABS_HAT0X/Y`）；
+  * 按键：**A→B→X→A** 依次被控制器认到（日志四条"手柄 A/B/X → …"），狗**两次起身**、峰值 **z = 0.3836 m**、四足触地、倾角 0.0°——与仿真手柄、与上一版数字完全一致。
+  复现用的探头是 [`../scripts/agent_scripts/probe_gamepad.py`](../scripts/agent_scripts/probe_gamepad.py)（设备层，`--watch` 引导采集）+ `--ros-args -p device:=` 起 `joy_node`，整套核对表见 §8。
+- **非 xbox 布局的手柄**：已有一台第三方 HID 手柄实测通过（轴量程与槽位由 `absinfo` 自适应，不再写死量程）；再换别的牌子，先跑 `probe_gamepad.py` 看它的轴/键码位，必要时只改 `name` 片段或 `-p device:=`，一般不必改代码。
 - **未做**：震动/LED 回馈（`sensor_msgs/JoyFeedback`）、`/joy` 的轴语义（当前控制器只用按钮；左右摇杆已经在 `/joy` 里，将来做"走两步"时直接用 `axes[1]`）。
 
 ## 8 虚拟手柄 vs 真实 Xbox 手柄：接口对照与真机核对清单
@@ -141,30 +147,37 @@ pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py
 |---|---|---|---|
 | 按钮码 | `BTN_A/B/X/Y`、`BTN_TL/TR`、`BTN_SELECT/START/MODE`、`BTN_THUMBL/R` | 同名同码（Xbox One 起内核别名 `BTN_SOUTH/EAST/NORTH/WEST`，**码值相同**） | ✓ 无 |
 | 轴码与顺序 | `ABS_X, ABS_Y, ABS_Z, ABS_RX, ABS_RY, ABS_RZ, ABS_HAT0X, ABS_HAT0Y` | 同序（左摇杆 X/Y、扳机 Z/RZ、右摇杆 RX/RY、十字键 HAT0） | ✓ 无 |
-| 量程 | 摇杆 -32768..32767、扳机 0..255、十字键 -1..1 | 多数 xpad 手柄相同；**蓝牙驱动（xpadneo）与部分第三方可能不同** | ⚠️ `joy_node` 里 `STICK_MAX = 32767.0` 是**写死的**（`joy_node.py:48`），换量程不同的手柄会整体偏小/偏大 → 真机到货后先核对，必要时改成读 `absinfo` |
+| 量程 | 摇杆 -32768..32767、扳机 0..255、十字键 -1..1 | 多数 xpad 手柄相同；**第三方差别很大**：实测那台是摇杆 0..255（静止在中点 128）、扳机 0..255、十字键 -1..1 | ✓ 已改成**读设备自己的 `absinfo`**：连接时按“双极性 / 单极性”判每个轴是摇杆还是扳机、用内核给的量程归一化（见 §8 的真机表）|
 | `EV_FF`（震动） | **没有声明** | 有（rumble） | ⚠️ 只影响"发震动"的程序；`joy_node` 不用，故无害 |
-| 设备名 | `Xbox 360 Wireless Controller (Sim)` | USB 线：`Microsoft X-Box 360 pad`；蓝牙：`Xbox Wireless Controller` 等 | ✓ `joy_node` 按片段匹配（`xbox`/`x-box`/`xinput`，大小写不敏感），都收 |
+| 设备名 | `Xbox 360 Wireless Controller (Sim)` | USB 线：`Microsoft X-Box 360 pad`；蓝牙：`Xbox Wireless Controller` 等；**第三方：`Zikway HID gamepad`（实测）** | ✓ `joy_node` 按片段匹配（`xbox`/`x-box`/`xinput`/`gamepad`/`joystick`，大小写不敏感），都收 |
 | VID:PID | `045E:028E`（360 无线接收器） | 有线 360 是 `045E:028F`，Xbox One 系列另有其值 | ✓ 我们只按名字+能力挑，不按 PID |
-| event 节点数 | 1 | 实体手柄常暴露**多个** event 节点（手柄本体 + 媒体键 HID 接口） | ✓ `joy_node` 先按 `abs` 能力位图筛掉键盘鼠标，再按名字挑，`device:=` 参数可强制指定 |
+| event 节点数 | 1 | 实体手柄常暴露**多个** event 节点（手柄本体 + 媒体键 + 键盘接口）：实测那台 3 个（`event15` 手柄、`event16` Consumer Control、`event17` Keyboard） | ✓ 预筛改成“**有手柄类轴（`ABS_X/Y/Z/RX/RY/RZ/GAS/BRAKE/HAT*`）且有游戏按键（`BTN_A/B/X/Y/TL/TR/…`）**”：只判“绝对轴非 0”会让 `event17` 那种带 `ABS_VOLUME` 的键盘接口混进来；只判“有手柄类轴”又会让**触摸板**（`ABS_X/Y` + `BTN_LEFT`）混进来，两者都会被报成“手柄没权限” |
 | 通信方式 | `uinput` 写入 → 内核 input 子系统 → 任何读 `/dev/input/event*` 的程序 | HID 驱动（USB/蓝牙）→ 同一个 input 子系统 | ✓ 对上层完全同构（这正是"造真设备"而非"发假消息"的价值） |
 
-**真机到货后的核对清单**（插上后跑，把输出贴给我即可对齐）：
+**真机实测（2026-10-07，`Zikway HID gamepad`，USB 有线）**：
+
+| 项 | 实测 | 结论 |
+|---|---|---|
+| 设备名 / ID | `Zikway HID gamepad` | 不含 `xbox` → 默认片段加了 `gamepad,joystick`；仍可 `-p device:=` 钉住 |
+| USB id | vendor `0x3537` / product `0x1041` | 只按名字 + 能力挑设备，不看 PID |
+| event 节点 | **3 个**：`event15`（手柄，有 ACL）、`event16`（Consumer Control）、`event17`（Keyboard，带一个 `ABS_VOLUME` 位） | 预筛必须要求"至少一个**手柄类**轴"，否则 `event17` 会被当成候选、再报成"手柄没权限" |
+| 轴 | `ABS_X/Y/Z/RZ`：0..255、静止 **128**（两个摇杆）；`ABS_GAS/BRAKE`：0..255、静止 **0**（LT/RT）；`ABS_HAT0X/Y`：−1..1 | 与 xpad **不同**：它没有 `ABS_RX/RY`，右摇杆在 `Z/RZ` 上、扳机在 `GAS/BRAKE` 上 |
+| 轴→槽位（实测日志） | `X→axes[0]`、`Y→axes[1]`、`BRAKE→axes[2]`(LT)、`Z→axes[3]`、`RZ→axes[4]`、`GAS→axes[5]`(RT)、`HAT0X/Y→axes[6]/[7]` | 与 xbox 布局**语义一致**（右摇杆在 3/4、扳机在 2/5） |
+| 按键 | 19 个：`BTN_A/B/C/X/Y/Z`、`BTN_TL/TR`、`BTN_TL2/TR2`、`BTN_SELECT/START`、**`BTN_MODE`**、`BTN_THUMBL/R` + 3 个音量/电源键 | 我们需要的 11 个码位齐全（含 `BTN_MODE`）；扳机同时上报 `TL2/TR2` 数字键（节点不读，无害） |
+| `EV_FF`（震动） | 无 | 我们用不到 |
+| 端到端 | A→B→X→A：两次起身、峰值 **z = 0.3836 m**、`ncon=4`、倾角 0.0° | ✅ 与仿真手柄 / 上一版逐位一致 |
+
+**换手柄时怎么核**（`probe_gamepad.py` 就是为它写的）：
 
 ```bash
-# 1) 找出设备并打印它的全部能力与量程
-pixi run python - <<'EOF'
-import evdev
-for path in evdev.list_devices():
-    d = evdev.InputDevice(path)
-    caps = d.capabilities(absinfo=True)
-    if evdev.ecodes.EV_ABS in caps or 'xbox' in d.name.lower() or 'x-box' in d.name.lower():
-        print(path, '|', d.name, '|', d.info.vendor, d.info.product)
-        print('   ABS:', [(evdev.ecodes.ABS[k], v) for k, v in caps.get(evdev.ecodes.EV_ABS, [])])
-        print('   KEY:', [evdev.ecodes.KEY[k] for k in caps.get(evdev.ecodes.EV_KEY, [])])
-EOF
-# 2) 用节点读它（自动挑名字，或强制指定）
-pixi run ros2 run quadruped_ros2 joy_node --ros-args -p device:=/dev/input/eventN
-pixi run ros2 topic echo /joy --once
+# ① 静态：列设备 + 对照 joy_node 的预期（名字片段、轴码位、量程、槽位），结论直接给 OK/注意/不兼容
+pixi run python @20261005_ros2/scripts/agent_scripts/probe_gamepad.py
+
+# ② 动态：按提示把摇杆/扳机/按键/十字键各动一遍，打印"哪个轴/键对应哪个控件"与实测极值
+pixi run python @20261005_ros2/scripts/agent_scripts/probe_gamepad.py --watch 60
+
+# ③ 整条链路（狗真的动起来）：起三个节点，按 A/B/X；想钉设备就加 -p device:=/dev/input/eventN
+pixi run ros2 launch quadruped_ros2 bringup.launch.py
 ```
 
-如果真机是"Xbox One/Series + 蓝牙"这一类，重点核对三件事：**扳机量程**、**是否多一个 event 节点**、**`BTN_MODE`（Guide 键）是否存在**（部分驱动把它单独放在另一个接口上）。
+重点核对三件事：**轴量程与槽位**（`absinfo` 是不是双极性/单极性、有没有 `ABS_RX/RY`）、**扳机是轴还是数字键**、**`BTN_MODE` 是否存在**（部分驱动把它单独放在另一个接口上）。

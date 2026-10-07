@@ -22,9 +22,11 @@
 | `ddq` / `cur` 口径（培训方补充的"读不到就置 0"） | ✅ 已定口径：`ddq` 读真值、`cur` 恒 0 = 未测量——[`ros2-nodes.md`](ros2-nodes.md) §1/§1.1 |
 | 环境：单环境 + `robostack-humble` 稳定通道 + 构建/激活自动发现 | ✅ 完成——[`environment.md`](environment.md) §1/§4 |
 | 视口：自建窗口（阴影 / MSAA / 超采样 / 阴影正交盒参数）、复位后物理不步进的坑 | ✅ 完成——[`ros2-nodes.md`](ros2-nodes.md) §2/§2.1/§3.1 |
-| 真手柄复验（验收项里"实体手柄"那一条） | ⏳ 未做：没有硬件；走的是与仿真手柄同一条路径——[`joystick.md`](joystick.md) §7，核对清单在 §8 |
+| 真手柄复验（验收项里"实体手柄"那一条） | ✅ **完成（2026-10-07，Zikway HID gamepad / USB）**：设备层 → `joy_node` → 控制器 → 仿真四层逐项过；`/joy` 两路摇杆与扳机到 **±1.000**、十字键 ±1，按 **A→B→X→A** 两次起身、峰值 **z = 0.3836 m**、四足触地、倾角 0.0°。实测表与换手柄的核对法见 [`joystick.md`](joystick.md) §7/§8 |
+| 真手柄兼容性（第三方 HID 手柄的布局差异） | ✅ 已改（2026-10-07）：轴的角色（摇杆/扳机）与量程改成**连接时读设备自己的 `absinfo`**（不再写死 `STICK_MAX`），名字片段补 `gamepad,joystick`，预筛改成"至少一个手柄类轴"；仿真手柄（xpad 布局）回归 8/8 全过、真手柄端到端全过。新增真机探头 [`../scripts/agent_scripts/probe_gamepad.py`](../scripts/agent_scripts/probe_gamepad.py)——[`joystick.md`](joystick.md) §8 |
 | 仿真手柄 GUI 中文字号 | ⏳ 已按本机 Tk 换成 `song ti 12`（`gothic 9` → `song ti 12` 已实测解析），**字号观感待实机确认**——[`joystick.md`](joystick.md) §4 |
-| `ControlStatus.tilt_deg` 回程字段 | ⏳ **已定：本轮提交后清理**（无任何控制下游，属可删的展示信息）——改动点见 [`ros2-nodes.md`](ros2-nodes.md) §3.0，排在 §3 下一步第 2 条 |
+| IMU 的用途明确化 | ✅ 完成（2026-10-07）：`/imu` 是**任务书第 2 项要求的接口**（仿真 → 控制器的反馈里要带 IMU），控制律不用它；控制器 `OnImu()` 只保留两件不影响控制输出的事——`tilt_warn_deg` 安全告警（默认 60°，设 0 关闭）与**可选的**低频打印 `imu_log_period_s`（默认 0 = 静默；验收现场 `-p imu_log_period_s:=1.0` 就能看到「IMU 回传：倾角=…」每秒一行）。见 [`ros2-nodes.md`](ros2-nodes.md) §1.3 |
+| `ControlStatus.tilt_deg` 回程字段 | ✅ 已删（2026-10-07）：它没有任何控制下游（决策只看按键），改动是 msg 去字段 + 控制器 `status.tilt_deg` + `joy_node.py` 那行打印各删一处；`tilt_warn_deg` 告警**不受影响**（控制器仍从 `/imu` 本地算同一个量）。`/control_status` 现在只剩 模式 / 斜坡进度 / 指令条数——[`ros2-nodes.md`](ros2-nodes.md) §1.3 |
 | 阴影锯齿（阴影边缘比狗的轮廓糙） | ✅ 已查明并已修（2026-10-07）：成因是 MuJoCo 经典 GL 的阴影**逐片元硬比较**（无 PCF），边界被量化到阴影贴图纹素上（2.61 mm）；默认 `viewer_shadow_size` 改为 **4096**（纹素 2.61 → 0.65 mm，边界偏移 0.728 → 0.171 px，只多 0.2~0.6 ms/帧）；新增 `viewer_shadow_clip`（默认 1.0，覆盖范围不变）。`light_bulbradius` 在经典渲染器里不被读取，做软阴影不要走那条路。证据与配方见 [`../../docs/learn/graphics-stack.md`](../../docs/learn/graphics-stack.md) §8.3，复现脚本 [`../scripts/agent_scripts/shadow_probe.py`](../scripts/agent_scripts/shadow_probe.py) |
 | Agent 诊断逻辑归位 | ✅ 完成（2026-10-07）：任务 `scripts/` 下 4 个 agent 脚本移入 `scripts/agent_scripts/`（`setup_joy_devices.sh` 是人跑的一次性 sudo 工具，留在 `scripts/`）；主干里删掉调查残留（C++ 的 `kShotAfterFrames`、帧计时三件套、只写不读的 `cmd_wall_`/`Bank::cmd_`/`Binding::name`、死的 `RequestClose` 通路与无用 include；Python 的 `damping_rows`、空开关 `--keep-logs` 等）。判定与写法写进了 [`../../docs/conventions.md`](../../docs/conventions.md) §3 与 [`../../AGENTS.md`](../../AGENTS.md) |
 | XML 注释里的 `--` | ✅ 已查明并已修：XML 规范禁止注释内出现双连字符；**MuJoCo（tinyxml2）能读**——实测 5 种写法（含 `--->`）都读得进去、`nq=19 ngeom=50` 不变，但 `xml.etree` 这类严格解析器一律报 `not well-formed`。本任务两个 xml 的 4 处已改成“不带双横线”的说法，改完严格解析与 MuJoCo 都通过；顺带修掉同处指向不存在脚本的过期注释。规则进 [`../../docs/conventions.md`](../../docs/conventions.md) §3；前两个任务里的同类写法按“不回改”处理 |
@@ -36,54 +38,57 @@
 
 | 阻滞项 | 影响 | 现状 |
 |---|---|---|
-| 真手柄复验 | 验收项里"实体手柄"这一条只能用仿真手柄代替 | 没有硬件；插上后不需要改代码（[`joystick.md`](joystick.md) §7/§8） |
 | 本机设备权限（一次性配置） | 没配置时仿真手柄建不出 uinput 设备、手柄节点读不了 `/dev/input` | 已解决：`sudo @20261005_ros2/scripts/setup_joy_devices.sh`；**换机器 / 重装系统后要重跑**（[`joystick.md`](joystick.md) §2） |
 
 ## 3 下一步
 
-1. 真手柄到货后复验：与仿真手柄同一条路径、只差设备名。把设备名与 `/joy` 读数补进 [`joystick.md`](joystick.md) §7，重点核对**扳机量程、是否多一个 event 节点、`BTN_MODE` 是否存在**（清单见 §8）。
-2. 清理 `ControlStatus.tilt_deg`（**已定**：本轮提交之后做；没有控制下游，改动是 msg 去掉字段 + 控制器 `status.tilt_deg` + `joy_node.py` 那行打印各删一处，倾角告警不受影响，见 [`ros2-nodes.md`](ros2-nodes.md) §3.0）。
-3. 自适应抗锯齿（随缩放改倍率）：论证可行、暂不做（[`../../docs/learn/graphics-stack.md`](../../docs/learn/graphics-stack.md) §8.2）——注意它**解决不了**阴影量化（只抹软台阶边缘，台阶位置仍由纹素决定，见 §8.3）。
-4. 可选：`/joint_states`（`sensor_msgs/JointState`）与 RViz 展示。`/clock` + `use_sim_time` 已论证**不用**（时序契约是步数，[`../../docs/learn/ros2-graph-and-clock.md`](../../docs/learn/ros2-graph-and-clock.md) §2）。
-5. 可选：虚拟手柄 GUI 的缩放（[`joystick.md`](joystick.md) §8 给了两种改法）。
+1. 自适应抗锯齿（随缩放改倍率）：论证可行、暂不做（[`../../docs/learn/graphics-stack.md`](../../docs/learn/graphics-stack.md) §8.2）——注意它**解决不了**阴影量化（只抹软台阶边缘，台阶位置仍由纹素决定，见 §8.3）。
+2. 可选：`/joint_states`（`sensor_msgs/JointState`）与 RViz 展示。`/clock` + `use_sim_time` 已论证**不用**（时序契约是步数，[`../../docs/learn/ros2-graph-and-clock.md`](../../docs/learn/ros2-graph-and-clock.md) §2）。
+3. 可选：虚拟手柄 GUI 的缩放（[`joystick.md`](joystick.md) §8 给了两种改法）。
 
 ## 4 提交建议（分阶段；AI 助手不代为提交）
 
-任务书四项与环境合并已经提交（最近五条：`54df70e` 目录骨架、`f222933` 两个节点、`6c91a02` launch、`757670b` 手柄链路与自检、`6df714b` 单环境 + 稳定通道）。**还没提交**的是这一轮"找 bug / 改代码 / 补文档"的改动，按主题分四次（每条的 `git add` 命令可直接粘贴）：
+已经提交的（任务书四项 + 环境合并 + 上一轮"找 bug / 改代码 / 补文档"）：
+
+```text
+54df70e 目录骨架            f222933 两个节点         6c91a02 launch
+757670b 手柄链路与自检      6df714b 单环境 + 稳定通道
+38bdd26 自建窗口 + 阴影修复 + 电机非理想项
+1ef8128 MJCF 注释合法化 + 过期引用
+b634bc4 agent 脚本归位 + 主干调查残留清理
+3f4a29b 文档（节点接口 / 阴影链路 / 手柄）
+543a43b rqt_graph + Qt wayland 平台插件
+```
+
+**还没提交**的是这三件事（去掉没有下游的 `tilt_deg`、把 IMU 用途写清、真手柄兼容性与复验），按主题分五次；每条的 `git add` 可直接粘贴：
 
 ```bash
-git status --short    # 先核对：ws/build|install|log、output/log|shadow 都已被 .gitignore 覆盖（这一轮补的
-                      # output/shadow/），**不要** `git add -A`（会带上 .pixi/、__pycache__ 之类）
+git status --short    # 先核对：ws/build|install|log 与 output/log|shadow 都已被 .gitignore 覆盖，别 `git add -A`
 
-# ① 仿真侧：自建窗口（视口/画质参数、复位锚点修复）+ 阴影分辨率修复 + 电机非理想项
-#    ⚠ 四项都动了 sim_node.cpp：想拆细就 `git add -p`，否则合成这一条
-git add @20261005_ros2/ws/src/quadruped_ros2/include/quadruped_ros2/viewer.hpp \
-        @20261005_ros2/ws/src/quadruped_ros2/include/quadruped_ros2/motor.hpp \
+# ① 手柄：第三方 HID 手柄的轴布局自适应（按 AbsInfo 判角色/量程）+ 名字片段与设备预筛加固
+#    + 自检钉住自己造的 uinput 设备 + 真机探头
+git add @20261005_ros2/ws/src/quadruped_ros2/scripts/joy_node.py \
+        @20261005_ros2/ws/src/quadruped_ros2/launch/bringup.launch.py \
+        @20261005_ros2/scripts/agent_scripts/check_joystick_device.py \
+        @20261005_ros2/scripts/agent_scripts/probe_gamepad.py
+git commit -m "fix(ros2): adapt the joy node to third-party HID gamepad layouts"
+
+# ② 回程消息：去掉没有控制下游的 tilt_deg，并把 IMU 的用途说清（告警 + 可选打印）
+#    注意 joy_node.py 在第 ① 条已经 add 过了，所以这里只需带上消息、控制器与文档
+git add @20261005_ros2/ws/src/quadruped_ros2/msg/ControlStatus.msg \
         @20261005_ros2/ws/src/quadruped_ros2/src/controller_node.cpp \
-        @20261005_ros2/ws/src/quadruped_ros2/src/sim_node.cpp \
-        @20261005_ros2/ws/src/quadruped_ros2/CMakeLists.txt \
-        @20261005_ros2/ws/src/quadruped_ros2/launch/bringup.launch.py
-git commit -m "feat(ros2): add the self-built viewer, shadow resolution fix and motor non-idealities"
+        @20261005_ros2/README.md @20261005_ros2/docs/ros2-nodes.md
+git commit -m "refactor(ros2): drop the unused tilt_deg field and make the IMU use explicit"
 
-# ② 模型与场景：XML 注释里的 -- 清掉、过期引用改对（MuJoCo 与严格解析器两边都过）
-git add @20261005_ros2/models/black_description.xml @20261005_ros2/scenes/flat_scene.xml
-git commit -m "fix(ros2): make the MJCF comments valid XML and drop stale references"
+# ③ 文档：真手柄实测表与换手柄的核对法
+git add @20261005_ros2/docs/joystick.md @20261005_ros2/docs/status.md
+git commit -m "docs(ros2): record the real gamepad verification and third-party axis layout"
 
-# ③ 脚本整理：agent 脚本收进 scripts/agent_scripts/ + 新增阴影诊断脚本；主干里的调查残留删掉
-git add @20261005_ros2/scripts @20261005_ros2/ws/src/quadruped_ros2/scripts/joy_node.py \
-        @20261005_ros2/.gitignore
-git commit -m "refactor(ros2): group agent-run scripts and move diagnostics out of the main path"
+# ④ 学习文档：两个抗锯齿旋钮的分工、阴影贴图为什么越大越清晰、雾不是阴影
+git add docs/learn/graphics-stack.md
+git commit -m "docs: explain the AA knob duties and separate the shadow map from fog"
 
-# ④ 文档：任务 README 与 docs 五篇 + 仓库级约定/学习文档
-git add @20261005_ros2/README.md @20261005_ros2/docs README.md AGENTS.md \
-        docs/conventions.md docs/pitfalls/environment.md \
-        docs/learn/ros2-params-and-launch.md docs/learn/ros2-graph-and-clock.md \
-        docs/learn/mujoco-viewer-keys.md docs/learn/graphics-stack.md \
-        docs/learn/cmake-intellisense.md docs/learn/mujoco.md .vscode/settings.json \
-        @20261005_ros2_example/docs/pixi-ros2.md
-git commit -m "docs(ros2): document the node interfaces, shadow pipeline and joystick chain"
-
-# ⑤ 环境：为 rqt_graph 补 rqt-graph / Qt6 wayland / Qt5 wayland 三个依赖
-git add pixi.toml pixi.lock
-git commit -m "build(pixi): add rqt_graph and the Qt wayland platform plugins"
+# ⑤ 环境：无（这一轮没动 pixi.toml）
 ```
+
+`joy_node.py` 这一轮有两种改动（轴映射 + 去掉回程打印里的倾角）：整文件 `git add` 会一起提交，所以上面的顺序把两件事合进 ①，②里只留消息/控制器/文档——如果想拆细，就在 ① 之前先 `git add -p @20261005_ros2/ws/src/quadruped_ros2/scripts/joy_node.py` 把"回程打印"那段留给 ②。
