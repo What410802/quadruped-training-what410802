@@ -65,6 +65,6 @@ pixi run env MUJOCO_GL=glfw python @20260923_mujoco/scripts/simulate.py
 
 | 文档 | 内容 |
 |---|---|
-| [`conventions.md`](docs/conventions.md) | 提交信息、文档、目录与命名、环境、验证、外部代码与许可 |
+| [`conventions.md`](docs/conventions.md) | 提交信息、文档、目录与命名、环境、验证、外部代码与许可、新任务起步清单 |
 
 `docs/` 与代码、配置之间是双向链接的：**结论写在文档里**（带实测数据与可复现命令），代码与配置的注释**回指结论**。例：`pixi.toml` 里 `MUJOCO_GL` 的注释指向 [`docs/learn/mujoco.md` §7.6](docs/learn/mujoco.md#76-这些结论驱动了哪些配置决策)。
