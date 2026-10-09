@@ -157,9 +157,38 @@ curl -s -o /dev/null -m 10 -w '%{http_code} %{speed_download}\n' "$FILE_URL"
 - 配置时把 `-DCMAKE_PREFIX_PATH="$CONDA_PREFIX"` 传进去即可，`find_package(mujoco)` 就能找到上面的 CMake 配置。
 - **换 C++ 不会更快**：`mj_step` 两边调的是同一份 C 库，本机实测 C++ 循环 0.0394 ms/步、Python 0.04 ms/步；渲染依旧是 5.5 ms/帧（由 GPU 决定）。
 - **编辑器（clangd）要配 `--query-driver`**：CMake 把 `$CONDA_PREFIX/include` 当作“隐式包含目录”而**不写进** `compile_commands.json`，clangd 于是找不到 `mujoco/mujoco.h`、也拿不到 conda 的 libstdc++ 头，满屏标红（一次自检可报出 21 条错误）。让 clangd 去问 pixi 的编译器即可消除：`--query-driver=**/.pixi/envs/*/bin/*`（glob 必须 `**/` 开头，实测不带就匹配不上）。排查工具：`clangd --check=<file>`，它打印的就是编辑器同源的诊断。
-- **这个参数要写在「工作区文件」或用户设置里，不能写在文件夹级 `.vscode/settings.json`**：clangd 扩展把 `clangd.arguments` 声明为 **window scope**，而多根工作区下 window 级设置只认工作区文件 / 用户设置，放文件夹里不生效（现象：clangd 进程参数是空的，仍然标红）。本项目放在同级的 `RoboCon.code-workspace`（该文件不入库）。
+- **上面这个参数要写到哪个文件，取决于 VSCode 本身是怎么打开的**：VSCode clangd 扩展把 `clangd.arguments` / `clangd.path` 声明为 **window scope**。用**多根工作区**（本机同级的 `RoboCon.code-workspace`，不入库）打开时，window 级设置只认工作区文件 / 用户设置，写在文件夹级 `.vscode/settings.json` 里不生效；**单独打开仓库文件夹**时，`.vscode/settings.json` 本身就是工作区设置，写在这里才生效。Agent 要测试的话，如果 `ps -eo args | grep clangd` 只看到 `/usr/bin/clangd`，clangd 进程参数为空，那么是单独打开仓库文件夹。单独打开仓库文件夹时，读取 [`../../.vscode/settings.json`](../../.vscode/settings.json)；多根工作区时要把同样两项抄进工作区文件。
 - 改完要重启语言服务器（命令面板 → `clangd: Restart language server`），否则跑的还是旧进程；想确认可以直接看进程参数：`ps -eo args | grep clangd`。
 - clangd 把索引缓存写在 `<project>/.cache/clangd/`（它把含 `compile_commands.json` 的上级目录当作 project），已加进 `.gitignore`。
+
+### 2026-10-08 系统的 clangd 14 读不了 gcc 15 的头：改用环境里的 clangd 23
+
+**现象**：`@20261007_assignment` 的 `rl_sim.hpp`、`rl_sdk.cpp` 打开就标红（`'torch/script.h' file not found`、`no member named 'value' in 'std::is_same<…>'` 等），命令行编译却是好的。
+
+**原因**：编辑器跑的是系统 apt 的 `/usr/bin/clangd`（14.0.0），有两层问题：
+
+1. 没有 `--query-driver`（参数没生效，见上一条）：clangd 用系统 gcc 11 的 libstdc++ 头去解析为 gcc 15 写的头，模板一路报错；`$CONDA_PREFIX/include`（`torch/script.h` 就在这里）也不在搜索路径里。
+2. 加上 `--query-driver` 也不行：clangd 14 读 gcc 15 的 `ia32intrin.h` 时直接报 `definition of builtin function '__rdtsc'`，然后 `too many errors` 停掉。clangd 的版本必须新到能读懂这套工具链的头。
+
+**做法**：根 `pixi.toml` 加 `clang-tools = "23.*"`（clangd、clang-format 等）与 `clang-23 = "23.*"`（只为它带的 `lib/clang/23/include`，即 clangd 的内建头目录；没有它，clangd 报 `Failed to auto-detect resource directory`）。`.vscode/settings.json` 里用 `"clangd.path": "${workspaceFolder}/.pixi/envs/default/bin/clangd"` 指过去，并保留 `--query-driver`。改完执行 `clangd: Restart language server`；VSCode 若提示"工作区要设置 clangd.path"，选允许。clangd 没有单独的 conda 包，`clang-tools` 又固定依赖同版本的 `clang-format`，所以环境里的 clang-format 也随之变成 23（见本节最后一条）。
+
+**头文件借错命令**：头文件不在 `compile_commands.json` 里，clangd 要"借"一个源文件的命令来解析。`@20261005_ros2` 的包的编译库里混着二十多条 rosidl 生成文件，`motor.hpp` 按名字相似度借到了 `motor_state__type_support.cpp`，那条命令既没有本包的 `include/`，标准也是 `gnu++14`。修法是在包目录放一份 `.clangd` 补上 `-I` 与 `-std=c++17`，见 [`../../@20261005_ros2/ws/src/quadruped_ros2/.clangd`](../../@20261005_ros2/ws/src/quadruped_ros2/.clangd)。`clangd --check` 不建后台索引，对头文件的判断比编辑器更悲观；要看编辑器里的真实结果，得像编辑器一样用 LSP 打开文件。
+
+**实测**（以 LSP 方式打开文件、等后台索引稳定后数 error 级诊断；clangd 14 那一列与 VSCode「问题」面板里的数一致，例如 `rl_sim.hpp` 都是 8 条）：
+
+| 文件 | 系统 clangd 14（无参数，原状） | 环境 clangd 23 + `--query-driver` + `.clangd` |
+|---|---|---|
+| `rl_sar/include/rl_sim.hpp` | 8 | 0 |
+| `rl_sar/library/core/rl_sdk/rl_sdk.cpp` | 20 | 0 |
+| `rl_sar/library/core/rl_sdk/rl_sdk.hpp` | 20 | 0 |
+| `rl_sar/src/rl_sim.cpp` | 17 | 0 |
+| `rl_sar/policy/black/fsm.hpp` | 6 | 0 |
+| `quadruped_ros2/include/quadruped_ros2/motor.hpp` | 17 | 0（不加 `.clangd` 是 13） |
+| `quadruped_ros2/include/quadruped_ros2/viewer.hpp` | 18 | 0 |
+| 两个 ROS 包的全部 16 个 C/C++ 文件 | — | 全部 0 |
+| 早先任务抽查 8 个文件（`@20260927_motor/cpp`、`@20260923_mujoco/cpp_*`、`@20261005_ros2_example` 等） | 6 个有错 | 7 个为 0；剩下的 `mini_robot/src/robot.cpp` 是它的 `build/compile_commands.json` 过期（还指向改名前的 `@20260923_robot_cpp_training/`），与 clangd 版本无关，重新 configure 那个工程即可 |
+
+**clang-format 也跟着变成 23**：环境里的 clang-format 23 与系统 `/usr/bin/clang-format` 14 对同一份 `.clang-format` 的结果不完全一样。对 100 个已入库的 C/C++ 文件，14 会改动 56 个，23 会改动 60 个；两者结果不同的有 14 个（4 个只有 23 会改，10 个两者都改但改法不同），主要差在行尾注释的对齐（23 会把相邻几行的 `///<` 注释对齐到同一列）。编辑器里的"格式化文档"走的是 clangd 内置的同版本格式化，所以现在是 23；命令行要与它一致，就用环境里的那份（`pixi run clang-format -i <file>`，或激活环境后直接 `clang-format`）。
 
 ## 2026-09-25 复现上游 unitree_mujoco（C++ 与 Python 两条路线）
 
@@ -266,3 +295,38 @@ stdbuf -oL sudo <程序> | tee log       # ❌ 无效
 **要记住的两点**：① 这是"程序的 stdout 不是终端"造成的，跟 `tee` 关系不大——任何重定向/管道都一样； ② 交互式程序（读 stdin 的那种）用 `stdbuf -oL` 只改 stdout/stderr，**stdin 仍是终端**，键盘输入不受影响。
 
 **落到本仓库**：实机命令统一走 `@20260927_motor/scripts/run_log.sh`（用法与理由见 `@20260927_motor/cpp_part2_remake/docs/runbook.md` §4；初版说明在历史版本 `@20260927_motor/cpp_part2/docs/runbook.md` §2） （`sudo stdbuf -oL … | tee`，按时间戳自动命名日志；`sudo` 写在脚本外面）。
+
+## 2026-10-08 libtorch / pytorch：锁 CPU 的 generic 构建
+
+**现象**：在 `pixi.toml` 里直接写 `libtorch = "*"`，pixi 会解析到 **CUDA 构建**（`libtorch-2.13.0-cuda129_mkl_…`，单包 779.61 MiB，另拉一整套 `cuda-*` 运行库）。原因是本机有 NVIDIA 显卡，pixi 探测到虚拟包 `__cuda=13.0`（`pixi info` 的 Virtual packages 一栏），带 CUDA 的构建就优先了。本机那块 MX350 是 `__cuda_arch=6.1`，新版 CUDA 构建未必还支持它；而且我们只在 CPU 上跑小网络，根本用不到。
+
+**做法**：用 build 字符串锁 CPU 构建，并且挑 **generic**（不是 `cpu_mkl`）：
+
+```toml
+libtorch = { version = "*", build = "cpu_generic*" }
+pytorch = { version = "*", build = "cpu_generic*" }   # Python 侧要用 torch 时再加，同一份底层库
+```
+
+`cpu_mkl` 构建要求 `libblas * *mkl`，会把**整个环境**的 BLAS（numpy 等都在用）从 openblas 换成 MKL；generic 构建只要求 `libblas >=3.9`，沿用环境里已有的 openblas。查可选构建的命令：`pixi search 'libtorch[build=cpu_generic*]' -p linux-64 -l 12`。
+
+**解出来的结果与副作用**（`pixi lock` 的输出，2026-10-08）：
+
+| 包 | 变化 | 说明 |
+|---|---|---|
+| `libtorch` | + 2.12.0 `cpu_generic` | 最新是 2.13.0，但它要 `libabseil 20260526`，环境里被锁在 20260107，求解器退到 2.12.0 |
+| `_openmp_mutex` | `20_gnu` → `8_kmp_llvm` | libtorch 要 LLVM 的 OpenMP 运行库；全环境的 OpenMP 从 libgomp 换成 llvm-openmp |
+| `libopenblas` | `pthreads` → `openmp` 变体 | 跟着 OpenMP 换 |
+| `pytorch` | + 2.12.0 `cpu_generic_py312` | 24.49 MiB，与 libtorch 共用底层库 |
+
+OpenMP 换了运行库之后，回归过 `@20261005_ros2` 的无头自检（`check_headless.py` 全部通过，末态 z 仍是 0.3836 m、实时率 1.000x）。
+
+**一处源码兼容**：libtorch 2.x 的 `torch/script.h` 不再顺带包含 `torch::set_num_threads` 的声明，老代码（如 rl_sar）要补一行 `#include <torch/utils.h>`，否则报 `'set_num_threads' is not a member of 'torch'`。
+
+**验证**：
+
+```bash
+pixi run bash -c 'ls $CONDA_PREFIX/share/cmake/Torch/TorchConfig.cmake'   # CMake 找得到 Torch
+pixi run python -c "import torch; print(torch.__version__, torch.cuda.is_available())"   # 2.12.0 False
+```
+
+用到它的任务：[`../../@20261007_assignment/`](../../@20261007_assignment/README.md)（rl_sar 用 libtorch 跑策略；参考实现用 Python 的 torch）。

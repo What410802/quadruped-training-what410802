@@ -295,3 +295,5 @@ endif()
 两个坑：① **不能用 `target_include_directories`**——CMake 会把"编译器已内置的目录"过滤掉（conda g++ 正好把它报成内置目录），那样写等于没写，实测 `compile_commands.json` 里依然没有；② 用 `target_compile_options` 直接传 `-I` 才不会被过滤。
 
 **头文件的残留情况**：clangd 对**源文件**零诊断 ✓；但对"不在数据库里的头文件"（`viewer.hpp`）它要**推断**编译命令，某些版本（本机 clangd 14 实测）会在这一步丢掉那条 `-I`，头文件里仍报 include 找不到。这种情形用 IDE 侧的 `--query-driver` 兜底：**glob 必须匹配编译数据库里出现的那个编译器路径**（是 `…/.pixi/envs/default/bin/c++`，不是 `…/bin/x86_64-conda-linux-gnu-g++`）——写成 `--query-driver=**/bin/*` 最稳。同时提醒：那条参数现在放在**不入库**的 `RoboCon.code-workspace` 里，换个窗口就失效；要稳就写进入库的 `.vscode/settings.json` 的 `clangd.arguments`。
+
+> 2026-10-08 更新：参数已写进入库的 `.vscode/settings.json`；并且本机系统的 clangd 14 即使带上 `--query-driver` 也读不了 gcc 15 的头，已换成环境里的 clangd 23。原因与实测见 [`../pitfalls/environment.md`](../pitfalls/environment.md)「系统的 clangd 14 读不了 gcc 15 的头」。

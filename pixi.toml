@@ -1,51 +1,47 @@
 [workspace]
-# 名字用 GitHub 远端名（https://github.com/What410802/quadruped-training-what410802），
-# 不再用本机目录名 MyMonoRepo.d：目录名是可以随便改的本地东西，仓库名才是这份代码的标识
-# （`pixi info` / `PIXI_PROJECT_NAME` 都会跟着变）。
 authors = ["What410802 <what410802@126.com>"]
 # 通道顺序有意义：RoboStack（ROS 2 Humble 的 conda 打包）必须排在 conda-forge 之前。
 # 用**稳定通道 robostack-humble**（不是 robostack-staging）：2026-10-05 的迁移评估逐条比过
 # 204 个 ROS 包，两边同名同版本同构建串；换通道不需要动版本号，实测见
 # @20261005_ros2/docs/environment.md §4。
 channels = ["robostack-humble", "conda-forge"]
+# 名字用 GitHub 远端名（https://github.com/What410802/quadruped-training-what410802），
+# `pixi info` / `PIXI_PROJECT_NAME` 用到它。
 name = "quadruped-training-what410802"
 platforms = ["linux-64"]
 version = "0.1.0"
 
-# PyPI 备选索引链（国内网络回退源）。为什么选这几个、为什么不加 conda 镜像：
-#   见 docs/pitfalls/environment.md 的「pixi / conda / PyPI 镜像」一节。
-# 顺序有意义：pixi 底层是 uv，采用 first-index 策略 —— 按 extra-index-urls 的顺序取第一个
-# 「命中该包」的索引；未设 index-url 时以 pypi.org 兜底。
 [pypi-options]
+# PyPI 备选索引链。为什么选这几个、为什么不加 conda 镜像：
+#   见 docs/pitfalls/environment.md 「pixi / conda / PyPI 镜像」。
+# 顺序有意义：pixi 底层是 uv，采用 first-index 策略，按 extra-index-urls 的顺序取第一个
+# 「命中该包」的索引；未设 index-url 时取 pypi.org。
 extra-index-urls = [
     "https://mirrors.ustc.edu.cn/pypi/simple",
     "https://mirrors.aliyun.com/pypi/simple",
     "https://mirror.nju.edu.cn/pypi/web/simple",
 ]
 
-# 这个仓库只用一个 pixi 环境（default）：MuJoCo 与 ROS 2 Humble 在同一套 Python 3.12 下共存
-# （两边都是 np2py312 构建，numpy 2.x），所以"每加一个 ROS 任务就再来一个环境"没有必要——
-# 单环境也意味着 MuJoCo 的版本只写一处（下面 mujoco 那一行），不会再出现两处版本漂移。
+# 这个仓库只用一个 pixi 环境（default），MuJoCo 与 ROS 2 Humble 在同一套 Python 3.12 下共存
+# （两边都是 np2py312 构建），单环境也意味着 MuJoCo 的版本只写一处，不会再出现两处版本漂移。
 # 历史：2026-10-05～10-06 曾经用 `ros2` feature + `no-default-feature` 分开两个环境，
 # 2026-10-06 合并；当时的取舍与实测对照见 @20261005_ros2_example/docs/pixi-ros2.md。
-
-# 渲染后端（结论与实测见 docs/learn/mujoco.md 第 7 节，决策索引见 §7.6）：
+[activation.env]
+# 渲染后端（结论与实测见 docs/learn/mujoco.md §7，决策索引见 §7.6）：
 #   * `MUJOCO_GL` 必须在 `import mujoco` 之前生效，之后改无效 → 放在激活环境里最稳；
 #   * 统一定为 egl：不依赖显示服务，而且在双显卡机器上会落到更合适的那块 GPU 上。
 # 注意它只影响 Python 绑定，不影响 C++ 的 mujoco-simulate。
 # 想临时换后端：`pixi run env MUJOCO_GL=glfw python xxx.py`（命令行前缀会被这里覆盖）。
-#
+MUJOCO_GL = "egl"
 # ROS_LOCALHOST_ONLY 只在本机回环通信；要跨机时设为 "0"，且**对端（含系统 ROS 的节点）
 # 必须同值**，否则两端发现不到对方（实测现象与复现命令见 @20261005_ros2_example/docs/pixi-ros2.md）。
-[activation.env]
-MUJOCO_GL = "egl"
 ROS_LOCALHOST_ONLY = "1"
 
+[activation]
 # 激活环境时自动发现并 source 仓库里所有已构建的 colcon 工作空间（没有 install/ 就跳过），
 # 于是 `pixi run ros2 …` 不必再手敲 `source install/setup.sh`。脚本在**仓库根**，
 # 根文件因此不必写任务级路径；三种用法（pixi run / pixi shell / 手动 source）见
 # @20261005_ros2_example/docs/pixi-ros2.md §2.2。
-[activation]
 scripts = ["scripts/activate_ros2_workspaces.sh"]
 
 [dependencies]
@@ -82,13 +78,33 @@ qt-wayland = ">=5.15.15,<6"
 # 需要 `colcon mixin` 子命令时再单独加回来。
 colcon-common-extensions = "*"
 
+# ---- 编辑器智能提示（clangd）----
+# 系统 apt 的 clangd 14 读不了 conda 工具链（gcc 15）的头文件：torch 的 x86 内建函数头直接报错，
+# 头文件也拿不到 --query-driver 的包含路径；换成与环境同一套 LLVM 的新版。clang-23 只为它带的
+# lib/clang/23/include（clangd 的内建头目录，没有它 clangd 起不来）。VSCode 怎么指过来、实测对比见
+# docs/pitfalls/environment.md 的「C++ 工具链（pixi 提供）与编辑器提示」一节。
+clang-tools = "23.*"
+clang-23 = "23.*"
+
 # ---- 手柄 ----
 # 手柄节点与仿真手柄（uinput）都直接读 /dev/input 内核事件，用 python-evdev 一套就够
 # （不引 pygame/SDL：省一层 SDL 映射，轴/按钮顺序就是 xpad 的原始顺序）。
 evdev = "*"
 
+# ---- 强化学习策略部署（rl_sar 需要）----
+# rl_sar 用 libtorch 加载 TorchScript 策略（.pt）、用 TBB 的并发队列在线程间传动作
+# （TBB 是什么、队列怎么用：docs/learn/tbb.md）。
+# libtorch 锁 CPU 的 generic 构建：本机报 __cuda，不锁会解析到 CUDA 构建（约 780 MB）；
+# generic 沿用环境里已有的 openblas，不把整个环境的 BLAS 换成 MKL。理由、副作用（OpenMP 换成
+# llvm-openmp）与回归结果见 docs/pitfalls/environment.md 的「libtorch / pytorch」一节。
+libtorch = { version = "*", build = "cpu_generic*" }
+tbb-devel = "*"
+# Python 侧的 torch（与 libtorch 同一份底层库，增量约 25 MB）。只给诊断脚本用，
+# 不经 ROS、按仿真时间锁步跑策略的参考实现，用来核对 rl_sar 的观测/动作与时钟影响。
+pytorch = { version = "*", build = "cpu_generic*" }
+
 [tasks]
 # 编译仓库里**所有** colcon 工作空间：脚本自己发现（`<任务目录>/**/src/<包>/package.xml`），
-# 所以根 pixi.toml 里没有任务级路径——新增 ROS 任务照常建包即可，不必回来改这里。
+# 新增 ROS 任务不必改这里。
 # 只编一个工作空间时不必用这个任务：`cd <工作空间> && pixi run colcon build --symlink-install`。
 ros2-build = { cmd = "scripts/build_ros2_workspaces.sh", description = "编译仓库里所有 colcon 工作空间（自动发现）" }

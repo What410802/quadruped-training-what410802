@@ -1,0 +1,9 @@
+# clangd（编辑器智能提示）的本包补充配置。
+# 头文件不在 compile_commands.json 里，clangd 要"借"一个源文件的编译命令来解析它；本包的编译库里
+# 混着几十个 rosidl 生成文件，按名字相似度经常借错（motor.hpp 借到了 motor_state__type_support.cpp），
+# 那条命令里没有本包的 include/（报 'quadruped_ros2/control.hpp' file not found），标准也是生成代码的
+# gnu++14（报 std::clamp 不存在）。这里补上 -I 与本包真正用的 -std=c++17（CMakeLists.txt 的 CXX_STANDARD）。
+# -I 是相对路径：按被借命令的工作目录解析，而本包所有条目的工作目录都是 ws/build/quadruped_ros2。
+# 排查记录见 docs/pitfalls/environment.md 的「C++ 工具链（pixi 提供）与编辑器提示」一节。
+CompileFlags:
+  Add: [-I../../src/quadruped_ros2/include, -std=c++17]
