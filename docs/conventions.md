@@ -95,6 +95,7 @@ AI 助手专属的提交规则（不代为提交、不写署名、改写已推�
 
 - **3.5 ROS 2 任务的 colcon 工作空间放 `<任务>/ws/`，包放 `ws/src/<包>/`**（参考 [`../@20261005_ros2/ws/src/quadruped_ros2/`](../@20261005_ros2/ws/src/quadruped_ros2/)）。加新任务不必改根目录的文件：`pixi run ros2-build` 按 `<任务目录>/**/src/<包>/package.xml` 自动发现并编译（[`../scripts/build_ros2_workspaces.sh`](../scripts/build_ros2_workspaces.sh)），激活环境时再自动 source 已构建的 `install/`（[`../scripts/activate_ros2_workspaces.sh`](../scripts/activate_ros2_workspaces.sh)）。
   - colcon 会把 `ws/` 下每个带 `package.xml` 的目录都当成要编的包：移植外部工程时只拷用得到的包，不要把整棵上游树（连同它的仿真器插件、第三方 SDK）放进 `src/`。
+  - 新任务的包**可以依赖前面任务的包**（如 `@20261007_assignment` 的 `rl_sar` 用 `@20261005_ros2` 的消息）：`ros2-build` 按目录名（即日期）顺序编译，每编完一个工作空间就 source 它，所以后面的能找到前面的；反过来不行。在 `package.xml` 里写上依赖，在任务 README 里写明依赖哪个任务。
 
 ### 脚本与入库
 
@@ -106,6 +107,7 @@ AI 助手专属的提交规则（不代为提交、不写署名、改写已推�
 ### 代码格式
 
 - **3.9 C/C++ 与 CMake 用 4 空格缩进，不用 Tab。** 仓库根的 [`.clang-format`](../.clang-format)（`IndentWidth: 4`、`ColumnLimit: 0` 即不自动折行）是默认配置；格式化用 `clang-format -i <file>`，它会用离文件最近的那份 `.clang-format`。
+  - 用**环境里的** clang-format（`pixi run clang-format -i <file>`，或激活环境后直接用），与编辑器（环境里的 clangd）同一版本；系统 apt 的 14 版结果不同（差在行尾注释的对齐），见 [`pitfalls/environment.md`](pitfalls/environment.md)「系统的 clangd 14 读不了 gcc 15 的头」。
 - **3.10 新任务的 C++ 工程用新格式：C++17 + Allman 大括号 + 100 列。** 在工程目录放一份自己的 `.clang-format`（照 [`../@20260927_motor/cpp_part2_remake/.clang-format`](../@20260927_motor/cpp_part2_remake/.clang-format) 复制），并在注释里写明"本目录采用 100 列"。
   - 参考：[`../@20260927_motor/cpp_part2_remake/`](../@20260927_motor/cpp_part2_remake/README.md)（现行）、[`learn/cpp-cmake.md`](learn/cpp-cmake.md) 的「工程目录与文件风格」一节；当时的拆分理由在历史版本 [`../@20260927_motor/cpp_part2/docs/setup.md`](../@20260927_motor/cpp_part2/docs/setup.md) §1。
   - 既有工程（`@20260923_mujoco/cpp_*`、`@20260927_motor/cpp/`）保留现状（见「适用范围」），等各自的结构对齐时一并切换。
@@ -113,6 +115,11 @@ AI 助手专属的提交规则（不代为提交、不写署名、改写已推�
   - 理由：XML 规范禁止注释内出现双连字符。MuJoCo 用的 tinyxml2 很宽松（连 `--->` 都读得进去），但 `xml.etree`、`xmllint` 这类严格解析器会直接报 `not well-formed`，编辑器与外部工具也会报警。
   - 实测（`@20261005_ros2` 的两个 xml，记录在该任务 `docs/status.md`）：5 种写法在 MuJoCo 3.12 下全部读得进去（`nq=19 ngeom=50` 不变），ElementTree 全部报错；改完后两边都通过。
   - 既有任务（`@20260923_mujoco`、`@20260927_motor`）里的同类写法保持原样（见「适用范围」）。
+- **3.12 连续物理量用国际制单位（SI）；非 SI 的量在名字里带后缀。** 长度用米、时间用秒、角用弧度、力矩用 N·m（增益 N·m/rad、N·m·s/rad），代码、配置、消息、文档同一个口径；确实要用度或毫秒时把单位写进名字（`tilt_warn_deg`、`TiltDeg()`、`--period-ms`），日志 / 表格的表头也写单位。
+  - 理由：SI 之外没有第二个"默认"——名字不带单位后缀就按 SI 读；带后缀的量一眼能认出来，不会在跨节点、跨语言的接口上把度当弧度用。
+  - 判定：看到 `tilt`、`q`、`dt` 这类没后缀的名字先按 SI 理解；发现某个量确实不是 SI 时，改名加后缀（`_deg` / `_ms`），而不是只在注释里说明。
+  - 例：`q` / `dq` [rad、rad/s]、MIT 的 kp / kd [N·m/rad、N·m·s/rad]（[`../@20261005_ros2/ws/src/quadruped_ros2/msg/MitCommand.msg`](../@20261005_ros2/ws/src/quadruped_ros2/msg/MitCommand.msg)）；用度的都带后缀：`tilt_warn_deg`、`quadruped::attitude::TiltDeg()`、诊断脚本的 `--period-ms` / `--delay-ms`。yaml / 配置字段的单位在本任务文档里列成表，如 [`../@20261007_assignment/docs/porting.md`](../@20261007_assignment/docs/porting.md) §3.1。
+  - 例外：逐字 / 整体复制的外部代码按原样保留（§6.2、「适用范围」），如 rl_sar 框架层 `library/core/rl_sdk/rl_sdk.cpp:228` 的 `AttitudeProtect()`（阈值按度用、名字没后缀；本移植里没人调用它）。
 
 ## 4. 环境与依赖
 
