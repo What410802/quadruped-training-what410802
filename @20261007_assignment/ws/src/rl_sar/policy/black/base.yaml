@@ -1,0 +1,46 @@
+# Copyright (c) 2024-2025 Ziqi Fan
+# SPDX-License-Identifier: Apache-2.0
+#
+# Modified for @20261007_assignment: written for our robot "black" after upstream
+# policy/go2/base.yaml (rl_sar e5c2f41). Field-by-field sources: docs/porting.md §3.
+
+# 机器人级参数：状态机（趴下 / 起身 / 阻尼）用它；RL 那一套另读 himloco/config.yaml。
+# 所有 12 维数组都是**策略顺序** FL / FR / RL / RR × hip / thigh / calf（见 joint_names）。
+
+black:
+  # 控制环 5 ms、策略每 4 个控制周期推一次（50 Hz）——HIMLoco 训练时的 sim dt × decimation。
+  # 大作业给的 config 没写这两项，取主办方 rl_sar 分支 policy/black/base.yaml 的值。
+  dt: 0.005
+  decimation: 4
+  # 起身 / 趴下用的 PD 增益：与主办方分支一致，也与上一版控制器（@20261005_ros2）的 kp 80 / kd 3 相同。
+  fixed_kp: [80.0, 80.0, 80.0,
+             80.0, 80.0, 80.0,
+             80.0, 80.0, 80.0,
+             80.0, 80.0, 80.0]
+  fixed_kd: [3.0, 3.0, 3.0,
+             3.0, 3.0, 3.0,
+             3.0, 3.0, 3.0,
+             3.0, 3.0, 3.0]
+  num_of_dofs: 12
+  wheel_indices: []
+  torque_limits: [33.5, 33.5, 33.5,
+                  33.5, 33.5, 33.5,
+                  33.5, 33.5, 33.5,
+                  33.5, 33.5, 33.5]
+  # 站姿 = 大作业 config 的 default_dof_pos（起身的终点，也是 RL 动作的零点）。
+  default_dof_pos: [0.0, 0.8014, -1.527,
+                    -0.0, -0.8014, 1.527,
+                    0.0, 0.8014, -1.527,
+                    -0.0, -0.8014, 1.527]
+  joint_names: [FL_hip_joint, FL_thigh_joint, FL_calf_joint,
+                FR_hip_joint, FR_thigh_joint, FR_calf_joint,
+                RL_hip_joint, RL_thigh_joint, RL_calf_joint,
+                RR_hip_joint, RR_thigh_joint, RR_calf_joint]
+  # ROS 1 / Gazebo 才用；ReadYamlBase() 无条件读它，所以保留（名字照上游的写法）。
+  joint_controller_names: [FL_hip_controller, FL_thigh_controller, FL_calf_controller,
+                           FR_hip_controller, FR_thigh_controller, FR_calf_controller,
+                           RL_hip_controller, RL_thigh_controller, RL_calf_controller,
+                           RR_hip_controller, RR_thigh_controller, RR_calf_controller]
+  # joint_mapping[策略下标] = 仿真消息里的下标。仿真（@20261005_ros2 的执行器顺序）是
+  # FL / FR / RR / RL，策略是 FL / FR / RL / RR：前两条腿对齐，后两条腿互换。
+  joint_mapping: [0, 1, 2, 3, 4, 5, 9, 10, 11, 6, 7, 8]

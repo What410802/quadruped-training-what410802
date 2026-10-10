@@ -1,0 +1,5 @@
+# 本包的代码来自上游 rl_sar（Allman + 长行），**不要用 clang-format 重排**：
+# 重排会把"和上游的差异"淹没在格式变动里（docs/porting.md 的 diff 对照就失效了）。
+# 新增 / 修改的代码照上游的写法手写。见 docs/conventions.md §6.2。
+DisableFormat: true
+SortIncludes: false
