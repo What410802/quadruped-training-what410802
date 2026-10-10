@@ -2,7 +2,8 @@
 """仿真手柄（外部独立进程）：鼠标造一个**真的** xbox 协议手柄，供 joy_node 原样读取。
 
 不是 ROS 节点，也不发布话题——它只做一件事：通过 /dev/uinput 造一个内核输入设备，
-名字 / VID / PID / 轴序 / 按钮序都对齐 Linux xpad 驱动下的 Xbox 360 手柄。
+名字 / VID / PID / 轴序 / 按钮序 / **正负号**都对齐 Linux xpad 驱动下的 Xbox 360 手柄
+（摇杆上 / 左为负、十字键上为负——内核 drivers/input/joystick/xpad.c 的约定）。
 于是 `joy_node`（以及任何 SDL / pygame / jstest 程序）都分不出它是真是假：
 
     实体手柄稀缺 → 先用它把"手柄 → 控制器 → 仿真"整条链路测通 → 再插真手柄复验。
@@ -160,7 +161,7 @@ def uinput_loop(ui, state: XboxState, hz: float) -> None:
             int(max(-1.0, min(1.0, -ry)) * AXIS_MAX),
             int(max(0.0, min(1.0, rt)) * TRIGGER_MAX),
             int(dx),
-            int(-dy),  # evdev hat：上 = 正，GUI 的 y 向下为正
+            int(dy),  # evdev hat：上 = 负（同 xpad），正好与 GUI 的"y 向下为正"同号，不用取反
         )
         current = (raw, tuple(buttons))
         if current != last:

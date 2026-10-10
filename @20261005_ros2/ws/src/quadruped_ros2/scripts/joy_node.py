@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""手柄节点（Python，任务第 3 项）：读 xbox 协议手柄，发 sensor_msgs/Joy，并订阅控制器的回程状态。
+"""手柄节点（Python，任务第 3 项）：读游戏手柄，发 sensor_msgs/Joy，并订阅控制器的回程状态。
 
-手柄从 **/dev/input/event*** 直接读内核事件（python-evdev），不经 SDL/pygame：
-轴与按钮的顺序就是 xpad 驱动的原始顺序，少一层映射、也就少一层"某个手柄被 SDL 重排了"的意外。
+手柄从 **/dev/input/event*** 直接读内核事件（python-evdev），不经 SDL/pygame。
+认 xpad（Xbox）布局，也认轴码位不同的第三方 HID 手柄（按设备自己的 AbsInfo 分配槽位）。
 
-输出对齐主办者仓库 `quadruped_control/configs/input/gamepads.yaml` 的 `xbox` profile
-（8 个轴 / 12 个按钮，长度固定）：
+输出对齐主办者仓库 `quadruped_control/configs/input/gamepads.yaml` 的 `xbox` profile 的**规范化输出**
+（8 个轴 / 12 个按钮，长度、顺序、**正负号**都一致；接口全文见 docs/joystick.md §3）：
 
     axes[0..7]     = 左摇杆 X、左摇杆 Y、LT、右摇杆 X、右摇杆 Y、RT、DPad X、DPad Y
     buttons[0..11] = A、B、X、Y、LB、RB、Back、Start、Guide、LS、RS、（第 12 个恒 0）
+
+    正负号：摇杆 **上 / 左 = +1**；十字键 **上 / 右 = +1**；扳机松开 = −1、按到底 = +1。
+    内核（evdev）是"上 / 左为负、十字键上为负"，所以摇杆四个轴与十字键竖轴在这里取反一次，
+    下游（控制器、rl_sar、主办者的 gateway）就都不用再管设备的正负号。
 
 按键含义由**控制器节点**决定（A 站立 / B 阻尼 / X 复位），手柄节点只管把原始输入发出去——
 这样"手柄挂了"和"控制逻辑"是两件互不影响的事。
@@ -52,6 +56,11 @@ BUTTON_COUNT = 12
 STICK_SLOTS = (0, 1, 3, 4)
 TRIGGER_SLOTS = (2, 5)
 HAT_SLOTS = {ecodes.ABS_HAT0X: 6, ecodes.ABS_HAT0Y: 7}
+# **输出的正负号**：每个槽位乘的系数（evdev → 规范化 /joy）。evdev 的约定是摇杆"上 / 左为负"、
+# 十字键"上为负、右为正"（内核 drivers/input/joystick/xpad.c 与 drivers/hid/hid-input.c 都这么报）；
+# 规范化输出是"上 / 左为正、十字键上 / 右为正"，与主办者 gamepads.yaml 的 xbox profile（摇杆 scale −1、
+# 十字键经 pygame 的 get_hat）一致。扳机（2/5）与十字键横轴（6）不变号。
+SLOT_SIGN = (-1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0)
 # sysfs/预筛用的"像手柄的轴"与"像手柄的键"：两者**同时**满足才算候选。
 # 只看轴不够——触摸板也报 ABS_X/ABS_Y，会被当成候选、再因为没权限报成"手柄没权限"（实测踩过）；
 # 触摸板只有 BTN_LEFT/BTN_TOOL_*，没有 BTN_A 这类游戏键。
@@ -145,7 +154,7 @@ def build_axis_roles(dev: InputDevice) -> dict[int, tuple[int, str, float, float
     返回 `{事件码: (槽位, 类型, 中心, 半量程)}`，类型取 `stick` / `trigger` / `hat`。
     判定规则（不猜设备型号，只看内核给的量程与静止值）：
 
-    * `ABS_HAT0X/Y` → 槽位 6/7，原样输出 -1/0/1；
+    * `ABS_HAT0X/Y` → 槽位 6/7，-1/0/1（正负号在 apply_event 里按 SLOT_SIGN 换）；
     * **双极性**（`min < 0`，或静止值在中点附近 ±25%）→ 当一个**摇杆轴**，按码位顺序填
       `STICK_SLOTS`：xpad 的 X/Y/RX/RY → 0/1/3/4，本机这台 Zikway 的 X/Y/Z/RZ → 0/1/3/4
       （它的 Z/RZ 是右摇杆，静止 128，不是扳机）；
@@ -334,11 +343,13 @@ class JoyNode(Node):
                 return
             slot, kind, center, half = role
             if kind == "stick":  # 双极性 + 死区
-                self.axes[slot] = self.stick(event.value, center, half)
+                value = self.stick(event.value, center, half)
             elif kind == "trigger":  # 单极性：松开 = -1、踩到底 = +1
-                self.axes[slot] = self.trigger(event.value, half)
+                value = self.trigger(event.value, half)
             else:  # DPad hat：本来就是 -1 / 0 / 1
-                self.axes[slot] = float(event.value)
+                value = float(event.value)
+            # evdev 正负号 → 规范化正负号（见 SLOT_SIGN）；+ 0.0 把 −0.0 变回 0.0，echo 出来不带负号
+            self.axes[slot] = SLOT_SIGN[slot] * value + 0.0
         elif event.type == ecodes.EV_KEY:
             index = BUTTON_INDEX.get(event.code)
             if index is not None:

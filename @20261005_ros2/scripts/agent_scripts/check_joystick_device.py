@@ -12,7 +12,8 @@
     pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py
 
 判定：joy_node 认到设备 → /joy 上看到 A/B/X 各按下过 → 仿真里两次起身、一次塌下、
-末态高度与上次一致 → 没有看门狗。
+末态高度与上次一致 → 没有看门狗。最后站着时再推一遍摇杆与十字键，核对 /joy 的**正负号**
+（摇杆上 / 左 = +1、十字键上 / 右 = +1，接口见 docs/joystick.md §3；控制器不读轴，狗不受影响）。
 """
 
 from __future__ import annotations
@@ -42,6 +43,15 @@ BUTTONS = {"A": 0, "B": 1, "X": 2}
 # (时刻 s, 动作)：按下 0.3 s 就松开（控制器只认按下沿）
 SEQUENCE = [(1.0, "A"), (7.0, "B"), (10.0, "X"), (11.0, "A")]
 PRESS_SECONDS = 0.3
+# 轴的正负号：(开始时刻 s, 名称, 怎么推（仿真手柄 GUI 的坐标：摇杆上 / 右为正，十字键 y 向下为正）, 槽位, 期望值)
+AXIS_STEPS = [
+    (14.0, "左摇杆推上", ("stick", "L", 0.0, 1.0), 1, 1.0),
+    (14.6, "左摇杆推左", ("stick", "L", -1.0, 0.0), 0, 1.0),
+    (15.2, "右摇杆推左", ("stick", "R", -1.0, 0.0), 3, 1.0),
+    (15.8, "十字键上", ("dpad", 0, -1), 7, 1.0),
+    (16.4, "十字键右", ("dpad", 1, 0), 6, 1.0),
+]
+AXIS_HOLD = 0.4  # 每步按住多久；取后半段的 /joy 判定（前半段留给 uinput → joy_node 的传递）
 TOTAL_SECONDS = 18.0
 
 
@@ -60,11 +70,13 @@ class JoyProbe(Node):
         self.frames = 0
         self.pressed: set[int] = set()
         self.frame_ids: set[str] = set()
+        self.axes: list[tuple[float, list[float]]] = []  # (time.monotonic(), axes)
         self.create_subscription(Joy, "joy", self.on_joy, 1)
 
     def on_joy(self, msg: Joy) -> None:
         self.frames += 1
         self.frame_ids.add(msg.header.frame_id)
+        self.axes.append((time.monotonic(), list(msg.axes)))
         for index, value in enumerate(msg.buttons):
             if value:
                 self.pressed.add(index)
@@ -183,6 +195,15 @@ def main() -> int:
         if pressed is not None and now >= release_at:
             state.set_button(BUTTONS[pressed], 0)
             pressed = None
+        held = next((s for s in AXIS_STEPS if s[0] <= now < s[0] + AXIS_HOLD), None)
+        if held is None:
+            state.set_stick("L", 0.0, 0.0)
+            state.set_stick("R", 0.0, 0.0)
+            state.set_dpad(0, 0)
+        elif held[2][0] == "stick":
+            state.set_stick(held[2][1], held[2][2], held[2][3])
+        else:
+            state.set_dpad(held[2][1], held[2][2])
         rclpy.spin_once(probe, timeout_sec=0.0)
         time.sleep(0.01)
 
@@ -230,6 +251,12 @@ def main() -> int:
                  "两次站立稳态高度一致", f"{stands[0]['peak_z']:.4f} vs {stands[-1]['peak_z']:.4f} m"),
             )
     rows_out.append(("看门狗" not in sim_text, "没有触发看门狗", "仿真日志里没有「看门狗」"))
+    for begin, name, _action, slot, expect in AXIS_STEPS:
+        lo, hi = start_time + begin + AXIS_HOLD / 2, start_time + begin + AXIS_HOLD
+        seen = [axes[slot] for t, axes in probe.axes if lo <= t <= hi and len(axes) > slot]
+        ok = bool(seen) and all(abs(v - expect) < 0.05 for v in seen)
+        rows_out.append((ok, f"正负号：{name} → axes[{slot}] = {expect:+.0f}",
+                         f"收到 {sorted(set(round(v, 3) for v in seen))}（{len(seen)} 帧）"))
 
     width = max(len(name) for _, name, _ in rows_out)
     print("\n================ 手柄端到端自检 ================")

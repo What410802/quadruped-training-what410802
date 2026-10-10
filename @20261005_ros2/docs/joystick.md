@@ -6,11 +6,13 @@
 
 | 角色 | 是什么 | 在哪 |
 |---|---|---|
-| **实体手柄** | xbox 协议的游戏手柄，插上就是 `/dev/input/eventN` | 硬件 |
+| **实体手柄** | Linux 认得的游戏手柄（内核 evdev 设备），插上就是 `/dev/input/eventN`。本机实测过的只有一台**第三方 HID 手柄**（Zikway，§8）；**没有用过 Xbox 手柄**，文中关于 Xbox 的描述都来自内核驱动源码 | 硬件 |
 | **仿真手柄** | 鼠标操作的 GUI，通过 `/dev/uinput` 造一个**内核输入设备**，名字/VID:PID/轴序/按钮序都对齐 xpad 下的 Xbox 360 手柄 | [`../sim_joy/xbox_sim_joy.py`](../sim_joy/xbox_sim_joy.py)（**外部独立进程，不是 ROS 节点**） |
 | **手柄节点** | ROS 2 节点：读那个设备 → 发 `sensor_msgs/Joy`；同时订阅控制器的回程状态 | [`../ws/src/quadruped_ros2/scripts/joy_node.py`](../ws/src/quadruped_ros2/scripts/joy_node.py) |
 
-仿真手柄**刻意不纳入 ROS 2 管理**：它只往内核里造设备，和真手柄走完全同一条路（`/dev/input` → `joy_node` → `/joy`）。于是"仿真手柄能跑通"就意味着"真手柄插上就能用"——除了设备名字不同（`joy_node` 按名字片段自动认，见 §3），代码一行都不用改。反之，若让仿真手柄直接发 `/joy`，就绕过了要测的那一层。
+仿真手柄**刻意不纳入 ROS 2 管理**：它只往内核里造设备，和真手柄走完全同一条路（`/dev/input` → `joy_node` → `/joy`）。所以"仿真手柄能跑通"能说明这条路是通的；但它模仿的是 Xbox 360，实体手柄的名字、轴码位和量程都可能不同（本机那台 Zikway 就不同，§8），这些差异由 `joy_node` 在连接时按设备自己的描述适配。反之，若让仿真手柄直接发 `/joy`，就绕过了要测的那一层。
+
+> **更正（2026-10-08）**：在这之前，仿真手柄的十字键竖轴与实体手柄**正负相反**（它发"上 = +1"，内核对实体手柄报"上 = −1"），已修；`/joy` 的正负号约定也是这一天才定下来的，见 §3。
 
 ```text
 实体手柄 ─┐
@@ -46,18 +48,30 @@ sudo @20261005_ros2/scripts/setup_joy_devices.sh          # 需要 sudo 密码
 - `joy_node`：`N 个输入设备打不开（没有权限）：…`，并继续以 `joy_disconnected` 状态每秒重试（此时它照发全 0 的 `/joy`，控制器收不到按键）。注意 `evdev.list_devices()` 会先按"可读可写"过滤，没权限时直接返回空表——那样只能报"没找到手柄"，看不出是权限问题，所以手柄节点自己 `glob` `/dev/input/event*`。
 - **这条提示曾经误报过**：键盘 / 鼠标也挂在 `/dev/input/event*` 上、同样只有 `root:input` 可读，早期版本挨个去开，于是在"权限已配好、手柄也认到了"的情况下，开头仍先打一条 `没有权限打开 /dev/input/event0`（实测：2026-10-06 三节点联跑，用户以为 `sudo` 脚本没生效，其实紧跟其后就是"手柄已连接"）。现在先按 sysfs 的 `/sys/class/input/eventN/device/capabilities/abs` 判断"有没有绝对轴"（**不需要权限**）：键盘鼠标直接跳过，只有"确实像手柄却打不开"才提示权限。顺带一个坑：内核打印的能力位是**多字**位图（空格分隔、高位字在前），算具体位很容易写错（第一版按单整数读，对刚建的 uinput 手柄返回了 `None`）——所以只看"是不是全 0"，不算位序。
 
-## 3 映射：8 轴 / 12 按钮
+## 3 `/joy` 接口：8 轴 / 12 按钮（本仓库的手柄接口规范）
 
-输出长度与顺序**对齐主办者仓库**的 `configs/input/gamepads.yaml`（只读材料 `ReadOnly.d/quadruped_control/` 下）里的 `xbox` profile，方便两边对照：
+**这一节是 `/joy` 的唯一定义**，下游（`controller_node`、`@20261007_assignment` 的 `rl_sim`）都按它读。长度、顺序与**正负号**都与主办者仓库的 `configs/input/gamepads.yaml`（只读材料 `quadruped_control` 里）`xbox` profile 的规范化输出一致：
 
-| 输出 | 来源（evdev 码，xpad 顺序） | 归一化 |
-|---|---|---|
-| `axes[0]` `axes[1]` | `ABS_X` `ABS_Y`（左摇杆） | ÷32767，死区 0.08（参数 `deadband`） |
-| `axes[2]` `axes[5]` | `ABS_Z` `ABS_RZ`（LT / RT） | 0..255 → −1..1 |
-| `axes[3]` `axes[4]` | `ABS_RX` `ABS_RY`（右摇杆） | ÷32767，死区 0.08 |
-| `axes[6]` `axes[7]` | `ABS_HAT0X` `ABS_HAT0Y`（DPad） | 本来就是 −1/0/1 |
-| `buttons[0..10]` | `BTN_A` `BTN_B` `BTN_X` `BTN_Y` `BTN_TL` `BTN_TR` `BTN_SELECT` `BTN_START` `BTN_MODE` `BTN_THUMBL` `BTN_THUMBR` | 0/1 |
-| `buttons[11]` | —（没有对应键） | 恒 0，只为"长度固定" |
+| 输出 | 是什么 | 取值与正负号 | xpad（Xbox）的来源 | 本机 Zikway 的来源 |
+|---|---|---|---|---|
+| `axes[0]` | 左摇杆横向 | −1..1，**向左为 +** | `ABS_X` | `ABS_X` |
+| `axes[1]` | 左摇杆纵向 | −1..1，**向上为 +** | `ABS_Y` | `ABS_Y` |
+| `axes[2]` | LT | 松开 −1、按到底 +1 | `ABS_Z` | `ABS_BRAKE` |
+| `axes[3]` | 右摇杆横向 | −1..1，**向左为 +** | `ABS_RX` | `ABS_Z` |
+| `axes[4]` | 右摇杆纵向 | −1..1，**向上为 +** | `ABS_RY` | `ABS_RZ` |
+| `axes[5]` | RT | 松开 −1、按到底 +1 | `ABS_RZ` | `ABS_GAS` |
+| `axes[6]` | 十字键横向 | −1 / 0 / +1，**向右为 +** | `ABS_HAT0X` | `ABS_HAT0X` |
+| `axes[7]` | 十字键纵向 | −1 / 0 / +1，**向上为 +** | `ABS_HAT0Y` | `ABS_HAT0Y` |
+| `buttons[0..10]` | A、B、X、Y、LB、RB、Back、Start、Guide、左摇杆按下、右摇杆按下 | 0 / 1 | `BTN_A` `BTN_B` `BTN_X` `BTN_Y` `BTN_TL` `BTN_TR` `BTN_SELECT` `BTN_START` `BTN_MODE` `BTN_THUMBL` `BTN_THUMBR` | 同左 |
+| `buttons[11]` | —（没有对应键） | 恒 0，只为"长度固定" | — | — |
+
+摇杆按设备自己的 `absinfo` 归一化（中心与半量程取自内核），死区 0.08（参数 `deadband`，只用于摇杆）；扳机按满量程换成 −1..1。哪个码位进哪个槽位由连接时的 `absinfo` 判定（双极性当摇杆、单极性当扳机），启动日志会打印一行"轴布局"。
+
+**正负号从哪来**：内核（evdev）的约定是摇杆**上 / 左为负**、十字键**上为负、右为正**——xpad 驱动把摇杆 Y 轴取反后上报（Xbox 360 走 `xpad360_process_packet`：`drivers/input/joystick/xpad.c:930`、`:936`），十字键竖轴报的是"下减上"（同函数 `:905`；Xbox One 的 `:1134`、`:1118` 同理）；通用 HID 手柄的十字键查的是 `drivers/hid/hid-input.c:49` 的 `hid_hat_to_axis` 表，"上"同样是 −1（内核源码 `torvalds/linux` 主线，2026-10-08 查）。`joy_node` 把摇杆四个轴与十字键竖轴乘 −1（`SLOT_SIGN`，[`../ws/src/quadruped_ros2/scripts/joy_node.py`](../ws/src/quadruped_ros2/scripts/joy_node.py)），得到上表的约定。
+
+**主办者的约定是什么**：主办者的手柄节点 `controller_input.py` 用 pygame/SDL 读手柄，再按 `gamepads.yaml` 的 profile 规范化。`xbox` profile 给四个摇杆轴都写了 `scale: -1.0`（SDL 与内核一样是上 / 左为负，乘 −1 后上 / 左为正）；十字键用 pygame 的 `get_hat()`，它的约定是上 / 右为 +1。消费端 `ros2_gateway.cpp` 也是按这个读的：`vx = axes[1]`、`vy = axes[0]`、`wz = axes[3]`，十字键上是 `axes[7] > 0.5`。也就是说，**主办者把"设备怎么报"的差异全部关在手柄节点里**，`/joy` 上只有一种约定——本仓库现在也是这样。顺带：ROS 官方 `joy` 驱动的摇杆约定与此相同，但它的十字键横向是**向左为 +**（`joy/src/joy.cpp` 的 `SDL_HAT_LEFT → +1.0`），和主办者、rl_sar 相反；本仓库不用那个驱动，只在对照别人的代码时要留意。
+
+**历史**：2026-10-08 之前，`joy_node` 只对齐了长度与顺序，正负号照搬 evdev（摇杆上 / 左为负、十字键上为负）。当时的控制器只读按键，所以没有暴露出来；`@20261007_assignment` 的 `rl_sim` 要读摇杆和十字键，才把约定定下来。
 
 按键语义由**控制器节点**决定（不是手柄节点）：`button_stand=0`（A）站立、`button_damp=1`（B）阻尼、`button_reset=2`（X）复位，都只认**按下沿**（长按不重复触发，与上一版键盘的 S/D/R 一致）。回程：手柄节点订阅 `/control_status` 并打印"模式 / 斜坡进度 / 倾角 / 已发指令条数"——这就是任务书"手柄节点需要和控制器节点互换消息"的返程那一条。
 
@@ -87,7 +101,7 @@ sudo @20261005_ros2/scripts/setup_joy_devices.sh          # 需要 sudo 密码
 | ① 链路自检 | "手柄 → 控制器 → 仿真"整条链路**不需要手柄**也能跑：脚本按 `1:A,6:B,8:X,9:A` 直接发 `/joy` | `pixi run python @20261005_ros2/scripts/agent_scripts/check_headless.py` | 否 | ✅ 全过（[`ros2-nodes.md`](ros2-nodes.md) §5） |
 | ② 设备层端到端 | **真造一个内核输入设备**（uinput）→ `joy_node` 从 `/dev/input` 认领 → `/joy` 上看到 A/B/X → 狗起身/趴下/再起身 | `pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py` | **要**（§2） | ✅ 全过，见 §6 |
 | ③ 手动操作仿真手柄 | 鼠标点 GUI，看狗听不听使唤（GUI 中文字体已从 Tk 默认的日文 `gothic` 9 号换成 `song ti` 12 号：本机 Tk 是非 Xft 构建，fontconfig 里的 `Noto Sans CJK SC` 它看不见，核心字族里只有 `song ti`/`fangsong ti` 是中文正体） | 终端 A：`pixi run python @20261005_ros2/sim_joy/xbox_sim_joy.py`；终端 B：`pixi run ros2 launch quadruped_ros2 bringup.launch.py` | **要** | ✅ GUI 能起（窗口在桌面出现），按键路径与 ② 是同一条 |
-| ④ 实体手柄复验 | 同一套代码换真设备 | 插手柄 → 同 ③ 的终端 B（`joy_node` 按名字自动认） | **要**（同一条规则） | ⏳ 没实体手柄，未跑 |
+| ④ 实体手柄复验 | 同一套代码换真设备 | 插手柄 → 同 ③ 的终端 B（`joy_node` 按名字自动认） | **要**（同一条规则） | ✅ 2026-10-07，Zikway HID 手柄（§7、§8）；正负号约定（§3）是之后定的，还没在这台上复验 |
 
 ①的脚本 [`../scripts/agent_scripts/pub_joy_sequence.py`](../scripts/agent_scripts/pub_joy_sequence.py) 是**测试替身**：它不碰设备，直接把按键序打进 `/joy`。这不是偷懒——主办者仓库也是这么做的（见 §5）。②的脚本 [`../scripts/agent_scripts/check_joystick_device.py`](../scripts/agent_scripts/check_joystick_device.py) 直接 `import` 仿真手柄的 uinput 部分并程序化按按钮，所以不必有人守着鼠标点。
 
@@ -123,7 +137,9 @@ pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py
 | 起身质量 | 峰值 **z = 0.3836 m**、四足触地（ncon=4）、倾角 **0.0°**；两次站立稳态一致（0.3836 vs 0.3836 m） |
 | 看门狗 | 没触发 |
 
-也就是说：**设备层（uinput → evdev → `/joy`）到控制层（按键 → 状态机 → 狗）整条链路都通了**，与"脚本直接发 `/joy`"那条自检得到的数字完全一致。唯一没跑的是真手柄（没有硬件），而它与仿真手柄走的是同一条路，只差设备名。
+也就是说：**设备层（uinput → evdev → `/joy`）到控制层（按键 → 状态机 → 狗）整条链路都通了**，与"脚本直接发 `/joy`"那条自检得到的数字完全一致。（当时还没有实体手柄；2026-10-07 用 Zikway 复验过，见 §7。）
+
+**2026-10-08 起这个自检多了 5 项正负号检查**：狗站着时，程序化地推左摇杆上、左摇杆左、右摇杆左、十字键上、十字键右，核对 `/joy` 对应槽位都是 +1（§3 的约定），实测 13 项全部通过。它验证的是"仿真手柄按内核约定报 → `joy_node` 换成规范约定"这一段；实体手柄那一段靠内核源码（§3），没有实测。
 
 ## 7 未验证 / 下一步
 
@@ -135,18 +151,20 @@ pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py
   * 按键：**A→B→X→A** 依次被控制器认到（日志四条"手柄 A/B/X → …"），狗**两次起身**、峰值 **z = 0.3836 m**、四足触地、倾角 0.0°——与仿真手柄、与上一版数字完全一致。
   复现用的探头是 [`../scripts/agent_scripts/probe_gamepad.py`](../scripts/agent_scripts/probe_gamepad.py)（设备层，`--watch` 引导采集）+ `--ros-args -p device:=` 起 `joy_node`，整套核对表见 §8。
 - **非 xbox 布局的手柄**：已有一台第三方 HID 手柄实测通过（轴量程与槽位由 `absinfo` 自适应，不再写死量程）；再换别的牌子，先跑 `probe_gamepad.py` 看它的轴/键码位，必要时只改 `name` 片段或 `-p device:=`，一般不必改代码。
-- **未做**：震动/LED 回馈（`sensor_msgs/JoyFeedback`）、`/joy` 的轴语义（当前控制器只用按钮；左右摇杆已经在 `/joy` 里，将来做"走两步"时直接用 `axes[1]`）。
+- **未做**：震动/LED 回馈（`sensor_msgs/JoyFeedback`）。`/joy` 的轴语义已在 2026-10-08 定下（§3），`@20261007_assignment` 的 `rl_sim` 用左摇杆 `axes[1]` / `axes[0]` 控前后 / 左右、右摇杆 `axes[3]` 控转向。
+- **实体手柄的正负号待复验**：插 Zikway，开 `pixi run ros2 run quadruped_ros2 joy_node` 与 `pixi run ros2 topic echo /joy`，左摇杆推上看 `axes[1]`、十字键按上看 `axes[7]`，都应为 +1。
 
-## 8 虚拟手柄 vs 真实 Xbox 手柄：接口对照与真机核对清单
+## 8 虚拟手柄 vs 实体手柄：接口对照与真机核对清单
 
 **虚拟手柄是本任务自己写的**（`sim_joy/xbox_sim_joy.py`，Tk 图形界面 + `evdev.UInput`，391 行），没有套用现成方案；思路是"**造一个内核级的真手柄**"，所以对 `joy_node` 而言它与实体手柄没有区别（SDL / pygame / `jstest` 同样分不出来）。界面的窗口缩放不友好（画布坐标是建窗时算的），优先级低，两种改法：把画布改成 `<Configure>` 回调里按当前尺寸重算坐标（约 30 行），或干脆固定宽高比、只允许等比缩放（约 10 行）。
 
-**对 `joy_node` 的接口对照**（我们在 `sim_joy/xbox_sim_joy.py::build_uinput()` 里声明的，对照 Linux `xpad` 驱动下的 360 手柄）：
+**对 `joy_node` 的接口对照**（我们在 `sim_joy/xbox_sim_joy.py::build_uinput()` 里声明的，对照 Linux `xpad` 驱动下的 360 手柄。"真实 Xbox"一列来自内核驱动源码与公开资料，**本机没有 Xbox 手柄，未实测**）：
 
 | 项目 | 我们的虚拟手柄 | 真实 Xbox（xpad/xpadneo/xone） | 影响 |
 |---|---|---|---|
 | 按钮码 | `BTN_A/B/X/Y`、`BTN_TL/TR`、`BTN_SELECT/START/MODE`、`BTN_THUMBL/R` | 同名同码（Xbox One 起内核别名 `BTN_SOUTH/EAST/NORTH/WEST`，**码值相同**） | ✓ 无 |
 | 轴码与顺序 | `ABS_X, ABS_Y, ABS_Z, ABS_RX, ABS_RY, ABS_RZ, ABS_HAT0X, ABS_HAT0Y` | 同序（左摇杆 X/Y、扳机 Z/RZ、右摇杆 RX/RY、十字键 HAT0） | ✓ 无 |
+| 正负号 | 摇杆上 / 左为负；十字键上为负、右为正（**2026-10-08 之前十字键竖轴是"上为正"，与实体手柄相反，已修**） | 摇杆上 / 左为负（`xpad.c:930`）；十字键上为负（`xpad.c:905`；通用 HID 手柄见 `hid-input.c:49`） | ✓ 已一致；`joy_node` 再统一换成 §3 的约定 |
 | 量程 | 摇杆 -32768..32767、扳机 0..255、十字键 -1..1 | 多数 xpad 手柄相同；**第三方差别很大**：实测那台是摇杆 0..255（静止在中点 128）、扳机 0..255、十字键 -1..1 | ✓ 已改成**读设备自己的 `absinfo`**：连接时按“双极性 / 单极性”判每个轴是摇杆还是扳机、用内核给的量程归一化（见 §8 的真机表）|
 | `EV_FF`（震动） | **没有声明** | 有（rumble） | ⚠️ 只影响"发震动"的程序；`joy_node` 不用，故无害 |
 | 设备名 | `Xbox 360 Wireless Controller (Sim)` | USB 线：`Microsoft X-Box 360 pad`；蓝牙：`Xbox Wireless Controller` 等；**第三方：`Zikway HID gamepad`（实测）** | ✓ `joy_node` 按片段匹配（`xbox`/`x-box`/`xinput`/`gamepad`/`joystick`，大小写不敏感），都收 |

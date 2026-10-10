@@ -33,6 +33,9 @@
 | `rqt_graph` 启动告警与按钮空白 | ✅ 已定位：① 告警是 `Could not find the Qt platform plugin "wayland" in ""`——rqt 用 Qt5，而环境里只装了 `qt6-wayland`；conda-forge 有 `qt-wayland 5.15.15`，**已加入 `pixi.toml`**（装后平台即 wayland、告警消失）。② 工具栏 6 个按钮**本来就是只画图标、不写字**（文字在 tooltip 里），但这个环境下所有主题图标都取不到 → 全空白。机制与两条本地兜底（把宿主的主题软链进环境）写在 [`../../docs/pitfalls/environment.md`](../../docs/pitfalls/environment.md)「2026-10-07 conda 里的 Qt 程序（rqt 等）」一节；`breeze-icons` / `gnome-icon-theme` 不在本仓库用的两个通道里，所以没进 `pixi.toml` |
 | 自适应抗锯齿（随缩放改倍率） | ⏸ 论证可行、先不做（当前帧率还被合成器 present 限制）——同上 §8.2 |
 | 虚拟手柄 GUI 缩放 | ⏸ 低优先级，两种改法各约 10~30 行——[`joystick.md`](joystick.md) §8 |
+| `/joy` 正负号约定 + 仿真手柄十字键竖轴（大作业时发现） | ✅ 已改（2026-10-08）：`joy_node` 把摇杆四个轴与十字键竖轴换成主办者 `gamepads.yaml` 的约定（摇杆上 / 左为 +、十字键上 / 右为 +）；仿真手柄的十字键竖轴原先与实体手柄相反（发"上 = +1"），改成内核的"上 = −1"。`check_joystick_device.py` 加了 5 项正负号检查，13 项全过；`check_headless.py` 照旧全过（控制器只读按键，不受影响）——[`joystick.md`](joystick.md) §3 |
+| 实体手柄的正负号复验 | ⏳ 待人工：插 Zikway，`ros2 topic echo /joy` 看左摇杆推上时 `axes[1]`、十字键上时 `axes[7]` 是否为 +1——[`joystick.md`](joystick.md) §7 |
+| 编辑器标红（`motor.hpp` 等头文件） | ✅ 已修（2026-10-08）：换环境里的 clangd 23，本包加 `.clangd` 补头文件的 `-I` 与 `-std=c++17`；本包 6 个 C/C++ 文件 0 错——[`../../docs/pitfalls/environment.md`](../../docs/pitfalls/environment.md)「系统的 clangd 14 读不了 gcc 15 的头」 |
 
 ## 2 阻滞项
 
@@ -45,50 +48,3 @@
 1. 自适应抗锯齿（随缩放改倍率）：论证可行、暂不做（[`../../docs/learn/graphics-stack.md`](../../docs/learn/graphics-stack.md) §8.2）——注意它**解决不了**阴影量化（只抹软台阶边缘，台阶位置仍由纹素决定，见 §8.3）。
 2. 可选：`/joint_states`（`sensor_msgs/JointState`）与 RViz 展示。`/clock` + `use_sim_time` 已论证**不用**（时序契约是步数，[`../../docs/learn/ros2-graph-and-clock.md`](../../docs/learn/ros2-graph-and-clock.md) §2）。
 3. 可选：虚拟手柄 GUI 的缩放（[`joystick.md`](joystick.md) §8 给了两种改法）。
-
-## 4 提交建议（分阶段；AI 助手不代为提交）
-
-已经提交的（任务书四项 + 环境合并 + 上一轮"找 bug / 改代码 / 补文档"）：
-
-```text
-54df70e 目录骨架            f222933 两个节点         6c91a02 launch
-757670b 手柄链路与自检      6df714b 单环境 + 稳定通道
-38bdd26 自建窗口 + 阴影修复 + 电机非理想项
-1ef8128 MJCF 注释合法化 + 过期引用
-b634bc4 agent 脚本归位 + 主干调查残留清理
-3f4a29b 文档（节点接口 / 阴影链路 / 手柄）
-543a43b rqt_graph + Qt wayland 平台插件
-```
-
-**还没提交**的是这三件事（去掉没有下游的 `tilt_deg`、把 IMU 用途写清、真手柄兼容性与复验），按主题分五次；每条的 `git add` 可直接粘贴：
-
-```bash
-git status --short    # 先核对：ws/build|install|log 与 output/log|shadow 都已被 .gitignore 覆盖，别 `git add -A`
-
-# ① 手柄：第三方 HID 手柄的轴布局自适应（按 AbsInfo 判角色/量程）+ 名字片段与设备预筛加固
-#    + 自检钉住自己造的 uinput 设备 + 真机探头
-git add @20261005_ros2/ws/src/quadruped_ros2/scripts/joy_node.py \
-        @20261005_ros2/ws/src/quadruped_ros2/launch/bringup.launch.py \
-        @20261005_ros2/scripts/agent_scripts/check_joystick_device.py \
-        @20261005_ros2/scripts/agent_scripts/probe_gamepad.py
-git commit -m "fix(ros2): adapt the joy node to third-party HID gamepad layouts"
-
-# ② 回程消息：去掉没有控制下游的 tilt_deg，并把 IMU 的用途说清（告警 + 可选打印）
-#    注意 joy_node.py 在第 ① 条已经 add 过了，所以这里只需带上消息、控制器与文档
-git add @20261005_ros2/ws/src/quadruped_ros2/msg/ControlStatus.msg \
-        @20261005_ros2/ws/src/quadruped_ros2/src/controller_node.cpp \
-        @20261005_ros2/README.md @20261005_ros2/docs/ros2-nodes.md
-git commit -m "refactor(ros2): drop the unused tilt_deg field and make the IMU use explicit"
-
-# ③ 文档：真手柄实测表与换手柄的核对法
-git add @20261005_ros2/docs/joystick.md @20261005_ros2/docs/status.md
-git commit -m "docs(ros2): record the real gamepad verification and third-party axis layout"
-
-# ④ 学习文档：两个抗锯齿旋钮的分工、阴影贴图为什么越大越清晰、雾不是阴影
-git add docs/learn/graphics-stack.md
-git commit -m "docs: explain the AA knob duties and separate the shadow map from fog"
-
-# ⑤ 环境：无（这一轮没动 pixi.toml）
-```
-
-`joy_node.py` 这一轮有两种改动（轴映射 + 去掉回程打印里的倾角）：整文件 `git add` 会一起提交，所以上面的顺序把两件事合进 ①，②里只留消息/控制器/文档——如果想拆细，就在 ① 之前先 `git add -p @20261005_ros2/ws/src/quadruped_ros2/scripts/joy_node.py` 把"回程打印"那段留给 ②。
