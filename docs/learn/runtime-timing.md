@@ -7,30 +7,30 @@
 ## 1. 进程与线程总表
 
 ```mermaid
-flowchart TB
-    subgraph CS["进程① C++ 仿真器：./unitree_mujoco"]
-        direction TB
-        C1["主线程：Simulate::RenderLoop（UI + 渲染）"]
-        C2["PhysicsThread：mj_step + 节奏对齐"]
-        C3["UnitreeSdk2BridgeThread：等 d 就绪 → 建桥 → 保活"]
-        C4["桥的 1 kHz RecurrentThread：ctrl 换算 + 填状态"]
-        C5["发布线程 ×3（G1 再 +2）：RealTimePublisher::publishingLoop"]
+flowchart
+    subgraph CS["进程① C++ 仿真器：<code>./unitree_mujoco</code>"]
+        C1["主线程：<code>Simulate::RenderLoop</code>（UI + 渲染）"]
+        C2["<code>PhysicsThread</code>：<code>mj_step</code> + 节奏对齐"]
+        C3["<code>UnitreeSdk2BridgeThread</code>：等 d 就绪 → 建桥 → 保活"]
+        C4["桥的 1 kHz <code>RecurrentThread</code>：ctrl 换算 + 填状态"]
+        C5["发布线程 ×3（G1 再 +2）：<code>RealTimePublisher::publishingLoop</code>"]
         C6["（SDK / 中间件内）DDS 接收与发现线程"]
+        C1~~~C2~~~C3~~~C4~~~C5~~~C6
     end
-    subgraph PS["进程② Python 仿真器：python3 unitree_mujoco.py"]
-        direction TB
-        P1["主线程：调 launch_passive，起完两个手写线程即结束"]
-        P2["viewer UI 守护线程：launch_passive 内部创建"]
-        P3["SimulationThread：建 DDS 桥 + mj_step"]
-        P4["PhysicsViewerThread：viewer.sync()"]
-        P5["RecurrentThread ×3：lowstate / highstate / wireless"]
+    subgraph PS["进程② Python 仿真器：<code>python3 unitree_mujoco.py</code>"]
+        P1["主线程：调 <code>launch_passive</code>，起完两个手写线程即结束"]
+        P2["viewer UI 守护线程：<code>launch_passive</code> 内部创建"]
+        P3["<code>SimulationThread</code>：建 DDS 桥 + <code>mj_step</code>"]
+        P4["<code>PhysicsViewerThread</code>：<code>viewer.sync()</code>"]
+        P5["<code>RecurrentThread</code> ×3：<code>lowstate</code> / <code>highstate</code> / <code>wireless</code>"]
         P6["ch_reader 守护线程：LowCmd 队列消费（回调在此）"]
         P7["（中间件内）DDS 接收与发现线程"]
+        P1~~~P2~~~P3~~~P4~~~P5~~~P6~~~P7
     end
-    subgraph CC["进程③④ 控制程序：C++ stand_go2 / Python stand_go2.py"]
-        direction TB
+    subgraph CC["进程③④ 控制程序：C++ <code>stand_go2</code> / Python <code>stand_go2.py</code>"]
         X1["主线程"]
-        X2["writebasiccmd 定时线程（仅 C++ 示例）"]
+        X2["<code>writebasiccmd</code> 定时线程（仅 C++ 示例）"]
+        X1~~~X2
     end
     BUS["DDS 总线：回环网卡 UDP（domain_id 1）<br/>rt/lowcmd ← 控制程序 · 仿真器 → rt/lowstate / rt/sportmodestate / rt/wirelesscontroller"]
     C5 --> BUS
@@ -572,4 +572,106 @@ sequenceDiagram
 | 内容 | 位置 |
 |---|---|
 | 三条业务主干、结论清单、API 差异、问题清单、目标设计 | [`unitree-mujoco.md`](unitree-mujoco.md) |
-| 进程/线程全展开（本文件 §1、§3、§4）、消息与 DDS 接口（§2）、启动/稳态/退出时序（§5-§7）、SDK 先例（§9）、待核实清单（§10）、五种方案的每帧阻滞对比（§11） | 本文 |
+| 进程/线程全展开（本文件 §1、§3、§4）、消息与 DDS 接口（§2）、启动/稳态/退出时序（§5-§7）、SDK 先例（§9）、待核实清单（§10）、五种方案的每帧阻滞对比（§11）、把单线程窗口循环拆线程的协议与实测（§13）、**资源不可控时的行为与边界**（§14） | 本文 |
+
+## 13. 把单线程窗口循环拆成"物理线程 + 渲染线程"
+
+触发条件与实施计划在 [`@20261007_assignment/docs/status.md`](../../@20261007_assignment/docs/status.md) 的 P3-b（**暂不实施**，等"重场景 / 更高光栅化精度"那一轮）；本节记协议与本机实测，动手时照抄。数字都在本机（i5-1035G1）对我们那份场景 `@20261005_ros2/scenes/flat_scene.xml`（nq=19 / nv=18 / ngeom=50）测得，探针是 [`../../@20260923_mujoco/scripts/agent_scripts/snapshot_copy_bench.cpp`](../../@20260923_mujoco/scripts/agent_scripts/snapshot_copy_bench.cpp)。
+
+### 13.1 现在的单线程为什么够用、什么时候不够
+
+`@20261005_ros2` 的 `sim_node` 是单线程：主循环 = 把物理"补齐到当前墙钟"（`while (d->time < target && guard < kMaxCatchupSteps) step_once();`）→ `draw_frame()`。渲染期间物理确实停着，但下一轮会补回来（约 8.3 步/帧），所以**仿真时间轴仍是 1.00x**：实测每帧 = 场景更新 0.02 ms + `mjr_render` 0.40 ms + HUD 0.20 ms，其余 ~15 ms 在等 vsync，物理 0.04 ms/步 × 8.3 ≈ 0.35 ms——物理只占 2%。会真掉速的边界是"一帧补步上限 200 步（0.4 s）"与"落后阈值 0.2 s"，超过就重新对齐、画面变慢动作。**什么时候不够**：渲染开销逼近帧预算（更大的窗口、更大的阴影贴图、MSAA），或要求物理**等间隔**推进（补步会让反馈成突发）。
+
+### 13.2 协议：锁只罩"把状态搬进渲染侧对象"那一刻
+
+1. **首选（官方 `RenderLoop` 同款，也最省）**：一份 `mjData` + 一份 `mjvScene`（归渲染线程）；**锁只罩 `mjv_updateScene`**（实测 **2.6 µs/次**），`mjr_render` / HUD / `glfwSwapBuffers` 全在锁外。HUD 需要的几个标量（`t`、`z`、倾角、接触数、实时倍率…）在同一次临界区里拷出来即可。
+2. **备选**：一份 `mjModel` + 两份 `mjData`，锁只罩 `mjv_copyData`。实测 `mj_step` **38–44 µs**、`mj_copyData` **71–86 µs**、`mjv_copyData` **70–92 µs**——这个模型太小，"跳过大数组"几乎没省下什么，拷贝比一步物理还贵（约 1.7–1.9×）。更省的变体是 `mj_copyState(..., mjSTATE_INTEGRATION)` + 渲染侧 `mj_forward` 补派生量（官方文档明说"拷状态远比 `mj_copyData` 快"），代价是多一次前向。
+3. **时机：按渲染帧按需搬，不要每步搬。** 首选在 60 Hz 下只占一个核的 ~0.02%、备选 ~0.4%；若按 500 Hz 每步搬，备选就是 3.6%。
+4. **快照够不够画**：`mjv_copyData` / `mj_copyData` 的结果与本体**逐位一致**（`max|dqpos| = max|dxpos| = max|dgeom_xpos| = 0`，`ncon` 也带过来了），可以直接喂 `mjv_updateScene`，**不需要** `mj_forward`；快照也是独立副本（之后 20 步 `mj_step` 不动它）。接触点/接触力那几个显示开关要各验一遍。
+5. **UI → 物理方向**：暂停 / 单步 / 复位 / 速度档用 atomics；鼠标扰动做成一个小结构（`xfrc_applied` 的 6 个数 + 生效步数）配一把小锁。**绝不能让渲染线程直接写 `mjData`**。
+6. **MuJoCo 自身的口径**：官方文档 "Multi-threading" 要求**一个线程一份 `mjData`**（"Each thread only writes to its own mjData. Therefore no further synchronization among threads is needed."），并说明 "Simulation is inherently serial over time"；`mj_step` 是一条多阶段流水线（`mj_step1` / `mj_step2` 只是把它切开两个点），**没有任何原子性承诺**。上游 unitree 的 C++ 桥从别的线程写 `d->ctrl` 之所以"能跑"，是因为 `ctrl` 属于库自己不写的"用户输入数组"，最坏只混入相邻一帧（12 个 double，x86-64 对齐访问不会撕裂）——那是**越界写法 + 后果可控**，不是安全保证；它的 Python 版就老老实实加了锁（§11 的 ②）。
+7. **vsync**：`glfwSwapInterval(1)` 让 `glfwSwapBuffers` 在驱动里睡到下一个垂直回扫，**等待时间是刷新周期的函数（60 Hz → 16.67 ms），与几何/像素规模无关**；O(像素) 的是渲染本身与我们 2× framebuffer 的 blit（2560×1440×4 B ≈ 14.7 MB/帧）。副作用：帧率被量化成 16.7 / 33.3 ms 两档——这正是"渲染逼近帧预算就掉帧、进而威胁单线程里的物理"的机制。
+8. **GL 归属与收尾**：GLFW 的 init / createWindow / pollEvents / swapBuffers 必须在**同一个**线程（谁建窗口谁用），`mjrContext` / `mjvScene` 也跟着那个线程；物理线程用 `atomic<bool> quit` 通知，join 之后再 `mj_deleteData`。
+9. **物理线程的节拍**：`next += dt / speed` 绝对期限；`now > next` 计一次 overrun 并节流告警（"仿真落后，实测 X% 实时"，口径照官方 `measured_slowdown`，偏差 >10% 告警），**不追赶**或只留很小的补步预算；实测倍率同时进 HUD。
+
+### 13.3 与 §11 五种方案的关系
+
+§11 的 ④（我们 Python 双缓冲）就是"备选"那条协议在 Python 下的形态（0.998x；开窗掉到 0.93x 是 GIL，不是锁），③ 是"首选"那条协议套官方 UI（1.00x）。所以结构早已量过，**这套拆法新增的只是"用自建窗口 + 首选协议"**：`@20261005_ros2` 的 `viewer.hpp:231-272` 的 `Draw()` 本来就只读 `d`（函数体内没有任何 `d->` 写入），拆线程时把它切成"锁里的 `mjv_updateScene`"与"锁外的绘制"两半即可——官方 `RenderLoop` 不是必需的。
+
+### 13.4 复现
+
+| 数字 | 怎么复现 |
+|---|---|
+| `mj_step` / `mj_copyData` / `mjv_copyData`、快照逐位一致与独立 | `pixi run bash -lc 'g++ -O2 -std=c++17 @20260923_mujoco/scripts/agent_scripts/snapshot_copy_bench.cpp -I"$CONDA_PREFIX/include" -L"$CONDA_PREFIX/lib" -lmujoco -o /tmp/snapshot_copy_bench'` 之后 `pixi run /tmp/snapshot_copy_bench @20261005_ros2/scenes/flat_scene.xml` |
+| `mjv_updateScene` 2.6 µs | Python：`mujoco.mjv_updateScene(m, d, opt, pert, cam, mjCAT_ALL, scn)` 循环计时（Python 绑定没有 `mjv_copyData`，所以拷贝那条要用上面的 C++ 探针） |
+| 每帧构成（0.02 / 0.40 / 0.20 ms + ~15 ms vsync） | [`../../@20261005_ros2/docs/ros2-nodes.md`](../../@20261005_ros2/docs/ros2-nodes.md) §2.1 |
+
+> 本机波动：单次运行的 `mj_step` 在 38–44 µs 之间（±8%），拷贝在 70–92 µs 之间；换机器比较前先跑一遍探针。
+
+## 14. 资源不可控时的行为与边界（2026-10-10 现状快照）
+
+> 回答一个问题：**CPU / 渲染 / 网络这些不完全可控的资源一旦阻塞，或换一台机器（更高刷新率、核更多/更少），我们这几套时基各自会怎样，"还能正确工作"的边界在哪。** 本节按**现状**（rl_sim 纯墙钟）记，并标出时基改造（S4，见 [`@20261007_assignment/docs/status.md`](../../@20261007_assignment/docs/status.md) P1-c）之后的变化——这份快照本身就是"改造带来了什么好处"的对照基线。
+
+### 14.1 谁在什么轴上跑
+
+| 层 | 名义节拍 | 时间轴 | 超时/落后了会怎样 | 出处 |
+|---|---|---|---|---|
+| MuJoCo 物理 | 2 ms/步 | 仿真时间 | 单线程 `mj_step`，一步 43 µs，与墙钟无关 | `sim_node.cpp:1011` |
+| 窗口渲染 | vsync（60 Hz → 16.7 ms） | 显示刷新 | 渲染变重 → 帧率量化掉档（16.7 → 33.3 ms），每帧补更多步 | `viewer.hpp:272` |
+| 无窗口物理节流 | `dt / real_time_factor` | 墙钟 | `realtime:=true` 时按墙钟睡、落了就重新对齐；`false` 全速 | `sim_node.cpp:1027-1043` |
+| `/motor_state`、`/imu` 发布 | 每步 = 500 Hz | 仿真时间 | best_effort + `KeepLast(1)`：丢就丢，只保证"最新那条" | `sim_node.cpp:854`、`LatestQoS()` |
+| rl_sim 控制 | 5 ms（`dt`） | **墙钟** | `LoopFunc` **不补步**：body 超时就顺延，周期只会变长 | `rl_sim.cpp:82`、`loop.hpp:67-86` |
+| rl_sim 推理 | 20 ms（`dt × decimation`） | **墙钟** | 同上 | `rl_sim.cpp:83` |
+| rl_sim 键盘 | 50 ms | 墙钟 | 同上 | `rl_sim.cpp:88` |
+| `/joy` | 100 Hz（发布端） | 墙钟 | reliable + `depth 10`：一般不丢，积压最多 100 ms | `joy_node.py:207`、`rl_sim.cpp:65` |
+| 状态机斜坡 | 200 / 400 / 500 **控制周期** | 控制周期计数 | 控制周期变长 → 斜坡在仿真时间里跟着变慢 | `policy/black/fsm.hpp:84/100/153` |
+| 仿真看门狗 | 100 步 = 200 ms **仿真时间** | 仿真时间（按步数算） | 到点没收到 `/mit_command` → 退回阻尼 | `sim_node.cpp:781`、`:820` |
+| 吞吐报告 | 每 5 s 墙钟 | 墙钟 | 打一行"仿真 X s / 墙钟 Y s = Z 倍实时"，**只有数字、没有告警** | `sim_node.cpp:877-890` |
+
+一句话：**同一个"20 ms"，在 rl_sim 里是墙钟、在训练与仿真里是仿真时间**，两条轴之间没有任何反馈——下面所有边界都源于此。
+
+### 14.2 逐类异常：现状行为与边界
+
+1. **CPU 被别的东西抢**：`LoopFunc` 顺延，不补步 → 策略周期在**仿真时间里**变长。实测：5 分钟浸泡里最长一次 114 ms（推理线程被晚调度 0.1 s），狗没摔；离线把策略周期拉到 40 ms 只是变慢（0.71 m/s）。**边界 ≈ 仿真时间里的周期 60 ms**：快放到 3 倍时等效 60 ms 就会摔（[`@20261007_assignment/docs/experiments.md`](../../@20261007_assignment/docs/experiments.md) §5、§6）。**S4 后**：触发改成"每条反馈 / `sim_time` 增量"，CPU 抢不到时表现为仿真整体变慢（`realtime:=true`）而不是策略周期变长；边界从"时间基不匹配"移到"吞吐"（推理 0.08 ms + 控制 <1 ms，余量极大）。
+2. **渲染/光栅化时间膨胀**（更大窗口、更大阴影贴图、MSAA）：窗口路径每帧把物理"补齐到墙钟"，上限 `kMaxCatchupSteps = 200` 步（0.4 s 仿真时间）；撞上限后**静默**变成慢动作（guard 退出、没有告警），落后超过 `kMaxLagSeconds = 0.2 s` 就重新对齐、不追这一段（`sim_node.cpp:1009-1023`）。唯一能看出来的是那条每 5 s 的实测倍率行。**S6/P3-b 拆线程后**物理不再被渲染挡，膨胀只影响画面帧率。
+3. **换更高刷新率的机器**（144 Hz）：窗口路径由 vsync 决定、物理照墙钟补步 → **仿真时间轴仍是 1.0x**，只是每帧补的步数变少（144 Hz ≈ 3.5 步/帧 vs 60 Hz ≈ 8.3 步）。所以换高刷机器**对时基无害**；真正的边界是"每帧渲染工作 > 刷新间隔"时掉档。
+4. **反馈流中断**（sim 节点挂住、被杀、DDS 停发）：`MotorStateCallback` 只是拷贝（`rl_sim.cpp:204`），**没有任何陈旧检测** → rl_sim 继续用最后一帧状态推理、继续发 `/mit_command`；仿真看门狗只管"命令有没有来"、不管"状态是不是旧的"。**这是现状最薄的一环**：错误状态会一直保持到人发现。建议见 14.4。
+5. **指令流中断**（rl_sim 挂/被杀）：仿真侧看门狗兜底 —— 100 步 = 200 ms 仿真时间没收到 `/mit_command` 就退回阻尼 ✓。
+6. **网络丢包 / 跨机**：今天 `ROS_LOCALHOST_ONLY="1"`（`pixi.toml:38`），全在本机回环；假设改成跨机，三条高频流都是 best_effort + `KeepLast(1)`，丢一条只等于"少一帧"，不会积压、不会重传放大；`/joy` 是 reliable，不丢但可能积压。**结论：零星丢包不是边界，"静默中断"（第 4、7 条）才是**。可观测手段：`ros2 topic hz` / `ros2 topic delay`。
+7. **手柄拔掉 / joy_node 死掉**：拔掉 → `joy_node` 的 `disconnect()` 把 axes/buttons **归零**并继续 100 Hz 发布（`frame_id = "joy_disconnected"`），速度指令归零、狗站住 ✓；但 **joy_node 进程死掉**（不再有任何 `/joy`）时，rl_sim 没有任何超时，会一直用最后一帧——如果最后一帧是"前进 1 m/s"，狗就一直走。**边界靠人发现**。
+8. **暂停 / 慢放 / 快放**（人主动改时间流速）：暂停无影响（策略对着冻住的状态继续推理）；慢放会让狗比指令更快（10% 速度时 1.711 m/s）；快放 ≥3 倍摔 —— 全部见 experiments §5。**S4 后三种情形自动正确**。
+9. **系统时钟被调整 / NTP 跳变**：所有循环计时用 `steady_clock`（本机 `is_steady = 1`，不跳）；消息 `header.stamp` 用 ROS 时间（可能跳）但没有任何逻辑依赖它（只作诊断）；仿真时间来自 `mj_step` 累加。**不受影响。**
+
+### 14.3 边界一览
+
+| 资源异常 | 现状（纯墙钟） | S4 后（按反馈 / `sim_time`） |
+|---|---|---|
+| CPU 争抢 | 策略周期在仿真时间里变长，≥60 ms 摔 | 仿真整体变慢（realtime）或吞吐受限，周期恒 20 ms 仿真时间 |
+| 渲染膨胀 | 补步上限内无影响，超了静默慢动作 | 同左；S6 拆线程后与物理隔离 |
+| 更高刷新率 | 无害 | 无害 |
+| 反馈中断 | **无检测（最薄）** | 同左，需另加检测 |
+| 指令中断 | 200 ms 仿真时间后阻尼 ✓ | 同左 |
+| 零星丢包 | 无影响（`KeepLast(1)`） | 无影响；但**别用"数条数"触发**（丢包会拉长周期），用 `sim_time` 增量 |
+| 手柄拔掉 | joy_node 归零 ✓ | 同左 |
+| joy_node 死掉 | **无检测** | 同左，需另加超时 |
+
+### 14.4 建议（已记进 [`@20261007_assignment/docs/status.md`](../../@20261007_assignment/docs/status.md) P2-g，未实施）
+
+1. **反馈陈旧检测**（最重要）：记住最后一条 `/motor_state` 的 `sim_time`（或到达时刻），超过 N 个策略周期没更新 → WARN + 退回阻尼（Passive）。现在完全没有。
+2. **首帧门控**：收到第一条 `/motor_state` 之前不推理 —— 否则 `RunModel()` 会拿全零状态算观测（现实里反馈先到，但启动顺序没有保证）。
+3. **`/joy` 超时 + `frame_id` 日志**：超过 0.5 s 没有 `/joy` → 清零 `control`；`frame_id == "joy_disconnected"` 时打一行提示（`joy_node` 已经在发这个信号，rl_sim 现在不看）。
+4. **把"落后"变可见**：仿真节点撞到补步上限 / 落后阈值时打一行警告（现在只有每 5 s 的实测倍率数字）；rl_sim 可在 S4 的计数逻辑里顺手算"有效反馈率"（收到条数 ÷ `sim_time` 增量）打进状态行。
+
+### 14.5 怎么复现这些边界
+
+```bash
+# 反馈中断：把仿真节点冻住（SIGSTOP），观察 rl_sim 是否还在发命令、有没有告警
+pixi run bash -lc 'kill -STOP $(pgrep -f "quadruped_ros2/sim_node")'   # 冻住；恢复用 kill -CONT
+pixi run ros2 topic hz /mit_command      # 冻结期间仍然 200 Hz → 说明没有任何检测
+# CPU 争抢：把两个节点压到一个核上，看策略周期（check_walk.py 会打出均值/p95/最大）
+pixi run taskset -c 0 ros2 run rl_sar rl_sim
+# 离线等效：不改代码就能模拟"仿真时间里的策略周期"（experiments §5 用的就是这个）
+pixi run python -I @20261007_assignment/scripts/agent_scripts/policy_reference.py --tau-max 20 --cmd 1.0,0,0 --period-ms 60
+# 渲染膨胀：开窗口 + 把阴影贴图调大，看每 5 s 那行"= X 倍实时"是否掉下来
+pixi run ros2 launch rl_sar rl_sim.launch.py viewer_shadow_size:=8192
+```
