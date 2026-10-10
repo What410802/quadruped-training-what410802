@@ -34,6 +34,16 @@ for _src in $_ws_list; do
     fi
     printf '==> colcon build --symlink-install    %s\n' "${_ws#"$_root"/}"
     (cd "$_ws" && colcon build --symlink-install)
+    # 编完立刻叠加进本 shell：后面的工作空间才能 find_package 前面任务的包。
+    # 激活脚本只在 `pixi run` 启动时 source 一次**已有的** install/，干净 clone 时一个都没有
+    # （实测：@20261007_assignment 的 rl_sar 找不到 @20261005_ros2 的 quadruped_ros2）。
+    # 按目录名排序 = 按日期，所以"后面的任务依赖前面的任务"总能编过；反过来不行。
+    # setup.sh 是 colcon 生成的，不保证在 set -e 下每条命令都返回 0，source 期间先关掉。
+    if [ -f "$_ws/install/setup.sh" ]; then
+        set +e
+        . "$_ws/install/setup.sh"
+        set -e
+    fi
     _n=$((_n + 1))
 done
 IFS=$_ifs_saved
