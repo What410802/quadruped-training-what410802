@@ -23,6 +23,12 @@ black:
              3.0, 3.0, 3.0]
   num_of_dofs: 12
   wheel_indices: []
+  # 下面四个键上游没有（值以前写死在 policy/black/fsm.hpp 里）：加进 base.yaml 是为了实机整定
+  # 起身时长与被动阻尼时不必重新编译。改完重启节点生效（base.yaml 只在构造时读一次）。
+  kd_passive: 8.0          # Passive 状态的 kd（kp=0；上游 README 的 "Motor passive mode (kp=0, kd=8)"）
+  getup_pre_cycles: 200    # 起身前"蹲姿"斜坡的控制周期数（5 ms/周期 → 1.0 s）
+  getup_cycles: 400        # 起身斜坡（5 ms/周期 → 2.0 s）
+  getdown_cycles: 500      # 趴下斜坡（5 ms/周期 → 2.5 s）
   torque_limits: [33.5, 33.5, 33.5,
                   33.5, 33.5, 33.5,
                   33.5, 33.5, 33.5,

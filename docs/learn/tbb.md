@@ -29,7 +29,7 @@ tbb::concurrent_queue<torch::Tensor> output_dof_vel_queue;
 tbb::concurrent_queue<torch::Tensor> output_dof_tau_queue;
 ```
 
-用法是生产 / 消费：**策略线程**（每 20 ms 一次 `RunModel()`）把刚算出的关节目标 `push` 进去（[`rl_sim.cpp:305`](../../@20261007_assignment/ws/src/rl_sar/src/rl_sim.cpp)），**控制线程**（每 5 ms 一次状态机 `Run()`）用 `try_pop` 取（[`fsm.hpp:216`](../../@20261007_assignment/ws/src/rl_sar/policy/black/fsm.hpp)）。三个队列里实际被消费的是 pos 与 vel 两个（`fsm.hpp:216` 一次取两条），`tau` 那条只生产不消费（上游如此）——它从哪个提交引进、为什么没有消费者、无界会涨到多少、主办方怎么补的，见 [`rl-sar.md`](rl-sar.md) §5。
+用法是生产 / 消费：**策略线程**（每 20 ms 一次 `RunModel()`）把刚算出的关节目标 `push` 进去（[`rl_sim.cpp:305`](../../@20261007_assignment/ws/src/rl_sar/src/rl_sim.cpp)），**控制线程**（每 5 ms 一次状态机 `Run()`）用 `try_pop` 取（[`fsm.hpp:216`](../../@20261007_assignment/ws/src/rl_sar/policy/black/fsm.hpp)）。三个队列里实际被消费的是 pos 与 vel 两个（`fsm.hpp` 一次取两条），`tau` 那条上游只生产不消费——**本仓的移植已经不再 push 它**（P1-b，见 [`../../@20261007_assignment/docs/status.md`](../../@20261007_assignment/docs/status.md)）——它从哪个提交引进、为什么没有消费者、无界会涨到多少、主办方怎么补的，见 [`rl-sar.md`](rl-sar.md) §5。
 
 它保证的语义（以环境里的 oneTBB 2023.1.0 头文件为准）：
 

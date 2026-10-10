@@ -36,7 +36,8 @@ rl_sar 内部分三层，移植只动后两层：
 | `src/rl_sim.cpp` | `src/rl_sim.cpp` | 改写（删 333 行、加 62 行） | 见下面 7 条 |
 | `include/rl_sim.hpp` | `include/rl_sim.hpp` | 改写（删 74 行、加 19 行） | 成员换成我们的消息类型；删 ROS 1 / Gazebo / 画图 |
 | `policy/fsm.hpp` | `policy/fsm.hpp` | 改写 | 只注册 `black` 一个机器人 |
-| `policy/black/fsm.hpp` | `policy/go2/fsm.hpp` | 改写（删 18 行、加 26 行） | 改名 go2 → black（namespace、factory、头文件保护宏）；起身前的蹲姿换成 black 的（§6.2）。**其余（状态、转移、时长、增益）与 go2 相同** |
+| `policy/black/fsm.hpp` | `policy/go2/fsm.hpp` | 改写 | 改名 go2 → black（namespace、factory、头文件保护宏）；起身前的蹲姿换成 black 的（§6.2）；旋钮改从 `base.yaml` 读、RL 状态读局部副本、状态行移走（下面第 9–11 条）。**状态、转移与斜坡结构本身与 go2 相同** |
+| `policy/black/knobs.hpp` | — | 新写 | 四个部署旋钮（`kd_passive`、三段斜坡周期数）从 `base.yaml` 读，加两份 yaml 的 7 个同名字段自检；`fsm.hpp` 只调用它 |
 | `policy/black/base.yaml`、`himloco/config.yaml` | 照 go2 的模板 | 新写 | 字段来源见 §3 |
 | `policy/black/himloco/best.pt` | 大作业附件 | 原样 | md5 `7af7bab2cc1cb559000551f2637e0649`，与主办方分支里 `black/himloco/best.pt` 相同 |
 | `CMakeLists.txt`、`package.xml` | — | 新写 | 上游 344 行大多是 ROS 1 与实机 SDK；这里只编 `rl_sim` 一个目标 |
@@ -55,6 +56,13 @@ rl_sar 内部分三层，移植只动后两层：
 
 另外删掉了 ROS 1 分支与 matplotlib 画图（`PLOT`，需要 Python 开发头与 numpy）。控制流程——两条墙钟线程 + 状态机——**一行没改**。
 
+后续按 `status.md` 的阶段清单又改了四处（都在本包自己的文件里，`library/core/**` 仍未动一行）：
+
+8. **不再 push `output_dof_tau_queue`**（S1/P1-b）：上游从 `src/rl_sim.cpp` 与 5 个 `rl_real_*.cpp` push、但没有任何 FSM pop，队列无界 → 纯泄漏；本移植不用前馈 `tau`（fsm 里恒 0），所以删掉那次 push。
+9. **RL 状态读局部副本**（S1/P2-c）：`policy/black/fsm.hpp` 的 RL 状态本来就 `try_pop` 出 `_output_dof_pos`/`_output_dof_vel`，却去读成员 `rl.output_dof_pos`；现在改读副本，pos/vel 保证同帧、也没有 Tensor 句柄竞争。
+10. **状态行改成节点参数**（S1/P1-a）：原来 RL 状态每个控制周期（200 Hz）用 `\r` 打一行 `RL Controller x:…`；现在由 `rl_sim` 的 ROS 参数 `status_period_ms`（默认 0 = 关）节流，打印移到 `RL_Sim::RobotControl()`。
+11. **四个部署旋钮进 `base.yaml` + 进 RL 前自检**（S2/P1-a、P2-e）：`kd_passive`（默认 8.0）、`getup_pre_cycles`（200）、`getup_cycles`（400）、`getdown_cycles`（500）——上游把前三个值写死在 `policy/go2/fsm.hpp` 的斜坡里；现在由**新写的** [`policy/black/knobs.hpp`](../ws/src/rl_sar/policy/black/knobs.hpp) 读 `base.yaml`（缺键/缺文件就用默认值并告警）。同时在进 Passive 与每次进 RL 时比对 `base.yaml` 与 `himloco/config.yaml` 的 7 个同名字段，不一致就 WARN（[`../../docs/learn/rl-sar.md`](../../docs/learn/rl-sar.md) §3）。**这段机制刻意不写在 `fsm.hpp` 里**：`fsm.hpp` 是与上游 `policy/go2/fsm.hpp` 对照的文件，抽出后它相对上游只剩调用点，机制本身作为一个新文件单独记在这里。
+
 和上游逐行对照（先把上游 clone 到临时目录）：
 
 ```bash
@@ -66,6 +74,8 @@ diff -r $U/library/core $P/library/core | grep -v -E 'thirdparty|matplotlibcpp' 
 ```
 
 ## 3. 配置字段的来源
+
+**本仓另外加了四个 `base.yaml` 专属键**（上游没有，值以前写死在 `policy/black/fsm.hpp`）：`kd_passive: 8.0`（Passive 的 kd）、`getup_pre_cycles: 200` / `getup_cycles: 400` / `getdown_cycles: 500`（三段斜坡的控制周期数）。它们只被 [`policy/black/knobs.hpp`](../ws/src/rl_sar/policy/black/knobs.hpp) 读、由 `fsm.hpp` 调用，不进 `RL` 的参数结构，所以也不受「7 个同名字段」的约束。
 
 `ReadYamlBase()` / `ReadYamlRL()`（`library/core/rl_sdk/rl_sdk.cpp:360`、`:388`）缺任何一个字段都会抛异常，而大作业给的 `config.yaml` 只有一部分，所以要补。来源分三类：
 
@@ -114,7 +124,7 @@ diff -r $U/library/core $P/library/core | grep -v -E 'thirdparty|matplotlibcpp' 
 | 手柄入 | `/joy`（摇杆上 / 左为正、十字键上 / 右为正） | `/joy`（同一约定，见 §6.1） | 只加长度检查 |
 | 指令出 | `robot_joint_controller/command`（`RobotCommand`） | `/mit_command`（`MitCommand`，kp/kd/q/w/tau） | 换消息类型 |
 | 复位 | `/reset_world`、`/pause_physics`、`/unpause_physics` | `/sim_reset` | 只接复位 |
-| 参数 | 启动时向 `/param_node` 要 `robot_name` | 本节点参数 `robot_name`、`joy_command_scale` | 改成 `declare_parameter` |
+| 参数 | 启动时向 `/param_node` 要 `robot_name` | 本节点参数 `robot_name`、`joy_command_scale`、`status_period_ms`（状态行周期 ms，0 = 关） | 改成 `declare_parameter` |
 
 **话题名的前缀**：本节点是混用的——`/cmd_vel`、`/joy` 是绝对名，`imu`、`motor_state`、`mit_command`、`sim_reset` 是相对名（上游也混：`/cmd_vel`、`/joy`、`/imu` 绝对 + `<namespace>robot_joint_controller/*` 相对，我们只把 `imu` 改成相对、与仿真节点的相对名对齐）。默认都在 `/` 下，解析结果一样；但 `ros2 launch … --namespace /robot1` 时相对名跟着搬家、绝对名留在根，**静默对不上**。要统一建议全部用相对名（去掉 `cmd_vel`/`joy` 那两处的斜杠）。
 

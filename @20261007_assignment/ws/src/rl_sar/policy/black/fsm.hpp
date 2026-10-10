@@ -12,8 +12,17 @@
 #include "fsm_core.hpp"
 #include "rl_sdk.hpp"
 
+#include "black/knobs.hpp"
+
+#include <algorithm>
+#include <iostream>
+#include <string>
+
 namespace black_fsm
 {
+
+// This robot has one policy config; upstream hardcodes the same literal inside the RL state.
+inline constexpr const char *kPolicyConfigName = "himloco";
 
 class RLFSMStatePassive : public RLFSMState
 {
@@ -23,6 +32,8 @@ public:
     void Enter() override
     {
         rl.running_percent = 0.0f;
+        // Startup check: both files are on disk, so a mismatch is visible before the robot moves.
+        WarnIfBaseConfigMismatch(rl.robot_name, kPolicyConfigName);
         std::cout << LOGGER::NOTE << "Entered passive mode. Press '0' (Keyboard) or 'A' (Gamepad) to switch to RLFSMStateGetUp." << std::endl;
     }
 
@@ -33,7 +44,7 @@ public:
             // fsm_command->motor_command.q[i] = fsm_state->motor_state.q[i];
             fsm_command->motor_command.dq[i] = 0;
             fsm_command->motor_command.kp[i] = 0;
-            fsm_command->motor_command.kd[i] = 8;
+            fsm_command->motor_command.kd[i] = GetKnobs(rl.robot_name).kd_passive;
             fsm_command->motor_command.tau[i] = 0;
         }
     }
@@ -79,7 +90,7 @@ public:
     {
         if (pre_running_percent < 1.0f)
         {
-            pre_running_percent += 1.0f / 200.0f;
+            pre_running_percent += 1.0f / static_cast<float>(GetKnobs(rl.robot_name).getup_pre_cycles);
             pre_running_percent = std::min(pre_running_percent, 1.0f);
 
             for (int i = 0; i < rl.params.num_of_dofs; ++i)
@@ -95,7 +106,7 @@ public:
 
         if (pre_running_percent == 1 && rl.running_percent < 1.0f)
         {
-            rl.running_percent += 1.0f / 400.0f;
+            rl.running_percent += 1.0f / static_cast<float>(GetKnobs(rl.robot_name).getup_cycles);
             rl.running_percent = std::min(rl.running_percent, 1.0f);
 
             for (int i = 0; i < rl.params.num_of_dofs; ++i)
@@ -148,7 +159,7 @@ public:
     {
         if (rl.running_percent < 1.0f)
         {
-            rl.running_percent += 1.0f / 500.0f;
+            rl.running_percent += 1.0f / static_cast<float>(GetKnobs(rl.robot_name).getdown_cycles);
             rl.running_percent = std::min(rl.running_percent, 1.0f);
 
             for (int i = 0; i < rl.params.num_of_dofs; ++i)
@@ -189,12 +200,16 @@ public:
         rl.episode_length_buf = 0;
 
         // read params from yaml
-        rl.config_name = "himloco";
+        rl.config_name = kPolicyConfigName;
         std::string robot_path = rl.robot_name + "/" + rl.config_name;
         try
         {
             rl.InitRL(robot_path);
             rl.rl_init_done = true;
+            // config.yaml was just (re-)read, so compare it against base.yaml every time we enter RL:
+            // editing config.yaml and re-entering RL is the only supported way to reload it (base.yaml
+            // is read once in the node constructor, so that one needs a restart).
+            WarnIfBaseConfigMismatch(rl.robot_name, rl.config_name);
         }
         catch (const std::exception& e)
         {
@@ -208,8 +223,6 @@ public:
 
     void Run() override
     {
-        std::cout << "\r\033[K" << std::flush << LOGGER::INFO << "RL Controller x:" << rl.control.x << " y:" << rl.control.y << " yaw:" << rl.control.yaw << std::flush;
-
         torch::Tensor _output_dof_pos, _output_dof_vel;
         if (rl.output_dof_pos_queue.try_pop(_output_dof_pos) && rl.output_dof_vel_queue.try_pop(_output_dof_vel))
         {
@@ -217,11 +230,11 @@ public:
             {
                 if (_output_dof_pos.defined() && _output_dof_pos.numel() > 0)
                 {
-                    fsm_command->motor_command.q[i] = rl.output_dof_pos[0][i].item<double>();
+                    fsm_command->motor_command.q[i] = _output_dof_pos[0][i].item<double>();
                 }
                 if (_output_dof_vel.defined() && _output_dof_vel.numel() > 0)
                 {
-                    fsm_command->motor_command.dq[i] = rl.output_dof_vel[0][i].item<double>();
+                    fsm_command->motor_command.dq[i] = _output_dof_vel[0][i].item<double>();
                 }
                 fsm_command->motor_command.kp[i] = rl.params.rl_kp[0][i].item<double>();
                 fsm_command->motor_command.kd[i] = rl.params.rl_kd[0][i].item<double>();

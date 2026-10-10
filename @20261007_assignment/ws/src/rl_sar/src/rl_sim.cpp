@@ -10,6 +10,8 @@
 
 #include <torch/utils.h> // torch::set_num_threads (libtorch >= 2.x no longer pulls it in via torch/script.h)
 
+#include <chrono>
+
 namespace
 {
 // Same QoS as the sim node uses for its 500 Hz topics: keep only the latest sample, best effort.
@@ -26,6 +28,9 @@ RL_Sim::RL_Sim()
     this->ang_vel_type = "ang_vel_body";
     this->robot_name = this->declare_parameter<std::string>("robot_name", "black");
     this->joy_command_scale = this->declare_parameter<double>("joy_command_scale", this->joy_command_scale);
+    // Status line period in ms; 0 = off. The line used to be printed by the RL state on every control
+    // cycle (200 Hz, '\r'-overwritten); it is throttled here instead so the rate is a node parameter.
+    this->status_period_ms = this->declare_parameter<int>("status_period_ms", this->status_period_ms);
     std::cout << LOGGER::INFO << "robot_name: " << this->robot_name << std::endl;
 
     // read params from yaml
@@ -201,6 +206,17 @@ void RL_Sim::RobotControl()
         this->GetState(&this->robot_state);
         this->StateController(&this->robot_state, &this->robot_command);
         this->SetCommand(&this->robot_command);
+
+        if (this->status_period_ms > 0)
+        {
+            const auto now = std::chrono::steady_clock::now();
+            if (now - this->last_status_print >= std::chrono::milliseconds(this->status_period_ms))
+            {
+                this->last_status_print = now;
+                std::cout << "\r\033[K" << std::flush << LOGGER::INFO << "RL Controller x:" << this->control.x
+                          << " y:" << this->control.y << " yaw:" << this->control.yaw << std::flush;
+            }
+        }
     }
 }
 
@@ -303,10 +319,11 @@ void RL_Sim::RunModel()
         {
             output_dof_vel_queue.push(this->output_dof_vel);
         }
-        if (this->output_dof_tau.defined() && this->output_dof_tau.numel() > 0)
-        {
-            output_dof_tau_queue.push(this->output_dof_tau);
-        }
+        // output_dof_tau is deliberately *not* pushed: upstream pushes it from here and from the five
+        // rl_real_*.cpp, but no FSM anywhere pops it (grep try_pop), and tbb::concurrent_queue is
+        // unbounded, so it is a pure leak that grows with every inference. This port never uses the
+        // feed-forward tau (the FSM sets tau = 0), so we drop the push. See docs/porting.md §2 and
+        // docs/learn/rl-sar.md §5.
 
         // this->TorqueProtect(this->output_dof_tau);
 

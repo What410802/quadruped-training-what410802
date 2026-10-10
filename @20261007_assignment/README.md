@@ -54,6 +54,10 @@ pixi run python -I @20261007_assignment/scripts/agent_scripts/policy_reference.p
 
 **手柄操作**：A = 起身（约 3 s）→ 站稳后 **RB + 十字键上** = 进 RL → 左摇杆前后 / 左右走、右摇杆转向（满偏 1.5 m/s 或 rad/s）→ B = 趴下；LB + X = 立刻阻尼，RB + Y = 复位仿真。实体手柄与上次的仿真手柄（`@20261005_ros2/sim_joy/xbox_sim_joy.py`）都能用；`/joy` 的轴与正负号约定见 [`../@20261005_ros2/docs/joystick.md`](../@20261005_ros2/docs/joystick.md) §3。
 
+**调参（改 yaml，不用重编）**：`ws/src/rl_sar/policy/black/base.yaml` 有四个「部署旋钮」——`kd_passive`（Passive 状态的阻尼，默认 8.0）、`getup_pre_cycles: 200` / `getup_cycles: 400` / `getdown_cycles: 500`（三段斜坡的控制周期数，5 ms/周期 → 1.0 / 2.0 / 2.5 s）；**它只在节点构造时读一次，改完要重启**。策略级的 `himloco/config.yaml`（`rl_kp`/`rl_kd`/`action_scale` 等）**每次进 RL 都会重新读**，所以改完趴下再起身重进 RL 即生效（代价是切入那一刻会跳一下，别改 `joint_mapping`/`num_of_dofs` 这类会错位的项）。两份 yaml 有 7 个同名字段、必须一致，不一致时节点会在启动和每次进 RL 时打 `[WARNING] [yaml] …`，而不是默默变样（[`docs/porting.md`](docs/porting.md) §3、[`../docs/learn/rl-sar.md`](../docs/learn/rl-sar.md) §3）。
+
+**状态行**：rl_sim 的 `RL Controller x:… y:… yaw:…` 由 ROS 参数 `status_period_ms` 控制（默认 0 = 不打；`pixi run ros2 run rl_sar rl_sim --ros-args -p status_period_ms:=500` = 每 0.5 s 一行，原来是不管多快都每 5 ms 打一次）。仿真节点自己的状态行由它的 `status_period_s` 控制。
+
 **键盘操作**：rl_sim 直接读终端，要单独占一个终端：`pixi run ros2 launch rl_sar rl_sim.launch.py rl:=false joy:=false`，另一个终端 `pixi run ros2 run rl_sar rl_sim`，然后按 `0` 起身、`1` 进 RL、`W/S` `A/D` `Q/E` 加减速度、空格清零、`9` 趴下、`P` 阻尼、`R` 复位。
 
 > **不要用 `realtime:=false`**：rl_sim 按墙钟每 20 ms 推理一次，仿真跑得比真实时间快 3 倍以上狗就会摔（[`docs/experiments.md`](docs/experiments.md) §5）。
@@ -73,7 +77,7 @@ pixi run python -I @20261007_assignment/scripts/agent_scripts/policy_reference.p
 │   ├── include/rl_sim.hpp        # 适配层（改写）
 │   ├── src/rl_sim.cpp            #   同上。入 /motor_state /imu /joy，出 /mit_command
 │   ├── policy/fsm.hpp            # 状态机注册表（只注册 black）
-│   ├── policy/black/             # base.yaml（机器人参数）、fsm.hpp（状态机）、himloco/{config.yaml,best.pt}
+│   ├── policy/black/             # base.yaml（机器人参数）、fsm.hpp（状态机）、knobs.hpp（部署旋钮 + yaml 自检）、himloco/{config.yaml,best.pt}
 │   ├── launch/rl_sim.launch.py   # sim_node + joy_node + rl_sim
 │   ├── CMakeLists.txt  package.xml  LICENSE
 │   └── .clang-format             # DisableFormat：不重排上游代码

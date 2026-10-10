@@ -39,7 +39,7 @@
 
 **同名项如果不一致，不是"谁覆盖谁"，而是"分时刻生效"**：进 RL 之前用 `base.yaml` 的值，`InitRL()` 一跑就被 `config.yaml` 悄悄换掉。后果逐项：① `joint_mapping` 不一致 → 起身/站立按 base 的顺序、进 RL 后按 config 的顺序，**同一台狗的腿序在按键那一刻变了**；② `default_dof_pos` 不一致 → 策略的零动作站姿 ≠ 刚站好的姿势，进 RL 时会跳一下（`InitObservations()` 也用它）；③ `fixed_kp`/`fixed_kd` 不一致 → 只有起身/趴下用，但**进过一次 RL 之后**再按起身键用的已经是 config 的增益（`params` 只有一份），表现为"同样按键、第一次和后来手感不同"；④ `num_of_dofs` 不一致 → 缓冲区按 base 的值在构造时定尺寸、循环却按 config 的值跑，会读到 `joint_mapping` 越界；⑤ `torque_limits`/`wheel_indices` 只在 RL 侧生效，base 那份是摆设。**这不是假想的风险，上游与主办方自己就踩了**：上游 go2 的 `base.yaml` 与 `himloco/config.yaml` 在 `fixed_kp`/`fixed_kd`（80/3 vs 60/5）、`torque_limits`（23.5 vs 33.5）、`default_dof_pos` 的髋（0.00 vs 0.10）上都不同；主办方 black 的两份在 `default_dof_pos` 上不同（base 0.82/−1.5 vs config 0.8014/−1.527）。也就是说「站着时和进 RL 后，腿的零位与增益悄悄换了」这件事在他们仓库里是实际存在的。
 
-**结论：这 7 项必须逐项相同**；要加护栏就在进 RL 前自己读一遍 base、逐项比对并告警（本仓的做法见任务 [`status.md`](../../@20261007_assignment/docs/status.md) 的 P2-e）。
+**结论：这 7 项必须逐项相同**；护栏就是在进 RL 前自己读一遍 base、逐项比对并告警——本仓的移植已经这么做了（P2-e：初始化进 Passive 时查一次、每次进 RL 再查一次，不一致只 WARN 不拦；实现见新增的 [`policy/black/knobs.hpp`](../../@20261007_assignment/ws/src/rl_sar/policy/black/knobs.hpp)（`WarnIfBaseConfigMismatch()`，由 `fsm.hpp` 调用））。
 
 ## 4 参数机制：这套工程里"运行期改参数"不是常态
 
@@ -59,7 +59,7 @@
 
 引入初衷（推断）：一套策略要同时支持三种驱动方式——腿式用位置 `pos`、轮式（go2w/b2w/l4w4）用速度 `vel`、纯力矩接口用 `tau`；三条队列就是"推理线程 → 控制线程"的三种交接通道。
 
-**但 `tau` 那条自诞生起就没有消费者**：上游全仓没有一处 `output_dof_tau_queue.try_pop`（`rl_sim.cpp` 与 5 个 `rl_real_*.cpp` 只 push，10 份 policy 的 fsm 都只取 pos + vel）。上游对 `output_dof_tau` 的另两处用处也只是旁路：`TorqueProtect()`（调用被注释）与 `CSVLogger`。主办方分支**发现了这个问题**，在 `library/core/rl_sdk/rl_sdk.cpp:233` 加了 `RL::ClearOutputQueues()`（三条一起排空），在自己的状态机里于状态切换时调用。
+**但 `tau` 那条自诞生起就没有消费者**（本仓的移植因此已经不 push 它，见 [`@20261007_assignment/docs/porting.md`](../../@20261007_assignment/docs/porting.md) §2 与 [`status.md`](../../@20261007_assignment/docs/status.md) P1-b）：上游全仓没有一处 `output_dof_tau_queue.try_pop`（`rl_sim.cpp` 与 5 个 `rl_real_*.cpp` 只 push，10 份 policy 的 fsm 都只取 pos + vel）。上游对 `output_dof_tau` 的另两处用处也只是旁路：`TorqueProtect()`（调用被注释）与 `CSVLogger`。主办方分支**发现了这个问题**，在 `library/core/rl_sdk/rl_sdk.cpp:233` 加了 `RL::ClearOutputQueues()`（三条一起排空），在自己的状态机里于状态切换时调用。
 
 坑在容器语义上：`tbb::concurrent_queue` **无界**（见 [`tbb.md`](tbb.md) §3），没人取就随推理次数一直涨——50 Hz、每次一个 1×12 float32 张量，5 分钟约 1.5 万个（量级几 MB）。pos/vel 两条因为控制线程每 5 ms 取一次、稳定在 0~1 个，只有 `tau` 会一直涨。处理方式有三种，代价从小到大：不 push（我们完全不用 `output_dof_tau`，fsm 里的前馈 `tau` 恒 0）、每次推理后自己排空、或照主办方加 `ClearOutputQueues()`（要动 `library/core`）。
 

@@ -16,6 +16,7 @@
 #include "loop.hpp"
 #include "fsm.hpp"
 
+#include <chrono>
 #include <vector>
 #include <string>
 #include <fstream>
@@ -41,6 +42,10 @@ private:
     void SetCommand(const RobotCommand<double> *command) override;
     void RunModel();
     void RobotControl();
+
+    // status line (node parameter; 0 = off)
+    int status_period_ms = 0;
+    std::chrono::steady_clock::time_point last_status_print{};
 
     // loop
     std::shared_ptr<LoopFunc> loop_keyboard;
