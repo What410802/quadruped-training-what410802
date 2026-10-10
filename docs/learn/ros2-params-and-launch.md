@@ -85,3 +85,60 @@ LaunchDescription([OpaqueFunction(function=launch_setup)])
 ```
 
 细化两点：① 参数文件里的值按**加载顺序**后者盖前者；② 运行期 `ros2 param set` 只有在参数**已声明**（且没被声明为只读）时才生效——我们的节点都装了 `add_on_set_parameters_callback`，所以 `kp/kd/kd_damp/ramp` 等可以边跑边调，改完立刻用。
+
+## 6 参数 YAML 文件：与 launch 桥接是同一机制的两副面孔
+
+§1 的"③桥"拆开看就是这个机制：`Node(parameters=[{…}])` 的内部动作是把字典**写成临时 YAML 文件**，命令行上传 `--params-file /tmp/launch_params_xxxx`（§2 的日志证据；临时文件长什么样见环境里的 `launch_ros/actions/node.py:369`——`{节点名: {ros__parameters: …}}`，节点名没写全时用 `/**`）。所以"自己写一个 YAML 文件传参"**不是另一套机制**，而是把那份一次性的临时文件换成仓库里持久、可入库的文件；节点侧完全一样：启动时读入 → `declare_parameter` 兜底 → 业务代码 `get_parameter`。
+
+### 6.1 什么时候用哪个
+
+以仿真节点（`sim_node`，参数清单见 [`../../@20261005_ros2/docs/ros2-nodes.md`](../../@20261005_ros2/docs/ros2-nodes.md) §1.2）为例：
+
+| 维度 | launch 参数（`DeclareLaunchArgument` + 桥接） | 参数 YAML 文件（`--params-file`） |
+|---|---|---|
+| 怎么改 | 命令行 `… launch … key:=value`，一次一串 | 编辑文件；或对运行中的节点 `ros2 param dump` 导出骨架再改 |
+| 加一个参数的代价 | 改三处：声明、桥接、`Node` 字典 | 文件里加一行——前提是节点里已经 `declare_parameter`（仿真节点 18 个都已声明，不用改代码） |
+| 批量 / 预设 | 临时敲；适合"这一轮要扭的那几个" | 一份文件 = 一套完整预设，可入库多份（理想电机 / 带摩擦延迟 / 高画质 / 无窗口回归…） |
+| 条件与组合逻辑 | 能做（`IfCondition`、Substitution 拼接、OpaqueFunction） | 做不了（静态值） |
+| 类型 | 命令行全是字符串，按 YAML 规则转（§3 第 3 条） | 文件里就有类型（`0` 是整数、`0.0` 是 double） |
+| 可发现性 | `ros2 launch … --show-args` 列出全部 | 文件自己就是清单，还能写注释 |
+| 典型用途 | 现场开关、每轮实验要扭的旋钮 | 成组的常量或已验证的预设 |
+
+一句话口径：**个位数的现场开关**（`viewer` / `realtime` / `start` / `scene`）留 launch 参数；**成组的常量或预设**（电机非理想项、画质三件套…）写 YAML 文件；两者可以叠加（见 6.3）。
+
+### 6.2 写法（示意）
+
+顶层键是**节点名**（含命名空间，如 `/sim_node`；`/**` 是通配），值写在 `ros__parameters:` 下：
+
+```yaml
+# 只写要改的键，其余仍用节点默认值（仓库里还没有这份文件，这里只是示意）
+/sim_node:
+  ros__parameters:
+    motor_deadzone: 0.5      # double；写 0 会按整数解析，与声明不符会报类型错
+    motor_delay_cycles: 2    # int
+    viewer_shadow: false     # bool
+```
+
+两条路径都可用（都在仓库根执行；示例文件放 `/tmp`，正式预设放任务目录里、用相对路径引用）：
+
+```bash
+# ① 不经 launch：单节点直接给
+pixi run ros2 run quadruped_ros2 sim_node --ros-args --params-file /tmp/sim_params.yaml
+
+# ② 经 launch：列表里可以混用"文件 + 字典"，按顺序传给节点
+#    parameters=["/path/to/sim_params.yaml", {"viewer": LaunchConfiguration("viewer")}]
+```
+
+关键行为（都能在环境里的 `launch_ros` 源码里对上）：`parameters` 列表里**每一项**按顺序变成命令行上的一个参数来源——字典 → launch 先写成临时 YAML 再 `--params-file`，文件路径 → 直接 `--params-file`（`Parameter(...)` 那种写法才是 `-p`）；**同名参数后者盖前者**；带完整节点名的键**优先于 `/**` 通配**，即使它出现得更早（`launch_ros/actions/node.py` 的 `parameters` 说明）。
+
+两个容易踩的点：① 键名对不上（节点名写错、没写对命名空间）时那些值**不会被应用**——不会专门报错，用 `ros2 param get /sim_node <名字>` 回读确认最稳；② 类型以文件里的**字面量**为准，`0` 是整数、`0.0` 才是 double，与 `declare_parameter` 声明的类型对不上会报类型错误（命令行上我们踩过同一条：`-p status_period_s:=0`，见 §3 第 3 条与 [`../../@20261005_ros2/docs/ros2-nodes.md`](../../@20261005_ros2/docs/ros2-nodes.md) §7）。
+
+**别混淆**：rl_sar 的 `policy/black/*.yaml` 不是 ROS 参数文件——那是它自己（yaml-cpp）读的应用配置，`--params-file` 管不到；`rl_sim` 的 ROS 参数只有 `robot_name` 与 `joy_command_scale` 两个。要把 kp/kd、站姿这类也变成能用参数文件传的，得先给 rl_sim 加 `declare_parameter`（那是改代码的事，不是写文件的事）。
+
+## 7 工程惯例：参数只在启动时读一次，"热改"是进阶内容
+
+§5 说运行期生效需要参数回调，但翻一遍培训方与主办方的**工程**代码，**没有一处**用 `add_on_set_parameters_callback`：上游 rl_sar 连 ROS 参数都没有（启动时向独立的 `/param_node` 要一个 `robot_name`，其余全在 yaml），主办方分支只 `declare_parameter` 三个字段，主办方自己的控制栈 gateway 七个字段 + 一套 `config_loader` 读 yaml 预设——**全是"启动读一次"**。逐代码库的证据表见 [`rl-sar.md`](rl-sar.md) §4。
+
+讲义也把这件事讲成进阶话题（`ros2基本概念.md:754`，只读材料）：「我们的 talker 只在启动时读一次参数，所以 `param set` 虽然会显示成功，但不会立刻改变发布内容。想让参数在线生效，需要在代码里每次使用前重新读取，或者写参数回调——**这就是更进阶的内容了**」。
+
+所以这类任务的调参正常路径是**改参数文件 + 重启**（§6.1），热改只在"现场整定"这种真需求下才加；判断一个节点属于哪种，看它有没有 `add_on_set_parameters_callback`——没有就是"重启生效"。注意后者有个坑：只在构造时 `get_parameter` 的节点，`ros2 param set` 会"改得动参数值、改不动行为"，看上去成功、实际没用（本仓 `rl_sim` 目前就是这个状态：参数面只有 2 个、都没有回调）。
