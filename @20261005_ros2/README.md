@@ -64,6 +64,15 @@ pixi run python @20261005_ros2/scripts/agent_scripts/check_headless.py         #
 pixi run python @20261005_ros2/scripts/agent_scripts/check_joystick_device.py  # 自检②：真造 uinput 手柄，走设备层（先跑 sudo 脚本）
 ```
 
+> *对应传统 ROS 2 方式（传统指不用 `pixi run` 与仓库的辅助脚本）*：按 [仓库级 `README.md` 传统 ROS 2 方式](../README.md#如果你坚持用传统-ros-2-方式) 安装并激活环境，然后进仓库根执行：
+
+```bash
+cd @20261005_ros2/ws && colcon build --symlink-install && cd ../..
+source @20261005_ros2/ws/install/setup.bash                       # zsh 用 setup.zsh
+ros2 launch quadruped_ros2 bringup.launch.py                      # 其余 ros2 run / launch 命令同此，去掉 pixi run 即可
+python @20261005_ros2/scripts/agent_scripts/check_headless.py     # 脚本也一样，直接用环境里的 python
+```
+
 操作：仿真手柄（或真手柄）按 **A = 站立、B = 阻尼、X = 复位**；MuJoCo 窗口里空格暂停、鼠标拖动转视角、点右上角关窗即退出。
 
 常用 ROS 2 命令（都带 `pixi run`，可直接从仓库根粘贴；进了 `pixi shell` 就可以省掉这个前缀）：
