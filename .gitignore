@@ -2,7 +2,7 @@
 .pixi/*
 !.pixi/config.toml
 
-**/__pycache__
+__pycache__
 
 # binaries
 build/
@@ -10,6 +10,7 @@ build_test/
 
 # colcon 构建产物（install/ 与 log/；build/ 已被上一条覆盖）
 install/
+# 这也会包含 output/log
 log/
 
 # clangd 索引缓存（写在含 compile_commands.json 的那个目录下）
