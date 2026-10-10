@@ -10,6 +10,8 @@
 
 	*A:*
 
+	*[相关小故事](https://yb.tencent.com/s/DJ6iIfIWGc09)*
+
 	**1）三个关键字：加 / 不加的区别**
 
 	| 关键字 | 加了 | 不加 | 备注 |
@@ -45,7 +47,7 @@
 	**2）虚函数在内存中的形态**
 
 	编译器为每个**含虚函数的类**生成一张虚表（vtable），本质是一个编译期静态常量数组，通常放在只读数据段，内容大致是：
-	- RTTI 信息指针（供 `typeid` / `dynamic_cast` 使用）
+	- RTTI（Runtime Type Identification）信息指针（供 `typeid` / `dynamic_cast` 使用）
 	- 该类各虚函数的入口地址，按声明顺序占据固定槽位
 
 	每个对象里被插入一个隐藏成员 **vptr**（虚表指针），通常位于对象内存布局的**最前面**（Itanium ABI / gcc-clang；多重继承时一个对象里会有多个 vptr）。
@@ -54,17 +56,17 @@
 	```
 	DMMotor 对象:
 	┌──────────────┬───────────────┬─────────┐
-	│ vptr (8 字节) │ position_ ... │ 其他成员 │
+	│ vptr (8Byte) │ position_ ... │ 其他成员 │
 	└──────┬───────┴───────────────┴─────────┘
-				 │
-				 ▼
+		   │
+		   ▼
 	DMMotor 的 vtable:
 	┌──────────────────────────────────────┐
 	│ RTTI 指针                             │
-	│ [0] enable      -> DMMotor::enable    │
-	│ [1] setPosition -> DMMotor::setPos... │
-	│ [2] getPosition -> DMMotor::getPos... │
-	│ [3] ~Motor      -> DMMotor::~DMMotor  │
+	│ [0] enable      -> DMMotor::enable   │
+	│ [1] setPosition -> DMMotor::setPos...│
+	│ [2] getPosition -> DMMotor::getPos...│
+	│ [3] ~Motor      -> DMMotor::~DMMotor │
 	└──────────────────────────────────────┘
 	```
 	一次虚调用展开为：取对象首地址 → 读 vptr → 按固定索引取函数地址 → 传入 `this` 间接调用。这就是它无法内联、比普通调用慢的原因。
@@ -73,7 +75,9 @@
 
 	vptr 的初始化发生在**构造函数初始化列表阶段、函数体执行之前**；析构时反向把 vptr 逐层重置回当前类的 vtable——这也解释了为什么在构造/析构函数里调虚函数**不会**有多态效果（此时 vptr 指向的是当前正在构造/析构的那一层）。
 
-	> **补充："虚类" 有两个不同含义，别混** - **抽象类**（含纯虚函数的类）：不能实例化，vtable 中该槽位填的是 `__cxa_pure_virtual` 之类的桩函数，调到就报 "pure virtual function called" 并终止。 - **虚基类**（`class D : virtual public B`，解决菱形继承的重复子对象问题）：额外引入虚基类表/偏移量做二次间接寻址，与虚函数表是两套机制。
+	> **补充："虚类" 有两个不同含义，别混**
+	> - **抽象类**（含纯虚函数的类）：不能实例化，vtable 中该槽位填的是 `__cxa_pure_virtual` 之类的桩函数，调到就报 "pure virtual function called" 并终止。
+	> - **虚基类**（`class D : virtual public B`，解决菱形继承的重复子对象问题）：额外引入虚基类表/偏移量做二次间接寻址，与虚函数表是两套机制。
 
 	**3）虚函数与抽象类的性质**
 

@@ -8,6 +8,8 @@
 
 ## 1. 两个核心对象：`MjModel` 与 `MjData`
 
+*[一个简单问答](https://yb.tencent.com/s/GDh7h8GnMJFH)*
+
 MuJoCo 的 API 只有两个主角：
 
 * **`MjModel`：模型的「结构描述」** —— 由 XML 编译而来，每个数组的长度都固定，`mj_step` **不会**改它；
