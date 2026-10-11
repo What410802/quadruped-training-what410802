@@ -24,6 +24,23 @@ namespace black_fsm
 // This robot has one policy config; upstream hardcodes the same literal inside the RL state.
 inline constexpr const char *kPolicyConfigName = "himloco";
 
+/// Clear the latched keyboard/gamepad state when a state is entered.
+///
+/// library/core's Input only records *changes* (`SetGamepad` ignores a repeated value) and nothing ever
+/// resets it when a button is released, so a value left over from the gesture that caused the transition
+/// is still "pressed" for every later check. Concretely: press gamepad A to stand up, then enter RL with
+/// keyboard `1` - RL's `A -> GetUp` branch fires on the first cycle and the robot bounces RL -> GetUp ->
+/// RL forever. Clearing on entry makes every transition depend only on presses made *while in that
+/// state*; a button that is *held* still fires later, because holding it does not change the latched
+/// value. See @20261007_assignment/docs/status.md P1-g.
+inline void ClearInputState(RL &rl)
+{
+    rl.control.current_keyboard = Input::Keyboard::None;
+    rl.control.last_keyboard = Input::Keyboard::None;
+    rl.control.current_gamepad = Input::Gamepad::None;
+    rl.control.last_gamepad = Input::Gamepad::None;
+}
+
 class RLFSMStatePassive : public RLFSMState
 {
 public:
@@ -31,6 +48,7 @@ public:
 
     void Enter() override
     {
+        ClearInputState(rl);
         rl.running_percent = 0.0f;
         // Startup check: both files are on disk, so a mismatch is visible before the robot moves.
         WarnIfBaseConfigMismatch(rl.robot_name, kPolicyConfigName);
@@ -80,6 +98,7 @@ public:
 
     void Enter() override
     {
+        ClearInputState(rl);
         pre_running_percent = 0.0f;
         rl.running_percent = 0.0f;
         rl.now_state = *fsm_state;
@@ -151,6 +170,7 @@ public:
 
     void Enter() override
     {
+        ClearInputState(rl);
         rl.running_percent = 0.0f;
         rl.now_state = *fsm_state;
     }
@@ -197,7 +217,14 @@ public:
 
     void Enter() override
     {
+        ClearInputState(rl);
         rl.episode_length_buf = 0;
+
+        // One-off cue: S1 moved the old 200 Hz "RL Controller ..." status line into RL_Sim's
+        // status_period_ms (default 0 = off), so without this line the terminal keeps showing the
+        // previous state's "\r" progress line and RL entry looks like it never happened.
+        std::cout << std::endl << LOGGER::INFO << "Entered RL_Locomotion; the per-cycle status line is the "
+                  << "rl_sim parameter status_period_ms (0 = off, e.g. 500 = one line per 0.5 s)" << std::endl;
 
         // read params from yaml
         rl.config_name = kPolicyConfigName;

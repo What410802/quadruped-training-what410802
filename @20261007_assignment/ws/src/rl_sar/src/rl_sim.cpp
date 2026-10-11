@@ -33,6 +33,13 @@ RL_Sim::RL_Sim()
     this->status_period_ms = this->declare_parameter<int>("status_period_ms", this->status_period_ms);
     std::cout << LOGGER::INFO << "robot_name: " << this->robot_name << std::endl;
 
+    // Control's input enums have no initializer in library/core, so their value is indeterminate until
+    // the first keyboard/gamepad event; make the "nothing pressed" state explicit (see status.md P1-e).
+    this->control.current_keyboard = Input::Keyboard::None;
+    this->control.last_keyboard = Input::Keyboard::None;
+    this->control.current_gamepad = Input::Gamepad::None;
+    this->control.last_gamepad = Input::Gamepad::None;
+
     // read params from yaml
     this->ReadYamlBase(this->robot_name);
 
@@ -148,7 +155,20 @@ void RL_Sim::SetCommand(const RobotCommand<double> *command)
 
 void RL_Sim::RobotControl()
 {
-    if (this->control.current_keyboard == Input::Keyboard::R || this->control.current_gamepad == Input::Gamepad::RB_Y)
+    // Rising edges of the two gamepad shortcuts. Upstream tests control.current_gamepad, but
+    // JoyCallback only ever *sets* that state (a neutral /joy frame calls no SetGamepad), so it sticks
+    // forever and both branches below re-fire on every control cycle (200 Hz). We gate them on the raw
+    // button of the latest /joy frame instead - a released button is reported as 0, so one press is one
+    // action. Keyboard handling stays upstream's (act, then clear so the next press is seen again).
+    // See @20261007_assignment/docs/status.md P1-e and docs/porting.md §2.
+    const bool reset_held = this->joy_msg.buttons.size() > 5 && this->joy_msg.buttons[5] && this->joy_msg.buttons[3];
+    const bool nav_held = this->joy_msg.buttons.size() > 2 && this->joy_msg.buttons[2];
+    const bool reset_pressed = this->control.current_keyboard == Input::Keyboard::R || (reset_held && !this->reset_button_held);
+    const bool nav_pressed = this->control.current_keyboard == Input::Keyboard::N || (nav_held && !this->nav_button_held);
+    this->reset_button_held = reset_held;
+    this->nav_button_held = nav_held;
+
+    if (reset_pressed)
     {
         auto empty_request = std::make_shared<std_srvs::srv::Empty::Request>();
         auto result = this->sim_reset_client->async_send_request(empty_request);
@@ -196,7 +216,7 @@ void RL_Sim::RobotControl()
             this->control.yaw = 0;
             this->control.current_keyboard = this->control.last_keyboard;
         }
-        if (this->control.current_keyboard == Input::Keyboard::N || this->control.current_gamepad == Input::Gamepad::X)
+        if (nav_pressed)
         {
             this->control.navigation_mode = !this->control.navigation_mode;
             std::cout << std::endl << LOGGER::INFO << "Navigation mode: " << (this->control.navigation_mode ? "ON" : "OFF") << std::endl;

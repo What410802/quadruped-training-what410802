@@ -43,6 +43,10 @@ private:
     void RunModel();
     void RobotControl();
 
+    // rising-edge latches for the two gamepad shortcuts (see RobotControl and status.md P1-e)
+    bool reset_button_held = false;
+    bool nav_button_held = false;
+
     // status line (node parameter; 0 = off)
     int status_period_ms = 0;
     std::chrono::steady_clock::time_point last_status_print{};
