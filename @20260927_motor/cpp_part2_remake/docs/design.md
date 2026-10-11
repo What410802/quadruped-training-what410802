@@ -820,7 +820,7 @@ send(cmd, &fb):
 | T21 | 二义点 | 断电位移 $-H$ | `check` 打印"恰在半格"；启动时 gate | M4 |
 | T22 | 整格反例（已知局限） | 断电位移 $+L$ | `check` 报"一致"——**记录为已知局限**，配套免责句（P7） | M4 |
 | T23 | 提示层（R17 / D17） | `power off` → 手转 $-12°$ → `power on` | `check` 打印提示行（$12° > T_w = 9.4737°$）；自动对齐仍成功、不受影响；改手转 $-5°$ 时不打印 | M4 |
-| T24 | **启动自动对齐（R18 / D20）** | `power off` → 手转 $\delta$（$\le 20°$）→ `power on`，带 `--pose-ref` | 护栏通过 ⇒ 自动 `kAlignFix`（事件 +1）、电机不动、下发的 `pos_des` 不变；⚠ 用 `--no-auto-fix` 时停在 gate；护栏外（`offturns 1`、$\lvert r\rvert > W$、`raw0 \ge C$ 且 $k \ne 0$）⇒ 不自动、gate | M4 |
+| T24 | **启动自动对齐（R18 / D20）** | `power off` → 手转 $\delta$（$\le 20°$）→ `power on`，带 `--pose-ref` | 护栏通过 ⇒ 自动 `kAlignFix`（事件 +1）、电机不动、下发的 `pos_des` 不变；⚠ 用 `--no-auto-fix` 时停在 gate；护栏外（`offturns 1`、$\lvert r\rvert > W$、$raw0 \ge C$ 且 $k \ne 0$）⇒ 不自动、gate | M4 |
 
 实验台只做**人工演练与脚本冒烟**，不进 CTest。M2b 完成后加一条"PTY 端到端冒烟"（人工触发的脚本：起 `motor_sim` → `motor_ctl` 跑主格脚本 → 检查关键行），不进默认测试。
 
@@ -1022,4 +1022,4 @@ for n in range(4):
 4. 测试补齐（T15–T24）→ `ctest`；
 5. 实机批次 6b（④b 验收）→ 填 runbook §6 表 C。
 
-三个容易踩的点：① **自动路径只做 `k ≠ 0` 且护栏全过**的情形，$k = 0$ 一律不动作（`|r| > T_w$ 只打印）；② 脚本/非 TTY 下 gate 不会被卡死（`fix` / `move` / `jog` / `hold` / `zero move` 任一显式命令即视为确认），但**纯 `state` 脚本**在 gate 下会一直零力矩——脚本要给出力的意图；③ `fix` 复用现成的 `Ledger::shift_offset`（它已经会同步平移 target / planner / mark，即 I3），**不要**新写一套改账本的路径。
+三个容易踩的点：① **自动路径只做 `k ≠ 0` 且护栏全过**的情形，$k = 0$ 一律不动作（$|r| > T_w$ 只打印）；② 脚本/非 TTY 下 gate 不会被卡死（`fix` / `move` / `jog` / `hold` / `zero move` 任一显式命令即视为确认），但**纯 `state` 脚本**在 gate 下会一直零力矩——脚本要给出力的意图；③ `fix` 复用现成的 `Ledger::shift_offset`（它已经会同步平移 target / planner / mark，即 I3），**不要**新写一套改账本的路径。

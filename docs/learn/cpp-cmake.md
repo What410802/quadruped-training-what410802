@@ -470,16 +470,21 @@
 	- `target_*` 版带 **usage requirements** 传播机制：`PUBLIC` → 既给自己用也传给依赖方；`PRIVATE` → 只给自己用；`INTERFACE` → 只传给依赖方（自己不用，用于 header-only 库）
 	- 现代 CMake 风格（"Modern CMake" / Effective CMake）核心原则：**一切围绕 target 和它的 usage requirements**
 
-- *Q:* ```cmake add_library(robot_core
-		# ...
-	)
-	```
-	和
-	```cmake
-	add_library( robot_core
-		# ...
-	)
-	```
+- *Q:*
+
+  ```cmake
+  add_library(robot_core
+  	# ...
+  )
+  ```
+
+  和
+
+  ```cmake
+  add_library( robot_core
+  	# ...
+  )
+  ```
 	是否有区别？
 
 	*A:*
