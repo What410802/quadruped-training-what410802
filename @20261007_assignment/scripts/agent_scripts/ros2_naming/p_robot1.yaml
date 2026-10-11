@@ -1,0 +1,3 @@
+/robot1/**:
+  ros__parameters:
+    who: ns_wildcard
