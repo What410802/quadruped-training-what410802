@@ -54,7 +54,7 @@ AI 助手专属的提交规则（不代为提交、不写署名、改写已推�
 
 - **2.10 文档里出现的路径、目录树必须与仓库实际一致。** "文档写了但仓库里没有"同样算错。
 - **2.11 移动 / 重命名文档时，全仓搜一遍指向它的引用**（文档、代码与配置注释），把对方那一侧一并改对。新增引用时让双向链接成对：对方没有合适的位置，就在它的首部或尾部放一个反向链接。
-- **2.12 改完文档要自检**：代码围栏是否配对、相对链接与锚点是否有效、双向引用是否成对、目录树是否与实际一致。链接、锚点、表格列数、以及「引用块里的标题/引用块被空行断开导致代码围栏跑到引用块外」这几项可以自动查（从仓库根执行）：`pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py <目录>`（2026-10-11 起还认 `> ### 标题` 这类引用块标题、会按需补算链接目标在扫描范围之外的 Markdown 文件的标题，例如任务目录链接仓库根 `README.md`；目录参数给 `.` 就是全仓，会跳过 `.pixi`/`ReadOnly.d`/`build`/`install`/`log` 等目录，这样仓库根的 `README.md` 与 `AGENTS.md` 也一起查）；其余几项人工对照。
+- **2.12 改完文档要自检**：代码围栏是否配对、相对链接与锚点是否有效、双向引用是否成对、目录树是否与实际一致。链接、锚点、表格列数，以及「按 GFM 渲染出来跟写的不一样」的那一类（引用块标题、引用块被空行断开导致代码围栏跑到引用块外、未闭合的 `~~` 或行内代码、未闭合的代码围栏、链接目标里的裸空格、`#` 后缺空格、表格缺分隔行、单元格数与表头不一致）都可以自动查（从仓库根执行）：`pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py <目录>`（2026-10-11 起还认 `> ### 标题` 这类引用块标题、会按需补算链接目标在扫描范围之外的 Markdown 文件的标题，例如任务目录链接仓库根 `README.md`；目录参数给 `.` 就是全仓，会跳过 `.pixi`/`ReadOnly.d`/`build`/`install`/`log` 等目录，这样仓库根的 `README.md` 与 `AGENTS.md` 也一起查）；其余几项人工对照。
 
 ## 3. 目录、命名与代码格式
 
@@ -108,6 +108,7 @@ AI 助手专属的提交规则（不代为提交、不写署名、改写已推�
 
 - **3.9 C/C++ 与 CMake 用 4 空格缩进，不用 Tab。** 仓库根的 [`.clang-format`](../.clang-format)（`IndentWidth: 4`、`ColumnLimit: 0` 即不自动折行）是默认配置；格式化用 `clang-format -i <file>`，它会用离文件最近的那份 `.clang-format`。
   - 用**环境里的** clang-format（`pixi run clang-format -i <file>`，或激活环境后直接用），与编辑器（环境里的 clangd）同一版本；系统 apt 的 14 版结果不同（差在行尾注释的对齐），见 [`pitfalls/environment.md`](pitfalls/environment.md)「系统的 clangd 14 读不了 gcc 15 的头」。
+- **3.9b 代码里的注释、日志、打印一律用英文，并且精简。** 对标上游与主办方分支：他们的 `src/*.cpp`、`policy/*/base.yaml`、`launch/*.py`、`CMakeLists.txt` 都是英文（中文只出现在 `library/thirdparty/` 里那些第三方 SDK 中），本仓的移植文件也照此办理——「为什么这么改、踩过什么坑、实测数字」写进 `docs/`（任务文档或仓库 `docs/`），代码里只留 1~3 行说明**读者看代码时立刻需要的那个原因**，细节给文档指针（`docs/porting.md` §N、`docs/control-stack-rates.md` 这类）。自检脚本的输出报文也用英文（用例名短、对照表放文档里），因为它是随包交付的代码而不是文档。
 - **3.10 新任务的 C++ 工程用新格式：C++17 + Allman 大括号 + 100 列。** 在工程目录放一份自己的 `.clang-format`（照 [`../@20260927_motor/cpp_part2_remake/.clang-format`](../@20260927_motor/cpp_part2_remake/.clang-format) 复制），并在注释里写明"本目录采用 100 列"。
   - 参考：[`../@20260927_motor/cpp_part2_remake/`](../@20260927_motor/cpp_part2_remake/README.md)（现行）、[`learn/cpp-cmake.md`](learn/cpp-cmake.md) 的「工程目录与文件风格」一节；当时的拆分理由在历史版本 [`../@20260927_motor/cpp_part2/docs/setup.md`](../@20260927_motor/cpp_part2/docs/setup.md) §1。
   - 既有工程（`@20260923_mujoco/cpp_*`、`@20260927_motor/cpp/`）保留现状（见「适用范围」），等各自的结构对齐时一并切换。

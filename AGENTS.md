@@ -21,10 +21,11 @@
 * 文档里出现的路径、目录树**必须与仓库实际一致**；移动/重命名文件时**全仓搜引用**并把对方改对。
 * 复现步骤**前面先写"先怎么准备"**（clone / 下载什么、`local_paths.cmake` 怎么配），解释只留一处——见 conventions §4.9。
 * 结论必须带**可复现命令**与**实测数字**；引用外部代码给 `文件:行`。
-* 文档改动后自检：`pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py <任务目录>` （断链 / 锚点 / 表格列数 / 引用块与围栏）。
+* 文档改动后自检：`pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py <任务目录>` （断链 / 锚点 / 表格列数与表头一致性 / 引用块与围栏 / 未闭合的 `~~`、行内代码、代码围栏等 GFM 渲染问题）。
 
 ## 代码与环境
 
+* 代码里的**注释 / 日志 / 打印一律英文、精简**（对标上游与主办方：他们的 `src/`、`policy/*/base.yaml`、`launch/`、`CMakeLists.txt` 都是英文）；中文解释写进 `docs/`，代码里只留 1~3 行「为什么」+ 文档指针——见 conventions §3.9b。
 * C/C++ 一律 **4 空格、不用 Tab、离文件最近的 `.clang-format` 说了算**（新 C++ 工程自带一份、既有工程用仓库根那份——见 conventions §3.9、§3.10）。
 * 环境只有仓库根 [`pixi.toml`](pixi.toml) 一个：用 `pixi run …`；不写死绝对路径，也不写 `../ReadOnly.d/…` 这类仓库外路径——见 conventions §4.6、§4.7。
 * 改完代码/脚本要跑**对应的自检**并在文档里更新状态：C++ 侧用各任务的 `--self-test`（不接硬件就能跑）， Python 侧用 `scripts/agent_scripts/` 下的分析脚本。

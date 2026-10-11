@@ -1,6 +1,6 @@
 # 实验：策略在我们的模型上走不走得动、rl_sar 的时钟与线程问题严不严重
 
-做实验的原因：rl_sar 用两条墙钟线程跑控制与推理（[`porting.md`](porting.md) §5），和仿真时间没有关系；线程之间共享数据也不加锁。处理原则是**先量，不严重就保留上游原样，严重了再决定改不改**。结论在 §7。
+做实验的原因：rl_sar **当时**用两条墙钟线程跑控制与推理（[`porting.md`](porting.md) §5），和仿真时间没有关系；线程之间共享数据也不加锁——§3~§6 是那套方案下的实测记录，§9 是 S4 改成反馈驱动之后的结果（结论变了的地方都在 §9 里重新量过）。
 
 所有命令都在仓库根执行，先 `pixi install` 与 `pixi run ros2-build`。数字是 2026-10-08 在本机（Ubuntu 22.04、Intel i5-1035G1 4 核 8 线程、libtorch 2.12.0 CPU 版）上测的。
 
@@ -85,7 +85,7 @@ done; done
 | 21 ± 1 ms / 10 ms | 0.891 | 否 |
 | 24 ± 4 ms / 20 ms | 0.825 | 否 |
 
-## 5. 墙钟方案的边界：暂停、慢放都没事，快放到 3 倍会摔
+## 5. 墙钟方案的边界：暂停、慢放都没事，快放到 3 倍会摔（**S4 之前的记录**，结论见 §9）
 
 rl_sim 只认墙钟，不管仿真走了多少，所以仿真一旦不按真实时间走，"每 20 ms 推理一次"在仿真时间里就不再是 20 ms。三种情形在参考实现里模拟（前进 1.0 m/s）：
 
@@ -191,3 +191,28 @@ pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py \
 | 力矩上限 20 N·m（训练 33.5） | 无影响：1.5 m/s 以内峰值 ≤ 20.0（§2） | 不改模型 |
 
 所以原计划的第二阶段（把 rl_sim 改成跟着 `/motor_state` 的仿真时间走）**不是必须的**。只有将来需要全速回归（`realtime:=false`）时才值得做——届时的改法、代价与验收见 [`status.md`](status.md) 的 P1-c 与实施顺序 S4，时基机制本身见 [`../../docs/learn/rl-sar.md`](../../docs/learn/rl-sar.md) §6。
+
+## 9. S4：改成反馈驱动之后（2026-10-11）
+
+做法见 [`porting.md`](porting.md) §2 第 18 条与 §5，频率总表在 [`control-stack-rates.md`](control-stack-rates.md)。三个场景都是同一条命令跑出来的：
+
+| 场景 | S4 之前（§3/§5 的数字） | S4 之后 |
+|---|---|---|
+| 1x 实时 | 策略周期均值 20.65~20.80 ms | **20.00 ms**（p5/p95 都是 20.0；998 次里 0~1 次超 30 ms，偶发一次 32 ms） |
+| 全速 `realtime:=false` | 3x 就摔 | **22~25x**（带检查脚本，多次实测）7/7 全过；栈自身 **39.3~41.6x**（无 Python 负载，见频率总表 §6） |
+| 暂停 | 墙钟循环照跑，斜坡继续推进 | SIGSTOP 仿真 1.5 s：斜坡只前进 3.5%（在途反馈），`SIGCONT` 后继续 |
+
+```bash
+pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py                    # 1x：20.00 ms、7/7
+pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py --realtime false    # 全速：~25x、7/7
+pixi run python @20261007_assignment/scripts/agent_scripts/check_feedback_clock.py           # 暂停：斜坡不动/恢复即走
+```
+
+**中途踩的坑（值得记）**：第一版写成"每收到一条 `/motor_state` 就跑一次控制"。1x 下没问题（策略周期 20.00 ms），但全速时反馈到 4~5 kHz、`/mit_command` 也跟着 4~5 kHz，两端直接被打爆：
+
+```
+[FAIL] 策略周期 均值 28.54 ms、p95 50.0、最大 154.0、超过 30 ms 的 171 次（共 571 次）
+[FAIL] 起身终点 最大偏差 3.45e-01 rad（斜坡没走完）
+```
+
+改成"控制锚在仿真时间每 5 ms 一步"（并把 `/mit_command` 改成目标变了才发 + 心跳）之后全速 7/7。教训：**反馈是时钟，不是工作量**——节拍要按仿真时间定，别按消息条数定。

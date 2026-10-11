@@ -39,6 +39,8 @@ pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py    # �
 pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py \
     --sim-param motor_deadzone:=0.5 --sim-param motor_delay_cycles:=2 \
     --sim-param motor_noise:=0.2 --sim-param motor_seed:=12345
+pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py --realtime false  # 全速（~25x）同一套 7 项
+pixi run python @20261007_assignment/scripts/agent_scripts/check_feedback_clock.py   # 暂停 1.5 s 时控制一步都不跑
 pixi run ros2 run rl_sar input_map_selftest                             # 输入层自检（不接仿真/手柄）
 pixi run bash -lc 'cd @20261007_assignment/ws && colcon test --packages-select rl_sar'   # 同一个自检，走 CTest
 pixi run python -I @20261007_assignment/scripts/agent_scripts/policy_reference.py --cmd 1.0,0,0    # 参考实现
@@ -74,7 +76,9 @@ pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5
 
 **键盘操作**：rl_sim 直接读终端，要单独占一个终端：`pixi run ros2 launch rl_sar rl_sim.launch.py rl:=false joy:=false`，另一个终端 `pixi run ros2 run rl_sar rl_sim`，然后按 `0` 起身、`1` 进 RL、`W/S` `A/D` `Q/E` 加减速度、空格清零、`9` 趴下、`P` 阻尼、`R` 复位、`N` 切换导航模式。
 
-> **不要用 `realtime:=false`**：rl_sim 按墙钟每 20 ms 推理一次，仿真跑得比真实时间快 3 倍以上狗就会摔（[`docs/experiments.md`](docs/experiments.md) §5）。
+> **`realtime:=false`（全速跑）现在是推荐用法**：S4 起 rl_sim 的控制与推理都按 `/motor_state` 的**仿真时间**定节拍（控制 5 ms、推理 20 ms 仿真时间），仿真跑多快都不影响策略周期——实测 25x 仍 7/7（栈自身约 40x）。全速跑也是最快的回归方式：`pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py --realtime false`。频率总表与实测见 [`docs/control-stack-rates.md`](docs/control-stack-rates.md)。
+>
+> 频率总表（每层多久跑一次、由谁定、改一个值牵动什么）：[`docs/control-stack-rates.md`](docs/control-stack-rates.md)。
 
 ## 目录与文件
 
@@ -98,7 +102,8 @@ pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5
 │   ├── CMakeLists.txt  package.xml  LICENSE
 │   └── .clang-format             # DisableFormat：不重排上游代码
 ├── scripts/agent_scripts/
-│   ├── check_walk.py             # 无头自检（ROS 链路，支持 --sim-param 打开非理想电机）
+│   ├── check_walk.py             # 无头自检（ROS 链路，支持 --sim-param 打开非理想电机、--realtime false 全速）
+│   ├── check_feedback_clock.py   # 反馈时钟自检：暂停仿真时斜坡不该动（S4）
 │   ├── policy_reference.py       # 参考实现（不经 ROS、锁步，可注入时序误差）
 │   ├── ros2_naming/              # ROS 2 名称/路径语义实验（docs/learn/ros2-graph-and-clock.md §3 的仪器）
 │   └── scene_ground_extents.py   # 量场景里"三块地面"各到哪里（docs/learn/mujoco.md §6.10 的仪器）

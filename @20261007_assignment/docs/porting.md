@@ -73,6 +73,11 @@ rl_sar 内部分三层，移植只动后两层：
 四个 FSM 状态改用 `SeenIntents`（进入清零、每周期累积、命中即用）读意图，`RobotControl()` 也读意图处理复位/导航/微调。
 这一层一次性取代了第 12/13/16 三条补丁：边沿是纯函数、天生只发生一次（不需要「消费/清除」协议）、组合键就是多个 bit（不再有枚举别名与写入顺序之争）、`library/core` 的 `Input` 完全不再参与状态转移（它仍在原地、一字未改，只有键盘锁存还被适配器读）。
 意图表就是 §6.2 那张键位表的代码版：以后加键位只改 `kBindings` 一行 + 文档表一行。
+18. **控制栈改由仿真时间驱动**（S4，2026-10-11）：删掉 `loop_control` / `loop_rl` 两条墙钟 `LoopFunc`，改由 `/motor_state` 的回调驱动
+`MotorStateCallback()` → `ControlStep(sim_time)`：控制按 `dt`（5 ms **仿真时间**）、推理按 `decimation`（4）个控制周期（20 ms 仿真时间）补步推进；
+`SetCommand()` 加了变更检测（目标没变就只发心跳，每 20 个控制周期一条）；`base.yaml` 的 `dt`/`decimation` 回到上游的 0.005/4（`dt` 的本义就是控制周期，之前被误解成仿真的物理步长）。
+好处与实测：1x 下策略周期 20.00 ms、全速 25x 仍 7/7、暂停时一步不跑；还顺带把跨线程共享数据消到只剩键盘一处（见 §7）。
+频率总表在 [`control-stack-rates.md`](control-stack-rates.md)，反面教材（按"每条反馈一次控制"时通信量被打爆）记在 `status.md` 的 S4 行。
 和上游逐行对照（先把上游 clone 到临时目录）：
 
 ```bash
@@ -159,10 +164,10 @@ diff -r $U/library/core $P/library/core | grep -v -E 'thirdparty|matplotlibcpp' 
 
 ## 5. 一帧观测与动作是怎么算出来的
 
-两条墙钟线程（`src/rl_sim.cpp:97-98`，计时在 `library/core/loop/loop.hpp:70-80`）：
+**一条线程就是全部**：控制与推理都在 ROS 执行器线程上，由 `/motor_state` 的回调 `MotorStateCallback()` → `ControlStep(sim_time)` 驱动（S4 之前是两条墙钟 `LoopFunc`，计时在 `library/core/loop/loop.hpp:70-80`，已删）：
 
-* **控制线程**，每 5 ms（`dt`）一次 `RobotControl()`：`GetState()` 把最新收到的消息拷进 `robot_state` → 状态机 `Run()` 填 MIT 五参数 → `SetCommand()` 发 `/mit_command`。
-* **策略线程**，每 20 ms（`dt × decimation`）一次 `RunModel()`：拼观测 → 推理 → 换算成关节目标，放进队列；控制线程在 RL 状态下从队列里取（`policy/black/fsm.hpp:216`）。这个队列是 TBB 的 `tbb::concurrent_queue`——它是什么、为什么用它见 [`../../docs/learn/tbb.md`](../../docs/learn/tbb.md)。
+* **控制**，仿真时间每 5 ms（`dt`）一次 `RobotControl()`：`GetState()` 把最新收到的消息拷进 `robot_state` → 状态机 `Run()` 填 MIT 五参数 → `SetCommand()` 发 `/mit_command`。
+* **推理**，每 `decimation`（4）个控制周期、即 20 ms 仿真时间一次 `RunModel()`：拼观测 → 推理 → 换算成关节目标，放进队列；控制线程在 RL 状态下从队列里取（`policy/black/fsm.hpp:216`）。这个队列是 TBB 的 `tbb::concurrent_queue`——它是什么、为什么用它见 [`../../docs/learn/tbb.md`](../../docs/learn/tbb.md)。
 
 观测（45 维，顺序按 `config.yaml` 的 `observations`，拼接在 `library/core/rl_sdk/rl_sdk.cpp:26` 起的 `ComputeObservation()`）：
 
@@ -217,7 +222,7 @@ stateDiagram-v2
 ```
 
 ① 从 `GetUp` 进 `RL_Locomotion` 要求起身斜坡已经走完（`running_percent == 1`；`RLFSMStateGetUp::CheckChange()` 里那个 `if`），斜坡没走完时按 `1` / RB+十字键上不会有反应；\
-② `R` / RB+Y 不进状态机——它在 `RobotControl()` 里直接调 `/sim_reset`（[`../ws/src/rl_sar/src/rl_sim.cpp:177`](../ws/src/rl_sar/src/rl_sim.cpp)），状态保持不变。
+② `R` / RB+Y 不进状态机——它在 `RobotControl()` 里直接调 `/sim_reset`（[`../ws/src/rl_sar/src/rl_sim.cpp:223`](../ws/src/rl_sar/src/rl_sim.cpp)），状态保持不变。
 
 | 操作（手柄 / 键盘） | 从 | 到 | 做什么 |
 |---|---|---|---|
@@ -259,15 +264,14 @@ pixi run ros2 topic echo /mit_command --field kp   # 状态探针：kp=80 → Ge
 
 | 不足 | 位置 | 影响 | 处理 |
 |---|---|---|---|
-| 两条墙钟线程，与仿真时间无关 | `loop.hpp:70-80` | 实时运行时策略周期在仿真时间里是 20.8 ms（训练是 20 ms），速度 −4.5%；仿真比实时快 3 倍以上会摔 | **保留**；launch 固定 `realtime:=true`，见 experiments §4、§5 |
-| 线程间共享数据不加锁 | 下表 | 实测不出问题，理论上最坏是同一条指令里混入相邻两帧的数据 | 前两处**保留**；第 3 处**改成读局部副本**（一行，见下文与 [`status.md`](status.md) P2-c） |
+| ~~两条墙钟线程，与仿真时间无关~~ | `loop.hpp:70-80` | 实时运行时策略周期在仿真时间里是 20.8 ms（训练是 20 ms）；暂停时还会"空转着把动作做完"；快放 3x 就摔 | **已修（S4，2026-10-11）**：控制与推理都由 `/motor_state` 的 `sim_time` 定节拍 → 1x 下 20.00 ms、25x 全速仍 7/7，暂停时一步不跑（[`control-stack-rates.md`](control-stack-rates.md)） |
+| ~~线程间共享数据不加锁~~ | 见下 | 实测不出问题，理论上最坏是同一条指令里混入相邻两帧的数据 | **S4 之后基本消失**：控制与推理都在 ROS 执行器这一条线程上，只剩键盘轮询一处（见下） |
+| 策略输出与控制之间靠队列传递（P2-c） | `src/rl_sim.cpp` 的 `try_pop`/`InitRL` | 上游用 `std::vector` 重新赋值，读端可能看到"半个"新向量 | **已修（2026-10-10）**：改成定长槽位、只在原地写（下面的第 3 条） |
 
-不加锁的共享数据有三处：
+**S4 之后的线程与共享数据**：进程里只剩两条线程——ROS 执行器线程（`/motor_state`、`/imu`、`/joy`、`/cmd_vel` 的回调 + 控制 + 推理，全都串行）和键盘轮询的墙钟 `LoopFunc`（50 ms，调 `library/core` 的 `KeyboardInterface()` 写 `control.current_keyboard`）。因此：
 
-1. ROS 回调线程写 `motor_state_msg` / `imu_msg` / `control.x/y/yaw`（`src/rl_sim.cpp:313`、`:248`、`:306-308`），控制线程同时读。我们的消息是**定长数组**（`float64[12]`），赋值不会重新分配内存，最坏是读到"一半新、一半旧"的一帧，下个 5 ms 就被覆盖。
-2. 控制线程写 `robot_state`（`src/rl_sim.cpp:229`），策略线程读（`:321-332`）。`std::vector<double>` 大小不变，同上。
-3. **这处已经改了（P2-c，2026-10-10）**：策略线程给 `output_dof_pos` 重新赋值（`src/rl_sim.cpp:335`），控制线程**改读 `try_pop` 出来的副本** `_output_dof_pos` / `_output_dof_vel`（`policy/black/fsm.hpp:254` 取值、`:260`/`:264` 使用），pos/vel 保证同帧，也不再有 Tensor 句柄竞争。改之前它读的是成员 `rl.output_dof_pos`（上游 `policy/go2/fsm.hpp:207-214` 同样是"取出来却读成员"），当时的最坏情况是读到被释放的内存；不过被替换掉的 Tensor 同时被队列或副本持有引用、至少要过一个 20 ms 周期才释放，而控制线程读 12 个数只要几微秒，所以实际只会读到"新的或旧的那一帧"。
+1. `motor_state_msg` / `imu_msg` / `robot_state` / `output_dof_pos` 这些"回调线程写、控制线程读"的模式**没有了**——写和读都在同一条线程上（`MotorStateCallback()` → `ControlStep()` → `GetState()`）✓。
+2. 唯一剩下的跨线程项是**键盘锁存**：墙钟线程写 `control.current_keyboard`，控制线程读（[`input_map.hpp`](../ws/src/rl_sar/include/input_map.hpp) 的 `KeyboardMask()`）。它是一个 `enum`，最坏是读到相邻一次按键（人手的量级，无实际影响）；要彻底消掉就得把键盘轮询也搬进控制节拍，暂时不值得。
+3. **P2-c 的历史记录**（2026-10-10，S4 之前修的）：那时策略线程给 `output_dof_pos` 重新赋值、控制线程读，`std::vector<double>` 的重新分配会让读端拿到"半个新向量"；改成定长槽位原地写之后消失。这条现在只作为"当时的线程模型"留档。
 
-前两处是上游原样、一行没改，第 3 处已按下面的结论改掉；5 分钟连续行走（约 15000 次推理）的结果见 experiments §6。
-
-**2026-10-09 的复查结论**：前两处**不值得修**——消息与 `robot_state` 都是定长、运行期从不重新分配，最坏只混入相邻一帧（差 2 ms），而修它们要么加锁、要么改成槽位拷贝，收益只是"形式上不再是数据竞争"（严格说它们都是 C++ 未定义行为，TSAN 会报）。第 3 处**已修（P2-c，2026-10-10）**：`fsm.hpp` 的 `rl.output_dof_pos[0][i]` 改成 `_output_dof_pos[0][i]`（`dq` 那处同理 `_output_dof_vel`，现在在 `:260`/`:264`）——它本来就已经 `try_pop` 出了一份副本，改完成本为零，而且保证 pos/vel 来自同一帧（现在的 `try_pop(pos) && try_pop(vel)` 是短路的，vel 为空时那帧 pos 会被丢掉）。真要再进一步，第 1 处可以照仿真节点对 `/mit_command` 的做法（`sim_node.cpp:312-321` 的 `cmd_mutex_` + `have_cmd_`）加一把小锁；另外若按 [`status.md`](status.md) P1-c 把控制改成在 `MotorStateCallback` 里跑，第 1 处会自然消失（回调与控制同一条执行器线程）。
+**2026-10-09 的复查结论**（针对当时的两处上游写法）：消息与 `robot_state` 都是定长、运行期从不重新分配，最坏只混入相邻一帧（差 2 ms），不值得为"形式上不再是数据竞争"（严格说都是 C++ 未定义行为、TSAN 会报）去加锁或改成槽位拷贝。S4 合并线程之后这两处自然不存在了。

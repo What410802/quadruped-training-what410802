@@ -84,8 +84,8 @@ class PolicyExporterHIM(Module):
 |---|---|---|
 | 加载 | `library/core/rl_sdk/rl_sdk.cpp:153`、`:154` | `policy/<robot_name>/<config_name>/<model_name>` 拼路径 + `torch::jit::load`；`robot_name` 是 ROS 参数，`config_name` 由 `policy/black/fsm.hpp` 的常量 `kPolicyConfigName` 定死为 `himloco`（`:25` 定义、`:230` 使用） |
 | 历史缓冲 | `rl_sdk.cpp:150` | `observations_history` 非空时建 `ObservationBuffer(1, 45, 6)` |
-| 每帧调用 | `src/rl_sim.cpp:371` | `model.forward({history_obs})`；入参是**一个 2 维**的 float32 张量 `[B, 270]`（不是序列、不是 list，也不能是 `[B, 6, 45]`——实测这三种写法都报形状错；`B` 任意），返回 `[B, 12]` |
-| 周期 | `src/rl_sim.cpp:98` | 每 `dt × decimation` = 20 ms 一次（墙钟线程） |
+| 每帧调用 | `src/rl_sim.cpp:404-408` | `model.forward({history_obs})`；入参是**一个 2 维**的 float32 张量 `[B, 270]`（不是序列、不是 list，也不能是 `[B, 6, 45]`——实测这三种写法都报形状错；`B` 任意），返回 `[B, 12]` |
+| 周期 | `src/rl_sim.cpp:314` | 每 `decimation` 个控制周期、即 20 ms **仿真时间**一次（`ControlStep()` 按反馈的 `sim_time` 定节拍，S4） |
 | 输入侧 | `rl_sdk.cpp:105` | 拼好的 45 维先 `clamp` 到 ±`clip_obs`（100），**再**插入历史缓冲——截断在模型外 |
 | 输出侧 | `rl_sdk.cpp:161`–`176` | 动作先 `clamp` 到 ±100，再 `× action_scale` + `default_dof_pos` = 关节目标 `q`；`dq = 0`，关节力矩由仿真侧的电机模型按 MIT 公式算 |
 

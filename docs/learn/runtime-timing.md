@@ -620,23 +620,23 @@ sequenceDiagram
 | 窗口渲染 | vsync（60 Hz → 16.7 ms） | 显示刷新 | 渲染变重 → 帧率量化掉档（16.7 → 33.3 ms），每帧补更多步 | `viewer.hpp:272` |
 | 无窗口物理节流 | `dt / real_time_factor` | 墙钟 | `realtime:=true` 时按墙钟睡、落了就重新对齐；`false` 全速 | `sim_node.cpp:1027-1043` |
 | `/motor_state`、`/imu` 发布 | 每步 = 500 Hz | 仿真时间 | best_effort + `KeepLast(1)`：丢就丢，只保证"最新那条" | `sim_node.cpp:854`、`LatestQoS()` |
-| rl_sim 控制 | 5 ms（`dt`） | **墙钟** | `LoopFunc` **不补步**：body 超时就顺延，周期只会变长 | `rl_sim.cpp:97`、`loop.hpp:67-86` |
-| rl_sim 推理 | 20 ms（`dt × decimation`） | **墙钟** | 同上 | `rl_sim.cpp:98` |
-| rl_sim 键盘 | 50 ms | 墙钟 | 同上 | `rl_sim.cpp:103` |
+| rl_sim 控制 | 5 ms（`dt`） | **仿真时间**（S4 起） | 由 `/motor_state` 的 `sim_time` 补步：正常一条反馈一步，丢包时最多补 10 步再重新对齐 | `rl_sim.cpp` 的 `ControlStep()` |
+| rl_sim 推理 | 20 ms（`dt × decimation`） | **仿真时间**（S4 起） | 每 `decimation` 个控制周期一次；实测 1x 下 20.00 ms、全速 25x 下均值 20.5 ms | `rl_sim.cpp` 的 `ControlStep()` |
+| rl_sim 键盘 | 50 ms | 墙钟 | 唯一剩下的墙钟 `LoopFunc`，不补步（键盘只有「最后一个键」，无所谓） | `rl_sim.cpp` 的 `loop_keyboard` |
 | `/joy` | 100 Hz（发布端） | 墙钟 | reliable + `depth 10`：一般不丢，积压最多 100 ms | `joy_node.py:207`、`rl_sim.cpp:79-81` |
-| 状态机斜坡 | 200 / 400 / 500 **控制周期** | 控制周期计数 | 控制周期变长 → 斜坡在仿真时间里跟着变慢 | `policy/black/base.yaml` 的 `getup_pre_cycles`/`getup_cycles`/`getdown_cycles`（由 `fsm.hpp:112/128/182` 读） |
-| 仿真看门狗 | 100 步 = 200 ms **仿真时间** | 仿真时间（按步数算） | 到点没收到 `/mit_command` → 退回阻尼 | `sim_node.cpp:781`、`:820` |
+| 状态机斜坡 | 200 / 400 / 500 **控制周期** | 仿真时间（经控制周期计数） | 控制周期锚在仿真时间上，斜坡的仿真时长固定为 1.0 / 2.0 / 2.5 s | `policy/black/base.yaml` 的 `getup_pre_cycles`/`getup_cycles`/`getdown_cycles`（由 `fsm.hpp:112/128/182` 读） |
+| 仿真看门狗 | 100 步 = 200 ms **仿真时间** | 仿真时间（按步数算） | 设计意图是到点没收到 `/mit_command` 就退回阻尼，但**当前不生效**（`got` 每步为真、`last_cmd_step` 每步被刷新）→ 见 [`control-stack-rates.md`](../../@20261007_assignment/docs/control-stack-rates.md) §4 | `sim_node.cpp:781`、`:808` |
 | 吞吐报告 | 每 5 s 墙钟 | 墙钟 | 打一行"仿真 X s / 墙钟 Y s = Z 倍实时"，**只有数字、没有告警** | `sim_node.cpp:877-890` |
 
-一句话：**同一个"20 ms"，在 rl_sim 里是墙钟、在训练与仿真里是仿真时间**，两条轴之间没有任何反馈——下面所有边界都源于此。
+一句话（S4 之前是「同一个 20 ms 在两边分属墙钟与仿真时间、两条轴之间没有反馈」，所有边界都源于此；现在 rl_sim 的控制与推理也锚在仿真时间上，§14.2 里「CPU 被抢 → 策略周期在仿真时间里变长」这类边界随之消失，见 [`control-stack-rates.md`](../../@20261007_assignment/docs/control-stack-rates.md)）——原记录保留在于此。
 
 ### 14.2 逐类异常：现状行为与边界
 
 1. **CPU 被别的东西抢**：`LoopFunc` 顺延，不补步 → 策略周期在**仿真时间里**变长。实测：5 分钟浸泡里最长一次 114 ms（推理线程被晚调度 0.1 s），狗没摔；离线把策略周期拉到 40 ms 只是变慢（0.71 m/s）。**边界 ≈ 仿真时间里的周期 60 ms**：快放到 3 倍时等效 60 ms 就会摔（[`@20261007_assignment/docs/experiments.md`](../../@20261007_assignment/docs/experiments.md) §5、§6）。**S4 后**：触发改成"每条反馈 / `sim_time` 增量"，CPU 抢不到时表现为仿真整体变慢（`realtime:=true`）而不是策略周期变长；边界从"时间基不匹配"移到"吞吐"（推理 0.08 ms + 控制 <1 ms，余量极大）。
 2. **渲染/光栅化时间膨胀**（更大窗口、更大阴影贴图、MSAA）：窗口路径每帧把物理"补齐到墙钟"，上限 `kMaxCatchupSteps = 200` 步（0.4 s 仿真时间）；撞上限后**静默**变成慢动作（guard 退出、没有告警），落后超过 `kMaxLagSeconds = 0.2 s` 就重新对齐、不追这一段（`sim_node.cpp:1009-1023`）。唯一能看出来的是那条每 5 s 的实测倍率行。**S6/P3-b 拆线程后**物理不再被渲染挡，膨胀只影响画面帧率。
 3. **换更高刷新率的机器**（144 Hz）：窗口路径由 vsync 决定、物理照墙钟补步 → **仿真时间轴仍是 1.0x**，只是每帧补的步数变少（144 Hz ≈ 3.5 步/帧 vs 60 Hz ≈ 8.3 步）。所以换高刷机器**对时基无害**；真正的边界是"每帧渲染工作 > 刷新间隔"时掉档。
-4. **反馈流中断**（sim 节点挂住、被杀、DDS 停发）：`MotorStateCallback` 只是拷贝（`rl_sim.cpp:311-314`），**没有任何陈旧检测** → rl_sim 继续用最后一帧状态推理、继续发 `/mit_command`；仿真看门狗只管"命令有没有来"、不管"状态是不是旧的"。**这是现状最薄的一环**：错误状态会一直保持到人发现。建议见 14.4。
-5. **指令流中断**（rl_sim 挂/被杀）：仿真侧看门狗兜底 —— 100 步 = 200 ms 仿真时间没收到 `/mit_command` 就退回阻尼 ✓。
+4. **反馈流中断**（sim 节点挂住、被杀、DDS 停发）：`MotorStateCallback()` 只是拷贝（`rl_sim.cpp`），**没有任何陈旧检测** → 按 S4 的时基，反馈一断控制就一步都不跑（斜坡定格），`SIGCONT`/恢复后接着跑（实测见 [`control-stack-rates.md`](../../@20261007_assignment/docs/control-stack-rates.md) §4）；仿真侧这时也**不会**自己退回阻尼（它的看门狗同样不生效，见第 5 条），所以 S5 的「陈旧检测 + 退回阻尼」是必需的。
+5. **指令流中断**（rl_sim 挂/被杀）：**目前没有兜底**——设计里的仿真侧看门狗（100 步 = 200 ms 仿真时间）实测不生效（`SIGSTOP` rl_sim 1.5 s 期间状态行一直 `cmd=ok`），仿真会一直沿用最后一条 `/mit_command`；见 [`control-stack-rates.md`](../../@20261007_assignment/docs/control-stack-rates.md) §4 的跨任务发现。
 6. **网络丢包 / 跨机**：今天 `ROS_LOCALHOST_ONLY="1"`（`pixi.toml:38`），全在本机回环；假设改成跨机，三条高频流都是 best_effort + `KeepLast(1)`，丢一条只等于"少一帧"，不会积压、不会重传放大；`/joy` 是 reliable，不丢但可能积压。**结论：零星丢包不是边界，"静默中断"（第 4、7 条）才是**。可观测手段：`ros2 topic hz` / `ros2 topic delay`。
 7. **手柄拔掉 / joy_node 死掉**：拔掉 → `joy_node` 的 `disconnect()` 把 axes/buttons **归零**并继续 100 Hz 发布（`frame_id = "joy_disconnected"`），速度指令归零、狗站住 ✓；但 **joy_node 进程死掉**（不再有任何 `/joy`）时，rl_sim 没有任何超时，会一直用最后一帧——如果最后一帧是"前进 1 m/s"，狗就一直走。**边界靠人发现**。
 8. **暂停 / 慢放 / 快放**（人主动改时间流速）：暂停无影响（策略对着冻住的状态继续推理）；慢放会让狗比指令更快（10% 速度时 1.711 m/s）；快放 ≥3 倍摔 —— 全部见 experiments §5。**S4 后三种情形自动正确**。
