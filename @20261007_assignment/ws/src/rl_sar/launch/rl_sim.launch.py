@@ -1,20 +1,21 @@
-"""一键启动大作业的三个节点：仿真节点 + 手柄节点（都来自 @20261005_ros2）+ rl_sim（本包）。
+"""Launch the three nodes of the assignment: sim_node + joy_node (both from @20261005_ros2) + rl_sim.
 
-与 @20261005_ros2 的 bringup.launch.py 相比，只是把 controller_node 换成了 rl_sim——
-仿真节点与手柄节点原样复用，话题接口不变（数据流见任务 README）。
+Same topic interface as @20261005_ros2's bringup.launch.py, with rl_sim in place of controller_node
+(data flow in the task README).
 
-用法（仓库根目录）：
+Usage (from the repository root):
 
-    pixi run ros2 launch rl_sar rl_sim.launch.py                     # 开窗口（默认）
-    pixi run ros2 launch rl_sar rl_sim.launch.py viewer:=false       # 无窗口
-    pixi run ros2 launch rl_sar rl_sim.launch.py rl:=false           # 不起 rl_sim，另开终端
-                                                                     # `pixi run ros2 run rl_sar rl_sim` 用键盘操作
+    pixi run ros2 launch rl_sar rl_sim.launch.py                    # with the MuJoCo window (default)
+    pixi run ros2 launch rl_sar rl_sim.launch.py viewer:=false      # headless
+    pixi run ros2 launch rl_sar rl_sim.launch.py rl:=false          # no rl_sim; start it yourself to use
+                                                                    # the keyboard: `pixi run ros2 run rl_sar rl_sim`
 
-注：**rl_sim 的键盘操作只在它自己独占终端时有效**（它直接读 stdin 而 launch 不把终端交给子进程），
-所以要用键盘就按上面第三行分开起。手柄（或仿真手柄）在 launch 里就能用。
+rl_sim reads stdin directly, so its keyboard controls only work when it owns a terminal - that is why
+the keyboard needs the third form above. A gamepad (or the virtual pad) works through this launch file.
 
-`realtime` 默认 true 且**不要改成 false**：rl_sim 按墙钟每 20 ms 推理一次，仿真必须按真实时间走，
-两边的"20 ms"才是同一个 20 ms（实验与结论见 docs/experiments.md）。
+`realtime:=false` (full speed) also works: since S4 the control stack is paced by the sim_time carried
+in /motor_state (control every 5 ms, inference every 20 ms of sim time), so the policy period does not
+depend on how fast the sim runs - measured 7/7 at 25x. Rate table: @20261007_assignment/docs/control-stack-rates.md.
 """
 
 from launch import LaunchDescription
@@ -36,14 +37,14 @@ def generate_launch_description() -> LaunchDescription:
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument("rl", default_value="true", description="是否起 rl_sim（键盘操作时设 false，另开终端单独起）"),
-            DeclareLaunchArgument("joy", default_value="true", description="是否起手柄节点"),
-            DeclareLaunchArgument("scene", default_value="", description="场景 xml；空 = 仿真节点默认（@20261005_ros2/scenes/flat_scene.xml）"),
-            DeclareLaunchArgument("start", default_value="raw", description="仿真起点：raw / rest"),
-            DeclareLaunchArgument("viewer", default_value="true", description="是否开 MuJoCo 窗口"),
-            DeclareLaunchArgument("realtime", default_value="true", description="仿真按真实时间走（rl_sim 依赖它，保持 true）"),
-            DeclareLaunchArgument("device", default_value="", description="手柄设备路径；空 = 自动获取"),
-            DeclareLaunchArgument("joy_command_scale", default_value="1.5", description="摇杆满偏对应的速度指令 [m/s、rad/s]"),
+            DeclareLaunchArgument("rl", default_value="true", description="start rl_sim? set false to run it in its own terminal (keyboard)"),
+            DeclareLaunchArgument("joy", default_value="true", description="start the joy node?"),
+            DeclareLaunchArgument("scene", default_value="", description="scene xml; empty = sim_node default (@20261005_ros2/scenes/flat_scene.xml)"),
+            DeclareLaunchArgument("start", default_value="raw", description="sim start pose: raw / rest"),
+            DeclareLaunchArgument("viewer", default_value="true", description="open the MuJoCo window?"),
+            DeclareLaunchArgument("realtime", default_value="true", description="run the sim in real time (false = full speed; the control stack handles both)"),
+            DeclareLaunchArgument("device", default_value="", description="gamepad device path; empty = auto"),
+            DeclareLaunchArgument("joy_command_scale", default_value="1.5", description="stick full deflection maps to this command [m/s, rad/s]"),
             Node(
                 package="quadruped_ros2",
                 executable="sim_node",

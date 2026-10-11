@@ -160,9 +160,9 @@ public:
         }
         if (rl.running_percent == 1.0f)
         {
-            // 站完之后"按一下"或"一直按着"都能进 RL / 趴下：上游靠锁存状态让"提前按住"侥幸生效，
-            // 这里改成显式的电平查询（`Held`），并且只在 running_percent == 1.0f 这道闸门后面用，
-            // 所以不会反复触发。见 docs/porting.md §6.2。
+            // After the ramp, a fresh press or simply holding the keys enters RL / lies down. Upstream's
+            // sticky latch made "press early and hold" work by accident; here it is an explicit level query
+            // (`Held`), used only behind the running_percent == 1.0f gate so it cannot re-fire.
             if (seen_.HasOrHeld(input_map::Intent::EnterRL))
             {
                 return "RLFSMStateRL_Locomotion";

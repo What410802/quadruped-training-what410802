@@ -74,9 +74,8 @@ RL_Sim::RL_Sim()
         "cmd_vel", rclcpp::SystemDefaultsQoS(),
         [this] (const geometry_msgs::msg::Twist::SharedPtr msg) {this->CmdvelCallback(msg);}
     );
-    // 相对名（P2-a）：本节点原来是全仓唯一用绝对名的节点（`/joy`、`/cmd_vel`），
-    // 那样 `--namespace` 只能搬走一半话题；改成相对名后无命名空间时仍是 `/joy`、`/cmd_vel`，
-    // 与 @20261005_ros2 的 sim/controller/joy 节点（都已是相对名）一起可以整体搬。
+    // Relative topic names (P2-a): with absolute names a --namespace could move only half of the stack.
+    // Without a namespace these still resolve to /joy, /cmd_vel, ... - see docs/porting.md §4.
     this->joy_subscriber = this->create_subscription<sensor_msgs::msg::Joy>(
         "joy", rclcpp::SystemDefaultsQoS(),
         [this] (const sensor_msgs::msg::Joy::SharedPtr msg) {this->JoyCallback(msg);}
@@ -94,11 +93,13 @@ RL_Sim::RL_Sim()
     auto empty_request = std::make_shared<std_srvs::srv::Empty::Request>();
     auto result = this->sim_reset_client->async_send_request(empty_request);
 
-    // loop
-    this->loop_control = std::make_shared<LoopFunc>("loop_control", this->params.dt, std::bind(&RL_Sim::RobotControl, this));
-    this->loop_rl = std::make_shared<LoopFunc>("loop_rl", this->params.dt * this->params.decimation, std::bind(&RL_Sim::RunModel, this));
-    this->loop_control->start();
-    this->loop_rl->start();
+    // S4: no wall-clock loop for control or inference any more. /motor_state drives both through
+    // ControlStep(): control every `dt` = 5 ms of SIM time, inference every `decimation` control cycles
+    // (20 ms). Pause / slow-motion / fast-forward therefore behave, and everything runs on the ROS
+    // executor thread (races gone) - docs/porting.md §5/§7. Only the keyboard keeps a 50 ms wall loop.
+    std::cout << LOGGER::INFO << "Feedback-driven clock (sim time): control every " << this->params.dt * 1000.0
+              << " ms, inference every " << this->params.dt * this->params.decimation * 1000.0
+              << " ms; nothing runs while no feedback arrives" << std::endl;
 
     // keyboard
     this->loop_keyboard = std::make_shared<LoopFunc>("loop_keyboard", 0.05, std::bind(&RL_Sim::KeyboardInterface, this));
@@ -114,8 +115,6 @@ RL_Sim::RL_Sim()
 RL_Sim::~RL_Sim()
 {
     this->loop_keyboard->shutdown();
-    this->loop_control->shutdown();
-    this->loop_rl->shutdown();
     std::cout << LOGGER::INFO << "RL_Sim exit" << std::endl;
 }
 
@@ -152,6 +151,23 @@ void RL_Sim::SetCommand(const RobotCommand<double> *command)
         this->mit_command_msg.kd[this->params.joint_mapping[i]] = command->motor_command.kd[i];
         this->mit_command_msg.tau[this->params.joint_mapping[i]] = command->motor_command.tau[i];
     }
+
+    // S4: publish only when the target changes - the policy output is constant between inferences, so at
+    // full speed this drops /mit_command from one per control cycle to one per 20 ms of sim time. The
+    // heartbeat keeps the sim's watchdog fed (100 steps = 200 ms of sim time; we send every 100 ms).
+    constexpr int kCommandHeartbeatCycles = 20;
+    const bool changed = !this->command_sent_once || this->mit_command_msg.q != this->last_sent_command.q
+        || this->mit_command_msg.kp != this->last_sent_command.kp
+        || this->mit_command_msg.kd != this->last_sent_command.kd
+        || this->mit_command_msg.w != this->last_sent_command.w
+        || this->mit_command_msg.tau != this->last_sent_command.tau;
+    if (!changed && ++this->cycles_since_command_publish < kCommandHeartbeatCycles)
+    {
+        return;
+    }
+    this->cycles_since_command_publish = 0;
+    this->command_sent_once = true;
+    this->last_sent_command = this->mit_command_msg;
 
     this->mit_command_msg.header.stamp = this->now();
     this->mit_command_publisher->publish(this->mit_command_msg);
@@ -290,6 +306,44 @@ void RL_Sim::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
 void RL_Sim::MotorStateCallback(const quadruped_ros2::msg::MotorState::SharedPtr msg)
 {
     this->motor_state_msg = *msg;
+
+    // S4: the feedback is the clock - each /motor_state drives the control step below.
+    this->ControlStep(msg->sim_time);
+}
+
+void RL_Sim::ControlStep(double sim_time)
+{
+    // Both control and inference are paced by SIM time - not by "one step per feedback message" and not
+    // by the wall clock: control every `params.dt` (5 ms), inference every `decimation` control cycles
+    // (20 ms). That keeps the work per simulated second constant, and nothing runs while no feedback
+    // arrives. Control-per-message instead pushed the feedback to 4-5 kHz at full speed (and /mit_command
+    // with it) until the two ends starved each other - see docs/porting.md §2 item 18.
+    const double control_period = this->params.dt;
+
+    if (this->last_control_sim_time < 0.0 || sim_time < this->last_control_sim_time
+        || sim_time - this->last_control_sim_time > 10.0 * control_period)
+    {
+        // First frame / sim time went backwards / feedback gap over 10 periods: re-anchor, do not catch up.
+        this->last_control_sim_time = sim_time;
+        this->cycles_since_inference = 0;
+        return;
+    }
+    if (sim_time - this->last_control_sim_time < control_period)
+    {
+        return;   // next control period not reached yet
+    }
+
+    // Catch up along sim time: normally one step per feedback frame, at most 10 after dropped ones.
+    while (sim_time - this->last_control_sim_time >= control_period)
+    {
+        this->last_control_sim_time += control_period;
+        this->RobotControl();
+        if (++this->cycles_since_inference >= this->params.decimation)
+        {
+            this->cycles_since_inference = 0;
+            this->RunModel();
+        }
+    }
 }
 
 void RL_Sim::RunModel()

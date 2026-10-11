@@ -1,12 +1,13 @@
 /*
  * New file for @20261007_assignment - no upstream counterpart (package LICENSE covers it).
  *
- * Self-test for include/input_map.hpp: feeds synthetic frames and asserts the resolved intents.
- * It needs no ROS graph, no sim and no hardware - that is the point of moving the key map into a
- * pure function (status.md S3.5). Run it with:
+ * Self-test for include/input_map.hpp: feeds synthetic frames and asserts the resolved intents. It
+ * needs no ROS graph, no sim and no hardware - the point of moving the key map into a pure function
+ * (status.md S3.5). Case names are kept short and English to match the rest of the package; the
+ * Chinese explanation of each group is in docs/experiments.md §7 and docs/porting.md §6.2. Run it with:
  *
- *     pixi run ros2 run rl_sar input_map_selftest          # 直接跑（最方便）
- *     pixi run bash -lc 'cd @20261007_assignment/ws && colcon test --packages-select rl_sar'   # 走 CTest
+ *     pixi run ros2 run rl_sar input_map_selftest          # direct, most convenient
+ *     pixi run bash -lc 'cd @20261007_assignment/ws && colcon test --packages-select rl_sar'   # via CTest
  *
  * Exit code 0 = all cases pass, 1 = at least one failed (printed with the observed intents).
  */
@@ -88,73 +89,73 @@ int main()
 {
     std::printf("input_map self-test\n");
 
-    std::printf("① 上升沿天生一次性\n");
-    Check("空闲", Step(0), 0);
-    Check("按 A", Step(A), I(Intent::StandUp));
-    Check("A 一直按着（不应重复）", Step(A), 0);
-    Check("松开 A", Step(0), 0);
-    Check("再按 A（应再来一次）", Step(A), I(Intent::StandUp));
+    std::printf("1. edges are one-shot by construction\n");
+    Check("idle", Step(0), 0);
+    Check("press A", Step(A), I(Intent::StandUp));
+    Check("A still held (no repeat)", Step(A), 0);
+    Check("release A", Step(0), 0);
+    Check("press A again", Step(A), I(Intent::StandUp));
 
-    std::printf("② 锁存的十字键不再吞按键（P1-h 的回归用例）\n");
-    Check("十字键下一直锁存", Step(DOWN), 0);
-    Check("锁存着下 + 按 A", Step(DOWN | A), I(Intent::StandUp));
-    Check("A 松开、十字键还锁着", Step(DOWN), 0);
-    Check("锁存着下 + 按 B", Step(DOWN | B), I(Intent::LieDown));
+    std::printf("2. a latched D-pad must not swallow buttons (P1-h regression)\n");
+    Check("D-pad down latched", Step(DOWN), 0);
+    Check("latched down + press A", Step(DOWN | A), I(Intent::StandUp));
+    Check("release A, D-pad still latched", Step(DOWN), 0);
+    Check("latched down + press B", Step(DOWN | B), I(Intent::LieDown));
 
-    std::printf("③ 组合键（十字键是普通 bit，不是特例）\n");
-    Check("先按住 RB", Step(RB), 0);
-    Check("再按十字键上 → RB+↑ = 进 RL", Step(RB | UP), I(Intent::EnterRL));
-    Check("两者都按住（不应重复）", Step(RB | UP), 0);
-    Check("松开十字键", Step(RB), 0);
-    Check("再按一次十字键上 → 又一次进 RL", Step(RB | UP), I(Intent::EnterRL));
-    Check("只按十字键上（没绑行为）", Step(UP), 0);
-    Check("先按 LB 再按 X → 阻尼 + 导航翻转（X 本身有绑定）",
+    std::printf("3. combinations (the hat is just another bit)\n");
+    Check("hold RB", Step(RB), 0);
+    Check("then D-pad up -> RB+up = EnterRL", Step(RB | UP), I(Intent::EnterRL));
+    Check("both held (no repeat)", Step(RB | UP), 0);
+    Check("release D-pad", Step(RB), 0);
+    Check("D-pad up again -> EnterRL again", Step(RB | UP), I(Intent::EnterRL));
+    Check("D-pad up alone (unbound)", Step(UP), 0);
+    Check("LB + X -> Damp and ToggleNavigation (X is bound too)",
           Step(LB | X), I(Intent::Damp) | I(Intent::ToggleNavigation));
 
-    std::printf("③b 电平查询 Held()：给「提前按住、站完再生效」这种手势用\n");
+    std::printf("3b. level query Held() for press-early-and-hold gestures\n");
     Step(RB | UP);
-    ExpectTrue("RB+↑ 按住时 Held(EnterRL) 为真", input_map::Held(Intent::EnterRL));
+    ExpectTrue("Held(EnterRL) while RB+up is down", input_map::Held(Intent::EnterRL));
     Step(RB);
-    ExpectTrue("松开十字键后 Held(EnterRL) 为假", !input_map::Held(Intent::EnterRL));
-    ExpectTrue("Held(StandUp) 此时为假（没有按住 A）", !input_map::Held(Intent::StandUp));
+    ExpectTrue("Held(EnterRL) false after releasing D-pad", !input_map::Held(Intent::EnterRL));
+    ExpectTrue("Held(StandUp) false (A not held)", !input_map::Held(Intent::StandUp));
 
-    std::printf("④ 按着 RB 再按 A：A 照样生效（旧模型会变成没人认的 RB_A）\n");
-    Check("按住 RB", Step(RB), 0);
-    Check("RB 还按着时按 A", Step(RB | A), I(Intent::StandUp));
-    Check("松开 A（RB 仍按着）", Step(RB), 0);
+    std::printf("4. holding RB while pressing A still fires A\n");
+    Check("hold RB", Step(RB), 0);
+    Check("press A while RB is held", Step(RB | A), I(Intent::StandUp));
+    Check("release A (RB still held)", Step(RB), 0);
 
-    std::printf("⑤ 复位组合 RB+Y 与单键 X\n");
-    Check("RB+Y → 复位", Step(RB | Y), I(Intent::ResetSim));
-    Check("X → 导航模式", Step(X), I(Intent::ToggleNavigation));
+    std::printf("5. reset combo and single-key bindings\n");
+    Check("RB+Y -> ResetSim", Step(RB | Y), I(Intent::ResetSim));
+    Check("X -> ToggleNavigation", Step(X), I(Intent::ToggleNavigation));
 
-    std::printf("⑥ 键盘源：单值锁存，变化即「按下」（终端不报抬起）\n");
-    Check("按 0 → 起身", Step(0, Bit(KbKey::Num0)), I(Intent::StandUp));
-    Check("0 一直是最后一个键（不应重复）", Step(0, Bit(KbKey::Num0)), 0);
-    Check("按 W → 前进微调", Step(0, Bit(KbKey::W)), I(Intent::JogForward));
-    Check("再按 1 → 进 RL", Step(0, Bit(KbKey::Num1)), I(Intent::EnterRL));
-    Check("按空格 → 清零", Step(0, Bit(KbKey::Space)), I(Intent::ZeroCommand));
+    std::printf("6. keyboard source: single-value latch, a change is a press\n");
+    Check("press 0 -> StandUp", Step(0, Bit(KbKey::Num0)), I(Intent::StandUp));
+    Check("0 still the last key (no repeat)", Step(0, Bit(KbKey::Num0)), 0);
+    Check("press W -> JogForward", Step(0, Bit(KbKey::W)), I(Intent::JogForward));
+    Check("press 1 -> EnterRL", Step(0, Bit(KbKey::Num1)), I(Intent::EnterRL));
+    Check("press space -> ZeroCommand", Step(0, Bit(KbKey::Space)), I(Intent::ZeroCommand));
 
-    std::printf("⑦ 手柄与键盘可以同时产生意图\n");
-    Check("手柄 A + 键盘 1", Step(A, Bit(KbKey::Num1)), I(Intent::StandUp) | I(Intent::EnterRL));
+    std::printf("7. pad and keyboard can fire in the same cycle\n");
+    Check("pad A + keyboard 1", Step(A, Bit(KbKey::Num1)), I(Intent::StandUp) | I(Intent::EnterRL));
 
-    std::printf("⑧ 轴的映射：十字键上/右为正，且能当 bit 用\n");
-    ExpectTrue("axes[7]=+1 → DPadUp 置位",
+    std::printf("8. axes mapping: hat up/right positive, usable as bits\n");
+    ExpectTrue("axes[7]=+1 -> DPadUp",
                input_map::PadMaskFromJoy({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 1}) == UP);
-    ExpectTrue("axes[7]=-1 → DPadDown 置位",
+    ExpectTrue("axes[7]=-1 -> DPadDown",
                input_map::PadMaskFromJoy({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, -1}) == DOWN);
-    ExpectTrue("axes[6]=+1 → DPadRight 置位",
+    ExpectTrue("axes[6]=+1 -> DPadRight",
                input_map::PadMaskFromJoy({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 1, 0}) ==
                Bit(PadKey::DPadRight));
-    ExpectTrue("buttons[5] → RB",
+    ExpectTrue("buttons[5] -> RB",
                input_map::PadMaskFromJoy({0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0}, {}) == RB);
-    ExpectTrue("长度不够（旧固件只发 6 个按钮）→ 不当成任何按键",
+    ExpectTrue("too-short message is not treated as any key",
                input_map::PadMaskFromJoy({1, 0, 0}, {0, 0, 0}) == 0);
 
     if (g_failures == 0)
     {
-        std::printf("结论：全部通过 ✓\n");
+        std::printf("result: all checks passed\n");
         return 0;
     }
-    std::printf("结论：%d 项未通过 ✗\n", g_failures);
+    std::printf("result: %d check(s) failed\n", g_failures);
     return 1;
 }

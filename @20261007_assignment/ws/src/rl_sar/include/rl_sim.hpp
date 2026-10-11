@@ -48,14 +48,21 @@ private:
     // input: the raw frame is stored here, resolved to intents once per cycle (input_map.hpp, S3.5)
     bool have_joy_frame = false;
 
+    // S4 feedback clock: control and inference are paced by SIM time, anchored on /motor_state.
+    // -1 = not initialised yet (the first feedback frame only aligns the beat).
+    double last_control_sim_time = -1.0;
+    int cycles_since_inference = 0;
+    int cycles_since_command_publish = 0;
+    bool command_sent_once = false;
+    quadruped_ros2::msg::MitCommand last_sent_command;
+
     // status line (node parameter; 0 = off)
     int status_period_ms = 0;
     std::chrono::steady_clock::time_point last_status_print{};
 
     // loop
     std::shared_ptr<LoopFunc> loop_keyboard;
-    std::shared_ptr<LoopFunc> loop_control;
-    std::shared_ptr<LoopFunc> loop_rl;
+    // S4: control/inference no longer use wall-clock LoopFuncs; only the keyboard poll remains.
 
     // ros interface
     sensor_msgs::msg::Imu imu_msg;
@@ -74,6 +81,7 @@ private:
     void MotorStateCallback(const quadruped_ros2::msg::MotorState::SharedPtr msg);
     void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg);
     std::uint32_t KeyboardMask() const;
+    void ControlStep(double sim_time);
 
     // others
     int motiontime = 0;

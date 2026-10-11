@@ -4,15 +4,18 @@
 # Modified for @20261007_assignment: written for our robot "black" after upstream
 # policy/go2/base.yaml (rl_sar e5c2f41). Field-by-field sources: docs/porting.md §3.
 
-# 机器人级参数：状态机（趴下 / 起身 / 阻尼）用它；RL 那一套另读 himloco/config.yaml。
-# 所有 12 维数组都是**策略顺序** FL / FR / RL / RR × hip / thigh / calf（见 joint_names）。
+# Robot-level parameters read by the FSM (passive damping / get up / get down). The RL path reads
+# himloco/config.yaml instead. Every 12-element array is in POLICY order: FL / FR / RL / RR x
+# hip / thigh / calf (see joint_names).
 
 black:
-  # 控制环 5 ms、策略每 4 个控制周期推一次（50 Hz）——HIMLoco 训练时的 sim dt × decimation。
-  # 大作业给的 config 没写这两项，取主办方 rl_sar 分支 policy/black/base.yaml 的值。
+  # Not in the assignment config; values taken from the organiser fork's policy/black/base.yaml.
+  # S4: control and inference are paced by the feedback's sim_time, so `dt` is the CONTROL period
+  # (5 ms of sim time) and `decimation` is how many control cycles make one policy step: 4 x 5 = 20 ms,
+  # the value HIMLoco was trained with. Both must keep that product.
   dt: 0.005
   decimation: 4
-  # 起身 / 趴下用的 PD 增益：与主办方分支一致，也与上一版控制器（@20261005_ros2）的 kp 80 / kd 3 相同。
+  # PD gains for get up / get down: same as the organiser fork and as the previous controller.
   fixed_kp: [80.0, 80.0, 80.0,
              80.0, 80.0, 80.0,
              80.0, 80.0, 80.0,
@@ -23,17 +26,18 @@ black:
              3.0, 3.0, 3.0]
   num_of_dofs: 12
   wheel_indices: []
-  # 下面四个键上游没有（值以前写死在 policy/black/fsm.hpp 里）：加进 base.yaml 是为了实机整定
-  # 起身时长与被动阻尼时不必重新编译。改完重启节点生效（base.yaml 只在构造时读一次）。
-  kd_passive: 8.0          # Passive 状态的 kd（kp=0；上游 README 的 "Motor passive mode (kp=0, kd=8)"）
-  getup_pre_cycles: 200    # 起身前"蹲姿"斜坡的控制周期数（5 ms/周期 → 1.0 s）
-  getup_cycles: 400        # 起身斜坡（5 ms/周期 → 2.0 s）
-  getdown_cycles: 500      # 趴下斜坡（5 ms/周期 → 2.5 s）
+  # The four keys below do not exist upstream (they were hard-coded in policy/black/fsm.hpp); they live
+  # here so tuning the get-up timing or the passive damping needs no recompile. Read once at
+  # construction - restart the node to apply.
+  kd_passive: 8.0          # kd in the passive state (kp = 0), as in upstream's README
+  getup_pre_cycles: 200    # control cycles for the pre-get-up crouch ramp (5 ms each -> 1.0 s)
+  getup_cycles: 400        # control cycles for the get-up ramp (5 ms each -> 2.0 s)
+  getdown_cycles: 500      # control cycles for the get-down ramp (5 ms each -> 2.5 s)
   torque_limits: [33.5, 33.5, 33.5,
                   33.5, 33.5, 33.5,
                   33.5, 33.5, 33.5,
                   33.5, 33.5, 33.5]
-  # 站姿 = 大作业 config 的 default_dof_pos（起身的终点，也是 RL 动作的零点）。
+  # Stance = default_dof_pos of the assignment config: the get-up target and the zero of RL actions.
   default_dof_pos: [0.0, 0.8014, -1.527,
                     -0.0, -0.8014, 1.527,
                     0.0, 0.8014, -1.527,
@@ -42,11 +46,11 @@ black:
                 FR_hip_joint, FR_thigh_joint, FR_calf_joint,
                 RL_hip_joint, RL_thigh_joint, RL_calf_joint,
                 RR_hip_joint, RR_thigh_joint, RR_calf_joint]
-  # ROS 1 / Gazebo 才用；ReadYamlBase() 无条件读它，所以保留（名字照上游的写法）。
+  # Only used by ROS 1 / Gazebo, but ReadYamlBase() reads it unconditionally, so keep it (upstream name).
   joint_controller_names: [FL_hip_controller, FL_thigh_controller, FL_calf_controller,
                            FR_hip_controller, FR_thigh_controller, FR_calf_controller,
                            RL_hip_controller, RL_thigh_controller, RL_calf_controller,
                            RR_hip_controller, RR_thigh_controller, RR_calf_controller]
-  # joint_mapping[策略下标] = 仿真消息里的下标。仿真（@20261005_ros2 的执行器顺序）是
-  # FL / FR / RR / RL，策略是 FL / FR / RL / RR：前两条腿对齐，后两条腿互换。
+  # joint_mapping[policy index] = index in the sim message. The sim (@20261005_ros2 actuator order) is
+  # FL / FR / RR / RL while the policy is FL / FR / RL / RR: the first two legs match, the last two swap.
   joint_mapping: [0, 1, 2, 3, 4, 5, 9, 10, 11, 6, 7, 8]
