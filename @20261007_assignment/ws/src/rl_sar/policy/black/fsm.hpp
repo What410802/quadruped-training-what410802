@@ -14,6 +14,8 @@
 
 #include "black/knobs.hpp"
 
+#include "input_map.hpp"
+
 #include <algorithm>
 #include <iostream>
 #include <string>
@@ -24,31 +26,36 @@ namespace black_fsm
 // This robot has one policy config; upstream hardcodes the same literal inside the RL state.
 inline constexpr const char *kPolicyConfigName = "himloco";
 
-/// Clear the latched keyboard/gamepad state when a state is entered.
+/// Transitions read the intents resolved from the raw inputs (input_map.hpp) instead of the library's
+/// single-value latch. An intent is an edge, so it exists for exactly one control cycle - and only for
+/// the state that was active when the key was pressed, which is the rule P1-g had to add by hand.
 ///
-/// library/core's Input only records *changes* (`SetGamepad` ignores a repeated value) and nothing ever
-/// resets it when a button is released, so a value left over from the gesture that caused the transition
-/// is still "pressed" for every later check. Concretely: press gamepad A to stand up, then enter RL with
-/// keyboard `1` - RL's `A -> GetUp` branch fires on the first cycle and the robot bounces RL -> GetUp ->
-/// RL forever. Clearing on entry makes every transition depend only on presses made *while in that
-/// state*; a button that is *held* still fires later, because holding it does not change the latched
-/// value. See @20261007_assignment/docs/status.md P1-g.
-inline void ClearInputState(RL &rl)
+/// Some transitions additionally wait for a condition (GetUp waits for its 3 s ramp), and a user may
+/// well press the key a moment *before* that condition is met. So each state accumulates the intents it
+/// has seen since it was entered: "pressed while in this state" counts even if the gate was still
+/// closed, and the accumulator is cleared on every enter/use - the same contract upstream's sticky
+/// latch gave by accident, but explicit and bounded to one state.
+struct SeenIntents
 {
-    rl.control.current_keyboard = Input::Keyboard::None;
-    rl.control.last_keyboard = Input::Keyboard::None;
-    rl.control.current_gamepad = Input::Gamepad::None;
-    rl.control.last_gamepad = Input::Gamepad::None;
-}
+    input_map::IntentMask mask = 0;
+
+    void Reset() { mask = 0; }
+    void Tick() { mask |= input_map::Current().intents; }
+    bool Has(input_map::Intent intent) const { return (mask & input_map::Mask(intent)) != 0; }
+    /// Edge seen while in this state, or the keys are simply still held (covers "was already holding
+    /// the combination when the state was entered").
+    bool HasOrHeld(input_map::Intent intent) const { return Has(intent) || input_map::Held(intent); }
+};
 
 class RLFSMStatePassive : public RLFSMState
 {
 public:
+    SeenIntents seen_;
     RLFSMStatePassive(RL *rl) : RLFSMState(*rl, "RLFSMStatePassive") {}
 
     void Enter() override
     {
-        ClearInputState(rl);
+        seen_.Reset();
         rl.running_percent = 0.0f;
         // Startup check: both files are on disk, so a mismatch is visible before the robot moves.
         WarnIfBaseConfigMismatch(rl.robot_name, kPolicyConfigName);
@@ -71,7 +78,8 @@ public:
 
     std::string CheckChange() override
     {
-        if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+        seen_.Tick();
+        if (seen_.Has(input_map::Intent::StandUp))
         {
             return "RLFSMStateGetUp";
         }
@@ -82,6 +90,7 @@ public:
 class RLFSMStateGetUp : public RLFSMState
 {
 public:
+    SeenIntents seen_;
     RLFSMStateGetUp(RL *rl) : RLFSMState(*rl, "RLFSMStateGetUp") {}
 
     float pre_running_percent = 0.0f;
@@ -98,7 +107,7 @@ public:
 
     void Enter() override
     {
-        ClearInputState(rl);
+        seen_.Reset();
         pre_running_percent = 0.0f;
         rl.running_percent = 0.0f;
         rl.now_state = *fsm_state;
@@ -144,17 +153,21 @@ public:
 
     std::string CheckChange() override
     {
-        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        seen_.Tick();
+        if (seen_.Has(input_map::Intent::Damp))
         {
             return "RLFSMStatePassive";
         }
         if (rl.running_percent == 1.0f)
         {
-            if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
+            // 站完之后"按一下"或"一直按着"都能进 RL / 趴下：上游靠锁存状态让"提前按住"侥幸生效，
+            // 这里改成显式的电平查询（`Held`），并且只在 running_percent == 1.0f 这道闸门后面用，
+            // 所以不会反复触发。见 docs/porting.md §6.2。
+            if (seen_.HasOrHeld(input_map::Intent::EnterRL))
             {
                 return "RLFSMStateRL_Locomotion";
             }
-            else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+            else if (seen_.HasOrHeld(input_map::Intent::LieDown))
             {
                 return "RLFSMStateGetDown";
             }
@@ -166,11 +179,12 @@ public:
 class RLFSMStateGetDown : public RLFSMState
 {
 public:
+    SeenIntents seen_;
     RLFSMStateGetDown(RL *rl) : RLFSMState(*rl, "RLFSMStateGetDown") {}
 
     void Enter() override
     {
-        ClearInputState(rl);
+        seen_.Reset();
         rl.running_percent = 0.0f;
         rl.now_state = *fsm_state;
     }
@@ -198,11 +212,12 @@ public:
 
     std::string CheckChange() override
     {
-        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X || rl.running_percent == 1.0f)
+        seen_.Tick();
+        if (seen_.Has(input_map::Intent::Damp) || rl.running_percent == 1.0f)
         {
             return "RLFSMStatePassive";
         }
-        else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+        else if (seen_.Has(input_map::Intent::StandUp))
         {
             return "RLFSMStateGetUp";
         }
@@ -213,11 +228,12 @@ public:
 class RLFSMStateRL_Locomotion : public RLFSMState
 {
 public:
+    SeenIntents seen_;
     RLFSMStateRL_Locomotion(RL *rl) : RLFSMState(*rl, "RLFSMStateRL_Locomotion") {}
 
     void Enter() override
     {
-        ClearInputState(rl);
+        seen_.Reset();
         rl.episode_length_buf = 0;
 
         // One-off cue: S1 moved the old 200 Hz "RL Controller ..." status line into RL_Sim's
@@ -277,21 +293,18 @@ public:
 
     std::string CheckChange() override
     {
-        if (rl.control.current_keyboard == Input::Keyboard::P || rl.control.current_gamepad == Input::Gamepad::LB_X)
+        seen_.Tick();
+        if (seen_.Has(input_map::Intent::Damp))
         {
             return "RLFSMStatePassive";
         }
-        else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+        else if (seen_.Has(input_map::Intent::LieDown))
         {
             return "RLFSMStateGetDown";
         }
-        else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
+        else if (seen_.Has(input_map::Intent::StandUp))
         {
             return "RLFSMStateGetUp";
-        }
-        else if (rl.control.current_keyboard == Input::Keyboard::Num1 || rl.control.current_gamepad == Input::Gamepad::RB_DPadUp)
-        {
-            return "RLFSMStateRL_Locomotion";
         }
         return state_name_;
     }

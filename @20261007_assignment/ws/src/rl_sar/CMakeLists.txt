@@ -47,6 +47,19 @@ target_link_libraries(rl_sim rl_sdk)
 ament_target_dependencies(rl_sim rclcpp sensor_msgs geometry_msgs std_srvs quadruped_ros2)
 
 install(TARGETS rl_sim DESTINATION lib/${PROJECT_NAME})
+
+# 输入层自检（status.md S3.5）：只依赖 include/input_map.hpp，不需要 ROS 图、仿真或手柄。
+# 放在 test/ 而不是 src/：它不是节点的一部分（同 ament 惯例，见 @20260927_motor/cpp_part2_remake/CMakeLists.txt
+# 的 include(CTest) 用法）。**无条件构建**，这样 `pixi run ros2 run rl_sar input_map_selftest` 这个最方便的
+# 入口永远在；CTest 注册放在 BUILD_TESTING 里，于是 `colcon test --packages-select rl_sar` 也会跑它。
+add_executable(input_map_selftest test/input_map_selftest.cpp)
+target_include_directories(input_map_selftest PRIVATE include)
+install(TARGETS input_map_selftest DESTINATION lib/${PROJECT_NAME})
+include(CTest)
+if(BUILD_TESTING)
+  add_test(NAME input_map_selftest COMMAND input_map_selftest)
+endif()
+
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 ament_package()

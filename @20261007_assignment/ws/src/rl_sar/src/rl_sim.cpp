@@ -8,6 +8,8 @@
 
 #include "rl_sim.hpp"
 
+#include "input_map.hpp"
+
 #include <torch/utils.h> // torch::set_num_threads (libtorch >= 2.x no longer pulls it in via torch/script.h)
 
 #include <chrono>
@@ -33,12 +35,11 @@ RL_Sim::RL_Sim()
     this->status_period_ms = this->declare_parameter<int>("status_period_ms", this->status_period_ms);
     std::cout << LOGGER::INFO << "robot_name: " << this->robot_name << std::endl;
 
-    // Control's input enums have no initializer in library/core, so their value is indeterminate until
-    // the first keyboard/gamepad event; make the "nothing pressed" state explicit (see status.md P1-e).
+    // library/core's Control has no initializer for its input enums, so the keyboard latch starts out
+    // indeterminate; the keyboard adapter reads it, so make "nothing pressed" explicit. (The gamepad
+    // latch is no longer read anywhere: input_map.hpp derives the pad state from the raw /joy frame.)
     this->control.current_keyboard = Input::Keyboard::None;
     this->control.last_keyboard = Input::Keyboard::None;
-    this->control.current_gamepad = Input::Gamepad::None;
-    this->control.last_gamepad = Input::Gamepad::None;
 
     // read params from yaml
     this->ReadYamlBase(this->robot_name);
@@ -70,11 +71,14 @@ RL_Sim::RL_Sim()
 
     // subscriber
     this->cmd_vel_subscriber = this->create_subscription<geometry_msgs::msg::Twist>(
-        "/cmd_vel", rclcpp::SystemDefaultsQoS(),
+        "cmd_vel", rclcpp::SystemDefaultsQoS(),
         [this] (const geometry_msgs::msg::Twist::SharedPtr msg) {this->CmdvelCallback(msg);}
     );
+    // 相对名（P2-a）：本节点原来是全仓唯一用绝对名的节点（`/joy`、`/cmd_vel`），
+    // 那样 `--namespace` 只能搬走一半话题；改成相对名后无命名空间时仍是 `/joy`、`/cmd_vel`，
+    // 与 @20261005_ros2 的 sim/controller/joy 节点（都已是相对名）一起可以整体搬。
     this->joy_subscriber = this->create_subscription<sensor_msgs::msg::Joy>(
-        "/joy", rclcpp::SystemDefaultsQoS(),
+        "joy", rclcpp::SystemDefaultsQoS(),
         [this] (const sensor_msgs::msg::Joy::SharedPtr msg) {this->JoyCallback(msg);}
     );
     this->imu_subscriber = this->create_subscription<sensor_msgs::msg::Imu>(
@@ -153,25 +157,62 @@ void RL_Sim::SetCommand(const RobotCommand<double> *command)
     this->mit_command_publisher->publish(this->mit_command_msg);
 }
 
+std::uint32_t RL_Sim::KeyboardMask() const
+{
+    // library/core's KeyboardInterface() only ever stores the LAST key (and ignores a repeat of the same
+    // key), so this adapter maps that single value to one bit; input_map then derives edges by comparing
+    // it with the previous cycle. See input_map.hpp for why the keyboard cannot report two keys at once.
+    switch (this->control.current_keyboard)
+    {
+    case Input::Keyboard::Num0: return input_map::Bit(input_map::KbKey::Num0);
+    case Input::Keyboard::Num1: return input_map::Bit(input_map::KbKey::Num1);
+    case Input::Keyboard::Num2: return input_map::Bit(input_map::KbKey::Num2);
+    case Input::Keyboard::Num3: return input_map::Bit(input_map::KbKey::Num3);
+    case Input::Keyboard::Num4: return input_map::Bit(input_map::KbKey::Num4);
+    case Input::Keyboard::Num5: return input_map::Bit(input_map::KbKey::Num5);
+    case Input::Keyboard::Num6: return input_map::Bit(input_map::KbKey::Num6);
+    case Input::Keyboard::Num7: return input_map::Bit(input_map::KbKey::Num7);
+    case Input::Keyboard::Num8: return input_map::Bit(input_map::KbKey::Num8);
+    case Input::Keyboard::Num9: return input_map::Bit(input_map::KbKey::Num9);
+    case Input::Keyboard::W: return input_map::Bit(input_map::KbKey::W);
+    case Input::Keyboard::A: return input_map::Bit(input_map::KbKey::A);
+    case Input::Keyboard::S: return input_map::Bit(input_map::KbKey::S);
+    case Input::Keyboard::D: return input_map::Bit(input_map::KbKey::D);
+    case Input::Keyboard::Q: return input_map::Bit(input_map::KbKey::Q);
+    case Input::Keyboard::E: return input_map::Bit(input_map::KbKey::E);
+    case Input::Keyboard::P: return input_map::Bit(input_map::KbKey::P);
+    case Input::Keyboard::R: return input_map::Bit(input_map::KbKey::R);
+    case Input::Keyboard::N: return input_map::Bit(input_map::KbKey::N);
+    case Input::Keyboard::Space: return input_map::Bit(input_map::KbKey::Space);
+    default: return 0;
+    }
+}
+
 void RL_Sim::RobotControl()
 {
-    // Rising edges of the two gamepad shortcuts. Upstream tests control.current_gamepad, but
-    // JoyCallback only ever *sets* that state (a neutral /joy frame calls no SetGamepad), so it sticks
-    // forever and both branches below re-fire on every control cycle (200 Hz). We gate them on the raw
-    // button of the latest /joy frame instead - a released button is reported as 0, so one press is one
-    // action. Keyboard handling stays upstream's (act, then clear so the next press is seen again).
-    // See @20261007_assignment/docs/status.md P1-e and docs/porting.md §2.
-    const bool reset_held = this->joy_msg.buttons.size() > 5 && this->joy_msg.buttons[5] && this->joy_msg.buttons[3];
-    const bool nav_held = this->joy_msg.buttons.size() > 2 && this->joy_msg.buttons[2];
-    const bool reset_pressed = this->control.current_keyboard == Input::Keyboard::R || (reset_held && !this->reset_button_held);
-    const bool nav_pressed = this->control.current_keyboard == Input::Keyboard::N || (nav_held && !this->nav_button_held);
-    this->reset_button_held = reset_held;
-    this->nav_button_held = nav_held;
+    // Resolve the input edges once per cycle (input_map.hpp): an edge is a pure function of this cycle
+    // and the previous one, so it fires exactly once and never has to be "consumed" — that replaces the
+    // library's single-value latch and the four bugs it caused (status.md P1-e/P1-g/P1-h).
+    input_map::Frame &in = input_map::Current();
+    const std::uint32_t pad = input_map::PadMaskFromJoy(this->joy_msg.buttons, this->joy_msg.axes);
+    const std::uint32_t kb = this->KeyboardMask();
+    std::array<float, 8> axes{};
+    if (this->joy_msg.axes.size() >= 8)
+    {
+        std::copy(this->joy_msg.axes.begin(), this->joy_msg.axes.begin() + 8, axes.begin());
+    }
+    input_map::BeginCycleWithJoy(pad, kb, axes, this->have_joy_frame);
+    const bool keyboard_edge = in.kb.any_pressed();
 
-    if (reset_pressed)
+    if (in.has(input_map::Intent::ResetSim))
     {
         auto empty_request = std::make_shared<std_srvs::srv::Empty::Request>();
         auto result = this->sim_reset_client->async_send_request(empty_request);
+    }
+    // The library's keyboard latch ignores a repeated key, so keep upstream's "act, then clear" for the
+    // keyboard only: without it, pressing the same key twice in a row would look like one press.
+    if (keyboard_edge)
+    {
         this->control.current_keyboard = this->control.last_keyboard;
     }
 
@@ -179,48 +220,22 @@ void RL_Sim::RobotControl()
     {
         this->motiontime++;
 
-        if (this->control.current_keyboard == Input::Keyboard::W)
-        {
-            this->control.x += 0.1;
-            this->control.current_keyboard = this->control.last_keyboard;
-        }
-        if (this->control.current_keyboard == Input::Keyboard::S)
-        {
-            this->control.x -= 0.1;
-            this->control.current_keyboard = this->control.last_keyboard;
-        }
-        if (this->control.current_keyboard == Input::Keyboard::A)
-        {
-            this->control.y += 0.1;
-            this->control.current_keyboard = this->control.last_keyboard;
-        }
-        if (this->control.current_keyboard == Input::Keyboard::D)
-        {
-            this->control.y -= 0.1;
-            this->control.current_keyboard = this->control.last_keyboard;
-        }
-        if (this->control.current_keyboard == Input::Keyboard::Q)
-        {
-            this->control.yaw += 0.1;
-            this->control.current_keyboard = this->control.last_keyboard;
-        }
-        if (this->control.current_keyboard == Input::Keyboard::E)
-        {
-            this->control.yaw -= 0.1;
-            this->control.current_keyboard = this->control.last_keyboard;
-        }
-        if (this->control.current_keyboard == Input::Keyboard::Space)
+        if (in.has(input_map::Intent::JogForward)) this->control.x += 0.1;
+        if (in.has(input_map::Intent::JogBackward)) this->control.x -= 0.1;
+        if (in.has(input_map::Intent::JogLeft)) this->control.y += 0.1;
+        if (in.has(input_map::Intent::JogRight)) this->control.y -= 0.1;
+        if (in.has(input_map::Intent::JogYawLeft)) this->control.yaw += 0.1;
+        if (in.has(input_map::Intent::JogYawRight)) this->control.yaw -= 0.1;
+        if (in.has(input_map::Intent::ZeroCommand))
         {
             this->control.x = 0;
             this->control.y = 0;
             this->control.yaw = 0;
-            this->control.current_keyboard = this->control.last_keyboard;
         }
-        if (nav_pressed)
+        if (in.has(input_map::Intent::ToggleNavigation))
         {
             this->control.navigation_mode = !this->control.navigation_mode;
             std::cout << std::endl << LOGGER::INFO << "Navigation mode: " << (this->control.navigation_mode ? "ON" : "OFF") << std::endl;
-            this->control.current_keyboard = this->control.last_keyboard;
         }
 
         this->GetState(&this->robot_state);
@@ -252,56 +267,23 @@ void RL_Sim::CmdvelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
 
 void RL_Sim::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
 {
-    // Our joy_node (@20261005_ros2) already publishes the layout and signs used below
-    // (stick up / left > 0, D-pad up / right > 0; docs/porting.md §6.1), so only guard the length:
-    // indexing a shorter message would read past the end.
+    // Our joy_node (@20261005_ros2) already publishes the layout and signs used by input_map.hpp
+    // (@20261005_ros2/docs/joystick.md §3, porting.md §6.1), so here we only guard the length: indexing
+    // a shorter message would read past the end. The key map itself lives in input_map.hpp and is
+    // resolved once per control cycle in RobotControl() - see status.md S3.5.
     if (msg->axes.size() < 8 || msg->buttons.size() < 11)
     {
         return;
     }
     this->joy_msg = *msg;
+    this->have_joy_frame = true;
 
-    // joystick control
-    // Description of buttons and axes(F710):
-    // |__ buttons[]: A=0, B=1, X=2, Y=3, LB=4, RB=5, back=6, start=7, power=8, stickL=9, stickR=10
-    // |__ axes[]: Lx=0, Ly=1, Rx=3, Ry=4, LT=2, RT=5, DPadX=6, DPadY=7
-
-    if (this->joy_msg.buttons[0]) this->control.SetGamepad(Input::Gamepad::A);
-    if (this->joy_msg.buttons[1]) this->control.SetGamepad(Input::Gamepad::B);
-    if (this->joy_msg.buttons[2]) this->control.SetGamepad(Input::Gamepad::X);
-    if (this->joy_msg.buttons[3]) this->control.SetGamepad(Input::Gamepad::Y);
-    if (this->joy_msg.buttons[4]) this->control.SetGamepad(Input::Gamepad::LB);
-    if (this->joy_msg.buttons[5]) this->control.SetGamepad(Input::Gamepad::RB);
-    if (this->joy_msg.buttons[9]) this->control.SetGamepad(Input::Gamepad::LStick);
-    if (this->joy_msg.buttons[10]) this->control.SetGamepad(Input::Gamepad::RStick);
-    if (this->joy_msg.axes[7] > 0) this->control.SetGamepad(Input::Gamepad::DPadUp);
-    if (this->joy_msg.axes[7] < 0) this->control.SetGamepad(Input::Gamepad::DPadDown);
-    if (this->joy_msg.axes[6] < 0) this->control.SetGamepad(Input::Gamepad::DPadLeft);
-    if (this->joy_msg.axes[6] > 0) this->control.SetGamepad(Input::Gamepad::DPadRight);
-    if (this->joy_msg.buttons[4] && this->joy_msg.buttons[0]) this->control.SetGamepad(Input::Gamepad::LB_A);
-    if (this->joy_msg.buttons[4] && this->joy_msg.buttons[1]) this->control.SetGamepad(Input::Gamepad::LB_B);
-    if (this->joy_msg.buttons[4] && this->joy_msg.buttons[2]) this->control.SetGamepad(Input::Gamepad::LB_X);
-    if (this->joy_msg.buttons[4] && this->joy_msg.buttons[3]) this->control.SetGamepad(Input::Gamepad::LB_Y);
-    if (this->joy_msg.buttons[4] && this->joy_msg.buttons[9]) this->control.SetGamepad(Input::Gamepad::LB_LStick);
-    if (this->joy_msg.buttons[4] && this->joy_msg.buttons[10]) this->control.SetGamepad(Input::Gamepad::LB_RStick);
-    if (this->joy_msg.buttons[4] && this->joy_msg.axes[7] > 0) this->control.SetGamepad(Input::Gamepad::LB_DPadUp);
-    if (this->joy_msg.buttons[4] && this->joy_msg.axes[7] < 0) this->control.SetGamepad(Input::Gamepad::LB_DPadDown);
-    if (this->joy_msg.buttons[4] && this->joy_msg.axes[6] > 0) this->control.SetGamepad(Input::Gamepad::LB_DPadRight);
-    if (this->joy_msg.buttons[4] && this->joy_msg.axes[6] < 0) this->control.SetGamepad(Input::Gamepad::LB_DPadLeft);
-    if (this->joy_msg.buttons[5] && this->joy_msg.buttons[0]) this->control.SetGamepad(Input::Gamepad::RB_A);
-    if (this->joy_msg.buttons[5] && this->joy_msg.buttons[1]) this->control.SetGamepad(Input::Gamepad::RB_B);
-    if (this->joy_msg.buttons[5] && this->joy_msg.buttons[2]) this->control.SetGamepad(Input::Gamepad::RB_X);
-    if (this->joy_msg.buttons[5] && this->joy_msg.buttons[3]) this->control.SetGamepad(Input::Gamepad::RB_Y);
-    if (this->joy_msg.buttons[5] && this->joy_msg.buttons[9]) this->control.SetGamepad(Input::Gamepad::RB_LStick);
-    if (this->joy_msg.buttons[5] && this->joy_msg.buttons[10]) this->control.SetGamepad(Input::Gamepad::RB_RStick);
-    if (this->joy_msg.buttons[5] && this->joy_msg.axes[7] > 0) this->control.SetGamepad(Input::Gamepad::RB_DPadUp);
-    if (this->joy_msg.buttons[5] && this->joy_msg.axes[7] < 0) this->control.SetGamepad(Input::Gamepad::RB_DPadDown);
-    if (this->joy_msg.buttons[5] && this->joy_msg.axes[6] > 0) this->control.SetGamepad(Input::Gamepad::RB_DPadRight);
-    if (this->joy_msg.buttons[5] && this->joy_msg.axes[6] < 0) this->control.SetGamepad(Input::Gamepad::RB_DPadLeft);
-    if (this->joy_msg.buttons[4] && this->joy_msg.buttons[5]) this->control.SetGamepad(Input::Gamepad::LB_RB);
-
-    this->control.x = this->joy_msg.axes[1] * this->joy_command_scale; // LY
-    this->control.y = this->joy_msg.axes[0] * this->joy_command_scale; // LX
+    // Continuous commands stay LEVELS applied once per /joy frame (same place and timing as upstream):
+    // input_map.hpp above only resolves edges. Keyboard jogging still happens in RobotControl() at
+    // 200 Hz, which is why the keyboard path is documented with `joy:=false` (no /joy frames, so these
+    // three lines cannot zero the jog).
+    this->control.x = this->joy_msg.axes[1] * this->joy_command_scale;   // LY
+    this->control.y = this->joy_msg.axes[0] * this->joy_command_scale;   // LX
     this->control.yaw = this->joy_msg.axes[3] * this->joy_command_scale; // RX
 }
 

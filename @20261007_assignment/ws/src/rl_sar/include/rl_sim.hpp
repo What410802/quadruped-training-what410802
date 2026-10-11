@@ -16,7 +16,9 @@
 #include "loop.hpp"
 #include "fsm.hpp"
 
+#include <array>
 #include <chrono>
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <fstream>
@@ -43,9 +45,8 @@ private:
     void RunModel();
     void RobotControl();
 
-    // rising-edge latches for the two gamepad shortcuts (see RobotControl and status.md P1-e)
-    bool reset_button_held = false;
-    bool nav_button_held = false;
+    // input: the raw frame is stored here, resolved to intents once per cycle (input_map.hpp, S3.5)
+    bool have_joy_frame = false;
 
     // status line (node parameter; 0 = off)
     int status_period_ms = 0;
@@ -72,6 +73,7 @@ private:
     void CmdvelCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
     void MotorStateCallback(const quadruped_ros2::msg::MotorState::SharedPtr msg);
     void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg);
+    std::uint32_t KeyboardMask() const;
 
     // others
     int motiontime = 0;
