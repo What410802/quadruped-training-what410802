@@ -32,6 +32,14 @@ struct Knobs
     int getup_pre_cycles = 200;   ///< control cycles of the pre-stand crouch ramp
     int getup_cycles = 400;       ///< control cycles of the stand-up ramp
     int getdown_cycles = 500;     ///< control cycles of the lie-down ramp
+
+    // Command-side limiting (S5, docs/safety-limits.md section 3): the node never sends torque, so the
+    // limits are expressed on the MIT command we do send - see include/command_limit.hpp.
+    double command_tau_limit = 33.5;  ///< implied |tau| cap [N.m] at the measured state (= the trained envelope)
+    double command_kp_max = 80.0;     ///< gain caps (80/10 = the largest this port ever sends)
+    double command_kd_max = 10.0;
+    double command_dq_max = 20.0;     ///< |dq_des| cap [rad/s]
+    double command_slew = 60.0;       ///< max |q_des| rate [rad/s]; 0 disables the slew rule
 };
 
 inline std::string PolicyDir(const std::string &robot_name)
@@ -75,12 +83,20 @@ inline Knobs LoadKnobs(const std::string &robot_name)
     {
         k.getdown_cycles = node["getdown_cycles"].as<int>();
     }
+    if (node["command_tau_limit"]) k.command_tau_limit = node["command_tau_limit"].as<double>();
+    if (node["command_kp_max"]) k.command_kp_max = node["command_kp_max"].as<double>();
+    if (node["command_kd_max"]) k.command_kd_max = node["command_kd_max"].as<double>();
+    if (node["command_dq_max"]) k.command_dq_max = node["command_dq_max"].as<double>();
+    if (node["command_slew"]) k.command_slew = node["command_slew"].as<double>();
     k.getup_pre_cycles = std::max(1, k.getup_pre_cycles);
     k.getup_cycles = std::max(1, k.getup_cycles);
     k.getdown_cycles = std::max(1, k.getdown_cycles);
     std::cout << LOGGER::INFO << "[yaml] knobs from " << path << ": kd_passive=" << k.kd_passive
               << " getup_pre_cycles=" << k.getup_pre_cycles << " getup_cycles=" << k.getup_cycles
-              << " getdown_cycles=" << k.getdown_cycles << std::endl;
+              << " getdown_cycles=" << k.getdown_cycles << " command_tau_limit=" << k.command_tau_limit
+              << " command_kp_max=" << k.command_kp_max << " command_kd_max=" << k.command_kd_max
+              << " command_dq_max=" << k.command_dq_max << " command_slew=" << k.command_slew
+              << std::endl;
     return k;
 }
 

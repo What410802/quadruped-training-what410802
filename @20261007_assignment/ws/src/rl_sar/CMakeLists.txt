@@ -48,16 +48,20 @@ ament_target_dependencies(rl_sim rclcpp sensor_msgs geometry_msgs std_srvs quadr
 
 install(TARGETS rl_sim DESTINATION lib/${PROJECT_NAME})
 
-# Input-layer self-test (status.md S3.5): needs only include/input_map.hpp - no ROS graph, no sim, no
-# gamepad. It lives in test/ because it is not part of the node. Built unconditionally so that
-# `ros2 run rl_sar input_map_selftest` always exists; the CTest registration is what makes
-# `colcon test --packages-select rl_sar` run it too.
-add_executable(input_map_selftest test/input_map_selftest.cpp)
-target_include_directories(input_map_selftest PRIVATE include)
-install(TARGETS input_map_selftest DESTINATION lib/${PROJECT_NAME})
+# Header-only self-tests: no ROS graph, no sim, no gamepad. They live in test/ because they are not
+# part of the node. Built unconditionally so `ros2 run rl_sar <name>` always works; the CTest
+# registration is what makes `colcon test --packages-select rl_sar` run them too.
+#   input_map_selftest     - key map / intents (status.md S3.5)
+#   command_limit_selftest - command-side limiting (status.md S5, docs/safety-limits.md section 4)
+foreach(selftest IN ITEMS input_map_selftest command_limit_selftest)
+  add_executable(${selftest} test/${selftest}.cpp)
+  target_include_directories(${selftest} PRIVATE include)
+  install(TARGETS ${selftest} DESTINATION lib/${PROJECT_NAME})
+endforeach()
 include(CTest)
 if(BUILD_TESTING)
   add_test(NAME input_map_selftest COMMAND input_map_selftest)
+  add_test(NAME command_limit_selftest COMMAND command_limit_selftest)
 endif()
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})

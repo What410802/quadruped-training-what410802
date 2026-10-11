@@ -48,6 +48,13 @@ private:
     // input: the raw frame is stored here, resolved to intents once per cycle (input_map.hpp, S3.5)
     bool have_joy_frame = false;
 
+    // S5 command-side limiting: the previous command (to slew-limit against) and the counters that
+    // decide whether the throttled warning is worth printing (include/command_limit.hpp).
+    std::vector<double> limited_q_des_prev;
+    bool command_limited_once = false;
+    std::chrono::steady_clock::time_point last_limit_warn{};
+    long limit_events = 0;
+
     // S4 feedback clock: control and inference are paced by SIM time, anchored on /motor_state.
     // -1 = not initialised yet (the first feedback frame only aligns the beat).
     double last_control_sim_time = -1.0;

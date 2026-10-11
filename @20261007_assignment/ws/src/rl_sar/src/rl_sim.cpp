@@ -8,6 +8,7 @@
 
 #include "rl_sim.hpp"
 
+#include "command_limit.hpp"
 #include "input_map.hpp"
 
 #include <torch/utils.h> // torch::set_num_threads (libtorch >= 2.x no longer pulls it in via torch/script.h)
@@ -143,13 +144,52 @@ void RL_Sim::GetState(RobotState<double> *state)
 
 void RL_Sim::SetCommand(const RobotCommand<double> *command)
 {
+    // S5: limit the command before it leaves this node. We do not send torque, so the rules in
+    // command_limit.hpp work on what we do send (q_des / dq_des / kp / kd / tau_ff) and budget the
+    // implied torque at the measured state. docs/safety-limits.md section 3 has the design and the
+    // guarantees; the counters are reported once a second at most so a biting limit is visible.
+    const black_fsm::Knobs &knobs = black_fsm::GetKnobs(this->robot_name);
+    command_limit::Limits lim;
+    lim.tau = knobs.command_tau_limit;
+    lim.kp_max = knobs.command_kp_max;
+    lim.kd_max = knobs.command_kd_max;
+    lim.dq_max = knobs.command_dq_max;
+    lim.slew = knobs.command_slew;
+    command_limit::State lim_state;
+    lim_state.q = this->robot_state.motor_state.q;
+    lim_state.dq = this->robot_state.motor_state.dq;
+    lim_state.q_des_prev = this->limited_q_des_prev;
+    lim_state.has_prev = this->command_limited_once;
+    std::vector<double> q_des(command->motor_command.q);
+    std::vector<double> dq_des(command->motor_command.dq);
+    std::vector<double> kp(command->motor_command.kp);
+    std::vector<double> kd(command->motor_command.kd);
+    std::vector<double> tau_ff(command->motor_command.tau);
+    const command_limit::Counts limited = command_limit::Apply(q_des, dq_des, kp, kd, tau_ff,
+                                                              lim_state, lim, this->params.dt);
+    this->limited_q_des_prev = q_des;
+    this->command_limited_once = true;
+    if (limited.any())
+    {
+        this->limit_events++;
+        const auto now = std::chrono::steady_clock::now();
+        if (now - this->last_limit_warn >= std::chrono::seconds(1))
+        {
+            this->last_limit_warn = now;
+            std::cout << std::endl << LOGGER::WARNING << "command limited (events " << this->limit_events
+                      << "): slew=" << limited.slew << " torque=" << limited.torque
+                      << " gains=" << limited.gains << " dq_des=" << limited.dq_des
+                      << " window=" << limited.window << std::endl;
+        }
+    }
+
     for (int i = 0; i < this->params.num_of_dofs; ++i)
     {
-        this->mit_command_msg.q[this->params.joint_mapping[i]] = command->motor_command.q[i];
-        this->mit_command_msg.w[this->params.joint_mapping[i]] = command->motor_command.dq[i];
-        this->mit_command_msg.kp[this->params.joint_mapping[i]] = command->motor_command.kp[i];
-        this->mit_command_msg.kd[this->params.joint_mapping[i]] = command->motor_command.kd[i];
-        this->mit_command_msg.tau[this->params.joint_mapping[i]] = command->motor_command.tau[i];
+        this->mit_command_msg.q[this->params.joint_mapping[i]] = q_des[i];
+        this->mit_command_msg.w[this->params.joint_mapping[i]] = dq_des[i];
+        this->mit_command_msg.kp[this->params.joint_mapping[i]] = kp[i];
+        this->mit_command_msg.kd[this->params.joint_mapping[i]] = kd[i];
+        this->mit_command_msg.tau[this->params.joint_mapping[i]] = tau_ff[i];
     }
 
     // S4: publish only when the target changes - the policy output is constant between inferences, so at
@@ -265,7 +305,8 @@ void RL_Sim::RobotControl()
             {
                 this->last_status_print = now;
                 std::cout << "\r\033[K" << std::flush << LOGGER::INFO << "RL Controller x:" << this->control.x
-                          << " y:" << this->control.y << " yaw:" << this->control.yaw << std::flush;
+                          << " y:" << this->control.y << " yaw:" << this->control.yaw
+                          << " cmd_limit_events:" << this->limit_events << std::flush;
             }
         }
     }

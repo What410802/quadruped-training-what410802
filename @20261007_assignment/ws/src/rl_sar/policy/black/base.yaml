@@ -33,6 +33,21 @@ black:
   getup_pre_cycles: 200    # control cycles for the pre-get-up crouch ramp (5 ms each -> 1.0 s)
   getup_cycles: 400        # control cycles for the get-up ramp (5 ms each -> 2.0 s)
   getdown_cycles: 500      # control cycles for the get-down ramp (5 ms each -> 2.5 s)
+
+  # Command-side limiting (S5): this node sends no torque, so the limits live on the MIT command -
+  # q_des / dq_des / kp / kd / tau_ff - and the implied torque
+  # tau = tau_ff + kp*(q_des - q) + kd*(dq_des - dq) is budgeted against the measured q/dq.
+  # See include/command_limit.hpp and docs/safety-limits.md section 3. 0 disables the slew rule.
+  # Calibration matters: these are *pathology* nets, not gait shaping. Clamping at the model's own
+  # 20 N.m was measured to bite ~2% of control cycles during a normal walk (the PD law implies more
+  # than 20 N.m on transient errors) and, because it rewrites q_des, it distorts the policy's output.
+  # So: 33.5 = the envelope the policy was trained in (our net), while the model/driver limit (20 N.m,
+  # sim_node's tau_max / MJCF ctrlrange) stays where it is and only limits the torque itself.
+  command_tau_limit: 33.5     # implied |tau| at the measured state [N.m]; 33.5 = the trained envelope
+  command_kp_max: 80.0        # gain caps: 80 / 10 are the largest gains this port sends (get-up ramps)
+  command_kd_max: 10.0
+  command_dq_max: 20.0        # |dq_des| cap [rad/s]
+  command_slew: 60.0          # max |q_des| rate [rad/s]: only catches steps (>12 rad/s per inference)
   torque_limits: [33.5, 33.5, 33.5,
                   33.5, 33.5, 33.5,
                   33.5, 33.5, 33.5,
