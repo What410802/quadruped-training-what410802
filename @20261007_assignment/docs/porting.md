@@ -78,6 +78,9 @@ rl_sar 内部分三层，移植只动后两层：
 `SetCommand()` 加了变更检测（目标没变就只发心跳，每 20 个控制周期一条）；`base.yaml` 的 `dt`/`decimation` 回到上游的 0.005/4（`dt` 的本义就是控制周期，之前被误解成仿真的物理步长）。
 好处与实测：1x 下策略周期 20.00 ms、全速 25x 仍 7/7、暂停时一步不跑；还顺带把跨线程共享数据消到只剩键盘一处（见 §7）。
 频率总表在 [`control-stack-rates.md`](control-stack-rates.md)，反面教材（按"每条反馈一次控制"时通信量被打爆）记在 `status.md` 的 S4 行。
+19. **控制器侧指令限位**（S5-1，2026-10-11）：上游没有任何「下发前的限位」，只有两处空转（`TorqueProtect()` 函数体写着 "Just a reminder, no protection"、`clip_actions = ±100`）与**只进 CSV 的** `output_dof_tau` 裁剪（±33.5）。
+本移植在 [`SetCommand()`](../ws/src/rl_sar/src/rl_sim.cpp) 里加了纯函数 [`include/command_limit.hpp`](../ws/src/rl_sar/include/command_limit.hpp)：因为我们**不直接下发力矩**，所以把「力矩限幅」表达成对 MIT 指令的五条限制——增益上限、`dq_des` 上限、`q_des` 变化率、可选绝对窗口、以及**蕴含力矩预算** `|tau_ff| + kp·|q_des−q| + kd·|dq_des−dq| ≤ tau_limit`（`q/dq` 取自 `/motor_state`）。
+默认值刻意选在「训练包络」（`command_tau_limit = 33.5`）而不是模型自己的 ±20：实测在 20 上游夹会改写 `q_des`、把步态带偏（`check_walk` 的策略周期代理指标从 20.00 掉到 14.92 ms、30 s 内 108 次事件），而 33.5/60 的设定只有 22 次事件、集中在状态机切换处。设计与取舍见 [`safety-limits.md`](safety-limits.md) §3。
 和上游逐行对照（先把上游 clone 到临时目录）：
 
 ```bash

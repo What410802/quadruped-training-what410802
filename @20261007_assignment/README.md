@@ -41,7 +41,9 @@ pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py \
     --sim-param motor_noise:=0.2 --sim-param motor_seed:=12345
 pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py --realtime false  # 全速（~25x）同一套 7 项
 pixi run python @20261007_assignment/scripts/agent_scripts/check_feedback_clock.py   # 暂停 1.5 s 时控制一步都不跑
+pixi run python @20261007_assignment/scripts/agent_scripts/check_limits.py --seconds 22  # 限位余量（跑狗时另开一个终端）
 pixi run ros2 run rl_sar input_map_selftest                             # 输入层自检（不接仿真/手柄）
+pixi run ros2 run rl_sar command_limit_selftest                        # 指令限位自检（纯数学，27 项）
 pixi run bash -lc 'cd @20261007_assignment/ws && colcon test --packages-select rl_sar'   # 同一个自检，走 CTest
 pixi run python -I @20261007_assignment/scripts/agent_scripts/policy_reference.py --cmd 1.0,0,0    # 参考实现
 ```
@@ -72,6 +74,8 @@ pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5
 
 **调参（改 yaml，不用重编）**：`ws/src/rl_sar/policy/black/base.yaml` 有四个「部署旋钮」——`kd_passive`（Passive 状态的阻尼，默认 8.0）、`getup_pre_cycles: 200` / `getup_cycles: 400` / `getdown_cycles: 500`（三段斜坡的控制周期数，5 ms/周期 → 1.0 / 2.0 / 2.5 s）；**它只在节点构造时读一次，改完要重启**。策略级的 `himloco/config.yaml`（`rl_kp`/`rl_kd`/`action_scale` 等）**每次进 RL 都会重新读**，所以改完趴下再起身重进 RL 即生效（代价是切入那一刻会跳一下，别改 `joint_mapping`/`num_of_dofs` 这类会错位的项）。两份 yaml 有 7 个同名字段、必须一致，不一致时节点会在启动和每次进 RL 时打 `[WARNING] [yaml] …`，而不是默默变样（[`docs/porting.md`](docs/porting.md) §3、[`../docs/learn/rl-sar.md`](../docs/learn/rl-sar.md) §3）。
 
+**指令限位旋钮**（`policy/black/base.yaml`，S5-1）：`command_tau_limit`（蕴含力矩上限，默认 33.5 N·m；模型自己的 ±20 仍在仿真侧）、`command_kp_max`/`command_kd_max`（80/10）、`command_dq_max`（±20 rad/s）、`command_slew`（`q_des` 变化率上限，60 rad/s）。它们挡的是「策略发出病态指令」，不是步态整形——校准理由与实测见 [`docs/safety-limits.md`](docs/safety-limits.md) §3。
+
 **状态行**：进 RL 时会打一行 `Entered RL_Locomotion`（提醒当前状态，见 [`docs/porting.md`](docs/porting.md) §6.2）；注意 launch 没暴露 `status_period_ms`，launch 起的进程读默认值 0（不打），要看状态行就用下面 `ros2 run` 那条命令；之后每个周期的 `RL Controller x:… y:… yaw:…` 由 ROS 参数 `status_period_ms` 控制（默认 0 = 不打；`pixi run ros2 run rl_sar rl_sim --ros-args -p status_period_ms:=500` = 每 0.5 s 一行，原来是不管多快都每 5 ms 打一次）。仿真节点自己的状态行由它的 `status_period_s` 控制。
 
 **键盘操作**：rl_sim 直接读终端，要单独占一个终端：`pixi run ros2 launch rl_sar rl_sim.launch.py rl:=false joy:=false`，另一个终端 `pixi run ros2 run rl_sar rl_sim`，然后按 `0` 起身、`1` 进 RL、`W/S` `A/D` `Q/E` 加减速度、空格清零、`9` 趴下、`P` 阻尼、`R` 复位、`N` 切换导航模式。
@@ -95,7 +99,9 @@ pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5
 │   ├── include/rl_sim.hpp        # 适配层（改写）
 │   ├── include/input_map.hpp     # 输入层（新写）：每键电平+边沿 → 意图，见 docs/porting.md §2 第 17 条
 │   ├── src/rl_sim.cpp            #   同上。入 `motor_state`/`imu`/`joy`、出 `mit_command`（均为相对名，默认解析到 `/`）
+│   ├── include/command_limit.hpp # 指令限位（S5-1）：把「力矩限幅」表达成对 MIT 指令的五条限制
 │   ├── test/input_map_selftest.cpp # 输入层自检（不接仿真/手柄）：ros2 run rl_sar input_map_selftest
+│   ├── test/command_limit_selftest.cpp # 指令限位自检（纯数学）：ros2 run rl_sar command_limit_selftest
 │   ├── policy/fsm.hpp            # 状态机注册表（只注册 black）
 │   ├── policy/black/             # base.yaml（机器人参数）、fsm.hpp（状态机）、knobs.hpp（部署旋钮 + yaml 自检）、himloco/{config.yaml,best.pt}
 │   ├── launch/rl_sim.launch.py   # sim_node + joy_node + rl_sim
@@ -104,6 +110,7 @@ pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5
 ├── scripts/agent_scripts/
 │   ├── check_walk.py             # 无头自检（ROS 链路，支持 --sim-param 打开非理想电机、--realtime false 全速）
 │   ├── check_feedback_clock.py   # 反馈时钟自检：暂停仿真时斜坡不该动（S4）
+│   ├── check_limits.py           # 限位余量：实测 τ / q 相对 ±20 N·m 与 MJCF range 的余量
 │   ├── policy_reference.py       # 参考实现（不经 ROS、锁步，可注入时序误差）
 │   ├── ros2_naming/              # ROS 2 名称/路径语义实验（docs/learn/ros2-graph-and-clock.md §3 的仪器）
 │   └── scene_ground_extents.py   # 量场景里"三块地面"各到哪里（docs/learn/mujoco.md §6.10 的仪器）
@@ -116,6 +123,7 @@ pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5
 |---|---|
 | [`docs/porting.md`](docs/porting.md) | rl_sar 替换的是哪一层、逐文件改动与上游对照命令、配置字段来源、话题与 QoS 对照、一帧观测/动作的算法（带代码行号）、手柄符号、**状态转移图**与键位出处、上游不足的处理 |
 | [`docs/policy-model.md`](docs/policy-model.md) | `best.pt` 里是什么：HIMLoco 的 `estimator`（270 → 19）+ `actor`（64 → 12）、243231 个参数、与两份 yaml 的对应、部署时容易踩的三处（含实测），以及文件里看不出来的那部分 |
+| [`docs/safety-limits.md`](docs/safety-limits.md) | **限位与安全**：一条指令路径上每层的限位（策略动作 / 前馈 τ / PD 项 / 电机模型 ±20 / MJCF `ctrlrange` / 关节软限位 / 看门狗），哪个真生效、哪个是死代码，实测的力矩与关节余量，以及接实机还缺什么（按风险排序） |
 | [`docs/experiments.md`](docs/experiments.md) | 策略在我们模型上的速度跟踪与力矩、ROS 链路实测的策略周期、时序误差注入、暂停/慢放/快放的边界、5 分钟浸泡测试、结论表 |
 | [`docs/status.md`](docs/status.md) | 推进情况：阶段状态、已定决策、待人工确认、决定与计划（P1/P2/P3，调研细节在仓库级学习文档里）、实施顺序 S1–S6、提交建议 |
 | [`../../docs/learn/rl-sar.md`](../docs/learn/rl-sar.md) | **仓库级**（不属于本任务）：rl_sar 与主办方代码的内部机制速查——本任务的调研结论沉淀在这里，`status.md` 只留决定 |

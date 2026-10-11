@@ -27,6 +27,20 @@
 
 （开窗口目视、VSCode/clangd 两项 2026-10-09 已由人工确认完成，不再列。）
 
+## 限位与安全审计（2026-10-11）
+
+起因：问"电机限位在哪几个文件""Sim2Real 够不够"。逐层查完的结论放在新文档 [`safety-limits.md`](safety-limits.md)（含实测命令），要点：
+
+* **真正生效的力矩限位只有仿真侧两道**：`motor.hpp: Torque()` 的 `clamp(τ, ±tau_max)`（默认 **20 N·m**，`sim_node` 的 `tau_max` 参数）与 MJCF 的 `<motor ctrllimited ctrlrange="-20 20">`。
+* **策略侧三处"像保护的东西"都不生效**：`TorqueProtect()` 函数体自己写着 "Just a reminder, no protection"，上游与主办方的调用点全是注释；`output_dof_tau` 的 ±33.5 N·m 裁剪只进 CSV 与没人 pop 的队列（RL 里 `tau=0`）；`clip_actions = ±100` 形同虚设。
+* **关节限位是 MuJoCo 的软约束**，实测：**RL 行走阶段 0 越界** ✓；趴着/起身/趴下（kp=0 或 80）阶段 calf 最多压过 **82 mrad**、hip 6 mrad、thigh 1 mrad。
+* 实测力矩：**标准行走峰值 19.19 N·m、撞限幅 0 次**（仿真侧自报 193452 电机·步）；**只有 `/sim_reset`（`RB+Y`）瞬间**会贴到 20.00（约 200 ms）——策略按 ±33.5 训练、仿真给 ±20，但行走期间根本碰不到。
+* 新增仪器 [`../scripts/agent_scripts/check_limits.py`](../scripts/agent_scripts/check_limits.py)（跑狗时另开终端，实测 τ/q 相对 ±20 与 MJCF `range` 的余量）。
+
+**本轮已做（S5-1）**：控制器侧指令限位——纯函数 [`../ws/src/rl_sar/include/command_limit.hpp`](../ws/src/rl_sar/include/command_limit.hpp) + [`SetCommand()`](../ws/src/rl_sar/src/rl_sim.cpp)，五条规则：增益上限、`dq_des` 上限、`q_des` 变化率、可选绝对窗口、**蕴含力矩预算**`|tau_ff| + kp·|q_des−q| + kd·|dq_des−dq| ≤ command_tau_limit`（`q/dq` 取 `/motor_state`）。默认 33.5 N·m / 60 rad/s，即「训练包络」而不是模型自己的 ±20——实测在 20 上游夹会改写 `q_des` 把步态带偏（30 s 内 108 次事件、`check_walk` 的策略周期代理指标从 20.00 掉到 14.92 ms），33.5/60 只有 22 次、集中在状态机切换；自检 [`../ws/src/rl_sar/test/command_limit_selftest.cpp`](../ws/src/rl_sar/test/command_limit_selftest.cpp) 27 项全过、`check_walk` 7/7 且策略周期仍 20.00 ms。取舍与"保证什么/不保证什么"见 [`safety-limits.md`](safety-limits.md) §3。
+
+**仍未做的三条**（S5 剩下的）：① 断流兜底（墙钟 deadman）；② 把 `q_des` 夹到机械范围（需要模型侧 `range` 进 yaml，见 [`safety-limits.md`](safety-limits.md) §4）；③ 让仿真里的关节限位更接近硬挡（调 `solref`）。
+
 ## 已知的小问题（不阻塞）
 
 - 参考实现里 0.5 m/s 指令只走到 0.36 m/s（1.0 与 1.5 m/s 都跟得上），原因没查（[`experiments.md`](experiments.md) §2）。
@@ -106,7 +120,7 @@
 | ~~**P2-b** 检查器修好~~ ✅ | 本文件 P2-b 的理由（已改成"修前那两条是误报、原因是链接目标在扫描目录之外"）、检查器自身的三条改进 | ✅ 全仓 `check_md_links.py .`（66 个文件）0 断链 / 0 锚点 / 0 表格 / 0 引用块 |
 | ~~**P2-e** 进 RL 前加同名项自检~~ ✅ | [`../../docs/learn/rl-sar.md`](../../docs/learn/rl-sar.md) §3 末句（现在写的是"要加护栏就在进 RL 前自己读一遍 base"）、[`porting.md`](porting.md) §3 的指针、[`../README.md`](../README.md) 的调参段 | 改成"本仓已加，行为是…"；并把"改 `config.yaml` 后重进 RL 即生效、`base.yaml` 要重启"写进 README |
 | ~~**S4** 时基改造（**最重要**）~~ ✅ | ① [`../README.md`](../README.md):77 那句（已改成「全速现在是推荐用法」）、② `launch/rl_sim.launch.py` 开头与 `realtime` 参数说明、③ [`scripts/agent_scripts/check_walk.py`](../scripts/agent_scripts/check_walk.py) 的 docstring 与新增 `--realtime`、④ [`porting.md`](porting.md) §5 与 §7 表第 1 行、⑤ [`experiments.md`](experiments.md) §1/§5 与新增 §9、⑥ [`../../docs/learn/rl-sar.md`](../../docs/learn/rl-sar.md) §6、[`../../docs/learn/runtime-timing.md`](../../docs/learn/runtime-timing.md) §14.1 | 新增 [`control-stack-rates.md`](control-stack-rates.md)（频率总表，索引进根 `README.md`）、[`porting.md`](porting.md) §2 第 18 条；`experiments.md` §5 标为「S4 之前的记录」 |
-| **S5** 健壮性（P2-g） | [`../../docs/learn/runtime-timing.md`](../../docs/learn/runtime-timing.md) §14.4 的「建议（未实施）」四条、§14.2 第 4/7 条（现在写的是「没有任何陈旧检测」）、本文件 P2-g | 改成「已实现 + 怎么验的（`kill -STOP` 的结果）」；§14.3 边界表里「反馈中断 / joy_node 死掉」两行从「无检测」改成「有检测」；**并且**：见「已知的小问题」里的跨任务发现（仿真侧看门狗不生效），所以 S5 还要**多一条**：rl_sim 侧加**墙钟兜底（deadman）**——反馈断流超过 N ms 就主动发一条阻尼指令（kp=0、kd=damp）+ WARN，否则仿真会一直沿用最后一条指令（它自己的看门狗不生效）。验收把 `check_feedback_clock.py` 扩展成「断流 → 狗转阻尼 + 有 WARN」 |
+| **S5** 健壮性（P2-g） | [`../../docs/learn/runtime-timing.md`](../../docs/learn/runtime-timing.md) §14.4 的「建议（未实施）」四条、§14.2 第 4/7 条（现在写的是「没有任何陈旧检测」）、本文件 P2-g | 改成「已实现 + 怎么验的（`kill -STOP` 的结果）」；§14.3 边界表里「反馈中断 / joy_node 死掉」两行从「无检测」改成「有检测」；**S5-1 已完成**（指令限位，见下面的安全审计一节）；**另外**：见「已知的小问题」里的跨任务发现（仿真侧看门狗不生效），所以 S5 还要**多一条**：rl_sim 侧加**墙钟兜底（deadman）**——反馈断流超过 N ms 就主动发一条阻尼指令（kp=0、kd=damp）+ WARN，否则仿真会一直沿用最后一条指令（它自己的看门狗不生效）。验收把 `check_feedback_clock.py` 扩展成「断流 → 狗转阻尼 + 有 WARN」；**再加**：`SetCommand()` 前对 `motor_command` 显式钳位（`q_des` 夹到关节软限位、`kp/kd` 夹到配置上限、`q_des` 加变化率限幅）——见 [`safety-limits.md`](safety-limits.md) §3 第 1 条 |
 | **S7** 渲染/物理拆线程 | [`../../docs/learn/runtime-timing.md`](../../docs/learn/runtime-timing.md) §13（现在写成"设计草案/暂不实施"）、[`../../@20261005_ros2/docs/ros2-nodes.md`](../../@20261005_ros2/docs/ros2-nodes.md) §2（单线程 + 补齐）、本文件 P3-a/b | §13 改成"已实现 + 实测"；§2 改成"物理线程 + 渲染线程"并更新每帧构成 |
 | 改 `src/rl_sim.cpp` / `policy/black/fsm.hpp` 的行数 | 全仓 `文件:行` 引用都要重扫：`grep -rn "rl_sim\.cpp:[0-9]\|fsm\.hpp:[0-9]" docs @2026*`，再逐条核对（2026-10-11 就因为 P1-e/P1-g/S3 各插了几十行，`porting.md`/`tbb.md`/`runtime-timing.md`/`policy-model.md`/本文件里二十多条引用集体失效） | |
 
@@ -114,44 +128,36 @@
 
 ## 提交建议
 
-按 conventions §1.3 分阶段（**AI 不代为提交**）。到 `eff87c8` 为止（S1/S2/S3/S3.5、P1-e…P1-h、检查器与文档那几批）都已提交。下面是**当前这批**（S4 时基 + 注释语言统一 + 检查器扩充 + 频率总表），按主题分四条：
+按 conventions §1.3 分阶段（**AI 不代为提交**）。S4 那一批（时基 + 语言统一 + 频率总表 + 检查器）已提交；**当前这批是 S5-1（控制器侧指令限位）**：
 
 ```bash
-# ① 时基 + 语言：控制/推理改由仿真时间驱动，注释/日志统一成英文精简版（同一批文件）
-git add @20261007_assignment/ws/src/rl_sar/src/rl_sim.cpp \
+# ① 指令限位：纯函数 + 接进 SetCommand + 自检 + 5 个旋钮
+git add @20261007_assignment/ws/src/rl_sar/include/command_limit.hpp \
+        @20261007_assignment/ws/src/rl_sar/test/command_limit_selftest.cpp \
+        @20261007_assignment/ws/src/rl_sar/src/rl_sim.cpp \
         @20261007_assignment/ws/src/rl_sar/include/rl_sim.hpp \
-        @20261007_assignment/ws/src/rl_sar/policy/black/fsm.hpp \
+        @20261007_assignment/ws/src/rl_sar/policy/black/knobs.hpp \
         @20261007_assignment/ws/src/rl_sar/policy/black/base.yaml \
-        @20261007_assignment/ws/src/rl_sar/launch/rl_sim.launch.py \
-        @20261007_assignment/ws/src/rl_sar/CMakeLists.txt \
-        @20261007_assignment/ws/src/rl_sar/test/input_map_selftest.cpp
-git commit -m "refactor(rl_sar): pace control and inference by simulation time"
+        @20261007_assignment/ws/src/rl_sar/CMakeLists.txt
+git commit -m "feat(rl_sim): clamp the outgoing MIT command so a bad policy cannot over-actuate"
 
-# ② 自检：check_walk 支持全速（时间线按仿真时间）+ 新增反馈时钟自检
-git add @20261007_assignment/scripts/agent_scripts/check_walk.py \
-        @20261007_assignment/scripts/agent_scripts/check_feedback_clock.py
-git commit -m "test(rl_sar): add the feedback-clock check and full-speed walk check"
+# ② 限位仪器 + 安全文档
+git add @20261007_assignment/scripts/agent_scripts/check_limits.py \
+        @20261007_assignment/docs/safety-limits.md
+git commit -m "test(rl_sar): measure the limit margins and document what is actually enforced"
 
-# ③ 文档：频率总表（放进任务 docs）+ 被 S4/看门狗发现推翻的那些表述 + 注释语言规范
-git add @20261007_assignment/README.md @20261007_assignment/docs \
-        docs/learn/runtime-timing.md docs/learn/rl-sar.md docs/learn/tbb.md \
-        docs/conventions.md AGENTS.md
-git commit -m "docs: add the control-stack rate table and refresh the clock claims"
-
-# ④ 检查器：按 GFM 补 5 类渲染问题检查（连带修它查出来的两处真错）
-git add @20260927_motor/scripts/agent_scripts/check_md_links.py \
-        @20260927_motor/cpp_part2_remake/docs/design.md docs/learn/cpp-cmake.md
-git commit -m "test(docs): teach check_md_links.py about GFM rendering pitfalls"
+# ③ 被这一轮带动的表述
+git add @20261007_assignment/README.md @20261007_assignment/docs/porting.md \
+        @20261007_assignment/docs/status.md
+git commit -m "docs(rl_sar): document the command-side limits and their calibration"
 ```
 
-**这次检查器/语言统一顺带改到的别人的文件**（都在上面 ④ 里，值得在提交信息外口头提一句）：`@20260927_motor/cpp_part2_remake/docs/design.md` 两处把 `` ` `` 误写成数学定界（`$`）导致行内代码不闭合；`docs/learn/cpp-cmake.md` 一处把行内代码写成了跨行围栏（三反引号开在行内）。
+**提交前核对**：`git status --porcelain` 无产物；文档跑 `check_md_links.py .`（68 个文件）；代码跑 `input_map_selftest`、`command_limit_selftest`、`colcon test --packages-select rl_sar`（2/2）、`check_walk.py`（1x 与 `--realtime false` 都 7/7）。
 
-**提交前的核对**：`git add -An <路径>` 看文件是否正好；`git status --porcelain` 确认无编译产物（`output/log/` 已被 `.gitignore` 覆盖）；文档改动跑 `pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py .`（67 个文件）；代码改动跑下面的三条自检。⚠ `@20261007_assignment/ws/log/build_*/events.log` 含 colcon 的环境变量转储（里面有 `ANTHROPIC_AUTH_TOKEN`），别 `git add -f`、也别整目录打包。
-
-**之后各阶段的提交**（每段做完再提交，消息按当时的实际改动写）：
+**之后各阶段的提交**（每段做完再提交）：
 
 | 阶段 | 提交信息（建议） |
 |---|---|
-| S5 | `feat(rl_sim): warn and damp when the feedback stream goes stale` |
+| S5 剩余（deadman / 关节窗口 / `sim_node` 看门狗 1 行） | `feat(rl_sim): damp and warn when the feedback stream goes stale` |
 | S6 | `docs(rl_sar): finalise the delivery notes and the doc checklist` |
 | S7（触发式） | `perf(sim): move physics to its own thread and render from a snapshot` |
