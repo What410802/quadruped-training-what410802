@@ -33,7 +33,7 @@ rl_sar 内部分三层，移植只动后两层：
 |---|---|---|---|
 | `library/core/**`（6 个文件） | 同路径 | 逐字复制 | — |
 | `LICENSE` | 仓库根 | 逐字复制 | — |
-| `src/rl_sim.cpp` | `src/rl_sim.cpp` | 改写（删 333 行、加 62 行） | 见下面 7 条 |
+| `src/rl_sim.cpp` | `src/rl_sim.cpp` | 改写 | 见下面 7 + 4 条（第 12–15 条是后续阶段追加的） |
 | `include/rl_sim.hpp` | `include/rl_sim.hpp` | 改写（删 74 行、加 19 行） | 成员换成我们的消息类型；删 ROS 1 / Gazebo / 画图 |
 | `policy/fsm.hpp` | `policy/fsm.hpp` | 改写 | 只注册 `black` 一个机器人 |
 | `policy/black/fsm.hpp` | `policy/go2/fsm.hpp` | 改写 | 改名 go2 → black（namespace、factory、头文件保护宏）；起身前的蹲姿换成 black 的（§6.2）；旋钮改从 `base.yaml` 读、RL 状态读局部副本、状态行移走（下面第 9–11 条）。**状态、转移与斜坡结构本身与 go2 相同** |
@@ -56,13 +56,23 @@ rl_sar 内部分三层，移植只动后两层：
 
 另外删掉了 ROS 1 分支与 matplotlib 画图（`PLOT`，需要 Python 开发头与 numpy）。控制流程——两条墙钟线程 + 状态机——**一行没改**。
 
-后续按 `status.md` 的阶段清单又改了四处（都在本包自己的文件里，`library/core/**` 仍未动一行）：
+后续按 `status.md` 的阶段清单又改了八处（都在本包自己的文件里，`library/core/**` 仍未动一行）：
 
 8. **不再 push `output_dof_tau_queue`**（S1/P1-b）：上游从 `src/rl_sim.cpp` 与 5 个 `rl_real_*.cpp` push、但没有任何 FSM pop，队列无界 → 纯泄漏；本移植不用前馈 `tau`（fsm 里恒 0），所以删掉那次 push。
 9. **RL 状态读局部副本**（S1/P2-c）：`policy/black/fsm.hpp` 的 RL 状态本来就 `try_pop` 出 `_output_dof_pos`/`_output_dof_vel`，却去读成员 `rl.output_dof_pos`；现在改读副本，pos/vel 保证同帧、也没有 Tensor 句柄竞争。
 10. **状态行改成节点参数**（S1/P1-a）：原来 RL 状态每个控制周期（200 Hz）用 `\r` 打一行 `RL Controller x:…`；现在由 `rl_sim` 的 ROS 参数 `status_period_ms`（默认 0 = 关）节流，打印移到 `RL_Sim::RobotControl()`。
 11. **四个部署旋钮进 `base.yaml` + 进 RL 前自检**（S2/P1-a、P2-e）：`kd_passive`（默认 8.0）、`getup_pre_cycles`（200）、`getup_cycles`（400）、`getdown_cycles`（500）——上游把前三个值写死在 `policy/go2/fsm.hpp` 的斜坡里；现在由**新写的** [`policy/black/knobs.hpp`](../ws/src/rl_sar/policy/black/knobs.hpp) 读 `base.yaml`（缺键/缺文件就用默认值并告警）。同时在进 Passive 与每次进 RL 时比对 `base.yaml` 与 `himloco/config.yaml` 的 7 个同名字段，不一致就 WARN（[`../../docs/learn/rl-sar.md`](../../docs/learn/rl-sar.md) §3）。**这段机制刻意不写在 `fsm.hpp` 里**：`fsm.hpp` 是与上游 `policy/go2/fsm.hpp` 对照的文件，抽出后它相对上游只剩调用点，机制本身作为一个新文件单独记在这里。
 
+12. ~~**复位与导航模式改成边沿触发**（P1-e）~~：**已被 S3.5 的输入层统一取代**（见第 17 条），保留这段作为过程记录——原来用 `control.current_gamepad` 判断 `R`/`RB+Y` 与 `N`/`X`，而 `JoyCallback` 只在"按下"时 `SetGamepad()`、松开没有任何调用清零，于是按一次 X 就会每 5 ms 翻转一次导航模式；现在改成看 `/joy` 原始按键的上升沿（`reset_pressed`/`nav_pressed`），一次按键一次动作。键盘路径保持上游语义（触发后清 `current_keyboard` 以便连按再次触发）。顺带在 `RL_Sim` 构造里把 `control` 的四个输入枚举显式置 `None`——`library/core` 的 `Control` 成员没有初值。
+13. ~~**进状态时清输入锁存**（P1-g）~~：**已被 S3.5 取代**（`SeenIntents` 天然只认「进入该状态之后按下过的键」），保留作为过程记录——四个状态的 `Enter()` 都调 `black_fsm::ClearInputState(rl)`（定义在 `policy/black/knobs.hpp` 旁边、`fsm.hpp` 顶部）。因为 `Input` 只记录**变化**，上一步动作留下的值会被后面的状态当成"还按着"——实测反例是手柄按过 A 之后用键盘 `1` 进 RL，RL 的 `A → GetUp` 分支立刻命中，`RL → GetUp → RL …` 无限弹回。清锁存后过渡只认"在该状态下按的键"。
+14. **进 RL 打一行提示**（P1-f）：`RLFSMStateRL_Locomotion::Enter()` 打 `Entered RL_Locomotion; … status_period_ms …`。S1 把 200 Hz 的状态行改成默认关闭的 `status_period_ms` 之后，终端上不再有新输出、最后停着 GetUp 的 `\r` 进度行，容易被误判为"卡在起身、进不了 RL"。
+15. **`cmd_vel` / `joy` 改成相对名**（S3①，接口层面的说明见 §4）：本节点原来是全仓唯一混用绝对名的；改后默认解析结果不变（`/cmd_vel`、`/joy`），但 `--namespace` 能把六个接口（含服务 `sim_reset`）整体搬走。
+16. ~~**十字键不再吞按键**（P1-h）~~：**已被 S3.5 取代**（十字键只是普通 bit，组合就是多个 bit，不再有「最后写入者赢」），保留作为过程记录——`JoyCallback()` 的映射是"最后写入者赢"（`SetGamepad()` 只有一个值），而四条十字键规则写在按键规则**之后**——手柄 D-pad 被按住（虚拟手柄更是"点一下锁存"、一直发 ±1）时，按 A 会被写成 `DPadDown`，状态机读到的永远不是 `Gamepad::A`，实测"趴卧下按 A 起不来"。现在把四条十字键规则**收进 `if (!any_gamepad_button)`**：任何按键按下时十字键让位，组合键（`RB+十字键上` 等自带按键条件）不受影响。
+17. **输入层换成「每键电平+边沿 → 意图」**（S3.5）：新增 [`include/input_map.hpp`](../ws/src/rl_sar/include/input_map.hpp) 与自检 [`test/input_map_selftest.cpp`](../ws/src/rl_sar/test/input_map_selftest.cpp)（放在 `test/` 而不是 `src/`：它不是节点的一部分；CMake 里无条件构建、并在 `BUILD_TESTING` 下用 `add_test` 注册，于是 `colcon test --packages-select rl_sar` 也会跑它）。
+`JoyCallback()` 现在只做长度护栏 + 存帧；每周期 `RobotControl()` 把 `/joy` 的按钮/十字键与键盘锁存翻译成 `KeyBits`（每键 1 bit 电平 + 1 bit 上帧电平，±1 的十字键也是普通 bit），`input_map::BeginCycle()` 按 `kBindings` 表解析出**意图**（StandUp / LieDown / EnterRL / Damp / ResetSim / ToggleNavigation / 键盘微调那一组）；
+四个 FSM 状态改用 `SeenIntents`（进入清零、每周期累积、命中即用）读意图，`RobotControl()` 也读意图处理复位/导航/微调。
+这一层一次性取代了第 12/13/16 三条补丁：边沿是纯函数、天生只发生一次（不需要「消费/清除」协议）、组合键就是多个 bit（不再有枚举别名与写入顺序之争）、`library/core` 的 `Input` 完全不再参与状态转移（它仍在原地、一字未改，只有键盘锁存还被适配器读）。
+意图表就是 §6.2 那张键位表的代码版：以后加键位只改 `kBindings` 一行 + 文档表一行。
 和上游逐行对照（先把上游 clone 到临时目录）：
 
 ```bash
@@ -74,6 +84,21 @@ diff -r $U/library/core $P/library/core | grep -v -E 'thirdparty|matplotlibcpp' 
 ```
 
 ## 3. 配置字段的来源
+
+**功能/行为差异汇总**（相对上游 `e5c2f41`；括号里注明主办方 fork 的不同做法。接口与文件层面的差异见 §4 与上表）：
+
+| 变更 | 上游行为 | 本仓行为 | 依据 |
+|---|---|---|---|
+| `output_dof_tau_queue` | 每次推理 push，但没有任何 FSM pop（无界队列持续增长） | **不 push** | 我方不需要前馈 `tau`（fsm 里恒 0）；见 [`status.md`](status.md) P1-b |
+| RL 状态取数 | 读成员 `rl.output_dof_pos`（Tensor 句柄竞争；`try_pop` 出的副本被丢掉） | 读 `try_pop` 出的 `_output_dof_pos`/`_output_dof_vel`（保证 pos/vel 同帧） | P2-c |
+| 状态行 | RL 状态每个控制周期（5 ms、200 Hz）打一行 `\r` | `status_period_ms` 节流（默认 **0 = 不打**），打印移到 `RL_Sim::RobotControl()` | P1-a |
+| 部署旋钮 | `kd=8`、三段斜坡 200/400/500 写死在 `policy/go2/fsm.hpp` | `kd_passive` / `getup_pre_cycles` / `getup_cycles` / `getdown_cycles` 从 `base.yaml` 读（缺省 = 原值） | P1-a、S2 |
+| 两份 yaml 一致性 | 没有检查（上游 go2 模板自己就 base 80/3 vs config 60/5） | 进 Passive 与每次进 RL 各查 7 个同名字段，不一致 WARN（主办方同样没有） | P2-e |
+| 手柄快捷键（导航模式 `X`、复位 `RB+Y`） | 按一次之后**每 5 ms 重复**：`current_gamepad` 只被"按下"设置、从不回 `None`，而分支只清键盘 | 按 `/joy` **原始按键的上升沿**触发：一次按键一次动作（主办方 fork 在分支末尾补了 `current_gamepad = None`，能止住"永远刷"，但按住期间仍按 /joy 的 100 Hz 重复） | P1-e |
+| `Control` 的输入状态 | `library/core` 里四个枚举成员**没有初值** | `RL_Sim` 构造里显式置 `Gamepad::None`/`Keyboard::None` | P1-e |
+| 复位 / 暂停 | Gazebo `/reset_world`、`/pause_physics`、`/unpause_physics` | `/sim_reset`（**保留仿真时间轴**，只复位姿态）+ 窗口空格暂停 | §4 |
+| 机器人名 / 参数来源 | 启动时向独立 `/param_node` 要 `robot_name` | 本节点 ROS 参数 `robot_name`（+ `joy_command_scale`、`status_period_ms`） | §4 |
+| 画图与平台 | matplotlib/`PLOT`、ROS 1 分支、`ros2_control` spawner | 全部删掉（本仓不需要） | 上表 |
 
 **本仓另外加了四个 `base.yaml` 专属键**（上游没有，值以前写死在 `policy/black/fsm.hpp`）：`kd_passive: 8.0`（Passive 的 kd）、`getup_pre_cycles: 200` / `getup_cycles: 400` / `getdown_cycles: 500`（三段斜坡的控制周期数）。它们只被 [`policy/black/knobs.hpp`](../ws/src/rl_sar/policy/black/knobs.hpp) 读、由 `fsm.hpp` 调用，不进 `RL` 的参数结构，所以也不受「7 个同名字段」的约束。
 
@@ -90,7 +115,7 @@ diff -r $U/library/core $P/library/core | grep -v -E 'thirdparty|matplotlibcpp' 
 | `model_name`、`num_of_dofs`、`wheel_indices` | `best.pt`、12、`[]` | 显然值 |
 | `joint_mapping` | `[0, 1, 2, `<br/>`  3, 4, 5,  `<br/>` 9, 10,11,`<br/>` 6, 7, 8 ]` | 本仓库仿真的执行器顺序选定 FL/FR/RR/RL，策略是 FL/FR/RL/RR。主办方分支是 `[3,4,5, 0,1,2,…]`，不应照抄 |
 
-`joint_mapping[i]` 的含义是"策略第 i 个关节在仿真消息里的下标"：`GetState` 用它读（`src/rl_sim.cpp:128`），`SetCommand` 用它写（`src/rl_sim.cpp:138`）。`base.yaml` 与 `config.yaml` 里各有一份，`ReadYamlRL` 会用后者覆盖前者，所以两份必须相同。
+`joint_mapping[i]` 的含义是"策略第 i 个关节在仿真消息里的下标"：`GetState` 用它读（`src/rl_sim.cpp:138`），`SetCommand` 用它写（`src/rl_sim.cpp:148`）。`base.yaml` 与 `config.yaml` 里各有一份，`ReadYamlRL` 会用后者覆盖前者，所以两份必须相同。
 
 关节符号已经核对过：我们模型的关节限位与 `default_dof_pos` 的符号一致（左腿大腿 +0.80 / 小腿 −1.53，右腿相反），基座 x 朝前、y 朝左，与训练约定相同。
 
@@ -113,7 +138,7 @@ diff -r $U/library/core $P/library/core | grep -v -E 'thirdparty|matplotlibcpp' 
 
 观测里各物理量的单位见 §5 的表。字段之外，代码里的连续量一律是 SI（米 / 秒 / 弧度 / N·m 系），名称里不带单位后缀是常态；少数非 SI 的量靠名字标注：`tilt_warn_deg` 与 `quadruped::attitude::TiltDeg()`（度，见 [`../../@20261005_ros2/docs/ros2-nodes.md`](../../@20261005_ros2/docs/ros2-nodes.md) §1.2）、诊断脚本的 `--period-ms` / `--delay-ms`（毫秒）。
 
-例外的例外是上游框架层逐字拷来的 [`rl_sdk.cpp:228`](../ws/src/rl_sar/library/core/rl_sdk/rl_sdk.cpp) 的 `AttitudeProtect()`：阈值按度用（内部 `rad2deg`），名字却没带后缀；本移植里没人调用它（相关的 `TorqueProtect` 调用也被注释掉了，[`rl_sim.cpp:315`](../ws/src/rl_sar/src/rl_sim.cpp)）。
+例外的例外是上游框架层逐字拷来的 [`rl_sdk.cpp:228`](../ws/src/rl_sar/library/core/rl_sdk/rl_sdk.cpp) 的 `AttitudeProtect()`：阈值按度用（内部 `rad2deg`），名字却没带后缀；本移植里没人调用它（相关的 `TorqueProtect` 调用也被注释掉了，[`rl_sim.cpp:351`](../ws/src/rl_sar/src/rl_sim.cpp)）。
 
 ## 4. 接口对照
 
@@ -126,15 +151,15 @@ diff -r $U/library/core $P/library/core | grep -v -E 'thirdparty|matplotlibcpp' 
 | 复位 | `/reset_world`、`/pause_physics`、`/unpause_physics` | `/sim_reset` | 只接复位 |
 | 参数 | 启动时向 `/param_node` 要 `robot_name` | 本节点参数 `robot_name`、`joy_command_scale`、`status_period_ms`（状态行周期 ms，0 = 关） | 改成 `declare_parameter` |
 
-**话题名的前缀**：本节点是混用的——`/cmd_vel`、`/joy` 是绝对名，`imu`、`motor_state`、`mit_command`、`sim_reset` 是相对名（上游也混：`/cmd_vel`、`/joy`、`/imu` 绝对 + `<namespace>robot_joint_controller/*` 相对，我们只把 `imu` 改成相对、与仿真节点的相对名对齐）。默认都在 `/` 下，解析结果一样；但 `ros2 launch … --namespace /robot1` 时相对名跟着搬家、绝对名留在根，**静默对不上**。要统一建议全部用相对名（去掉 `cmd_vel`/`joy` 那两处的斜杠）。
+**话题名的前缀：已全部改成相对名**（S3①，2026-10-11）。原来本节点是全仓唯一混用绝对名的：`/cmd_vel`、`/joy` 绝对，`imu`、`motor_state`、`mit_command`、`sim_reset` 相对（上游也混：`/cmd_vel`、`/joy`、`/imu` 绝对 + `<namespace>robot_joint_controller/*` 相对，我们此前只把 `imu` 改成相对）。默认（无命名空间）解析结果与改前完全一样，实测 `ros2 topic list` 仍是 `/cmd_vel` `/imu` `/joy` `/mit_command` `/motor_state`；加上命名空间后六个接口一起搬：`ros2 run rl_sar rl_sim --ros-args -r __ns:=/robot1` → `ros2 topic list` 得到 `/robot1/{cmd_vel,imu,joy,mit_command,motor_state}`、`ros2 service list` 得到 `/robot1/sim_reset`（`ros2 node info /robot1/rl_sim_node` 可看到全部）。两端一起搬的端到端验证：把仿真节点与 `rl_sim` 都加 `-r __ns:=/robot1` 起起来，`ros2 topic list` 只剩 `/robot1/{cmd_vel,imu,joy,mit_command,motor_state}`，且 `mit_command`/`motor_state` 各有 1 发布 1 订阅（数据流仍然是通的，不是各自搬完就断线）。这条改动让本节点与 `@20261005_ros2` 的 `sim_node`/`controller_node`/`joy_node`（都已是相对名）能一起被 `--namespace` 整体搬走；混用时绝对名会留在根下、**静默对不上**，这是改它的唯一原因。
 
-**`/cmd_vel` 与导航模式**：这条话题全仓没有发布者——它是给外部/人用的（主办方那边由 `ros2_gateway.cpp` 收）。用之前要先按 `N`（键盘）或手柄 `X` 切到 navigation mode，`RunModel()` 才用 `/cmd_vel` 而不用摇杆：`pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5}}"`；再按一次切回摇杆。本次任务不需要它，但按上游与主办方的做法保留（决定见 [`status.md`](status.md) P2-a）。
+**`/cmd_vel` 与导航模式**：这条话题全仓没有发布者——它是给外部/人用的（主办方那边由 `ros2_gateway.cpp` 收）。用之前要先按 `N`（键盘）或手柄 `X` 切到 navigation mode——**只有在 ON 时** `RunModel()` 才把 `cmd_vel.linear.x/linear.y/angular.z` 当策略指令，OFF 时用摇杆的 `control.x/y/yaw`（摇杆在导航模式下被忽略，但按钮/状态切换照旧）：`pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5}, angular: {z: 0.3}}"`；再按一次切回摇杆。单位是 m/s、m/s、rad/s（与摇杆同量纲，满偏 = `joy_command_scale`）。本次任务不需要它，但按上游与主办方的做法保留（决定见 [`status.md`](status.md) P2-a）。
 
-**QoS 的坑**：仿真节点的 `/motor_state` 与 `/imu` 是 best_effort 发的（500 Hz，只要最新）。ROS 2 里 **reliable 订阅者收不到 best_effort 发布者**（两端不匹配，不报错，只是一条也收不到），所以上游那种 `SystemDefaultsQoS()`（= reliable）订阅必须改成 best_effort（`src/rl_sim.cpp:22` 的 `LatestQoS()`，与仿真节点同一个定义）。反过来不受影响：reliable 发布、best_effort 订阅可以匹配，所以 `/joy` 不用改。
+**QoS 的坑**：仿真节点的 `/motor_state` 与 `/imu` 是 best_effort 发的（500 Hz，只要最新）。ROS 2 里 **reliable 订阅者收不到 best_effort 发布者**（两端不匹配，不报错，只是一条也收不到），所以上游那种 `SystemDefaultsQoS()`（= reliable）订阅必须改成 best_effort（`src/rl_sim.cpp:19` 的 `LatestQoS()`，与仿真节点同一个定义）。反过来不受影响：reliable 发布、best_effort 订阅可以匹配，所以 `/joy` 不用改。
 
 ## 5. 一帧观测与动作是怎么算出来的
 
-两条墙钟线程（`src/rl_sim.cpp:87-88`，计时在 `library/core/loop/loop.hpp:70-80`）：
+两条墙钟线程（`src/rl_sim.cpp:97-98`，计时在 `library/core/loop/loop.hpp:70-80`）：
 
 * **控制线程**，每 5 ms（`dt`）一次 `RobotControl()`：`GetState()` 把最新收到的消息拷进 `robot_state` → 状态机 `Run()` 填 MIT 五参数 → `SetCommand()` 发 `/mit_command`。
 * **策略线程**，每 20 ms（`dt × decimation`）一次 `RunModel()`：拼观测 → 推理 → 换算成关节目标，放进队列；控制线程在 RL 状态下从队列里取（`policy/black/fsm.hpp:216`）。这个队列是 TBB 的 `tbb::concurrent_queue`——它是什么、为什么用它见 [`../../docs/learn/tbb.md`](../../docs/learn/tbb.md)。
@@ -192,15 +217,35 @@ stateDiagram-v2
 ```
 
 ① 从 `GetUp` 进 `RL_Locomotion` 要求起身斜坡已经走完（`running_percent == 1`；`RLFSMStateGetUp::CheckChange()` 里那个 `if`），斜坡没走完时按 `1` / RB+十字键上不会有反应；\
-② `R` / RB+Y 不进状态机——它在 `RobotControl()` 里直接调 `/sim_reset`（[`../ws/src/rl_sar/src/rl_sim.cpp:151`](../ws/src/rl_sar/src/rl_sim.cpp)），状态保持不变。
+② `R` / RB+Y 不进状态机——它在 `RobotControl()` 里直接调 `/sim_reset`（[`../ws/src/rl_sar/src/rl_sim.cpp:177`](../ws/src/rl_sar/src/rl_sim.cpp)），状态保持不变。
 
 | 操作（手柄 / 键盘） | 从 | 到 | 做什么 |
 |---|---|---|---|
 | A / `0` | Passive、GetDown | GetUp | 1 s 推到蹲姿，再 2 s 推到站姿 `default_dof_pos`（kp 80 / kd 3） |
 | RB + 十字键上 / `1` | GetUp（站完后） | RL_Locomotion | 加载 `best.pt`，按策略走；左摇杆前后 / 左右、右摇杆转向，满偏 = 1.5 m/s 或 rad/s |
 | B / `9` | GetUp、RL_Locomotion | GetDown | 2.5 s 把关节推回**按 A 那一刻**的关节角，然后转 Passive |
-| LB + X / `P` | 任意 | Passive | 立刻转阻尼 |
+| LB + X / `P` | 任意 | Passive | 立刻转阻尼（⚠ `LB+X` 含原始 `X`，会同时翻转一次导航模式；键盘 `P` 不会） |
 | RB + Y / `R` | 任意 | （不变） | 调 `/sim_reset` 复位仿真 |
+| X / `N` | 任意 | （不变） | 切**导航模式**：ON 时策略指令改从 `/cmd_vel` 取（`linear.x`/`linear.y`/`angular.z`），摇杆被忽略；OFF 时用摇杆（详见 §4） |
+
+**状态切换只认"当前状态下按的键"**（P1-g）：四个状态的 `Enter()` 都会清一次输入锁存（`black_fsm::ClearInputState`），因为 `library/core` 的 `Input` 只记录**变化**、按钮松开也不会回到 `None`，上一步动作留下的值会被后面的状态当成"还按着"。修复前的实测反例：先用手柄按 A 起身（`current_gamepad` 粘在 `A`），再用键盘 `1` 进 RL → RL 的 `A → GetUp` 分支第一个周期就命中 → `RL→GetUp→RL→…` 无限弹回（实测 5 次进 RL 全被弹回去，看起来就是"进不了 RL"）。清锁存后同一场景只进 1 次并停住；`RL` 下按 A / 按 B 分别进 GetUp / GetDown 仍然正常。
+
+**输入层语义（S3.5 之后）**：转移由 [`input_map.hpp`](../ws/src/rl_sar/include/input_map.hpp) 解析出的**意图**驱动。吃透三条规则就够：
+
+* **意图 = 边沿**：按下的那一周期产生一次，之后按住不再重复；「按着 RB 再按 A」里 A 照样是一次按下 ⇒ 现在**不再有**旧模型那种「变成 `RB_A`、谁都不认」的坑，只有**没绑定**的组合（如 `LB+A`）才什么都不做。
+* **「在该状态下按下过就算」**：每个状态进状态时清零、每周期累积（`SeenIntents`），所以 `GetUp` 里「提前按一下 `RB+↑`、站完再生效」可以，和「一直按着」等效——但要**先站完**（斜坡 3 s，`running_percent == 1.0f` 是闸门）才会真的切过去；在此之前按过的键会被记住。
+* **键盘源只有「最后一个键」**：`library/core` 的 `KeyboardInterface()` 是单值锁存、终端也不报抬起，所以键盘一次只能有一个键被认（`W`/`S`/`A`/`D`/`Q`/`E`/空格是「每按一次走一步」的微调），手柄按键与键盘可以同时产生意图。
+* **长按**目前没有需求；`KeyBits` 就是加「按住时长」的地方（rl_sim 每周期都看得到帧，自己计时即可，不用改消息）。
+
+**「按了没反应」怎么快速定位**（两条命令，各开一个终端）：
+
+```bash
+pixi run ros2 topic echo /joy                      # 勾选 RB「锁定按下」+ 点 ↑：应看到 buttons[5]=1 且 axes[7]=1.0
+pixi run ros2 topic echo /mit_command --field kp   # 状态探针：kp=80 → GetUp/fixed_kp；kp=40 → 已在 RL（rl_kp）
+```
+
+第一条对不上 = 手柄→`/joy` 这一段（先看是不是旧实例、或别的设备被 `joy_node` 认领了）；第一条对而上不了 RL = 看第二条判状态、再看是否真的「站完」（斜坡共 3 s，`kp=80` 就是还在 GetUp）。虚拟手柄的十字键是**点一下锁存**（点 `●` 或「全部归中 / 松开」才回中），锁存本身不影响按键。
+另外要记得：**`joy_node` 在 `install/` 里是源码的副本**，改完 `joy_node.py` 必须 `pixi run ros2-build` 才生效（`rl_sim` 是指向 `build/` 的符号链接，手柄脚本直接从源码运行，都不会「陈旧」）。
 
 蹲姿：go2 的四条腿同号，而 black 的右腿关节是镜像的（符号相反），且 go2 的小腿 −2.65 超出 black 的小腿限位 [−2.5, −0.85]。所以换成主办方分支里 black 的蹲姿 (0, ±1.40, ∓2.20)，四条腿都在我们模型的限位内。
 
@@ -219,10 +264,10 @@ stateDiagram-v2
 
 不加锁的共享数据有三处：
 
-1. ROS 回调线程写 `motor_state_msg` / `imu_msg` / `control.x/y/yaw`（`src/rl_sim.cpp:212`、`:222`、`:277`），控制线程同时读。我们的消息是**定长数组**（`float64[12]`），赋值不会重新分配内存，最坏是读到"一半新、一半旧"的一帧，下个 5 ms 就被覆盖。
-2. 控制线程写 `robot_state`（`src/rl_sim.cpp:206`），策略线程读（`:287`、`:296-298`）。`std::vector<double>` 大小不变，同上。
-3. 策略线程给 `output_dof_pos` 重新赋值（`:301`），控制线程读同一个成员（`policy/black/fsm.hpp:222`）——它刚用 `try_pop` 取出了一份副本 `_output_dof_pos`（`:216`），却没有用。这是三处里唯一的 Tensor 句柄竞争：最坏情况是读到被释放的内存。但被替换掉的那个 Tensor 同时被队列或刚取出的副本持有引用，至少要再过一个 20 ms 周期才会释放，而控制线程读 12 个数只要几微秒，所以实际只会读到"新的或旧的那一帧"。
+1. ROS 回调线程写 `motor_state_msg` / `imu_msg` / `control.x/y/yaw`（`src/rl_sim.cpp:313`、`:248`、`:306-308`），控制线程同时读。我们的消息是**定长数组**（`float64[12]`），赋值不会重新分配内存，最坏是读到"一半新、一半旧"的一帧，下个 5 ms 就被覆盖。
+2. 控制线程写 `robot_state`（`src/rl_sim.cpp:229`），策略线程读（`:321-332`）。`std::vector<double>` 大小不变，同上。
+3. **这处已经改了（P2-c，2026-10-10）**：策略线程给 `output_dof_pos` 重新赋值（`src/rl_sim.cpp:335`），控制线程**改读 `try_pop` 出来的副本** `_output_dof_pos` / `_output_dof_vel`（`policy/black/fsm.hpp:254` 取值、`:260`/`:264` 使用），pos/vel 保证同帧，也不再有 Tensor 句柄竞争。改之前它读的是成员 `rl.output_dof_pos`（上游 `policy/go2/fsm.hpp:207-214` 同样是"取出来却读成员"），当时的最坏情况是读到被释放的内存；不过被替换掉的 Tensor 同时被队列或副本持有引用、至少要过一个 20 ms 周期才释放，而控制线程读 12 个数只要几微秒，所以实际只会读到"新的或旧的那一帧"。
 
-三处都是上游原样（第 3 处上游 `policy/go2/fsm.hpp:207-214` 也是「取出来却读成员」），我们一行没改；5 分钟连续行走（约 15000 次推理）的结果见 experiments §6。
+前两处是上游原样、一行没改，第 3 处已按下面的结论改掉；5 分钟连续行走（约 15000 次推理）的结果见 experiments §6。
 
-**2026-10-09 的复查结论**：前两处**不值得修**——消息与 `robot_state` 都是定长、运行期从不重新分配，最坏只混入相邻一帧（差 2 ms），而修它们要么加锁、要么改成槽位拷贝，收益只是"形式上不再是数据竞争"（严格说它们都是 C++ 未定义行为，TSAN 会报）。第 3 处**建议修**：`fsm.hpp:222` 的 `rl.output_dof_pos[0][i]` 改成 `_output_dof_pos[0][i]`（`dq` 那处同理 `_output_dof_vel`）——它本来就已经 `try_pop` 出了一份副本，改完成本为零，而且保证 pos/vel 来自同一帧（现在的 `try_pop(pos) && try_pop(vel)` 是短路的，vel 为空时那帧 pos 会被丢掉）。真要再进一步，第 1 处可以照仿真节点对 `/mit_command` 的做法（`sim_node.cpp:312-321` 的 `cmd_mutex_` + `have_cmd_`）加一把小锁；另外若按 [`status.md`](status.md) P1-c 把控制改成在 `MotorStateCallback` 里跑，第 1 处会自然消失（回调与控制同一条执行器线程）。
+**2026-10-09 的复查结论**：前两处**不值得修**——消息与 `robot_state` 都是定长、运行期从不重新分配，最坏只混入相邻一帧（差 2 ms），而修它们要么加锁、要么改成槽位拷贝，收益只是"形式上不再是数据竞争"（严格说它们都是 C++ 未定义行为，TSAN 会报）。第 3 处**已修（P2-c，2026-10-10）**：`fsm.hpp` 的 `rl.output_dof_pos[0][i]` 改成 `_output_dof_pos[0][i]`（`dq` 那处同理 `_output_dof_vel`，现在在 `:260`/`:264`）——它本来就已经 `try_pop` 出了一份副本，改完成本为零，而且保证 pos/vel 来自同一帧（现在的 `try_pop(pos) && try_pop(vel)` 是短路的，vel 为空时那帧 pos 会被丢掉）。真要再进一步，第 1 处可以照仿真节点对 `/mit_command` 的做法（`sim_node.cpp:312-321` 的 `cmd_mutex_` + `have_cmd_`）加一把小锁；另外若按 [`status.md`](status.md) P1-c 把控制改成在 `MotorStateCallback` 里跑，第 1 处会自然消失（回调与控制同一条执行器线程）。

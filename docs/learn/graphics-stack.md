@@ -383,3 +383,6 @@ pixi run python @20261005_ros2/scripts/agent_scripts/shadow_probe.py --quick  # 
 
 最直观的是 `output/shadow/shadow_crop_detail_8x.png`（8× 放大三档，第 4 块把"默认边界（红） vs 准精确参考（蓝）"叠在暗化画面上）；`shadow_crop_1024_clip1_vs_4096_clip0.25_vs_2048_clip0.5_vs_4096_clip1.png` 是四档并排 + 分歧图；原始数字在 `shadow_probe_summary.csv/json`（20 条记录）。
 
+---
+
+*[另一个学习问答](https://yb.tencent.com/s/9ZMlJIm6uyEB)*

@@ -69,4 +69,4 @@ sudo $B --port /dev/ttyUSB0 --id 0
 | `analyse_spin_log.py` | 分析 `spin_test` 的输出：每次跑的命令转速 vs 实测转速、丢帧、温度 |
 | `analyse_watch_log.py` | 分析 S2 的 `--watch --log`：读数形态（里程计/锯齿）、手转量、±1 区间的跳变清单、MARK 读数 |
 | `analyse_ctl_log.py` | 分析 `motor_ctl` 的一次/多次运行：每条命令的到位情况、跳变修正、保护触发，并给出"可直接抄进记录表"的一行摘要 |
-| `check_md_links.py` | 文档自检：断链/锚点/表格列数 |
+| `check_md_links.py` | 文档自检：断链 / 锚点 / 表格列数，以及引用块标题、"引用块被空行断开导致代码围栏跑到引用块外" 两类结构问题 |

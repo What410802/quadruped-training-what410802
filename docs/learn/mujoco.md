@@ -323,6 +323,32 @@ C++ 侧同一条规则：`cpp_task2/src/record.h` 的 `OffscreenRecorder` 也在
 - **想用程序自己退出窗口**：`sim.exitrequest` 只是通知物理线程，`RenderLoop()` 并不看它；`GlfwAdapter` 把 `GLFWwindow*` 藏在私有成员里（拿不到去 `glfwSetWindowShouldClose`），但 `ShouldCloseWindow()` 是**虚函数** —— 子类里加一个自己的 `bool` 就够（`mujoco_simulate` 的 `main.cc` 之外没有别的钩子）。没有这一手， 终端里的"退出"只能 `exit()` 硬退：不跑析构、终端 raw 模式恢复不了。
 - 顺带：`RenderLoop()` 要求跑在**主线程**；它在 `Render()` **之前**就放锁（源码注释 `// MutexLock (unblocks simulation thread)`），所以"物理线程 + 官方界面"本来就不互相阻滞（实测 1.00x 实时， 见 [`runtime-timing.md`](runtime-timing.md) §11 的方案 ③）。
 
+### 6.10 场景里「三块地面」：碰撞面、可见地面、阴影覆盖区
+
+同一份场景里其实有**三样**东西都长成"地面"，它们由完全不同的设置支配，混起来就会出现"狗走出了白色地面却没掉下去""狗身下有时没影子"这类困惑。以本仓 `@20261005_ros2/scenes/flat_scene.xml`（`floor` = `type="plane" size="5 5 0.1"`，一盏方向光）实测：
+
+| 哪一块 | 是什么 | 由什么支配 | 本场景实测 |
+|---|---|---|---|
+| ① **碰撞面** | `type="plane"` 的**无限半空间**（z ≤ 0 全是实体） | `type="plane"` 本身；**`size` 不参与物理** | 落到 x = 0 / 6 / 50 / **500 m** 都是 `ncon = 8`、静止 z = 0.1449 m |
+| ② **可见地面** | 画出来的那个方块 | 半宽 = `size[0]`、`size[1]`；外观 = `rgba` 或 `material`(+`texture`/`texrepeat`) | 方块边界 x、y ∈ ±4.96 m（= 2×5 m，±5 m 落在像素中间）；地板色纯白 (255,255,255)，方块外是背景黑 (0,0,0) |
+| ③ **阴影覆盖区** | 阴影贴图照到的范围，只有它里面才有影子 | **方向光**：`vis.map.shadowclip × mjModel.stat.extent`；**聚光灯**：`vis.map.shadowscale × light.cutoff` | `1.0 × 1.331 = ±1.33 m`：x = 1.5 m 还有影、x = 2.0 m 就没影了 |
+
+关键机制与"怎么改"：
+
+- **平面的物理范围与 `size` 无关**（`mjmodel.h` 里 plane 的 `rbound = 0`，实测也是 0.000）：`size = 5 5 0.1` 里前两个数只是**画多大**，第三个数是**网格间距**。真想要"有限地面、走出去会掉下去"，得换成 `box`（那才有边界）；反过来说，本场景里狗走出白方块仍然被托着是**预期行为**，不是漏判。
+- **可见地面只有方块那么大，因为那是 geometry 的绘制范围**：把 `size` 调大（`size="20 20 0.1"`）方块就变大；想让地面看起来"无限"，靠的是相机与纹理重复（`texrepeat`），不是物理。相机（`fovy`/距离）和离屏分辨率（`visual/global offwidth/offheight`）只改变"看到多少"，不改变地面本身多大。
+- **`size[2]`（网格间距）在本场景里看不出效果**：`floor` 只有 `rgba`、没有挂材质（场景里那个棋盘格 `floor_grid_mat` 定义着但没挂上去），渲染出来是**纯色**——实测地板内 58×58 像素全是 (255,255,255)、没有一条比中位色暗的线。
+- **阴影只来自 `<light>`，头灯（`<visual><headlight>`）不投影**：把 `light_castshadow` 从 1 改成 0，整幅画面的差异就只剩"影子"（本节的差分就是这么做出来的，开/关对照见 conventions §5.2）。
+- **方向光的阴影范围 = `shadowclip × stat.extent`**（`mjmodel.h:174` 的字段注释原文：`directional light: shadowclip * mjModel.stat.extent`）。注意 `shadowclip` 在 **`vis.map`** 里（XML 写作 `<visual><map shadowclip="…"/>`），不在 `vis.global` 里，Python 绑定同样只在 `m.vis.map` 上能读到。实测把它从 1.0 调成 3.0/6.0，x = 2 m 处的影子就回来了（1691/1653 像素）：**覆盖越大、贴图还是 `vis.quality.shadowsize`² 张（默认 4096²）→ 影子越糊**。
+- **`shadowscale` 对方向光无效**（`mjmodel.h:175`：`spot light: shadowscale * light.cutoff`）：本场景默认 0.6，但灯是方向光，所以调它不会改范围。想彻底关阴影就写 `<light castshadow="false"/>`。
+- **`stat.extent` 是"整个场景有多大"的统计量，所以场景里换个东西会连带改阴影**：本场景完整模型 1.3313 m，把 `floor` 去掉只剩 0.9221 m（即机器人自己的尺度）；把 `stat.extent` 人为设成 2.5/4.0 m，x = 2 m 处的影子同样回来。含义很实际：**往场景里放一个远处的大物体（或换更大的机器人网格）会把 `stat.extent` 顶大 → 阴影范围变大、同样的 4096² 贴图摊到更大面积上 → 影子变糊**；此时要么调小 `shadowclip`，要么调大 `shadowsize`。
+
+复现（本节的仪器在任务目录里，按 conventions §3.7 不进主干）：
+
+```bash
+pixi run python @20261007_assignment/scripts/agent_scripts/scene_ground_extents.py
+```
+
 ---
 
 ## 7. 渲染后端（`MUJOCO_GL`）与开销
@@ -500,6 +526,9 @@ cd <本仓库根目录>            # 含 pixi.toml 的那一级
 
 # geom type / friction / condim 的全部实测数据
 pixi run python @20260923_mujoco/scripts/agent_scripts/mujoco_facts.py
+
+# 第 6.10 节：碰撞面 / 可见地面 / 阴影覆盖区各到哪里（含 shadowclip 与 stat.extent 的对照）
+pixi run python @20261007_assignment/scripts/agent_scripts/scene_ground_extents.py
 
 # 第 6.7/6.8 节：运行时改地面 geom_quat 会被 geom_sameframe 吃掉；相机不会跟地面转（需要离屏渲染）
 pixi run python @20260923_mujoco/scripts/agent_scripts/geom_sameframe_check.py --pitch 15

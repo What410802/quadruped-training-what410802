@@ -67,15 +67,15 @@ pixi run env MUJOCO_GL=glfw python @20260923_mujoco/scripts/simulate.py
 
 | 文档 | 内容 |
 |---|---|
-| [`mujoco.md`](docs/learn/mujoco.md) | MuJoCo 知识点与坑点：`MjModel` / `MjData`、`geom` / `friction` / `condim`、坑点里含「运行时改 `geom_pos`/`geom_quat` 会被 `geom_sameframe` 吃掉」（§6.7）与「相机不会跟地面转 / 地面斜了画面却看不出」（§6.8）、渲染后端（§7）、决策反向索引（[§7.6](docs/learn/mujoco.md#76-这些结论驱动了哪些配置决策)）、复现命令（§8） |
+| [`mujoco.md`](docs/learn/mujoco.md) | MuJoCo 知识点与坑点：`MjModel` / `MjData`、`geom` / `friction` / `condim`、坑点里含「运行时改 `geom_pos`/`geom_quat` 会被 `geom_sameframe` 吃掉」（§6.7）与「相机不会跟地面转 / 地面斜了画面却看不出」（§6.8）、与「场景里三块地面的区别：碰撞面 / 可见地面 / 阴影覆盖区」（§6.10）、渲染后端（§7）、决策反向索引（[§7.6](docs/learn/mujoco.md#76-这些结论驱动了哪些配置决策)）、复现命令（§8） |
 | [`graphics-stack.md`](docs/learn/graphics-stack.md) | 图形 / 渲染 / 视频栈速查（OpenGL、Skia、DirectX、EGL、GLFW 各在哪一层） |
 | [`unitree-mujoco.md`](docs/learn/unitree-mujoco.md) | 上游 `unitree_mujoco` 研读笔记：架构、线程、通信与目标设计 |
 | [`runtime-timing.md`](docs/learn/runtime-timing.md) | 同上，展开到进程 / 线程 / 通信的时序细节；§11 是五种方案的每帧阻滞对比 |
 | [`cpp-cmake.md`](docs/learn/cpp-cmake.md) | C++ 与 CMake 问答笔记（`virtual` / `explicit` / `override`、`const` 成员函数、`= delete` 特殊成员函数与 Rule of Three、头文件扩展名、类内 vs 类外定义、CMake target） |
 | [`tbb.md`](docs/learn/tbb.md) | TBB（oneTBB）是什么：并行算法 / 并发容器 / 分配器工具箱，为什么 rl_sar 用它的 `concurrent_queue` 在两条线程间传动作（含最小用法与版本 / 许可） |
-| [`rl-sar.md`](docs/learn/rl-sar.md) | rl_sar（上游 `e5c2f41` + 主办方分支 + 主办方控制栈）的内部机制速查：分层、键位出处、两份 yaml 的分工与同名项覆盖、参数只在启动时读、三条队列与 `tau` 只进不出、五套时基与 2/5/20 ms 非整数倍、matplotlib/`PLOT`、框架层没用到的功能；以及 black 规格的来源（大作业 handout / 主办方分支 / 主办方控制栈三方互证）与**与 go2 等机型的逐项对照** |
+| [`rl-sar.md`](docs/learn/rl-sar.md) | rl_sar（上游 `e5c2f41` + 主办方分支 + 主办方控制栈）的内部机制速查：分层、键位出处、两份 yaml 的分工与同名项覆盖、参数只在启动时读、三条队列、以及 `tau` 那条为什么没人消费（本仓已不 push）、五套时基与 2/5/20 ms 非整数倍、matplotlib/`PLOT`、框架层没用到的功能；以及 black 规格的来源（大作业 handout / 主办方分支 / 主办方控制栈三方互证）与**与 go2 等机型的逐项对照** |
 | [`cmake-intellisense.md`](docs/learn/cmake-intellisense.md) | VSCode C++ / CMake 智能提示配置（语言模式、clangd / cpptools、编译数据库） |
-| [`ros2-graph-and-clock.md`](docs/learn/ros2-graph-and-clock.md) | ROS 2 两件小事：`/parameter_events` 为什么在 `rqt_graph` 里"有的节点只有去程"（图缓存假象，权威判断用 `ros2 topic info --verbose`）、以及 `/clock` + `use_sim_time` 的机制、好处、四个坑与本任务的取舍 |
+| [`ros2-graph-and-clock.md`](docs/learn/ros2-graph-and-clock.md) | ROS 2 三件小事：`/parameter_events` 为什么在 `rqt_graph` 里"有的节点只有去程"（图缓存假象，权威判断用 `ros2 topic info --verbose`）、`/clock` + `use_sim_time` 的机制、好处、四个坑与本任务的取舍，以及「名字就是路径」：哪些实体的斜杠会被 ROS 解析、与类 Unix 路径的异同、命名空间造成的差异 |
 | [`mujoco-viewer-keys.md`](docs/learn/mujoco-viewer-keys.md) | MuJoCo 官方窗口的**全量按键与显示开关**：12 个框架按键（含 `F6`/`F7`、`-`/`=` 速度 31 档、`[`/`]` 相机、Tab 收面板）、**42 个显示开关快捷键**（`mjVISSTRING`/`mjRNDSTRING` 两张表，含默认开关状态）、鼠标映射与扰动；并给出移植到自建窗口的**代价分档**（显示那组 ~55 行、扰动 ~100 行、面板类不建议）；**显示那组已实施**——我们的窗口现在有 33 个显示开关快捷键、`F6`/`F7`/`Home`、暂停单步与 31 档速度，键位是数据表（`kRemap` 一行可改） |
 | [`ros2-params-and-launch.md`](docs/learn/ros2-params-and-launch.md) | ROS 2 的 launch 参数 / 节点参数 / 命令行参数：两套机制与五个名字、值怎么流（Mermaid）、三个坑、优先级；**核对版**——更正了「launch 把 parameters 写成临时文件后用 `--params-file` 传」这一处机制细节，并补了本仓库的实测证据；§6 讲"参数 YAML 文件"与 launch 桥接的区别（同一机制的两副面孔、写法与覆盖关系） |
 

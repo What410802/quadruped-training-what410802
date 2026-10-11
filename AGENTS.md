@@ -21,7 +21,7 @@
 * 文档里出现的路径、目录树**必须与仓库实际一致**；移动/重命名文件时**全仓搜引用**并把对方改对。
 * 复现步骤**前面先写"先怎么准备"**（clone / 下载什么、`local_paths.cmake` 怎么配），解释只留一处——见 conventions §4.9。
 * 结论必须带**可复现命令**与**实测数字**；引用外部代码给 `文件:行`。
-* 文档改动后自检：`pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py <任务目录>` （断链 / 锚点 / 表格列数）。
+* 文档改动后自检：`pixi run python @20260927_motor/scripts/agent_scripts/check_md_links.py <任务目录>` （断链 / 锚点 / 表格列数 / 引用块与围栏）。
 
 ## 代码与环境
 

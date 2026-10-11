@@ -133,7 +133,7 @@ pixi run ros2 run quadruped_ros2 sim_node --ros-args --params-file /tmp/sim_para
 
 两个容易踩的点：① 键名对不上（节点名写错、没写对命名空间）时那些值**不会被应用**——不会专门报错，用 `ros2 param get /sim_node <名字>` 回读确认最稳；② 类型以文件里的**字面量**为准，`0` 是整数、`0.0` 才是 double，与 `declare_parameter` 声明的类型对不上会报类型错误（命令行上我们踩过同一条：`-p status_period_s:=0`，见 §3 第 3 条与 [`../../@20261005_ros2/docs/ros2-nodes.md`](../../@20261005_ros2/docs/ros2-nodes.md) §7）。
 
-**别混淆**：rl_sar 的 `policy/black/*.yaml` 不是 ROS 参数文件——那是它自己（yaml-cpp）读的应用配置，`--params-file` 管不到；`rl_sim` 的 ROS 参数只有 `robot_name` 与 `joy_command_scale` 两个。要把 kp/kd、站姿这类也变成能用参数文件传的，得先给 rl_sim 加 `declare_parameter`（那是改代码的事，不是写文件的事）。
+**别混淆**：rl_sar 的 `policy/black/*.yaml` 不是 ROS 参数文件——那是它自己（yaml-cpp）读的应用配置，`--params-file` 管不到；`rl_sim` 的 ROS 参数只有 `robot_name`、`joy_command_scale` 与 `status_period_ms` 三个（第三个是状态行周期，默认 0 = 不打）。要把 kp/kd、站姿这类也变成能用参数文件传的，得先给 rl_sim 加 `declare_parameter`（那是改代码的事，不是写文件的事）。
 
 ## 7 工程惯例：参数只在启动时读一次，"热改"是进阶内容
 
@@ -141,4 +141,4 @@ pixi run ros2 run quadruped_ros2 sim_node --ros-args --params-file /tmp/sim_para
 
 讲义也把这件事讲成进阶话题（`ros2基本概念.md:754`，只读材料）：「我们的 talker 只在启动时读一次参数，所以 `param set` 虽然会显示成功，但不会立刻改变发布内容。想让参数在线生效，需要在代码里每次使用前重新读取，或者写参数回调——**这就是更进阶的内容了**」。
 
-所以这类任务的调参正常路径是**改参数文件 + 重启**（§6.1），热改只在"现场整定"这种真需求下才加；判断一个节点属于哪种，看它有没有 `add_on_set_parameters_callback`——没有就是"重启生效"。注意后者有个坑：只在构造时 `get_parameter` 的节点，`ros2 param set` 会"改得动参数值、改不动行为"，看上去成功、实际没用（本仓 `rl_sim` 目前就是这个状态：参数面只有 2 个、都没有回调）。
+所以这类任务的调参正常路径是**改参数文件 + 重启**（§6.1），热改只在"现场整定"这种真需求下才加；判断一个节点属于哪种，看它有没有 `add_on_set_parameters_callback`——没有就是"重启生效"。注意后者有个坑：只在构造时 `get_parameter` 的节点，`ros2 param set` 会"改得动参数值、改不动行为"，看上去成功、实际没用（本仓 `rl_sim` 目前就是这个状态：参数面只有 3 个、都没有回调）。

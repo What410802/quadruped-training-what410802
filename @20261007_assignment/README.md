@@ -35,6 +35,12 @@ pixi run ros2 launch rl_sar rl_sim.launch.py                # 仿真窗口 + 手
 pixi run ros2 launch rl_sar rl_sim.launch.py start:=rest    # 从趴卧姿态开始（更像实机上电）
 
 pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py    # 自检（约 35 s）
+# 打开仿真里的「非理想电机」再自检（可重复 --sim-param；下面是 motor-model.md 的典型组）
+pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py \
+    --sim-param motor_deadzone:=0.5 --sim-param motor_delay_cycles:=2 \
+    --sim-param motor_noise:=0.2 --sim-param motor_seed:=12345
+pixi run ros2 run rl_sar input_map_selftest                             # 输入层自检（不接仿真/手柄）
+pixi run bash -lc 'cd @20261007_assignment/ws && colcon test --packages-select rl_sar'   # 同一个自检，走 CTest
 pixi run python -I @20261007_assignment/scripts/agent_scripts/policy_reference.py --cmd 1.0,0,0    # 参考实现
 ```
 
@@ -52,13 +58,21 @@ pixi run python -I @20261007_assignment/scripts/agent_scripts/policy_reference.p
 > 
 > 以后新开终端只需激活环境，再 source 这两个 `install/setup.bash`（顺序同上）。这套命令 2026-10-08 在 `env -i` 的干净 shell 里从零跑过，自检 7 项全过。
 
-**手柄操作**：A = 起身（约 3 s）→ 站稳后 **RB + 十字键上** = 进 RL → 左摇杆前后 / 左右走、右摇杆转向（满偏 1.5 m/s 或 rad/s）→ B = 趴下；LB + X = 立刻阻尼，RB + Y = 复位仿真。实体手柄与上次的仿真手柄（`@20261005_ros2/sim_joy/xbox_sim_joy.py`）都能用；`/joy` 的轴与正负号约定见 [`../@20261005_ros2/docs/joystick.md`](../@20261005_ros2/docs/joystick.md) §3。
+**手柄操作**：A = 起身（约 3 s）→ 站稳后 **RB + 十字键上** = 进 RL → 左摇杆前后 / 左右走、右摇杆转向（满偏 1.5 m/s 或 rad/s）→ B = 趴下；LB + X = 立刻阻尼，RB + Y = 复位仿真，**X = 切换导航模式**（见下）。按键处理已集中到输入层（每键电平+边沿 → 意图，见 [`docs/porting.md`](docs/porting.md) §6.2）：只有**绑定了**的组合才产生行为，没绑定的（如 `LB+A`）什么也不做；「按着 RB 再按 A」里的 A 照常生效。
+
+**导航模式与 `/cmd_vel`**：按手柄 `X`（或键盘 `N`）切换——**ON 时策略的速度指令来自 `/cmd_vel`**，手柄摇杆被忽略（按钮与状态切换照旧）；**OFF 时**才用摇杆（满偏 = `joy_command_scale`，默认 1.5）。`/cmd_vel` 是 `geometry_msgs/msg/Twist`，用 `linear.x`（前后，m/s）、`linear.y`（左右，m/s）、`angular.z`（转向，rad/s），例如：
+
+```bash
+pixi run ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5}, angular: {z: 0.3}}"   # Ctrl-C 停
+```
+
+本节点的话题现在**全是相对名**（`joy`/`cmd_vel`/`imu`/`motor_state`/`mit_command` + 服务 `sim_reset`），所以 `pixi run ros2 run rl_sar rl_sim --ros-args -r __ns:=/robot1` 会把它们整体搬到 `/robot1/…`（`ros2 node info /robot1/rl_sim_node` 可查；理由与验证见 [`docs/porting.md`](docs/porting.md) §4）。
 
 **调参（改 yaml，不用重编）**：`ws/src/rl_sar/policy/black/base.yaml` 有四个「部署旋钮」——`kd_passive`（Passive 状态的阻尼，默认 8.0）、`getup_pre_cycles: 200` / `getup_cycles: 400` / `getdown_cycles: 500`（三段斜坡的控制周期数，5 ms/周期 → 1.0 / 2.0 / 2.5 s）；**它只在节点构造时读一次，改完要重启**。策略级的 `himloco/config.yaml`（`rl_kp`/`rl_kd`/`action_scale` 等）**每次进 RL 都会重新读**，所以改完趴下再起身重进 RL 即生效（代价是切入那一刻会跳一下，别改 `joint_mapping`/`num_of_dofs` 这类会错位的项）。两份 yaml 有 7 个同名字段、必须一致，不一致时节点会在启动和每次进 RL 时打 `[WARNING] [yaml] …`，而不是默默变样（[`docs/porting.md`](docs/porting.md) §3、[`../docs/learn/rl-sar.md`](../docs/learn/rl-sar.md) §3）。
 
-**状态行**：rl_sim 的 `RL Controller x:… y:… yaw:…` 由 ROS 参数 `status_period_ms` 控制（默认 0 = 不打；`pixi run ros2 run rl_sar rl_sim --ros-args -p status_period_ms:=500` = 每 0.5 s 一行，原来是不管多快都每 5 ms 打一次）。仿真节点自己的状态行由它的 `status_period_s` 控制。
+**状态行**：进 RL 时会打一行 `Entered RL_Locomotion`（提醒当前状态，见 [`docs/porting.md`](docs/porting.md) §6.2）；注意 launch 没暴露 `status_period_ms`，launch 起的进程读默认值 0（不打），要看状态行就用下面 `ros2 run` 那条命令；之后每个周期的 `RL Controller x:… y:… yaw:…` 由 ROS 参数 `status_period_ms` 控制（默认 0 = 不打；`pixi run ros2 run rl_sar rl_sim --ros-args -p status_period_ms:=500` = 每 0.5 s 一行，原来是不管多快都每 5 ms 打一次）。仿真节点自己的状态行由它的 `status_period_s` 控制。
 
-**键盘操作**：rl_sim 直接读终端，要单独占一个终端：`pixi run ros2 launch rl_sar rl_sim.launch.py rl:=false joy:=false`，另一个终端 `pixi run ros2 run rl_sar rl_sim`，然后按 `0` 起身、`1` 进 RL、`W/S` `A/D` `Q/E` 加减速度、空格清零、`9` 趴下、`P` 阻尼、`R` 复位。
+**键盘操作**：rl_sim 直接读终端，要单独占一个终端：`pixi run ros2 launch rl_sar rl_sim.launch.py rl:=false joy:=false`，另一个终端 `pixi run ros2 run rl_sar rl_sim`，然后按 `0` 起身、`1` 进 RL、`W/S` `A/D` `Q/E` 加减速度、空格清零、`9` 趴下、`P` 阻尼、`R` 复位、`N` 切换导航模式。
 
 > **不要用 `realtime:=false`**：rl_sim 按墙钟每 20 ms 推理一次，仿真跑得比真实时间快 3 倍以上狗就会摔（[`docs/experiments.md`](docs/experiments.md) §5）。
 
@@ -75,15 +89,19 @@ pixi run python -I @20261007_assignment/scripts/agent_scripts/policy_reference.p
 ├── ws/src/rl_sar/                # colcon 包（Apache-2.0，来自 fan-ziqi/rl_sar e5c2f41）
 │   ├── library/core/             # 框架层（纯复制）：rl_sdk / observation_buffer / fsm_core / loop
 │   ├── include/rl_sim.hpp        # 适配层（改写）
-│   ├── src/rl_sim.cpp            #   同上。入 /motor_state /imu /joy，出 /mit_command
+│   ├── include/input_map.hpp     # 输入层（新写）：每键电平+边沿 → 意图，见 docs/porting.md §2 第 17 条
+│   ├── src/rl_sim.cpp            #   同上。入 `motor_state`/`imu`/`joy`、出 `mit_command`（均为相对名，默认解析到 `/`）
+│   ├── test/input_map_selftest.cpp # 输入层自检（不接仿真/手柄）：ros2 run rl_sar input_map_selftest
 │   ├── policy/fsm.hpp            # 状态机注册表（只注册 black）
 │   ├── policy/black/             # base.yaml（机器人参数）、fsm.hpp（状态机）、knobs.hpp（部署旋钮 + yaml 自检）、himloco/{config.yaml,best.pt}
 │   ├── launch/rl_sim.launch.py   # sim_node + joy_node + rl_sim
 │   ├── CMakeLists.txt  package.xml  LICENSE
 │   └── .clang-format             # DisableFormat：不重排上游代码
 ├── scripts/agent_scripts/
-│   ├── check_walk.py             # 无头自检（ROS 链路）
-│   └── policy_reference.py       # 参考实现（不经 ROS、锁步，可注入时序误差）
+│   ├── check_walk.py             # 无头自检（ROS 链路，支持 --sim-param 打开非理想电机）
+│   ├── policy_reference.py       # 参考实现（不经 ROS、锁步，可注入时序误差）
+│   ├── ros2_naming/              # ROS 2 名称/路径语义实验（docs/learn/ros2-graph-and-clock.md §3 的仪器）
+│   └── scene_ground_extents.py   # 量场景里"三块地面"各到哪里（docs/learn/mujoco.md §6.10 的仪器）
 └── output/log/                   # 自检日志（不入库）
 ```
 

@@ -29,7 +29,7 @@ tbb::concurrent_queue<torch::Tensor> output_dof_vel_queue;
 tbb::concurrent_queue<torch::Tensor> output_dof_tau_queue;
 ```
 
-用法是生产 / 消费：**策略线程**（每 20 ms 一次 `RunModel()`）把刚算出的关节目标 `push` 进去（[`rl_sim.cpp:305`](../../@20261007_assignment/ws/src/rl_sar/src/rl_sim.cpp)），**控制线程**（每 5 ms 一次状态机 `Run()`）用 `try_pop` 取（[`fsm.hpp:216`](../../@20261007_assignment/ws/src/rl_sar/policy/black/fsm.hpp)）。三个队列里实际被消费的是 pos 与 vel 两个（`fsm.hpp` 一次取两条），`tau` 那条上游只生产不消费——**本仓的移植已经不再 push 它**（P1-b，见 [`../../@20261007_assignment/docs/status.md`](../../@20261007_assignment/docs/status.md)）——它从哪个提交引进、为什么没有消费者、无界会涨到多少、主办方怎么补的，见 [`rl-sar.md`](rl-sar.md) §5。
+用法是生产 / 消费：**策略线程**（每 20 ms 一次 `RunModel()`）把刚算出的关节目标 `push` 进去（[`rl_sim.cpp:339`](../../@20261007_assignment/ws/src/rl_sar/src/rl_sim.cpp)），**控制线程**（每 5 ms 一次状态机 `Run()`）用 `try_pop` 取（[`fsm.hpp:216`](../../@20261007_assignment/ws/src/rl_sar/policy/black/fsm.hpp)）。三个队列里实际被消费的是 pos 与 vel 两个（`fsm.hpp` 一次取两条），`tau` 那条上游只生产不消费——**本仓的移植已经不再 push 它**（P1-b，见 [`../../@20261007_assignment/docs/status.md`](../../@20261007_assignment/docs/status.md)）——它从哪个提交引进、为什么没有消费者、无界会涨到多少、主办方怎么补的，见 [`rl-sar.md`](rl-sar.md) §5。
 
 它保证的语义（以环境里的 oneTBB 2023.1.0 头文件为准）：
 
@@ -41,11 +41,11 @@ tbb::concurrent_queue<torch::Tensor> output_dof_tau_queue;
 | 顺序 | FIFO | FIFO |
 | 其它 | `size()` 叫 `unsafe_size()`、迭代器带 `unsafe_` 前缀：只给调试，并发时读数不可靠 | 同左 |
 
-"控制线程 `try_pop` 拿不到就沿用上一帧目标、不等待"正是它 5 ms 控制周期的写法（`fsm.hpp:216` 的 `&&` 短路：任一队列空就整帧不动）。元素是 `torch::Tensor`：`push` / `try_pop` 传的是句柄，不搬数据。
+"控制线程 `try_pop` 拿不到就沿用上一帧目标、不等待"正是它 5 ms 控制周期的写法（`fsm.hpp:254` 的 `&&` 短路：任一队列空就整帧不动）。元素是 `torch::Tensor`：`push` / `try_pop` 传的是句柄，不搬数据。
 
 用标准库也能做同一件事（`std::mutex` + `std::deque` + `std::condition_variable`），但要自己管锁与唤醒；上游选择 TBB 这个现成容器，移植时按"框架层逐字复制"保留（[`porting.md`](../../@20261007_assignment/docs/porting.md) §2）。
 
-**它只管这条队列**：两条线程共享的其它数据（`robot_state`、`output_dof_pos` 成员、ROS 回调写的消息）没走队列、也不加锁，那是另一件事，分析见 [`porting.md`](../../@20261007_assignment/docs/porting.md) §7。
+**它只管这条队列**：两条线程共享的其它数据（`robot_state`、ROS 回调写的消息）没走队列、也不加锁（`output_dof_pos` 成员以前也在其中，P2-c 之后控制线程改读队列里 `try_pop` 出来的副本），那是另一件事，分析见 [`porting.md`](../../@20261007_assignment/docs/porting.md) §7。
 
 ## 4. 怎么进到我们的构建里
 

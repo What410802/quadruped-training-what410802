@@ -119,7 +119,67 @@ for per in 2 6.3 10 12.6 16 30 40 60 100; do pixi run python -I $S --tau-max 20 
 
 （这次浸泡用的是一次性脚本，没有入库：它只是导入 `check_walk.py`，把时间线里的前进段改成 `(7.0, 307.0)`、总时长改成 322 s。）
 
-## 7. 结论
+## 7. 键位逐项验证与"非理想电机"回归（2026-10-10）
+
+**背景**：S1 把原来每 5 ms 一行的 `RL Controller …` 状态行改成 `status_period_ms`（默认 0 = 关），于是进 RL 之后**终端上不再有任何新输出**——最后留在屏幕上的还是 GetUp 状态用 `\r` 打的 `Getting up 100.00%`，看起来像"卡在起身、进不了 RL"。不是状态机的问题（日志里 `[FSM] Switch from RLFSMStateGetUp to RLFSMStateRL_Locomotion` 一直在打），是**状态可见性**丢了。修法：`RLFSMStateRL_Locomotion::Enter()` 打一行 `Entered RL_Locomotion; … status_period_ms …`（与 Passive 的进状态提示同一风格），要连续看指令就用 `-p status_period_ms:=500`。
+
+**键位表逐项验证**（`porting.md` §6.2 的手柄 6 项 + 键盘 8 项；手柄用 `/joy` 时间线脚本，键盘用 `script` 给它一个 pty 后逐键送）：
+
+| 操作 | 手柄证据 | 键盘证据 |
+|---|---|---|
+| 起身 `A` / `0` | `Passive → GetUp` | 同左（pty 送 `0`） |
+| 进 RL `RB+十字键上` / `1` | `GetUp → RL_Locomotion`（**在斜坡走完前按下**，走的是手动分支） | 同左（送 `1`） |
+| 趴下 `B` / `9` | `RL_Locomotion → GetDown` | 同左（送 `9`） |
+| 阻尼 `LB+X` / `P` | `GetUp → Passive`；⚠ `LB+X` 里含原始 `X`，所以同时会**翻转一次**导航模式（不是"一定切回 OFF"，按当时状态而定） | 同左（送 `p`；键盘 `P` 不含 X，不会动导航模式） |
+| 复位 `RB+Y` / `R` | 姿态被复位（z 0.414 → 0.196 后重新爬起）；`/sim_reset` **保留仿真时间轴**，别拿 `sim_time` 当判据 | 同左（同一条分支） |
+| 导航模式 `X` / `N` | 一次按键一次 `Navigation mode` 翻转（按 3 s 也只翻 1 次） | 同一分支 |
+
+**"RB+十字键上没反应"的诊断**（2026-10-11，现场）：根因是**虚拟手柄窗口跑的是旧修订**，不是 rl_sim 也不是键位表。三段证据：
+
+1. 仓库里的脚本（`89539fc` 之后）设备层是对的：在隔离 ROS 域里造一个同款 uinput 手柄并模拟 GUI 回调（`set_button(5,1)` = 勾选 RB 的"锁定按下"，再 `set_dpad(0,-1)` = 点 ↑），`/joy` 读到的正是 `buttons[5]=1`、`axes[7]=+1.00` —— 组合键确实发出去了。
+2. 旧修订（`89539fc` 之前）对 ↑ 写的是 `ABS_HAT0Y = -dy = +1`，而 `joy_node.py:63` 的 `SLOT_SIGN` 对第 7 槽是 **−1**（evdev 十字键"上为负"→ 规范化 /joy"上为正"）→ 旧手柄的 ↑ 在 `/joy` 里是 **`axes[7] = −1`**，rl_sim 按约定读成 **十字键下** → `Gamepad::RB_DPadDown`，而 `RLFSMStateGetUp::CheckChange()` 只认 `RB_DPadUp`/`Num1` → 于是"按了没反应"。（同一修订里摇杆的符号本来就是对 evdev 的，所以旧窗口还能用摇杆走路，只有十字键失灵——与现象完全一致。）
+3. 在用户正在跑的会话上直接往 `/joy` 注入 `RB+十字键上`（绕过设备层）→ `/mit_command` 增益从 `fixed_kp=80/fixed_kd=3`（GetUp）变成 `rl_kp=40/rl_kd=1.2`（RL）→ 状态机、键位表、`/joy` 约定都没问题。
+
+**处置**：重启虚拟手柄（`pixi run python @20261005_ros2/sim_joy/xbox_sim_joy.py`）即可；验证办法是点着 ↑ 看 `ros2 topic echo /joy --once` 的 `axes[7]` 应为 **+1.0**（`-1.0` 说明还是旧实例）。补充：手柄 GUI 的按钮带"锁定按下"勾选框（勾上 = `set_button(i,1)` 常按），所以"锁定 RB + 点一次 ↑"这一只鼠标的操作就能拼出组合键，不必同时按住两个控件。
+
+**输入层重构后的验证（S3.5，2026-10-11）**：新增的 [`input_map_selftest`](../ws/src/rl_sar/test/input_map_selftest.cpp)（`pixi run ros2 run rl_sar input_map_selftest`，或走 CTest：`colcon test --packages-select rl_sar`；**不需要 ROS 图 / 仿真 / 手柄**）覆盖 8 组：边沿一次性、锁存十字键不吞按键、组合键补位即触发、按住 RB 时 A 仍生效、复位组合、键盘单值锁存的「变化即按下」、手柄+键盘同时、轴到 bit 的映射。端到端四组回归：**锁存 hat + A 两组都 ✓**（修前 `hat=down` ✗）；**手柄键位扫描 5 段切换 + 导航模式 2 次** ✓；**键盘 pty 路径 `0→1→9→p` 四段** ✓；**混合输入弹回复现用例**（手柄 A + 键盘 `1`）→ 只进 1 次 RL 并停住 ✓（P1-g 的 bug 从结构上消失）；`check_walk.py` 7/7 ✓。重构里踩到一个自己造的坑：第一版把**摇杆电平**也一起删了（新层只管边沿），`check_walk` 的「转向」项立刻失败（陀螺 z 0.000 rad/s）——连续量要留在 `JoyCallback` 里按帧赋值，边沿与电平两条路必须分开看。
+
+**运行侧的两个隐患（与代码无关，但会让"看起来没反应"）**：① `install/` 里的 `joy_node` 是**源码的副本**（不是符号链接）——改完 `joy_node.py` 不重新 `pixi run ros2-build` 就还是旧行为；`rl_sim` 是指向 `build/` 的符号链接、手柄脚本从源码跑，都不会陈旧。② 判状态别只看画面：站着不动的狗在 GetUp 与 RL 里长得一样，用 `ros2 topic echo /mit_command --field kp` 看增益（80/3 = GetUp，40/1.2 = RL）最稳；组合键是否到位则看 `ros2 topic echo /joy`（`buttons[5]=1` + `axes[7]=1.0`）。
+
+**"锁存的十字键吞掉按键"**（2026-10-11 复现 + 修复）：虚拟手柄的十字键**点一下就锁存**（`axes[7]` 一直发 ±1，点 `●` 或「全部归中 / 松开」才回中），而 `JoyCallback()` 的映射是最后写入者赢、十字键规则又写在按键规则之后——于是锁存着"下"时按 A，`control.current_gamepad` 每帧都被写成 `DPadDown`，状态机读不到 `Gamepad::A`。两组独立对照（同一脚本，只差十字键是否锁存）：
+
+```
+hat=down   → A 被吞掉：没有任何切换 ✗      # 复现
+hat=clear  → A 生效：Passive → GetUp ✓
+```
+
+修法：先按 P1-h 把四条十字键规则收进 `if (!any_gamepad_button)`；**S3.5 之后由输入层彻底解决**——十字键只是普通 bit，组合就是多个 bit，不再有「最后写入者赢」。修后同一对照 **两组都 ✓**；并且"十字键锁存着**上** + 按 RB"（原来的进 RL 手势）仍然给出 `Passive → GetUp → RL_Locomotion` ✓。
+
+**非理想电机回归**（`check_walk.py` 新加的 `--sim-param` 透传）：
+
+```bash
+# ① 文档里"完整版实测用的那组"（motor-model.md §2）：7/7 全过
+pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py \
+    --sim-param motor_deadzone:=0.5 --sim-param motor_delay_cycles:=2 \
+    --sim-param motor_noise:=0.2 --sim-param motor_seed:=12345
+# ② 2 倍严苛（死区 1.0 N·m / 延迟 4 周期 / 噪声 0.4 N·m）：仍然 7/7
+pixi run python @20261007_assignment/scripts/agent_scripts/check_walk.py \
+    --sim-param motor_deadzone:=1.0 --sim-param motor_delay_cycles:=4 \
+    --sim-param motor_noise:=0.4 --sim-param motor_seed:=12345
+```
+
+| 判据 | 理想（默认全关） | ① 0.5 / 2 / 0.2 | ② 1.0 / 4 / 0.4 |
+|---|---|---|---|
+| 起身终点偏差 | 4.96e-08 rad | 4.96e-08 rad | 4.96e-08 rad |
+| 起身后 z / 倾角 | 0.429 m / 0.8° | 0.429 m / 0.8° | 0.429 m / 0.9° |
+| RL 段最低 z / 最大倾角 | 0.411 m / 2.9° | 0.410 m / 3.3° | 0.409 m / 3.5° |
+| 策略周期均值（p95） | 20.65 ms（22.0） | 20.67 ms（22.0） | 20.65 ms（22.0） |
+| 转向陀螺 z 均值 | 0.968 rad/s | 0.982 rad/s | 0.975 rad/s |
+| 实时率 | 0.995x | 1.000x | 0.999x |
+
+② 那次的仿真节点退出统计证明这些非理想项**确实在咬**：`累计 193572 电机·步，撞限幅 3 次（0.002%），落死区 67589 电机·步（34.917%，进出死区 10228 次）`。也就是说：这套策略对本模型里的静摩擦、8 ms 指令延迟与 0.4 N·m 力矩噪声**不敏感**（差异都在抖动范围内），验收结论不受非理想项影响。
+
+## 8. 结论
 
 | 问题 | 严重程度（依据） | 处理 |
 |---|---|---|

@@ -27,12 +27,14 @@
 
 本仓那次移植用的是上游 go2 那一组（趴下仍是 `B`），逐个键的出处与我们自己的映射见 [`porting.md`](../../@20261007_assignment/docs/porting.md) §6.2 的状态转移图。
 
+**我们的偏离（输入层）**：上游把每路输入压成**一个枚举**（`Control::current_gamepad` / `current_keyboard`），"按下/已消费/谁优先"全靠调用点上的清除与写入顺序去近似——本仓实测因此踩了四个坑（一个键每 5 ms 重放、跨状态残留把 RL 弹回 GetUp、锁存的十字键吞掉按键、组合键变成没人认的 `RB_A`）。S3.5 起本仓改用 [`input_map.hpp`](../../@20261007_assignment/ws/src/rl_sar/include/input_map.hpp)：**每键 1 bit 电平 + 1 bit 上帧电平**，边沿是两帧的纯函数（天生只发生一次），十字键也是普通 bit，`kBindings` 表把「组合 → 意图」写成数据；`library/core` 的 `Input` 仍在原地一字未改，只是不再参与状态转移。长按若将来需要，`KeyBits` 就是加字段的地方（消费端自己计时即可，`/joy` 消息不用动）。
+
 ## 3 两份 yaml：谁读、什么时候读、同名项谁说了算
 
 | | `policy/<robot>/base.yaml` | `policy/<robot>/<policy>/config.yaml` |
 |---|---|---|
 | 谁读 | `ReadYamlBase()`（`rl_sdk.cpp:360-386`），在**节点构造时**调一次 | `ReadYamlRL()`（`rl_sdk.cpp:388-441`），在**每次进 RL 状态**时由状态机的 `Enter()` 调 |
-| 独有字段 | `dt`、`decimation`、`joint_names`、`joint_controller_names` | `model_name`、`num_observations`、`observations`、`observations_history`、`clip_obs`、`clip_actions_lower/upper`、`action_scale`、`lin_vel_scale`、`ang_vel_scale`、`dof_pos_scale`、`dof_vel_scale`、`commands_scale`、`rl_kp`、`rl_kd` |
+| 独有字段 | `dt`、`decimation`、`joint_names`、`joint_controller_names`，以及本仓新加的四个部署旋钮 `kd_passive` / `getup_pre_cycles` / `getup_cycles` / `getdown_cycles`（只被 `knobs.hpp` 读，见 [`porting.md`](../../@20261007_assignment/docs/porting.md) §3） | `model_name`、`num_observations`、`observations`、`observations_history`、`clip_obs`、`clip_actions_lower/upper`、`action_scale`、`lin_vel_scale`、`ang_vel_scale`、`dof_pos_scale`、`dof_vel_scale`、`commands_scale`、`rl_kp`、`rl_kd` |
 | **同名（7 个）** | `default_dof_pos`、`fixed_kp`、`fixed_kd`、`joint_mapping`、`num_of_dofs`、`torque_limits`、`wheel_indices` | 同左，**进 RL 时覆盖** `base.yaml` 读到的那一份 |
 
 分工仍然有意义：`base.yaml` 是"机器人级"，上电、阻尼、起身/趴下就要用（`dt`/`decimation` 甚至在构造时决定了那两条循环线程的周期）；`config.yaml` 是"策略级"，只有进 RL 才需要。上游给的策略模板里 `joint_names` 只出现在 `base.yaml`（`config.yaml` 里那份是文档性质，`ReadYamlRL()` 并不读它），数组顺序以 `joint_mapping` 为准。
