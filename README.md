@@ -13,6 +13,7 @@
 | 2026-09-27 | 关节电机：MIT 混合控制 + 状态机（阻尼/站立）仿真 | [`@20260927_motor/`](@20260927_motor/) | [`README.md`](@20260927_motor/README.md) |
 | 2026-10-05 | ROS 2：自定义消息 + 控制器/仿真/手柄三节点 + launch | [`@20261005_ros2/`](@20261005_ros2/) | [`README.md`](@20261005_ros2/README.md)（教程工作区在同期的 [`@20261005_ros2_example/`](@20261005_ros2_example/README.md)） |
 | 2026-10-07 | 大作业：移植 rl_sar，用强化学习策略（`best.pt`）替换控制器节点，让仿真里的狗走起来 | [`@20261007_assignment/`](@20261007_assignment/) | [`README.md`](@20261007_assignment/README.md) |
+| 2026-10-19 | 强化学习 Locomotion：平地/粗糙 → 台阶/梅花桩（材料与环境准备阶段） | [`@20261019_locomotion/`](@20261019_locomotion/) | [`README.md`](@20261019_locomotion/README.md) |
 
 ## 快速开始
 
