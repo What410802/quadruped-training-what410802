@@ -25,6 +25,10 @@
 - 同一策略可以在多个状态复用（例如 flat/loose/slope 初期共用 `flat-ft-2500`），但状态机的**速度上限、姿态、judge 语义**要分开。
 - 状态机建议复用 `rl_sar`/`quadruped_control` 的 Passive→GetUp→RL、policy_switch 结构；先做单策略+状态，不急着多专家。
 
+### 2.0 运行时按键映射（2026-10-22）
+
+`quadruped_control` 的 `mujoco_sim` 已接入具名状态键：`F=flat`、`G=loose`、`J=limit_bar`、`B=bridge`、`T=stairs`、`Y=high_wall`、`U=slope`、`N=slalom`；`0` GetUp、`1` Start/Return RL、`W/S/A/D/Q/E` 速度。当前 8 个 runtime policy 仍指向同一个 `flat_ft`，状态选择/切换已打通，专项策略训练后再替换。`config/manual-state-machine.yaml` 的 `runtime_policy` 字段记录映射。
+
 ## 2.1 显式控制量：目前只有速度
 
 - 当前 actor 的外部显式输入只有速度 `(vx,vy,wz)`；没有技能/mode/步态参数。

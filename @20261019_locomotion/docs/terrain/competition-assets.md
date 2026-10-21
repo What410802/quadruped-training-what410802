@@ -75,6 +75,12 @@
 - 开源 `RC_MAP`（无许可证）：2026 场地 MuJoCo 场景，只作几何交叉校验，不复制。
 - 队内 `nav` 的 `scene_robocon.xml`/航点：Part 1 场地/导航参考。
 
+### 3.1 本地 eval 副本
+
+- `assets/terrain/part2/ability_field/part2_ability_field.xml`：官方 `terrain.zip` 的 `map.xml` + `labels/` + Black policy 组合；编译 `nbody=20/ngeom=955/nq=19/nu=12`。
+- 用途：本地 MuJoCo/Pixi zero-shot、可视化和 judge 试验；**不是训练 task**，六类 terrain 的训练 task 仍在训练仓库生成。
+- 来源和许可提示：`terrain.zip` 为培训方只读素材；本地副本只服务本仓库评测，不改原始 zip。
+
 ## 4. 采集与训练使用顺序
 
 1. **Part 1 P0**：用 `scene_terrain (1).xml` 换 Black、修 height bar/gravel pit，建 `ObstacleSpec` 与 judge；先用手动状态机跑 flat/桥/台阶/高墙。

@@ -71,6 +71,23 @@
 4. 在正式场跑 `flat-ft-2500` zero-shot，输出真实基线得分；这个分数才是“比赛进度”的起点。
 5. judge 输出 JSON（每障碍成功/得分/尝试/失败原因），与计分板/答辩材料共用。
 
+## 6.1 P0 本地 zero-shot 基线（2026-10-22）
+
+`scripts/agent_scripts/run_part1_judged_rollout.py` 用本地 45 维 `flat-ft-2500` 独立尝试 8 个 Part 1 障碍，并读取 `Part1Judge` / `Part1EventJudge`（judge 在策略回路外）：
+
+| 障碍 | 结果 | 说明 |
+|---|---|---|
+| bridge_blocks | fail | 两足 ground fail，tilt≈25.9° |
+| bridge_bands | running | 到 y≈−3.08 后未完成，tilt≈14.9° |
+| gravel_pit | fail | 两足 ground fail，tilt≈1.4° |
+| height_bar | pending | 在 x≈4.9 卡住，未进入杆区 |
+| high_wall | pending | 在 x≈1.16 卡住，未进入墙区 |
+| slalom | running | 只接近第一个 checkpoint |
+| slope | fail | 两足 ground fail，tilt≈6.6° |
+| t_stairs | pending | 未进入台阶区 |
+
+这是**脚本起点/命令下的诊断**，不是官方整场得分；T 台阶逐级接触、限高杆位移、桥面 step 等判据仍需用真实手动轨迹校准。结果 JSON：`prep.d/results/part1_zero_shot.json`。
+
 ## 7. 与路线的对应
 
 - **P0 先 judge + 场地**：judge 不依赖策略训练；没有 judge 就不做“比赛训练”。

@@ -23,7 +23,7 @@ def main() -> None:
     if default not in states:
         raise SystemExit(f"default_state {default!r} not in states")
     for name, spec in states.items():
-        for key in ("purpose", "policy", "max_vx", "max_vy", "max_wz"):
+        for key in ("purpose", "policy", "runtime_policy", "max_vx", "max_vy", "max_wz"):
             if key not in spec:
                 raise SystemExit(f"{name}: missing {key}")
         for key in ("max_vx", "max_vy", "max_wz"):
@@ -32,7 +32,7 @@ def main() -> None:
     print(f"config: {args.config}")
     print(f"default: {default}; states: {len(states)}")
     for name, spec in states.items():
-        print(f"{name:12s} policy={spec['policy']:15s} vx<={spec['max_vx']} vy<={spec['max_vy']} wz<={spec['max_wz']}")
+        print(f"{name:12s} policy={spec['policy']:15s} runtime={spec['runtime_policy']:12s} vx<={spec['max_vx']} vy<={spec['max_vy']} wz<={spec['max_wz']}")
     print("OK")
 
 

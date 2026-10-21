@@ -23,3 +23,6 @@ local_paths.cmake
 # Local VS Code/C++ index data (machine-specific, not reproducibility inputs)
 .vscode/browse.vc.db*
 .vscode/c_cpp_properties.json
+
+# Local diagnostic outputs (videos/results); curated artifacts go outside the repo or in docs
+prep.d/

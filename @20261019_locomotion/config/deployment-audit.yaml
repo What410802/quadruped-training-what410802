@@ -1,0 +1,29 @@
+# P0 deployment/competition contract audit.  Values are rules, not policy params.
+policy:
+  path: assets/policies/flat-ft-2500/policy.pt
+  actor_obs_dimension: 45
+  actor_obs_terms:
+    - command
+    - base_ang_vel
+    - projected_gravity
+    - joint_pos
+    - joint_vel
+    - last_action
+  banned_actor_sources:
+    - base_lin_vel
+    - height_scan
+    - foot_force
+    - foot_height
+    - body_height
+  effort_limit_nm: 20.0
+joints:
+  hip_max_effort_nm: 25.0
+  thigh_max_effort_nm: 25.0
+  calf_max_effort_nm: 60.0
+  control_repo_max_effort:
+    hip: 23.7
+    thigh: 23.7
+    calf: 59.25
+scenes:
+  - assets/terrain/part1/part1_eval_scene.xml
+  - assets/terrain/part2/part2_plum_eval_scene.xml

@@ -23,14 +23,18 @@ class Part1EventJudge:
     def __init__(self) -> None:
         self.states: dict[str, ObstacleState] = {
             name: ObstacleState() for name in
-            ("height_bar", "high_wall", "bridge_blocks", "bridge_bands", "gravel_pit", "t_stairs", "slope")
+            ("height_bar", "high_wall", "bridge_blocks", "bridge_bands", "gravel_pit", "t_stairs", "slope", "slalom")
         }
         self.prev = None
+        # Slalom post centers from part1_scene.xml (L-shaped course).
+        self.slalom_checkpoints = [(1.8, -10.5), (1.8, -11.5), (1.8, -12.5), (2.8, -12.5)]
+        self.slalom_visited: set[int] = set()
 
     def _ground_fail(self, ground_feet: list[str]) -> str:
         return f"two_feet_ground:{','.join(ground_feet)}" if len(ground_feet) >= 2 else ""
 
-    def update(self, base_xyz: tuple[float, float, float], ground_feet: list[str], bar_touched: bool) -> dict:
+    def update(self, base_xyz: tuple[float, float, float], ground_feet: list[str], bar_touched: bool,
+               step_levels: set[int] | None = None) -> dict:
         x, y, z = map(float, base_xyz)
         prev = self.prev
         self.prev = (x, y, z)
@@ -80,6 +84,21 @@ class Part1EventJudge:
             if self.states["slope"].status == "pending":
                 self.states["slope"].status = "running"
             setstate("slope", success=x > 5.7, fail=bool(gfail), reason=gfail)
+        # T stairs: require at least three distinct step levels in addition to +y crossing.
+        if 1.2 <= x <= 3.5 and -5.0 <= y <= -2.0:
+            if self.states["t_stairs"].status == "pending":
+                self.states["t_stairs"].status = "running"
+            levels = step_levels or set()
+            setstate("t_stairs", success=y > -2.1 and len(levels) >= 3, fail=bool(gfail), reason=gfail)
+        # Slalom: visit the four posts in order (within 0.55 m); no ground-fail rule.
+        for idx, (cx, cy) in enumerate(self.slalom_checkpoints):
+            if idx not in self.slalom_visited and (x - cx) ** 2 + (y - cy) ** 2 <= 0.55 ** 2:
+                # Require previous checkpoints first; an out-of-order post is ignored.
+                if idx == 0 or (idx - 1) in self.slalom_visited:
+                    self.slalom_visited.add(idx)
+        if self.states["slalom"].status == "pending" and self.slalom_visited:
+            self.states["slalom"].status = "running"
+        setstate("slalom", success=len(self.slalom_visited) == len(self.slalom_checkpoints), fail=False)
         del prev
         return self.report()
 
@@ -103,6 +122,11 @@ def _synthetic() -> None:
         j2.update((x, -9.0, 0.8), [], touch)
     print("height_bar", j2.states["height_bar"])
     assert j2.states["height_bar"].status == "fail"
+    j3 = Part1EventJudge()
+    for x, y in ((1.8, -10.5), (1.8, -11.5), (1.8, -12.5), (2.8, -12.5)):
+        j3.update((x, y, 0.42), [], False)
+    print("slalom", j3.states["slalom"])
+    assert j3.states["slalom"].status == "success"
     print("synthetic OK")
 
 

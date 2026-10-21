@@ -28,7 +28,7 @@
   - `observation_dimension: 45`、`history_frames: [0]`、`inference_input_dimension: 45`；
   - 默认关节姿态/`kp=40`/`kd=1.2`/`action_scale=0.25` 与训练契约一致；
   - 策略顺序 FL/FR/RL/RR。
-- `configs/policies/black/policy_switch.yaml` 改为循环 `[flat_ft, obstacle]`，用于先验证加载/切换路径（**未编译/未跑**；远程机已关机）。
+- `configs/policies/black/policy_switch.yaml` 改为 8 个状态 policy（`flat_ft/loose_ft/.../slalom_ft`，都暂时指向同一 45 维模型）；**已用 Pixi 构建并通过 GUI/策略切换 smoke test**。
 
 ## 4. 手动状态机接入方案
 
@@ -52,7 +52,7 @@
 
 ## 5. 风险与未验证项
 
-- 本地副本未编译：`quadruped_control` 需要系统 MuJoCo/LibTorch/ROS 依赖；远程机关机，P0 只做了配置级接入。
+- 本地副本已编译：见 [`quadruped-control-pixi-migration.md`](quadruped-control-pixi-migration.md)；MuJoCo 3.12 + LibTorch 2.12 + Pixi ROS 环境，GUI 已启动。
 - 单帧 45 维策略与现有 270 维策略共用 `policy_switch` 时，切换会重置历史；单帧策略历史长度 1，需确认 C++ loader 的 `history_frame_count` 上限/下限实现（`rl_controller.cpp` 已支持非空 history，但要在编译后跑一帧验证）。
 - `posture_transition_cycles`、默认姿态差异、旧动作清理需实测；不能只看 YAML。
 - black 没有 blackW 的 wheel fixed drive；Part 1 木桥/限高不能直接复用 blackW 的 bridge/low_bar drive。
@@ -63,6 +63,10 @@
 - 直接使用 Pixi 的 MuJoCo 3.12/LibTorch 2.12/ROS Humble 编译 `quadruped_core/quadruped_mujoco/quadruped_motion/quadruped_torch_policy/quadruped_config/quadruped_ipc/quadruped_replay_backend` 全部通过；源码无改动。
 - 只改 CMake：MuJoCo `find_package(CONFIG)`、Torch 去掉 `.deps` 硬校验、加 `QUADRUPED_BUILD_APPS` 开关；细节见 [`quadruped-control-pixi-migration.md`](quadruped-control-pixi-migration.md)。
 - 唯一缺口：`apps/mujoco_sim` 缺 MuJoCo `simulate/` 4 个源码文件；Pixi 只带运行时。vendor 这 4 个 BSD 源码或自写 GLFW viewer 即可。
+
+## 6.1 具名状态键（2026-10-22）
+
+`mujoco_sim` 已从“2/3 循环策略”扩展为具名键：`F/G/J/B/T/Y/U/N` 分别选中 `flat_ft/loose_ft/limit_bar_ft/bridge_ft/stairs_ft/high_wall_ft/slope_ft/slalom_ft`；`0` GetUp、`1` Start/Return RL。`SwitchPolicy` 走 `policy_name` 而非 `"toggle"`，已实测 Accepted/Completed。8 个 policy 目前共用同一模型，专项策略训练后逐个替换。
 
 ## 7. 参考代码位置
 

@@ -1,0 +1,5 @@
+<mujoco model="part2_ability_field">
+  <!-- Official terrain.zip ability field plus the Black policy model (Pixi MuJoCo eval). -->
+  <include file="map.xml"/>
+  <include file="black_policy.xml"/>
+</mujoco>

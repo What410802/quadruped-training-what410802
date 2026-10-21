@@ -159,3 +159,9 @@ export MUJOCO_GL=egl
 - 支持指定 terrain row/col 或 env_idx，让 rough 单机器人视频落在指定的坡/台阶/碎石 patch，而不是 env0 的 level-0 patch。
 - 若要干净展示视频，可给训练仓库加一个 **visual-only XML**（复用运行仓库 `@20261005_ros2/models/black_description.xml` 的 mesh）或在训练 XML 里补 group 1 视觉几何；当前先用碰撞几何（红色）保证能看到姿态。
 - 视频与原始日志都不入库；只把选中的样例复制到任务 `output/` 或 Release，并在 `experiments.md` 记录来源 checkpoint/命令。
+
+## P0 judge 可视化（2026-10-22）
+
+- `prep.d/videos/part1_judged_zero_shot_contact.png`：8 个 Part 1 障碍的 zero-shot judge 结果 contact sheet（每格文件名带 task/status）。
+- `prep.d/results/part1_zero_shot.json`：逐障碍 base/tilt/judge 状态/原因。
+- `prep.d/videos/part2_ability_field_stand.mp4`：Part 2 官方能力场本地 stand。
