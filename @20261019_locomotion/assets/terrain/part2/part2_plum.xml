@@ -1,0 +1,18 @@
+<mujoco model="part2_plum_scene">
+  <include file="black.xml"/>
+  <statistic center="1.75 0 0.4" extent="2.2"/>
+  <visual><global azimuth="90" elevation="-20"/></visual>
+  <worldbody>
+    <geom name="plum_floor" type="plane" size="3 3 0.05" rgba="0.25 0.25 0.25 1"/>
+    <!-- 800 x 800 x 200 mm platforms, green water-based paint. -->
+    <geom name="plum_platform_left" type="box" pos="0.40 0.40 0.10" size="0.40 0.40 0.10" rgba="0.25 0.65 0.25 1"/>
+    <geom name="plum_platform_right" type="box" pos="3.10 0.40 0.10" size="0.40 0.40 0.10" rgba="0.25 0.65 0.25 1"/>
+    <!-- 6 x 200 x 200 x 200 mm cubes, interleaved; coordinates in metres. -->
+    <geom name="plum_cube_0" type="box" pos="0.900 0.100 0.10" size="0.10 0.10 0.10" rgba="0.25 0.65 0.25 1"/>
+    <geom name="plum_cube_1" type="box" pos="1.500 0.100 0.10" size="0.10 0.10 0.10" rgba="0.25 0.65 0.25 1"/>
+    <geom name="plum_cube_2" type="box" pos="2.100 0.100 0.10" size="0.10 0.10 0.10" rgba="0.25 0.65 0.25 1"/>
+    <geom name="plum_cube_3" type="box" pos="1.200 0.500 0.10" size="0.10 0.10 0.10" rgba="0.25 0.65 0.25 1"/>
+    <geom name="plum_cube_4" type="box" pos="1.800 0.500 0.10" size="0.10 0.10 0.10" rgba="0.25 0.65 0.25 1"/>
+    <geom name="plum_cube_5" type="box" pos="2.400 0.500 0.10" size="0.10 0.10 0.10" rgba="0.25 0.65 0.25 1"/>
+  </worldbody>
+</mujoco>

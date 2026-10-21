@@ -1,6 +1,6 @@
 # 仓库划分与分支策略（计划）
 
-> 本文回答“训练代码放哪、运行代码放哪、权重放哪、远程机扮演什么角色”。当前许多组件还在搭建中，落地时以本文为准并同步更新 [`status.md`](status.md)。
+> 本文回答“训练代码放哪、运行代码放哪、权重放哪、远程机扮演什么角色”。当前许多组件还在搭建中，落地时以本文为准并同步更新 [`status.md`](../status.md)。
 
 ## 1. 结论
 
@@ -14,7 +14,7 @@
 
 | 仓库 | 角色 | 放什么 | 不放什么 |
 |---|---|---|---|
-| `MyMonoRepo.d`（本仓库，运行/验收） | 运行时、评测、部署、文档 | 任务目录（如 `@20261019_locomotion/`）、仿真/评测脚本、C++ 视窗、部署配置、导出的 `policy.pt`、实验记录 | 训练代码、训练依赖、日志、原始 checkpoint |
+| `MyMonoRepo.d`（本仓库，运行/验收） | 运行时、评测、部署、文档 | 任务目录（如 `@20261019_locomotion/`）、仿真/评测脚本、C++ 视窗、部署配置、导出的 `policy.pt`、精选 `model_*.pt`、实验记录 | 训练代码、训练依赖、日志、每 50 iter 的原始 checkpoint |
 | `nwwolf_mjlab_training_release` fork（训练） | 训练/导出 | `src/alldog_mjlab/{tasks,robots,algorithms,utils}`、地形/奖励/课程/DR 配置、`uv.lock`、`pyproject.toml`、`REMOTE_SETUP.md`（训练机配置）、导出工具 | 运行时代码（rl_sar、sim2sim 部署）、评测报告正文 |
 | `mujocolab/mjlab`（上游） | 框架依赖 | 只读；通过 `mjlab==1.6.0` + `uv.lock` 固定 | 我们的改动（除可上游的 bugfix，以 PR/patch 形式） |
 
@@ -39,7 +39,7 @@ nwwolf_mjlab_training_release/          # 我们的 fork，GitHub 私有/公开�
 │   └── utils/export_policy.py          # TorchScript 导出（policy.pt）
 ├── scripts/                            # 人跑的检查/实验脚本（不含一次性仪器）
 ├── docs/                               # 训练方法、实验记录、地形尺寸依据
-└── logs/                               # .gitignore；checkpoint/曲线只在远程/本地，不进 Git
+└── logs/                               # .gitignore；原始 checkpoint/曲线不进 Git；精选权重可入库或走 Release/LFS
 ```
 
 新增地形/实验只改 `tasks/velocity/black/` 下的配置，不动 `src/alldog_mjlab/` 之外的框架代码；确需修 mjlab 的问题时，优先上游 PR，退而在训练仓库 `patches/` 放可复现的 patch 并在 README 写清楚。
@@ -67,13 +67,13 @@ MyMonoRepo.d/
 | 训练仓库 | `main` | 稳定训练代码/配置；只接受已验证的实验配置 |
 | 训练仓库 | `exp/<stage>-<topic>` | 例如 `exp/s1-him-vs-privileged`、`exp/s2-stairs-curriculum`；配置小改动在此迭代，结论回写 `main`/docs 后删除或留档 |
 | 训练仓库 | `feat/terrain-*`、`fix/*` | 地形/奖励/导出等独立改动 |
-| 训练仓库 | `weights/<stage>` | 可选：只放**选中的** checkpoint（`.pt` 约 1 MB，Git LFS 可选）与评测数字；更推荐用 GitHub Release 附加 `policy.pt`，避免仓库变重 |
+| 训练仓库 | `weights/<stage>` | 可选：放**选中的** checkpoint（`model_*.pt` 约 5.9 MB；Git LFS 可选）与评测数字；2026-10-21 起允许权重入库，但默认只入精选，不用 Release 托管全部 checkpoint |
 | 训练仓库 | tag `s1-v1`、`s2-v1` | 每个里程碑（对照实验结束、验收通过）打 tag，记录 commit + lock 版本 + 评测 |
 | 运行仓库 | `main` | 运行时/文档/评测；固定契约与已验收策略 |
 | 运行仓库 | `weights/<stage>` 或 `assets/policies/` + tag | 验收用 policy.pt 与配置；推荐小文件直接放任务 `assets/policies/<version>/`，大文件走 Release |
 | 运行仓库 | `release/<competition>` | 赛前冻结版本（代码+策略+配置），便于复现 |
 
-提交信息统一按 [`../../docs/conventions.md`](../../docs/conventions.md) §1：一行英文 `type(scope): …`；训练仓库同样适用（fork 后改约定也可，但保持与运行仓库一致更省心）。
+提交信息统一按 [`../../docs/conventions.md`](../../../docs/conventions.md) §1：一行英文 `type(scope): …`；训练仓库同样适用（fork 后改约定也可，但保持与运行仓库一致更省心）。
 
 ## 6. 制品流（训练 → 运行）
 

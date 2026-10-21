@@ -1,0 +1,34 @@
+# Official Part 2 capability levels mapped to terrain.zip labels.
+# Source: team-race PDF pages 3-4; terrain.zip is the provider's capability field
+# and is used only as an evaluation/training layout reference (read-only).
+source:
+  pdf: team-race-2026 pages 3-4
+  terrain_zip: ReadOnly.d/Downloaded.d/terrain.zip (85 labels, map.xml)
+  plum_xml: assets/terrain/part2/part2_plum.xml
+official:
+  high_platform:
+    levels_cm: [10, 20, 30, 40]
+    terrain_zip: [platform_10cm, platform_20cm, platform_30cm, platform_40cm]
+  stairs:
+    levels_cm: [10, 15, 20, 30]
+    terrain_zip: [stairs_10cm, stairs_15cm, stairs_20cm, stairs_30cm]
+  slope:
+    levels_deg: [20, 30, 35, 45]
+    terrain_zip: [slope_20deg_up, slope_30deg_up, slope_35deg_up, slope_45deg_up]
+  gap:
+    levels_cm: [10, 20, 30]   # 30 cm = 300 points; <10 cm no score
+    terrain_zip: [trench_10cm, trench_20cm, trench_30cm]
+  high_wall:
+    levels_cm: [10, 20, 30, 40]
+    terrain_zip_note: "cross_bar_1..8 have full heights 4/8/12/16/20/30/40/50 cm; 20/30/40 match directly, 10 cm needs a custom/recut variant"
+    terrain_zip: [cross_bar_3, cross_bar_5, cross_bar_6, cross_bar_7]  # 12/20/30/40; adjust 12 -> 10 if exact
+  plum:
+    points: 200
+    source: "PDF figure; use part2_plum.xml, NOT terrain.zip plum (24 piles / top 20 cm differs)"
+extra_training_only:
+  narrow_bridge:
+    terrain_zip: [bridge_06cm, bridge_10cm, bridge_15cm, bridge_20cm, bridge_25cm, bridge_30cm, bridge_40cm]
+    note: "not in official Part 2 six; useful for Part 1 bridge / robustness"
+  cross_slope: [cross_slope_10deg, cross_slope_15deg, cross_slope_20deg, cross_slope_25deg, cross_slope_30deg, cross_slope_40deg, cross_slope_45deg]
+  rough: [rough_t1, rough_t2, rough_t3, rough_t4, rough_t5, rough_t6, rough_t7]
+  low_friction: [low_friction_03, low_friction_08, low_friction_15, low_friction_25, low_friction_35, low_friction_50]

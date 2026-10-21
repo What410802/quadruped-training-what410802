@@ -1,0 +1,56 @@
+# Manual fallback state machine for 2026 team race.
+# Runtime policy: operator selects a state; no judge/ground-truth input in the loop.
+version: 1
+default_state: flat
+transition: manual
+judge_in_loop: false
+states:
+  flat:
+    purpose: default locomotion on flat ground
+    policy: flat_ft_2500
+    max_vx: 1.5
+    max_vy: 0.5
+    max_wz: 0.8
+  loose:
+    purpose: gravel / wood-debris pit; distinct success semantics from flat
+    policy: flat_ft_2500   # temporary shared policy; split when loose specialist exists
+    max_vx: 0.6
+    max_vy: 0.3
+    max_wz: 0.4
+  limit_bar:
+    purpose: pass under height bar without touching it
+    policy: flat_ft_2500   # temporary; low-posture specialist later
+    max_vx: 0.5
+    max_vy: 0.2
+    max_wz: 0.3
+    posture: low
+  bridge:
+    purpose: wood bridge A/B; narrow landing
+    policy: flat_ft_2500   # temporary; bridge specialist later
+    max_vx: 0.4
+    max_vy: 0.15
+    max_wz: 0.25
+  stairs:
+    purpose: T stairs / capability stairs
+    policy: flat_ft_2500   # temporary; stairs specialist later
+    max_vx: 0.5
+    max_vy: 0.2
+    max_wz: 0.3
+  high_wall:
+    purpose: high wall climb/jump
+    policy: flat_ft_2500   # temporary; climb specialist later
+    max_vx: 0.4
+    max_vy: 0.2
+    max_wz: 0.2
+  slope:
+    purpose: race slope / capability slope
+    policy: flat_ft_2500
+    max_vx: 0.8
+    max_vy: 0.3
+    max_wz: 0.4
+  slalom:
+    purpose: straight-angle slalom (Part 1)
+    policy: flat_ft_2500
+    max_vx: 0.8
+    max_vy: 0.3
+    max_wz: 0.8

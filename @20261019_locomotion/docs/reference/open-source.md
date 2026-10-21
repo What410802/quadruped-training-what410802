@@ -49,9 +49,17 @@
 - **不重写**：PPO 训练循环、地形生成器、课程框架、TorchScript/ONNX 导出、sim2sim 加载链、部署状态机——队内仓库与 mjlab 生态都有。
 - **不采用为训练栈**：IsaacGym 系（HIMLoco、legged_gym、extreme-parkour、utorch 等）在 RTX 50（sm_120）上无法训练；只作算法参考。
 - **不复制**：无许可证仓库（RC_MAP、LeggedSkillDeploy、jindadu00、LocoWiki 内容等）的代码/资产；引用时给链接与说明。
-- **不引入的依赖**：为了本任务的 locomotion + 地形，不需要在本地 pixi 环境里装训练依赖（见 [`environment.md`](environment.md) §3）。
+- **不引入的依赖**：为了本任务的 locomotion + 地形，不需要在本地 pixi 环境里装训练依赖（见 [`environment.md`](../environment.md) §3）。
 
 ## 6. 引用与许可记录要求
 
-- 用到外部代码/资产时，在任务 README 写明上游名称、URL、版本/commit、许可证（[`../../docs/conventions.md`](../../docs/conventions.md) §6.1）；移植/改写保留版权头（§6.2）。
+- 用到外部代码/资产时，在本文件 §7 或任务 README 写明上游名称、URL、版本/commit、许可证（[`../../docs/conventions.md`](../../../docs/conventions.md) §6.1）；移植/改写保留版权头（§6.2）。
 - 本任务已确认的来源：mjlab（Apache-2.0）、训练仓库（队内）、`@20260927_motor` 的 C++ viewer（本仓库自写）、26RC_Field（MIT，引用时注明）。
+
+## 7. 本任务来源与许可
+
+- 地形素材：培训方提供的只读材料 `terrain.zip`（单位置能力测试场，unitree 场景布局）与 `scene_terrain.xml`（unitree 模板改出的组合地形 playground）；2026 官方规则 V2.0、场地图册与 2027 规则 V1.0 为本机只读材料，规则原文可从 ROBOCON 官网与 LocoWiki 查。
+- 2026 场地 CAD 参考：`Ruixi-Cheng/26RC_Field`（MIT，SolidWorks 单场地 + 镜像拼图）；`Zbszbszbssca/RC_MAP`（无许可证，仅参考，不入库）。
+- 训练框架：`mujocolab/mjlab`（Apache-2.0）、队内训练仓库 `N-W-wolf/nwwolf_mjlab_training_release`（基于 mjlab）。
+- C++ 视窗：复用本仓库 `@20260927_motor/cpp/src/viewer.h`（自写代码，GLFW + mjv/mjr）。
+- 参考实现与论文的来源、版本与许可见本文件 §1–§5 与 [`literature.md`](literature.md)。

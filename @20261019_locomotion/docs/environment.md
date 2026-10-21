@@ -82,7 +82,7 @@ MUJOCO_GL=egl .venv/bin/train black-flat --env.scene.num-envs 512 --agent.max-it
 
 | 需求 | 选择 | 说明 |
 |---|---|---|
-| 标量曲线（reward / episode 指标 / 课程） | **TensorBoard**（训练仓库已内置 `--agent.logger tensorboard`） | 零额外开发，写入 `logs/rsl_rl/…`；远程用 `ssh -L 6006:localhost:6006` 看 |
+| 标量曲线（reward / episode 指标 / 课程） | **TensorBoard**（训练仓库已内置 `--agent.logger tensorboard`） | 零额外开发，写入 `logs/rsl_rl/…`；**`tensorboard` 不在远程 PATH 上，要用训练仓库 venv 的 `.venv/bin/tensorboard`**；远程 `ssh -L 6006:localhost:6006` 看 |
 | 训练过程视频/三维回放 | mjlab 自带的 `play`/`viser` + 本任务 C++ 视窗、本地 MuJoCo 回放 | 看 rollout 比看曲线更直接；`play` 的离屏渲染用 EGL |
 | 多模态（曲线 + 3D + 图像）实验记录 | 可选 **Rerun**（后加） | 引入成本高，等有相机/视觉数据再考虑 |
 | 团队/云端对比 | 可选 W&B（支持离线 `WANDB_MODE=offline`） | 需要账号与网络；不是必须 |
