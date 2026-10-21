@@ -97,3 +97,12 @@ MUJOCO_GL=egl .venv/bin/train black-flat --env.scene.num-envs 512 --agent.max-it
 - 后续加策略推理：用环境里的 CPU `libtorch` 加载 TorchScript，观测/动作拼法与 `@20261007_assignment` 的 `policy_reference.py` 同一口径；这样能在本机不依赖 ROS 看导出的策略跑场地。
 - 渲染锁：目前沿用源文件的单把锁（渲染与物理在同一线程阻塞）；按 `@20260923_mujoco` 的结论，官方 `RenderLoop` 在 `Render()` 之前放锁、C++ 不存 GIL 问题，**先不换**；等接入策略、拷贝/推理开销占比上来再换成“锁只罩拷贝”的双缓冲版本。
 - 录屏/截图：本地可用 `pixi run env MUJOCO_GL=glfw` 开 GLFW 窗口；远程无显示时用 `MUJOCO_GL=egl` 的离屏渲染（Python 侧 `mujoco.Renderer`），C++ 视窗需要显示服务，不用于远程录屏。
+
+## VS Code 本地设置与 pixi 可复现性（2026-10-21 排查）
+
+- 本地 `.vscode/settings.json` 曾被加入 ROS 相关项（`ROS2.distro`、`python.autoComplete.extraPaths`、`python.analysis.extraPaths` 指向 `/opt/ros/humble/...`）。这些是**编辑器/Pylance 的本地路径**，不会影响 `pixi run` 的实际解释器、`pixi.lock` 或训练环境；但写在 tracked `settings.json` 里会污染仓库、在别的机器上指向不存在的路径。
+- 已移除这三项；tracked `settings.json` 只保留 pixi 解释器、pixi clangd、通用编辑设置。
+- `.vscode/c_cpp_properties.json` 含本机绝对路径，是本地 C/C++ IntelliSense 配置；已加入 `.gitignore`。
+- `.vscode/browse.vc.db*` 是 C/C++ 扩展生成的索引数据库（本机约 1.1 GB），已加入 `.gitignore`，不应提交。
+- 需要 ROS 自动补全时，请放到 **VS Code User Settings**（或本机不跟踪的配置），不要放回 tracked `.vscode/settings.json`；`pixi run` 不受影响。
+- 验证：`git status --short .vscode` 应只显示本地未跟踪的 index/config，或者干净；`pixi run python -c 'import sys; print(sys.executable)'` 应指向 `.pixi/envs/default/bin/python`。

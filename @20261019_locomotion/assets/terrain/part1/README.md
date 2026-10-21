@@ -10,6 +10,12 @@ Working copy of the training provider's Part 1 scene, copied from the read-only 
 - Height bar remains **static** per user decision; official judge/termination will detect robot-bar contact instead of modifying the geometry.
 - Gravel pit and stairs remain the source configuration (user confirmed current forms are acceptable).
 
+## Bridge geometry (user correction)
+
+- **5 separated square blocks** (`bridge_blocks_0..4`): full size 0.4 m × 1.0 m × 0.2 m, center x=2.65/3.20/3.75/4.30/4.85 m, y=0, gap 0.15 m between blocks; a foot in a gap can reach the floor.
+- **3 narrow bands** (`bridge_bands_0..2`): full size 0.2 m × 1.5 m × 0.2 m, center x=5.35/5.65/5.95 m, y=-2.25, gap 0.10 m between bands; this is the harder bridge: a blind policy must place feet on 0.2 m strips and recover from a missed step.
+- The state machine should treat these as `bridge_blocks` and `bridge_bands` sub-profiles under one `bridge` state; the judge must know which surfaces are allowed.
+
 ## Check
 
 ```bash

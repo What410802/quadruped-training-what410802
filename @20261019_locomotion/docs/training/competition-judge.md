@@ -39,7 +39,7 @@
 | 限高杆 | 从杆下穿过且杆不位移 | 杆位移/掉落 |
 | T 字形台阶 | 任一侧上、另一侧下；每级顶面至少一次足接触；不触发 1/2 足 ground | 漏级；1/2 足 ground；只上不下只得部分分 |
 | 斜坡 | 在坡面沿 3 m 长边方向累计 ≥1 m；不触发 1/2 足 ground | 距离不足；ground contact |
-| 木桥 A/B | 一侧平台经桥到另一侧平台；不触发 1/2 足 ground | 掉桥；ground contact |
+| 木桥 A/B | 一侧平台经桥到另一侧平台；不触发 1/2 足 ground。两种桥面要分开：`bridge_blocks` 5 个 0.4×1.0 m 方墩（缝 0.15 m），`bridge_bands` 3 条 0.2×1.5 m 窄带（缝 0.10 m） | 掉桥；脚到缝底/ground；ground contact |
 
 ### 4.2 赛项二
 

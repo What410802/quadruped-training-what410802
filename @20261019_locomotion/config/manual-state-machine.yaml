@@ -30,6 +30,9 @@ states:
     max_vx: 0.4
     max_vy: 0.15
     max_wz: 0.25
+    variants:
+      blocks: "5 x 0.4 x 1.0 m square blocks, 0.15 m gaps"
+      bands: "3 x 0.2 x 1.5 m narrow bands, 0.10 m gaps; hardest"
   stairs:
     purpose: T stairs / capability stairs
     policy: flat_ft_2500   # temporary; stairs specialist later

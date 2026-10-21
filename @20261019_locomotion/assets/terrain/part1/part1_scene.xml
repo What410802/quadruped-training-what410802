@@ -94,20 +94,20 @@
 <!-- 斜坡木桥A木桥B -->
 <geom pos="1.8 -0.88 0.1" type="box" size="0.40 0.5 0.005" quat="0.701836 0.086175 -0.086175 0.701836" rgba="0.75 0.72 0.55 1.0"/>
 <geom pos="1.8 0.0 0.10" type="box" size="0.5 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
-<geom pos="2.65 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
-<geom pos="3.2 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
-<geom pos="3.75 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
-<geom pos="4.3 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
-<geom pos="4.85 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
+<geom name="bridge_blocks_0" pos="2.65 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
+<geom name="bridge_blocks_1" pos="3.2 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
+<geom name="bridge_blocks_2" pos="3.75 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
+<geom name="bridge_blocks_3" pos="4.3 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
+<geom name="bridge_blocks_4" pos="4.85 0.0 0.10" type="box" size="0.2 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
 <geom pos="5.7 -0.5 0.10" type="box" size="0.5 1.0 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
 <geom pos="4.8002 -1.0 0.0951"
       type="box"
       size="0.4133 0.5 0.005"
       quat="0.992546 0.0 -0.121869 0.0" 
       rgba="0.75 0.72 0.55 1.0"/>
-<geom pos="5.35 -2.25 0.10" type="box" size="0.1 0.75 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
-<geom pos="5.65 -2.25 0.10" type="box" size="0.1 0.75 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
-<geom pos="5.95 -2.25 0.10" type="box" size="0.1 0.75 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
+<geom name="bridge_bands_0" pos="5.35 -2.25 0.10" type="box" size="0.1 0.75 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
+<geom name="bridge_bands_1" pos="5.65 -2.25 0.10" type="box" size="0.1 0.75 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
+<geom name="bridge_bands_2" pos="5.95 -2.25 0.10" type="box" size="0.1 0.75 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
 <geom pos="5.7 -3.5 0.10" type="box" size="0.5 0.5 0.10" quat="1.0 0.0 0.0 0.0" rgba="0.75 0.72 0.55 1.0"/>
 <!-- 10度斜坡：宽4m，斜坡 y正方向边缘 与平台 y正方向边缘 对齐 -->
 <geom pos="4.6338 -5.0 0.0951"
