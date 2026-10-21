@@ -3,6 +3,8 @@
 > 这是**给 AI 助手看的简版**：每条尽量一句话，细则一律引到末尾的 `conventions §N.M`（条目编号见 conventions 文首「读法」）； **全量约定**在人向的 [`docs/conventions.md`](docs/conventions.md)，两边不重复—— 本文只写"助手每次动手前必须知道、且容易做错"的那些。 仓库内容（架构说明、实现思路、实测数据、学习记录）放各处的 Markdown，不放这里。
 
 ## 每次开始时
+> **层级**：本文件是仓库级默认；具体任务目录的 `AGENTS.md` / `README.md` / `docs/status.md` 可以写更具体或不同的约定，子级覆盖父级。子级偏离时在任务 `docs/status.md` 记录授权/理由与范围。
+
 
 1. 读 [`docs/conventions.md`](docs/conventions.md)（提交 / 文档 / 目录 / 环境 / 验证等八节；开新任务照 §8 的起步清单），再读**当前任务目录**的 `README.md`（入口）、`docs/status.md`（做到哪、下一步、阻滞项）与其 `docs/` 下的细节文档。
 2. 判断改动落在哪一层：仓库 `docs/`（换个任务也成立）还是任务目录（只对这份模型/这次验收成立）—— 判定标准见 conventions §7.1；**同一句话只写一处，其他地方放飞指针**。
