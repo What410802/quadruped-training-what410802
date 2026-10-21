@@ -74,11 +74,6 @@ class Part1EventJudge:
             if self.states["gravel_pit"].status == "pending":
                 self.states["gravel_pit"].status = "running"
             setstate("gravel_pit", success=x > 6.3, fail=bool(gfail), reason=gfail)
-        # T stairs: cross along +y (main limb); ground contact fails.
-        if 1.2 <= x <= 3.5 and -5.0 <= y <= -2.0:
-            if self.states["t_stairs"].status == "pending":
-                self.states["t_stairs"].status = "running"
-            setstate("t_stairs", success=y > -2.1, fail=bool(gfail), reason=gfail)
         # 10-degree slope: cross along +x; ground contact fails.
         if 3.7 <= x <= 6.6 and -6.8 <= y <= -3.9:
             if self.states["slope"].status == "pending":
@@ -127,6 +122,22 @@ def _synthetic() -> None:
         j3.update((x, y, 0.42), [], False)
     print("slalom", j3.states["slalom"])
     assert j3.states["slalom"].status == "success"
+    # T stairs: crossing +y is not enough; three step levels are required.
+    j4 = Part1EventJudge()
+    for y, levels in ((-4.7, {5}), (-3.5, {5, 15}), (-2.0, {5, 15, 25})):
+        j4.update((1.8, y, 0.42), [], False, step_levels=levels)
+    print("t_stairs", j4.states["t_stairs"])
+    assert j4.states["t_stairs"].status == "success"
+    j5 = Part1EventJudge()
+    for y in (-4.7, -3.5, -2.0):
+        j5.update((1.8, y, 0.42), [], False, step_levels={5})
+    print("t_stairs_missing_levels", j5.states["t_stairs"])
+    assert j5.states["t_stairs"].status != "success"
+    # Two feet on the floor inside a ground-fail zone must fail.
+    j6 = Part1EventJudge()
+    j6.update((4.5, 0.0, 0.42), ["FL", "FR"], False)
+    print("bridge_ground_fail", j6.states["bridge_blocks"])
+    assert j6.states["bridge_blocks"].status == "fail"
     print("synthetic OK")
 
 

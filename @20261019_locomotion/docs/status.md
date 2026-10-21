@@ -28,10 +28,12 @@
 - ✅ `quadruped_control` 研读与本地接入：只读源 commit `e0fb567`；本地副本 `prep.d/quadruped_control_local` 已加入 45 维 `flat_ft` policy 配置与 policy_switch；在 Pixi 依赖下已编译 `core/mujoco/motion/torch/config/ipc/replay` 库（MuJoCo 3.12 + LibTorch 2.12），GUI `mujoco_sim` 已用本地 MuJoCo Simulate 源码构建并启动；研读见 [`reference/quadruped-control-study.md`](reference/quadruped-control-study.md)。
 - ✅ VS Code/pixi 排查：tracked `settings.json` 只保留 pixi 解释器；本地 ROS extraPaths 已移除；`c_cpp_properties.json`/`browse.vc.db*` 已加入 `.gitignore`。见 [`environment.md`](environment.md)。
 - ✅ 手动运行时状态键：`quadruped_control` `mujoco_sim` 已加 `F/G/J/B/T/Y/U/N` 具名 policy 切换，Part 1 场景 smoke test 通过；8 个 runtime policy 仍共用 `flat_ft`。
+- ✅ Part 2 六类 capability eval spec：`config/part2-ability-tasks.yaml`（platform/stairs/slope/gap/high wall/plum）；`check_part2_ability_tasks.py` 检查 19 个 label 在 `ability_field` 中存在；plum 强制走自建场景。
 - ✅ Part 2 官方能力场本地 eval：`assets/terrain/part2/ability_field/part2_ability_field.xml`（`terrain.zip` map+labels+Black policy）编译通过；本地 runner 可在原点平地 stand。
 - ✅ 部署审计：`audit_deployment.py` 检查 45 维 actor、无禁用传感器、12 轴 effor 20 N·m、控制仓库 hip/thigh 23.7 / calf 59.25 在规则 25/60 内；通过。
 - ✅ Part 1 zero-shot 诊断：`run_part1_judged_rollout.py` 对 8 障碍做独立脚本尝试；当前全部 0 分/pending，JSON `prep.d/results/part1_zero_shot.json`。这是诊断，不是官方整场成绩。
-- ⏳ 下一步：Part 1 success judge 用真实手动轨迹校准；Part 2 六类地形 training task 化（本地 eval 场已就绪）；官方整场 zero-shot 计分；状态专项策略需训练机。
+- ✅ 可视化规则已写入本文件顶部；当前 P0 结果 contact sheet 在 `prep.d/videos/part1_judged_zero_shot_contact.png`，诊断 JSON 在 `prep.d/results/part1_zero_shot.json`，能力场 stand 视频在 `prep.d/videos/part2_ability_field_stand.mp4`。
+- ⏳ 下一步：Part 1 success judge 用真实手动轨迹校准；Part 2 六类地形 training task 化（本地 eval spec 已就绪）；官方整场 zero-shot 计分；状态专项策略需训练机。
 
 ### 比赛要求 vs 当前进度
 

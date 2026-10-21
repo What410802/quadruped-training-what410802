@@ -3,6 +3,7 @@
 - `part2_plum.xml`: MJCF for the official Part 2 plum obstacle, built from PDF page 4 because the provided map's plum parameters are wrong.
 - `black.xml`: copy of the training repo Black model (primitive geoms), used for local scene compile.
 - `official_catalog.yaml`: official Part 2 levels mapped to `terrain.zip` labels; extra training-only categories separated.
+- `../../config/part2-ability-tasks.yaml`: local P0 six-category eval spec (levels → label names); `check_part2_ability_tasks.py` verifies labels exist in `ability_field`.
 - `ability_field/part2_ability_field.xml`: local eval wrapper combining the official `terrain.zip` map + labels with `black_policy.xml`; compiled `nbody=20/ngeom=955/nq=19/nu=12`. It is an evaluation/visualization asset, not a training task.
 
 ## Plum parameters (from PDF)

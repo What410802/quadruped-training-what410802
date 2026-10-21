@@ -1,0 +1,44 @@
+# Local P0 eval specs for the six official Part 2 capability categories.
+# These are scene/label coordinates for local MuJoCo evaluation, not training tasks.
+field: assets/terrain/part2/ability_field/part2_ability_field.xml
+source_catalog: assets/terrain/part2/official_catalog.yaml
+plum_scene: assets/terrain/part2/part2_plum_eval_scene.xml
+categories:
+  high_platform:
+    levels_cm: [10, 20, 30, 40]
+    labels:
+      10: platform_10cm
+      20: platform_20cm
+      30: platform_30cm
+      40: platform_40cm
+  stairs:
+    levels_cm: [10, 15, 20, 30]
+    labels:
+      10: stairs_10cm
+      15: stairs_15cm
+      20: stairs_20cm
+      30: stairs_30cm
+  slope:
+    levels_deg: [20, 30, 35, 45]
+    labels:
+      20: slope_20deg_up
+      30: slope_30deg_up
+      35: slope_35deg_up
+      45: slope_45deg_up
+  gap:
+    levels_cm: [10, 20, 30]
+    labels:
+      10: trench_10cm
+      20: trench_20cm
+      30: trench_30cm
+  high_wall:
+    levels_cm: [10, 20, 30, 40]
+    labels:
+      10: cross_bar_3   # 12 cm proxy; exact 10 cm needs a recut variant
+      20: cross_bar_5
+      30: cross_bar_6
+      40: cross_bar_7
+  plum:
+    points: 200
+    scene: assets/terrain/part2/part2_plum_eval_scene.xml
+    note: "use custom part2_plum.xml; terrain.zip plum differs (24 piles, top 20 cm)"
