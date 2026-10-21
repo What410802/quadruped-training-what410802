@@ -17,6 +17,7 @@
 - ✅ `scripts/agent_scripts/part1_judge.py`：足端/限高杆接触判定骨架；初始四足 ground、bar 未触碰。
 - ✅ `assets/terrain/part2/part2_plum.xml`：按 PDF 200 mm 方块/平台/100–400 mm/200 mm/400 mm 参数自建；`official_catalog.yaml` 映射官方档位。
 - ✅ `config/manual-state-machine.yaml` + `scripts/agent_scripts/check_state_machine.py`：flat/loose/limit_bar/bridge/stairs/high_wall/slope/slalom 8 状态，默认 flat；`bridge` 含 blocks/bands 子型；validator 通过。
+- ✅ `quadruped_control` GUI/策略已在本机跑通：Pixi 依赖 + 本地 Simulate 源码构建 `quadruped_mujoco_sim`；Part 1 场景启动、`0→GetUp→1→Running→2/3` 策略切换均 Accepted/Completed；8 个状态 policy 目前都是 `flat_ft` 占位，尚未具名键直选。
 - ✅ `quadruped_control` 研读与本地接入：只读源 commit `e0fb567`；本地副本 `prep.d/quadruped_control_local` 已加入 45 维 `flat_ft` policy 配置与 policy_switch；在 Pixi 依赖下已编译 `core/mujoco/motion/torch/config/ipc/replay` 库（MuJoCo 3.12 + LibTorch 2.12），仅 GUI `mujoco_sim` 因缺 MuJoCo Simulate 源码未构建；研读见 [`reference/quadruped-control-study.md`](reference/quadruped-control-study.md)。
 - ✅ VS Code/pixi 排查：tracked `settings.json` 只保留 pixi 解释器；本地 ROS extraPaths 已移除；`c_cpp_properties.json`/`browse.vc.db*` 已加入 `.gitignore`。见 [`environment.md`](environment.md)。
 - ⏳ 下一步：Part 2 六类地形 task 化；Part 1 逐障碍 success state machine（含 1/2 足、台阶逐级接触、bar 接触 fail、桥/绕杆 checkpoint）；手动 runner 接 `flat-ft-2500`；官方场 zero-shot 得分。

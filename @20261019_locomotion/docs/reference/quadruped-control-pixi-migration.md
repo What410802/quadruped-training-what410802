@@ -44,7 +44,7 @@ MuJoCo 3.12 的 `simulate/` 源码在只读 `Replicate.d/mujoco-3.12.0/simulate/
 - PNG 用 Pixi 的 `libpng.so`，zlib 用系统 `/usr/lib/x86_64-linux-gnu/libz.so`（Pixi 只有 `libz.so.1` 符号链接）；
 - 运行时需要 `LD_PRELOAD=<pixi>/lib/libstdc++.so.6` 和 `LD_LIBRARY_PATH=<pixi>/lib`，否则系统 libstdc++ 缺 `GLIBCXX_3.4.32`。
 
-GUI 现在可用，但仍缺“8 状态具名切换”；当前 `2/3` 只在 policy_switch 中循环。下一步把状态键和具名 policy 接上。
+GUI 现在可用。已在本地副本加 8 个占位 policy（`flat_ft`/`loose_ft`/`limit_bar_ft`/`bridge_ft`/`stairs_ft`/`high_wall_ft`/`slope_ft`/`slalom_ft`，都暂时指向同一 45 维模型），并实测 `0` GetUp → `1` Running → `2/3` policy switch 全部 Accepted/Completed；这还不是“具名键直接选状态”，只是循环切换的 P0 保底壳。
 
 ## 复现命令（本地 Pixi）
 
