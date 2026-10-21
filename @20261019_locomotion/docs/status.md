@@ -11,6 +11,7 @@
 
 ### P0 实施进度（2026-10-21，节点 1）
 
+- ✅ 本地策略 runner：`scripts/agent_scripts/run_policy_scene.py` 在 `part1_eval_scene.xml`/`part2_plum_eval_scene.xml` 上加载 `flat-ft-2500`，Part 1 出发区 stand 约 3 s（base z≈0.419、tilt≈2.6°），Part 2 左平台 stand 约 2 s（z≈0.615、tilt≈2.3°）；视频 `prep.d/videos/part1_flat_stand.mp4`、`part2_plum_stand.mp4`。
 - ✅ Part 1 scene working copy：`assets/terrain/part1/part1_scene.xml`（从 `scene_terrain (1).xml` 复制；include 换成 Black、移除训练 hfield、标注 judge 锚点名；桥面 `bridge_blocks_0..4`=5 方墩、`bridge_bands_0..2`=3 窄带）；本地 MuJoCo 编译通过（20 body / 184 geom / nq 19）。
 - ✅ `scripts/agent_scripts/part1_judge.py`：足端/限高杆接触判定骨架；初始四足 ground、bar 未触碰。
 - ✅ `assets/terrain/part2/part2_plum.xml`：按 PDF 200 mm 方块/平台/100–400 mm/200 mm/400 mm 参数自建；`official_catalog.yaml` 映射官方档位。

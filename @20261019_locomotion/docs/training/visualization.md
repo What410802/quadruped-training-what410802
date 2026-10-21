@@ -129,13 +129,16 @@ export MUJOCO_GL=egl
 | `gravel_free_v2_700_commands.mp4` | 旧稀疏自由布局（已作废）；仅历史对比 |
 | `free_dense80_commands.mp4` | 旧 dense80 大石块，历史/木块参考 |
 | `flat_ft_composite_zero_shot.mp4` | **最新 composite 自由砂砾**（6 cm 基座 + 120 自由 + 700 静态、3–8 cm）上用 `flat-ft-2500` zero-shot 的命令序列；不是训练后策略 |
+| `part1_flat_stand.mp4` | 本地 `run_policy_scene.py` 在 Part 1 出发区的 stand；用于验证本地 policy/judge 链路 |
 | `rough_clean_model_3800.mp4` | rough resume `model_3800`，跟踪相机，env0 所在 patch |
 | `overview/black-flat_overview_7.png` | 7 env 全局俯瞰，flat |
 | `overview/black-rough_overview_7.png` | 7 env 全局俯瞰，能看到 rough 多地形 patch |
 | `overview/black-gravel-free_overview.png`、`_v2.png` | 旧自由石块场景全局俯瞰（历史） |
 | `overview/black-gravel-free_composite_final_overview.png` | **最新 composite 石床**俯视图：6 cm 基座、700 静态 + 120 自由碎石、3–8 cm |
 | `overview/part1_scene_robot_overview.png` | Part 1 工作场景概览（Black 替换 blackW、桥 blocks/bands、T 台阶、限高杆、砂砾坑、绕杆等） |
-| `overview/part2_plum_robot_overview.png` | Part 2 梅花桩按 PDF 重建后的概览（6 桩 + 两侧平台） |
+| `overview/part2_plum_fixed_overview.png` | Part 2 梅花桩修复中心对称后的概览（6 桩 + 两侧平台） |
+| `part1_flat_stand.mp4` | 本地策略 runner 在 Part 1 出发区的 stand 视频（`flat-ft-2500`，zero-shot；不是障碍通过） |
+| `part2_plum_stand.mp4` | 本地策略 runner 在 Part 2 梅花桩左平台的 stand 视频（zero-shot） |
 | `flat_model_100/500/1000/1999.mp4` | 旧版 `play --video` 样例（默认相机/调试标记；保留作对比） |
 | `rough_scene_flat_model_1999.mp4` | 旧版 rough 场景样例（同上） |
 

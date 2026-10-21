@@ -10,13 +10,10 @@
 - Two rows; first cube to platform gaps 100 mm / 400 mm; row spacing 200 mm; same-row cube gaps 400 mm; overall center symmetric.
 - Implementation: 3 cubes per row × 2 rows = 6 cubes; coordinates left platform 0–800 mm, right platform 2700–3500 mm; row y ranges 100–300 / 500–700 mm.
 - This is a derivation from the PDF figure; if the provider has a numerically different drawing, update `part2_plum.xml` and record the source.
+- Correct centers: top row x=1.0/1.6/2.2, y=0.2; bottom row x=1.3/1.9/2.5, y=0.6; platform x=0.0–0.8 / 2.7–3.5, y=0.0–0.8. `check_plum_geometry.py` verifies exact corners, gaps and center symmetry.
 
 ## Check
 
 ```bash
-pixi run python - <<'PY'
-import mujoco
-m = mujoco.MjSpec.from_file('@20261019_locomotion/assets/terrain/part2/part2_plum.xml').compile()
-print(m.nbody, m.ngeom, m.nq)
-PY
+pixi run python @20261019_locomotion/scripts/agent_scripts/check_plum_geometry.py
 ```
