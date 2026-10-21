@@ -11,6 +11,7 @@
 
 ### P0 实施进度（2026-10-21，节点 1）
 
+- **足端 clearance 视觉+数值诊断（2026-10-22）**：本地 runner 在 Part 1 平地 4 s 前进，四足中心最大高度均值约 **0.022 m**（foot 半径 0.02 m，相当于足底几乎擦地），与视频“蹭地”一致；`flat-ft` 的 `foot_clearance` 目标 0.09 m 没有达到。桥面 zero-shot 只是把足抬到桥面高度，不会主动增加离地 clearance；桥/台阶专项训练需要更强 foot clearance/edge 奖励。
 - ✅ 本地策略 runner：`scripts/agent_scripts/run_policy_scene.py` 在 `part1_eval_scene.xml`/`part2_plum_eval_scene.xml` 上加载 `flat-ft-2500`，Part 1 出发区 stand 约 3 s（base z≈0.419、tilt≈2.6°），Part 2 左平台 stand 约 2 s（z≈0.615、tilt≈2.3°）；视频 `prep.d/videos/part1_flat_stand.mp4`、`part2_plum_stand.mp4`；补充非零指令 walking 视频 `part1_flat_walk_back.mp4`、`part1_flat_turn.mp4`、`part2_field_walk.mp4`，以及桥/限高杆 zero-shot 诊断视频。
 - ✅ Part 1 scene working copy：`assets/terrain/part1/part1_scene.xml`（从 `scene_terrain (1).xml` 复制；include 换成 Black、移除训练 hfield、标注 judge 锚点名；桥面 `bridge_blocks_0..4`=5 方墩、`bridge_bands_0..2`=3 窄带）；本地 MuJoCo 编译通过（20 body / 184 geom / nq 19）。
 - ✅ `scripts/agent_scripts/part1_judge.py`：足端/限高杆接触判定骨架；初始四足 ground、bar 未触碰。
