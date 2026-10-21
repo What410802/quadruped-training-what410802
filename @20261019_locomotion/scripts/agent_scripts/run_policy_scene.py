@@ -106,6 +106,27 @@ class ScenePolicyRunner:
         return pos, float(tilt)
 
 
+def _add_arrow(renderer, start, vec, rgba, width=0.015) -> None:
+    scene = renderer.scene
+    if scene.ngeom >= len(scene.geoms):
+        return
+    geom = scene.geoms[scene.ngeom]
+    start = np.asarray(start, dtype=np.float64)
+    end = start + np.asarray(vec, dtype=np.float64)
+    if np.linalg.norm(end - start) < 1e-4:
+        return
+    mujoco.mjv_initGeom(
+        geom,
+        mujoco.mjtGeom.mjGEOM_ARROW,
+        np.array([width, width, 0.0]),
+        np.zeros(3),
+        np.eye(3).reshape(-1),
+        np.asarray(rgba, dtype=np.float32),
+    )
+    mujoco.mjv_connector(geom, mujoco.mjtGeom.mjGEOM_ARROW, width, start, end)
+    scene.ngeom += 1
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scene", default="@20261019_locomotion/assets/terrain/part1/part1_eval_scene.xml")
@@ -132,6 +153,14 @@ def main() -> None:
             pos, _ = runner.base()
             cam.lookat[:] = (pos[0], pos[1], max(0.2, pos[2] - 0.15))
             renderer.update_scene(runner.data, camera=cam, scene_option=opt)
+            # Command vs actual base velocity arrows, vertically separated so they
+            # do not overlap in the video.
+            base_pos = np.array(runner.data.xpos[runner.trunk], dtype=np.float64)
+            _add_arrow(renderer, base_pos + np.array([0, 0, 0.12]), np.array([cmd[0], cmd[1], 0]) * 0.35,
+                       (0.1, 0.2, 0.9, 1.0))
+            actual_vel = np.array(runner.data.qvel[:3], dtype=np.float64)
+            _add_arrow(renderer, base_pos + np.array([0, 0, 0.22]), actual_vel * 0.35,
+                       (0.0, 0.8, 0.9, 1.0))
             frames.append(renderer.render().copy())
         renderer.close()
         if args.out:

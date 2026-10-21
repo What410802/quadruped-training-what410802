@@ -58,7 +58,13 @@
 - black 没有 blackW 的 wheel fixed drive；Part 1 木桥/限高不能直接复用 blackW 的 bridge/low_bar drive。
 - 世界坐标/速度真值不能进 actor；控制层只用摇杆速度指令与状态切换。
 
-## 6. 参考代码位置
+## 6. Pixi 迁移实测（2026-10-22）
+
+- 直接使用 Pixi 的 MuJoCo 3.12/LibTorch 2.12/ROS Humble 编译 `quadruped_core/quadruped_mujoco/quadruped_motion/quadruped_torch_policy/quadruped_config/quadruped_ipc/quadruped_replay_backend` 全部通过；源码无改动。
+- 只改 CMake：MuJoCo `find_package(CONFIG)`、Torch 去掉 `.deps` 硬校验、加 `QUADRUPED_BUILD_APPS` 开关；细节见 [`quadruped-control-pixi-migration.md`](quadruped-control-pixi-migration.md)。
+- 唯一缺口：`apps/mujoco_sim` 缺 MuJoCo `simulate/` 4 个源码文件；Pixi 只带运行时。vendor 这 4 个 BSD 源码或自写 GLFW viewer 即可。
+
+## 7. 参考代码位置
 
 - `motion/src/motion_runtime.cpp`（状态/行为/策略切换）
 - `motion/src/motion_requests.cpp`（`dispatch_switch_policy`）
