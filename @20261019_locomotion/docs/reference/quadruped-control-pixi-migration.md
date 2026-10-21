@@ -29,16 +29,22 @@
 3. `scripts/build.sh`：绕过 `.deps` 存在性检查，直接用 Pixi 的 `cmake` 配置；或新增 `--pixi` profile。
 4. `configs/policies/black/flat_ft.yaml`：把 45 维单帧 `flat-ft-2500` 接入控制仓库（已有工作副本）；`policy_switch.yaml` 暂时 `[flat_ft, obstacle]`。
 
-## 剩余缺口：GUI 单进程 app
+## GUI 也已在本机跑起来
 
-`apps/mujoco_sim` 需要 MuJoCo 官方 `simulate/` 源码（`simulate.cc`、`glfw_adapter.cc`、`glfw_dispatch.cc`、`platform_ui_adapter.cc`），Pixi 只安装运行时/CMake 包，没有这些源码。
+MuJoCo 3.12 的 `simulate/` 源码在只读 `Replicate.d/mujoco-3.12.0/simulate/`；把它复制到本地 clone 的 `third_party/mujoco_simulate/` 后，`apps/mujoco_sim` **已构建并通过启动测试**：
 
-两条路：
+- `quadruped_mujoco_sim --help` 正常；
+- 在 Part 1 工作场景上启动成功；
+- 用伪终端发送 `0`（GetUp）→ `1`（RL）→ `w`（vx=0.1）可进入 `Running/rl_locomotion` 并接受命令；
+- 加载 `flat_ft` 45 维策略的进程没有报错。
 
-1. **vendor MuJoCo 3.12 的 4 个 Simulate 源码文件**（BSD-3-Clause），接到 `apps/mujoco_sim`；改动小，但要保留来源/许可说明。
-2. **不用官方 Simulate**：基于现有 `@20261019_locomotion/cpp/scene_viewer`（GLFW + MuJoCo + mjv）做一个最小 GUI runner，接 MotionRuntime/手柄；改动更大但 UI 可控。
+构建时的额外注意（Pixi + 本机系统库）：
 
-P0 建议先做 1；P1 若需要自定义 overlay/录制再考虑 2。
+- 用 Pixi 的 `x86_64-conda-linux-gnu-c++` 编译，避免系统 g++ 11 链接 Pixi 新版 libstdc++ 失败；
+- PNG 用 Pixi 的 `libpng.so`，zlib 用系统 `/usr/lib/x86_64-linux-gnu/libz.so`（Pixi 只有 `libz.so.1` 符号链接）；
+- 运行时需要 `LD_PRELOAD=<pixi>/lib/libstdc++.so.6` 和 `LD_LIBRARY_PATH=<pixi>/lib`，否则系统 libstdc++ 缺 `GLIBCXX_3.4.32`。
+
+GUI 现在可用，但仍缺“8 状态具名切换”；当前 `2/3` 只在 policy_switch 中循环。下一步把状态键和具名 policy 接上。
 
 ## 复现命令（本地 Pixi）
 
