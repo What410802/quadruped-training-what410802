@@ -78,6 +78,7 @@ cd ~/rc_work/nwwolf_mjlab_training_release
 │   │   └── manual-fallback-state-machine.md  # 手动保底状态机/运行时真值/相机阶段
 │   └── reference/
 │       ├── team-race-2026.md         # 2026 队内赛真值：两个赛项/成功定义/得分/约束
+│       ├── quadruped-control-study.md # quadruped_control 架构研读与状态机接入
 │       ├── literature.md             # 论文清单与培训方补充材料
 │       ├── open-source.md            # 可复用实现、许可、本任务来源
 │       └── repos.md                  # 仓库划分与分支策略

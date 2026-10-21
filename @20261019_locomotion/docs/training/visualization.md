@@ -137,7 +137,13 @@ export MUJOCO_GL=egl
 | `overview/black-gravel-free_composite_final_overview.png` | **最新 composite 石床**俯视图：6 cm 基座、700 静态 + 120 自由碎石、3–8 cm |
 | `overview/part1_scene_robot_overview.png` | Part 1 工作场景概览（Black 替换 blackW、桥 blocks/bands、T 台阶、限高杆、砂砾坑、绕杆等） |
 | `overview/part2_plum_fixed_overview.png` | Part 2 梅花桩修复中心对称后的概览（6 桩 + 两侧平台） |
-| `part1_flat_stand.mp4` | 本地策略 runner 在 Part 1 出发区的 stand 视频（`flat-ft-2500`，zero-shot；不是障碍通过） |
+| `part1_flat_stand.mp4` | 旧 stand 视频，命令为零，因此是静态站姿；保留作对照 |
+| `part1_flat_walk_back.mp4` | **Walking**：Part 1 出发区后退 3 s（非零速度指令，216 KB） |
+| `part1_flat_turn.mp4` | **Walking**：Part 1 出发区原地转向 3 s（107 KB） |
+| `part2_field_walk.mp4` | **Walking**：Part 2 能力场平地前进 3 s（260 KB） |
+| `part1_bridge_blocks_zero_shot.mp4` | 盲策略尝试 5 方墩桥；约 4 s 后 tilt≈25° |
+| `part1_bridge_bands_zero_shot.mp4` | 盲策略尝试 3 窄带桥；约 4 s 后 tilt≈15° |
+| `part1_heightbar_zero_shot_8s.mp4` | 盲策略直线接近限高杆，停在杆前 |
 | `part2_plum_stand.mp4` | 本地策略 runner 在 Part 2 梅花桩左平台的 stand 视频（zero-shot） |
 | `flat_model_100/500/1000/1999.mp4` | 旧版 `play --video` 样例（默认相机/调试标记；保留作对比） |
 | `rough_scene_flat_model_1999.mp4` | 旧版 rough 场景样例（同上） |

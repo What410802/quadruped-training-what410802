@@ -11,11 +11,12 @@
 
 ### P0 实施进度（2026-10-21，节点 1）
 
-- ✅ 本地策略 runner：`scripts/agent_scripts/run_policy_scene.py` 在 `part1_eval_scene.xml`/`part2_plum_eval_scene.xml` 上加载 `flat-ft-2500`，Part 1 出发区 stand 约 3 s（base z≈0.419、tilt≈2.6°），Part 2 左平台 stand 约 2 s（z≈0.615、tilt≈2.3°）；视频 `prep.d/videos/part1_flat_stand.mp4`、`part2_plum_stand.mp4`。
+- ✅ 本地策略 runner：`scripts/agent_scripts/run_policy_scene.py` 在 `part1_eval_scene.xml`/`part2_plum_eval_scene.xml` 上加载 `flat-ft-2500`，Part 1 出发区 stand 约 3 s（base z≈0.419、tilt≈2.6°），Part 2 左平台 stand 约 2 s（z≈0.615、tilt≈2.3°）；视频 `prep.d/videos/part1_flat_stand.mp4`、`part2_plum_stand.mp4`；补充非零指令 walking 视频 `part1_flat_walk_back.mp4`、`part1_flat_turn.mp4`、`part2_field_walk.mp4`，以及桥/限高杆 zero-shot 诊断视频。
 - ✅ Part 1 scene working copy：`assets/terrain/part1/part1_scene.xml`（从 `scene_terrain (1).xml` 复制；include 换成 Black、移除训练 hfield、标注 judge 锚点名；桥面 `bridge_blocks_0..4`=5 方墩、`bridge_bands_0..2`=3 窄带）；本地 MuJoCo 编译通过（20 body / 184 geom / nq 19）。
 - ✅ `scripts/agent_scripts/part1_judge.py`：足端/限高杆接触判定骨架；初始四足 ground、bar 未触碰。
 - ✅ `assets/terrain/part2/part2_plum.xml`：按 PDF 200 mm 方块/平台/100–400 mm/200 mm/400 mm 参数自建；`official_catalog.yaml` 映射官方档位。
 - ✅ `config/manual-state-machine.yaml` + `scripts/agent_scripts/check_state_machine.py`：flat/loose/limit_bar/bridge/stairs/high_wall/slope/slalom 8 状态，默认 flat；`bridge` 含 blocks/bands 子型；validator 通过。
+- ✅ `quadruped_control` 研读与本地接入：只读源 commit `e0fb567`；本地副本 `prep.d/quadruped_control_local` 已加入 45 维 `flat_ft` policy 配置与 policy_switch，但未编译/未跑（远程关机）；研读见 [`reference/quadruped-control-study.md`](reference/quadruped-control-study.md)。
 - ✅ VS Code/pixi 排查：tracked `settings.json` 只保留 pixi 解释器；本地 ROS extraPaths 已移除；`c_cpp_properties.json`/`browse.vc.db*` 已加入 `.gitignore`。见 [`environment.md`](environment.md)。
 - ⏳ 下一步：Part 2 六类地形 task 化；Part 1 逐障碍 success state machine（含 1/2 足、台阶逐级接触、bar 接触 fail、桥/绕杆 checkpoint）；手动 runner 接 `flat-ft-2500`；官方场 zero-shot 得分。
 
