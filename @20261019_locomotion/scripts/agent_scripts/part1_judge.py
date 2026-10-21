@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 from dataclasses import dataclass, field
 
 import mujoco
@@ -107,12 +108,79 @@ class Part1Judge:
         }
 
 
+class ZoneJudge:
+    """Zone/contact judge core; obstacle success state machines build on this."""
+
+    def __init__(self, scene_path: str = DEFAULT_SCENE, zones_path: str = "@20261019_locomotion/assets/terrain/part1/judge_zones.yaml") -> None:
+        import yaml
+        self.base = Part1Judge(scene_path)
+        cfg = yaml.safe_load(Path(zones_path).read_text())
+        self.zones = {k: v["bounds"] for k, v in cfg["zones"].items()}
+        self.zone_geom_cache: dict[int, str | None] = {}
+        self.floor_id = 0
+        for g in range(self.base.model.ngeom):
+            if self.base.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE:
+                self.floor_id = g
+                break
+        self.fail: dict[str, str] = {}
+
+    def _zone_of_point(self, xyz: np.ndarray) -> str | None:
+        for name, b in self.zones.items():
+            if b["x"][0] <= xyz[0] <= b["x"][1] and b["y"][0] <= xyz[1] <= b["y"][1] and b["z"][0] <= xyz[2] <= b["z"][1]:
+                return name
+        return None
+
+    def _geom_zone(self, gid: int) -> str | None:
+        if gid not in self.zone_geom_cache:
+            self.zone_geom_cache[gid] = self._zone_of_point(self.base.data.geom_xpos[gid])
+        return self.zone_geom_cache[gid]
+
+    def read(self) -> dict:
+        st = self.base.read_contacts()
+        trunk = _id(self.base.model, mujoco.mjtObj.mjOBJ_BODY, "trunk")
+        base_pos = self.base.data.xpos[trunk].copy()
+        base_zone = self._zone_of_point(base_pos)
+        ground_feet = [leg for leg, hit in st.foot_ground.items() if hit]
+        # Count allowed-surface contacts per zone.
+        zone_contacts: dict[str, int] = {}
+        for ci in range(self.base.data.ncon):
+            c = self.base.data.contact[ci]
+            for gid in (int(c.geom1), int(c.geom2)):
+                z = self._geom_zone(gid) if gid != self.floor_id else None
+                if z:
+                    zone_contacts[z] = zone_contacts.get(z, 0) + 1
+        if st.bar_contact:
+            self.fail.setdefault("height_bar", "bar_touched")
+        for zone in ("gravel_pit", "t_stairs", "slope", "bridge_blocks", "bridge_bands"):
+            if base_zone == zone and len(ground_feet) >= 2:
+                self.fail.setdefault(zone, f"two_feet_ground:{','.join(ground_feet)}")
+        return {
+            "base_zone": base_zone,
+            "base_xyz": [round(float(v), 3) for v in base_pos],
+            "ground_feet": ground_feet,
+            "bar_touched": st.bar_contact,
+            "zone_contacts": zone_contacts,
+            "fail": dict(self.fail),
+        }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scene", default=DEFAULT_SCENE)
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--json", default="")
+    parser.add_argument("--zones", action="store_true", help="run zone/contact judge core")
     args = parser.parse_args()
+
+    if args.zones:
+        judge = ZoneJudge(args.scene)
+        print("scene:", args.scene)
+        for i in range(args.steps):
+            judge.base.step()
+            if i % max(1, args.steps // 5) == 0 or i == args.steps - 1:
+                print(f"step {i}: " + json.dumps(judge.read(), ensure_ascii=False))
+        print("final:", json.dumps(judge.read(), ensure_ascii=False))
+        return
 
     judge = Part1Judge(args.scene)
     print("scene:", args.scene)

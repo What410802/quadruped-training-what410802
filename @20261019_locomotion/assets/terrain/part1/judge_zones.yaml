@@ -1,0 +1,27 @@
+# Axis-aligned Part 1 obstacle zones for contact/ground classification.
+# Coordinates are metres in the scene frame of part1_scene.xml.
+source: "scene_terrain (1).xml; verified by geom positions 2026-10-21"
+zones:
+  start_area:
+    bounds: {x: [3.2, 4.2], y: [-9.5, -8.5], z: [0.0, 0.5]}
+  high_wall:
+    bounds: {x: [1.65, 1.95], y: [-7.6, -6.4], z: [0.0, 0.5]}
+  gravel_pit:
+    bounds: {x: [4.25, 6.4], y: [-13.0, -10.9], z: [0.0, 0.5]}
+  height_bar:
+    bounds: {x: [5.0, 6.4], y: [-9.6, -8.4], z: [0.0, 0.7]}
+  t_stairs:
+    bounds: {x: [1.25, 3.35], y: [-4.95, -2.1], z: [0.0, 0.6]}
+  slope:
+    bounds: {x: [3.8, 6.4], y: [-6.7, -4.0], z: [0.0, 0.7]}
+  bridge_blocks:
+    bounds: {x: [1.25, 6.3], y: [-1.0, 1.0], z: [0.0, 0.4]}
+  bridge_bands:
+    bounds: {x: [5.0, 6.3], y: [-4.0, -0.8], z: [0.0, 0.4]}
+  slalom:
+    bounds: {x: [1.3, 3.5], y: [-13.0, -10.0], z: [0.0, 0.8]}
+ground:
+  zone: outside_all_obstacles
+  rule: "floor/plane or non-obstacle geom counts as ground"
+limits:
+  foot_ground_fail: "while inside gravel_pit/t_stairs/slope/bridge_blocks/bridge_bands: >=2 feet ground => fail"

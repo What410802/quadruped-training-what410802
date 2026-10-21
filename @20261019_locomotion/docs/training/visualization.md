@@ -134,6 +134,8 @@ export MUJOCO_GL=egl
 | `overview/black-rough_overview_7.png` | 7 env 全局俯瞰，能看到 rough 多地形 patch |
 | `overview/black-gravel-free_overview.png`、`_v2.png` | 旧自由石块场景全局俯瞰（历史） |
 | `overview/black-gravel-free_composite_final_overview.png` | **最新 composite 石床**俯视图：6 cm 基座、700 静态 + 120 自由碎石、3–8 cm |
+| `overview/part1_scene_robot_overview.png` | Part 1 工作场景概览（Black 替换 blackW、桥 blocks/bands、T 台阶、限高杆、砂砾坑、绕杆等） |
+| `overview/part2_plum_robot_overview.png` | Part 2 梅花桩按 PDF 重建后的概览（6 桩 + 两侧平台） |
 | `flat_model_100/500/1000/1999.mp4` | 旧版 `play --video` 样例（默认相机/调试标记；保留作对比） |
 | `rough_scene_flat_model_1999.mp4` | 旧版 rough 场景样例（同上） |
 
