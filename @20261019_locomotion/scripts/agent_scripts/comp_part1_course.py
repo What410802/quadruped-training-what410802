@@ -50,7 +50,7 @@ class Part1Course:
     """One whole-run session (up to 3 attempts) with pause/recovery/skip events."""
 
     def __init__(self, max_attempts: int = MAX_ATTEMPTS,
-                 partial_up: float = 112.5, partial_down: float = 75.0) -> None:
+                 partial_up: float = 75.0, partial_down: float = 50.0) -> None:
         self.manager = AttemptManager(max_attempts=max_attempts)
         self.judge = Part1JudgeV2(partial_up=partial_up, partial_down=partial_down)
         self.partial_up = partial_up
@@ -132,8 +132,11 @@ class Part1Course:
         self.judge.finalize(reason)
         report = self.judge.report()
         obstacle_score = float(report["obstacle_score"])
-        all_success = all(s["status"] == "success" for s in report["states"].values())
-        returned = all_success and self._start_area_hits >= 2
+        # return bonus requires *full* obstacle scores: a partial (e.g. T-stairs one side)
+        # does not count as "越过全部障碍"
+        all_full = all(s["status"] == "success" and float(s["score"]) >= 100.0
+                       for s in report["states"].values())
+        returned = all_full and self._start_area_hits >= 2
         return_bonus = RETURN_BONUS if returned else 0.0
         score = obstacle_score + return_bonus
         result = AttemptResult(attempt=self.attempt_no, score=score, obstacle_score=obstacle_score,
@@ -143,6 +146,9 @@ class Part1Course:
                           "return_bonus": return_bonus}
         self.results.append(result)
         self.manager.end(t, attempt_report, reason=reason)
+        # attempt duration in the ledger must be the *active* time (pause excluded)
+        self.manager.attempts[-1]["duration_s"] = result.duration_s
+        self.manager.attempts[-1]["duration_note"] = "active_time_pause_excluded"
         self.active = False
         self.paused = False
         return result
@@ -154,6 +160,8 @@ class Part1Course:
         result = AttemptResult(attempt=self.attempt_no, score=0.0, duration_s=self.active_time,
                                skipped=True, reason=reason, events=list(self._current_events))
         self.manager.skip(t, reason=reason)
+        self.manager.attempts[-1]["duration_s"] = result.duration_s
+        self.manager.attempts[-1]["duration_note"] = "active_time_pause_excluded"
         self.results.append(result)
         self.active = False
         self.paused = False
@@ -239,6 +247,7 @@ def run_self_test() -> None:
     assert summary["final_score"] == 900.0, summary
     assert summary["attempts_used"] == 1, summary
     assert summary["final_time_s"] == result.duration_s, summary
+    assert abs(c.manager.attempts[0]["duration_s"] - result.duration_s) < 1e-9, c.manager.attempts[0]
 
     # Attempt 2: pause/recovery not consuming; then abort consumes; attempt 3 unused after.
     assert c.begin_attempt(t)
@@ -263,6 +272,19 @@ def run_self_test() -> None:
     assert summary["attempts_used"] == 3, summary
     assert not c.begin_attempt(t + 2.0), "4th attempt must be rejected"
     assert summary["final_score"] == 900.0, summary
+
+    # Partial obstacle (T-stairs one side) must NOT trigger the return bonus.
+    c2 = Part1Course()
+    assert c2.begin_attempt(0.0)
+    for name, obs in c2.judge.obstacles.items():
+        obs.result.status = "success"
+        obs.result.score = 50.0 if name == "t_stairs" else 100.0
+    c2.update(0.0, (3.7, -9.0, 0.45), 0.0)   # first entry into start area
+    c2.update(0.1, (2.8, -9.0, 0.45), 0.0)   # leave
+    c2.update(0.2, (3.7, -9.0, 0.45), 0.0)   # re-enter
+    r2 = c2.end_attempt(0.3)
+    assert r2.return_bonus == 0.0, r2.to_dict()
+    assert r2.score == 750.0, r2.to_dict()
     print("comp_part1_course self-test: OK", json.dumps(summary["rules"], ensure_ascii=False))
 
 

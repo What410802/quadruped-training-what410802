@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import json
+import math
 import sys
 import tempfile
 from pathlib import Path
@@ -55,7 +56,7 @@ def load_json(path: Path) -> Any:
 
 
 def curve_points(curve: list[dict], value: float | None, unit: str | None = None) -> int:
-    """按契约 score_curve 对难度值做分段线性插值；低于首点 = 0，高于末点 = 末点分。"""
+    """按契约 score_curve 分段线性插值；低于首点 = 0，高于末点 = 末点分；小数按 Q5 舍去。"""
     if value is None:
         return 0
     if unit == "bool":
@@ -65,14 +66,14 @@ def curve_points(curve: list[dict], value: float | None, unit: str | None = None
         return 0
     v = float(value)
     if v <= pts[0][0]:
-        return int(round(pts[0][1])) if v == pts[0][0] else 0
+        return int(math.floor(pts[0][1])) if v == pts[0][0] else 0
     if v >= pts[-1][0]:
-        return int(round(pts[-1][1]))
+        return int(math.floor(pts[-1][1]))
     for (v0, p0), (v1, p1) in zip(pts, pts[1:]):
         if v0 <= v <= v1:
             if v1 == v0:
-                return int(round(p1))
-            return int(round(p0 + (p1 - p0) * (v - v0) / (v1 - v0)))
+                return int(math.floor(p1))
+            return int(math.floor(p0 + (p1 - p0) * (v - v0) / (v1 - v0)))
     return 0
 
 
@@ -164,9 +165,16 @@ def validate_summary(summary: dict, manifest: dict, contract: dict,
             continue
         success = bool(rec.get("success"))
         score = rec.get("score")
-        expected = int(spec.get("per_obstacle_score", 0)) if success else 0
-        if score != expected:
-            _err(errors, f"part1.{oid}.score={score} 应为 {expected}")
+        per = int(spec.get("per_obstacle_score", 0))
+        allowed = {per}
+        for raw in (spec.get("partial_scores") or {}).values():
+            if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+                allowed.add(int(min(float(raw), per)))
+        if success:
+            if score not in allowed:
+                _err(errors, f"part1.{oid}.score={score} 应为 {per} 或部分分 {sorted(allowed)}")
+        elif score != 0:
+            _err(errors, f"part1.{oid}.score={score} 应为 0（未成功）")
         sum1 += int(score or 0)
     for oid in seen1:
         if oid not in p1_obs:
@@ -193,7 +201,10 @@ def validate_summary(summary: dict, manifest: dict, contract: dict,
                 _err(errors, f"part1.{oid} 标 fail 但 trials 中存在 success 记录")
         if obs_trials and int(rec.get("attempts_used") or len(obs_trials)) != len(obs_trials):
             _warn(warnings, f"part1.{oid} attempts 与 trials 条数不一致（diagnostic 常见）")
-    all_ok = bool(p1_obs) and all(bool((seen1.get(o) or {}).get("success")) for o in p1_obs)
+    def _full_success(oid: str) -> bool:
+        rec = seen1.get(oid) or {}
+        return bool(rec.get("success")) and int(rec.get("score") or 0) >= int(p1_obs[oid].get("per_obstacle_score", 0))
+    all_ok = bool(p1_obs) and all(_full_success(o) for o in p1_obs)
     bonus = part1.get("return_bonus") or {}
     return_expected = int(bonus.get("score", 0)) if (all_ok and bool(s1.get("return_to_start"))) else 0
     if int(s1.get("return_score") or 0) != return_expected:

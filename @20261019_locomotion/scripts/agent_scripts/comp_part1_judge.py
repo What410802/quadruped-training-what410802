@@ -379,7 +379,7 @@ class Slope(_Obstacle):
 class TStairs(_Obstacle):
     ground_fail = True
 
-    def __init__(self, partial_up: float = 112.5, partial_down: float = 75.0,
+    def __init__(self, partial_up: float = 75.0, partial_down: float = 50.0,
                  max_score: float = 100.0) -> None:
         self.name, self.zone = "t_stairs", ZONES["t_stairs"]
         self.partial_up, self.partial_down, self.max_score = partial_up, partial_down, max_score
@@ -506,7 +506,7 @@ class Slalom(_Obstacle):
 class Part1JudgeV2:
     """One instance judges one continuous course attempt (all 8 obstacles)."""
 
-    def __init__(self, *, partial_up: float = 112.5, partial_down: float = 75.0,
+    def __init__(self, *, partial_up: float = 75.0, partial_down: float = 50.0,
                  max_obstacle_score: float = 100.0) -> None:
         self.obstacles: dict[str, _Obstacle] = {
             "height_bar": HeightBar(),

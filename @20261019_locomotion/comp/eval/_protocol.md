@@ -8,11 +8,13 @@
 
 | 项 | 值 |
 |---|---|
-| Part 1 场景 | `assets/terrain/part1/part1_eval_scene.xml`，sha256 `e7b654ad1bcf4638…` |
-| Part 1 judge zones | `assets/terrain/part1/judge_zones.yaml` |
-| judge（事件级） | `scripts/agent_scripts/part1_event_judge.py`，sha256 `546dbacd29465cb6…` |
-| judge（接触级） | `scripts/agent_scripts/part1_judge.py`，sha256 `b398a39d25a21542…` |
-| Part 2 场景 | `assets/terrain/part2/ability_field/part2_ability_field.xml`、`assets/terrain/part2/part2_plum_eval_scene.xml`（sha256 待补） |
+| Part 1 场景（V2） | `assets/terrain/part1/part1_eval_scene_v2.xml`（可动横杆 + 命名台阶/平台/坡面；sha256 由 manifest 记录） |
+| Part 1 judge（V2） | `scripts/agent_scripts/comp_part1_judge.py`（纯事件式，成功语义/接触历史/任意瞬间 1-2 足/落杆检测） |
+| Part 1 整场协议 | `scripts/agent_scripts/comp_part1_course.py`（3 次尝试/恢复不消耗/跳过/返回奖励/best score+fastest time） |
+| Part 1 runner（诊断） | `scripts/agent_scripts/run_part1_judged_rollout_v2.py`（逐物理步接触分类） |
+| Part 2 参数化档位 | `config/part2-levels.json` + `assets/terrain/part2/levels/*.xml`（20 档，官方种类不变） |
+| Part 2 judge（V2） | `scripts/agent_scripts/comp_part2_judge.py`；runner `run_part2_judged_eval.py` |
+| Part 2 官方场（交叉核对） | `assets/terrain/part2/ability_field/part2_ability_field.xml`、`part2_plum_eval_scene.xml` |
 | 机器人模型 | 场景内 `black.xml`（与训练契约一致） |
 
 judge 必须在策略回路外；actor 输入遵守传感器红线（IMU+编码器，可选相机/雷达）。
@@ -31,9 +33,11 @@ judge 必须在策略回路外；actor 输入遵守传感器红线（IMU+编码�
 ## 4. Part 1 形式：诊断单障碍 vs 正式整场（必须分开）
 
 - **诊断模式**（当前）：每障碍独立起点/命令，只用于暴露环境与 judge 问题；**不代表整场赛程**，也不消耗正式尝试。
-- **正式整场模式**（G1 通过后实现）：按规则连续跑 8 障碍 + 返回启动区；整场 3 次尝试（开始/重试/恢复/跳过都消耗）；
-  同分按用时升序；每次尝试的事件全部追加进尝试账本（禁止覆盖写）。
+- **正式整场模式**（协议类已实现，操作手 runner 待接）：按规则连续跑 8 障碍 + 返回启动区；
+  整场 3 次尝试；**恢复不消耗**（暂停计时、原位置原朝向继续），开始/主动重跑消耗；障碍级跳过不消耗尝试；
+  同分按用时升序；每次尝试事件追加进尝试账本（禁止覆盖写）。
 - 两种模式共用同一 judge 与同一份 `trials.jsonl` schema，但 `protocol.mode` 必须显式区分。
+- 判定语义（V2）：合法进入 → 实际跨越/接触历史 → 合法离开；障碍邻接区**擦碰/路过**只做 soft-reset，不永久判失败。
 
 ## 4.1 起点、朝向、命令（当前为诊断脚本值，正式协议需复核进入方向/距离是否满足规则）
 
@@ -60,7 +64,7 @@ judge 必须在策略回路外；actor 输入遵守传感器红线（IMU+编码�
 
 ## 5. 尝试与尝试账本
 
-- Part 1：整场 3 次；**恢复不消耗**（暂停计时、原位置原朝向继续）、开始/主动重跑消耗；最终时长取 3 次最快者（2026-10-22 更正）；失败原因、跳过、恢复位置都要记录；
+- Part 1：整场 3 次；**恢复不消耗**（暂停计时、原位置原朝向继续）、开始/主动重跑消耗；障碍级跳过不消耗尝试但该障碍不得分；最终 score 取 3 次中最好一次、最终 time 取最快一次（2026-10-22 更正）；失败原因、跳过、恢复位置都要记录；
 - Part 2：每项 4 次，记录最高成功难度，不按次数扣分；分数小数**舍去**；高墙/沟壑 10 cm 端点 0 分（Q5）；稳定性目标 0 失败，无计时压力，优化阶段先按失败比例排序。
 - 手动操作必须记录操作手；脚本化评测记录 `operator=scripted:<脚本名>`。
 
@@ -87,7 +91,10 @@ judge 必须在策略回路外；actor 输入遵守传感器红线（IMU+编码�
 - 1/2 足触地：**任何瞬间** ≥2 足接触"不允许表面/地面"即失败（不做持续时间去抖）。
 - 限高杆：只有**横杆掉落**才算失败；碰柱/碰梁但横杆未落不算失败（但仍需从门洞下穿过）。
 - 砂砾坑：进入和离开两端都必须是 1 m 短边；斜坡两侧合计走 ≥1 m。
-- T 台阶：部分分 100/75/50（两侧都过/仅上/仅下），表 3 的 75/50 按 100 分比例计。
+- T 台阶：两侧都过 100；单侧部分分 **Q2 未决**（转述 75×3/2=112.5、50×3/2=75 与单项满分 100 冲突）：
+  当前保守落地 上=75、下=50；**返回奖励只认单项满分**，部分分不触发。
+- 软重置：障碍邻接区擦碰（路过但未真正尝试）→ 状态回 pending，不占失败；真实尝试（有接触历史/停留）才判失败。
+- 限高杆掉落阈值：横杆（slide joint）相对初始高度下降 >5 cm 判掉落。
 
 ## 7. 复现性要求（正式版）
 
@@ -96,7 +103,9 @@ judge 必须在策略回路外；actor 输入遵守传感器红线（IMU+编码�
 
 ## 8. 已知缺口（进 G1 前必须补）
 
-1. 人工标定集为空（`eval/_calibration/`）；judge 未与人工标签比对；
-2. Part 2 起点/难度档位/evaluator 未定义；
-3. 尝试账本尚未由评测脚本自动写（当前诊断导入按一次/障碍）；
-4. judge 版本以 sha256 记录，但尚无"语义变更→重审"的自动触发（人工按 `audits/HASHES.json` 检查）。
+1. 人工标定集为空（`eval/_calibration/`）；judge 未与人工标签比对（≥64 条，下一阶段）；
+2. Part 2 evaluator 已有参数化 20 档，但未在**官方能力场**上交叉核对（当前只在自定义同种类 level 上验证）；
+3. 正式整场 MuJoCo runner（操作手/键盘或控制仓接入）未接；协议类 `comp_part1_course.py` 已实现并自检；
+4. 跳过/主动重跑是否消耗尝试、最终分数是否取 best 的**书面确认**仍缺（当前按恢复不消耗、开始/重跑消耗、best score 落地）；
+5. T 台阶部分分 Q2 数值冲突（112.5 > 100）未裁决；
+6. judge 版本以 sha256 记录，语义变更→重审流程目前人工（`audits/HASHES.json`）。

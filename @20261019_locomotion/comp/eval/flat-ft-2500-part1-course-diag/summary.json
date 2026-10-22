@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "policy_id": "flat-ft-2500-part1-course-diag",
+  "part1": {
+    "attempts_used": 1,
+    "obstacles": {
+      "slalom": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "route_complete",
+        "evidence": []
+      },
+      "gravel_pit": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "route_complete",
+        "evidence": []
+      },
+      "high_wall": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "route_complete",
+        "evidence": []
+      },
+      "height_bar": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "route_complete",
+        "evidence": []
+      },
+      "t_stairs": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "route_complete",
+        "evidence": []
+      },
+      "slope": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "route_complete",
+        "evidence": []
+      },
+      "bridge_blocks": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "route_complete",
+        "evidence": []
+      },
+      "bridge_bands": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "route_complete",
+        "evidence": []
+      }
+    },
+    "return_to_start": false,
+    "return_score": 0,
+    "total": 0
+  },
+  "part2": {
+    "obstacles": {
+      "high_platform": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "stairs": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "slope": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "high_wall": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "trench": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "plum": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      }
+    },
+    "total": 0
+  },
+  "grand_total": 0,
+  "notes": "导入自 run_part1_course.py 整场诊断（脚本化 waypoint、单次尝试、无种子/扰动）；不是操作手正式赛程，不能当正式分数"
+}

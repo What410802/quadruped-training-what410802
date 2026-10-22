@@ -1,7 +1,20 @@
 {
-  "generated_at": "2026-10-22 23:01",
+  "generated_at": "2026-10-22 23:04",
   "contract_version": "robocon-2026-internal-v1",
   "rows": [
+    {
+      "policy_dir": "comp/eval/flat-ft-2500-part1-course-diag",
+      "errors": [],
+      "warnings": [],
+      "policy_id": "flat-ft-2500-part1-course-diag",
+      "date": "2026-10-22",
+      "part1_total": 0,
+      "part2_total": 0,
+      "grand_total": 0,
+      "summary_path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
+      "diagnostic": true,
+      "status": "diagnostic"
+    },
     {
       "policy_dir": "comp/eval/flat-ft-2500-part1-diag-v1",
       "errors": [],

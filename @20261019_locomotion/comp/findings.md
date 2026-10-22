@@ -18,3 +18,5 @@
 - [2026-10-22] Part1 judge V2 接入 MuJoCo：场景 v2（横杆 slide joint、命名台阶/平台/坡面）+ 逐物理步接触分类 runner；8 障碍 diagnostic 全 0（flat 策略预期），边界擦碰改 soft-reset（避免相邻障碍区误占失败）。
 - [2026-10-22] Part2 evaluator V2：参数化高台/楼梯/斜坡/高墙/沟壑/梅花桩 20 档 + 计分 floor/10cm 端点 0/稳定性按失败比例；flat 策略 20 档全失败（trench 20/30cm 落入），与 baseline 能力一致。
 - [2026-10-22] 整场 Part1 协议类：3 次尝试、恢复不消耗（暂停时间不计入 duration）、开始/跳过消耗、返回奖励（8 障碍全过+二次进入出发区）、best score/fastest time；合成全通过 run 得 900 分自检通过。
+- [2026-10-22] 整场 course 诊断 runner `run_part1_course.py` 跑通（脚本化 waypoint、1 次尝试、94 s 仿真、8 障碍 0 成功），协议类正确记录尝试/时长/失败；导入产物 `flat-ft-2500-part1-course-diag` 过 comp_score 校验（attempts_used=1 ≤ 3）。
+- [2026-10-22] Q2 保守决策：T 台阶部分分暂按 75/50（转述 75*3/2=112.5 与单项满分 100 冲突），返回奖励要求单项满分（部分分不触发）；comp_score 增加部分分允许集合 + Q5 floor。
