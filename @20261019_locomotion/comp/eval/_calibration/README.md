@@ -1,7 +1,16 @@
 # 人工标定集（G1 的锚）
 
-目标：≥30 条 rollout，覆盖 8 个障碍 × 成功/失败 × 边界情形，人工只标：
-`success/fail + failure_reason`。视频放 `RoboCon/prep.d/videos/`（不入库），本目录只放 `labels.jsonl`。
+## 它属于哪个阶段？（用户 2026-10-22 问）
+
+- **C1 评测器标定阶段**（`comp/PLAN.md` 的 C1），即：judge P0 实现完成 → G1 审计通过/冻结之前。
+- 时间顺序：C0 契约 → **C1 evaluator + 人工标定 + G1** → C2 baseline 分 → C3 每日 triage/train/eval/score。
+- 具体触发点：judge 冻结（本版 V2.1）且预审（BYOK flash×2、pro）通过后、送 Codex G1 终审前后；
+  标定结果既是 G1 的证据，也是 judge 回归测试集。
+- 你现在**还不需要**标注：等我把 64 条轨迹包（视频+状态+标注表）准备好并通知你，你按表标 `success/fail+原因` 即可，
+  预计 2–4 小时；视频放 `RoboCon/prep.d/videos/`（不入库），本目录只放 `labels.jsonl`。
+
+目标：≥64 条 rollout（Part1 32 = 8 障碍×4；Part2 24 = 6 类×4；会话状态 8），覆盖成功/失败/边界情形，
+人工只标 `success/fail + failure_reason`。
 
 `labels.jsonl` 一行一条：
 

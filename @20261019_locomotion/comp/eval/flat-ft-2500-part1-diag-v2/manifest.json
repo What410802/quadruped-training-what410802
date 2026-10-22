@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part1-diag-v2",
-  "created_at": "2026-10-23T00:38:30+08:00",
+  "created_at": "2026-10-23T01:04:16+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "a538fb9cf0e1d4a08356083d1e402c2ec46bc788",
+      "commit": "5ca9b1d3c4a9b78d4640b29e2283dec2c0ae8e3c",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -47,7 +47,21 @@
     "files": [
       "scripts/agent_scripts/comp_part1_judge.py",
       "scripts/agent_scripts/comp_part1_geom_tags.py"
+    ],
+    "file_hashes": [
+      {
+        "path": "scripts/agent_scripts/comp_part1_judge.py",
+        "sha256": "850caac8ee29b27f970defa3a62ee30eca8617ebe8a5bacb4460155987554d4e"
+      },
+      {
+        "path": "scripts/agent_scripts/comp_part1_geom_tags.py",
+        "sha256": "35ee230ea319be2940264d216f87e832472be54bb2782f3d44613f9e8d122d7b"
+      }
     ]
+  },
+  "contract": {
+    "file": "comp/CONTRACT.json",
+    "sha256": "627d61356fc8ec96b39cfbdf66d0261f65b9282d6e5fe8ab432c6082bef7e054"
   },
   "protocol": {
     "protocol_version": "diagnostic-2026-10-22",

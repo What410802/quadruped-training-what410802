@@ -54,4 +54,7 @@
   - 2026-10-22 23:30 曾尝试 1 次 Codex G1（`gpt-6.1-sol`/xhigh，见 `audits/CODEX_G1_REAUDIT_STOPPED_20261023.md`），
     会话被中止、无 verdict；另有一次 `gpt-6-astra` 因 token 无权限返回 403。
   - 2026-10-23 起执行本审批规则；下一次 Codex G1 需用户明确批准。
-- 当前评审升级顺序（用户 2026-10-22 指定）：**deepseek flash → deepseek pro → Codex（需批准）**。
+- 当前评审升级顺序（用户 2026-10-22/23 指定）：**deepseek flash → deepseek pro → Codex（需批准）**。
+  **用户 2026-10-23 追加硬约束**：不得私自调用 Codex；至少要求 **deepseek-v4.1-flash 与 deepseek-v4-pro 两轮复验均无问题（无 blocker）**
+  之后，再向用户报告进度并取得二次确认，才可调用 Codex。任一轮 FAIL 都必须先修复并重新通过两轮。
+  用户同时确认：当前 flash 比 pro 更便宜且效果更好，优先用 flash 做验收；pro 仅在需要升级时使用。

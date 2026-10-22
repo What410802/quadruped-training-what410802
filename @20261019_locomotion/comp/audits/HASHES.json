@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T00:38:33+08:00",
+  "generated_at": "2026-10-23T01:04:32+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -25,7 +25,7 @@
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
-      "sha256": "3e1e3b0b36d9bb23e630ae67ef38132b90864f6976b0843f77963195182084ce"
+      "sha256": "a491b185d91e7e21093044b711f4964285c5fa4479b997bdea673a9a369060ed"
     },
     "judge_part2_v2": {
       "path": "scripts/agent_scripts/comp_part2_judge.py",
@@ -41,11 +41,11 @@
     },
     "runner_part1_v2": {
       "path": "scripts/agent_scripts/run_part1_judged_rollout_v2.py",
-      "sha256": "23562b266090dc27beef4f5ddb9631e55997729987fdce8152a1520823513074"
+      "sha256": "c286c3581048843189ef91f7507548045166b9e4394d442855adacb1c58e8b1a"
     },
     "runner_course": {
       "path": "scripts/agent_scripts/run_part1_course.py",
-      "sha256": "f6955111d1c74b4f6fa889406027682dde926f41bb895c381c10c1254194a891"
+      "sha256": "b9abb7ddca8eec83f89089710d4c4fe151d1bd24b16684f4c2e23c2e669c1771"
     },
     "runner_part2_v2": {
       "path": "scripts/agent_scripts/run_part2_judged_eval.py",
@@ -53,19 +53,19 @@
     },
     "importer_part1": {
       "path": "scripts/agent_scripts/comp_import_diagnostic.py",
-      "sha256": "6046df550b83f55177e26a7094b6fc7e94b3a3c2cbca60c19f06550da9cb9cde"
+      "sha256": "56ee0ee8eaab663551e62e686d554424501cc5bb1495189731761b590e6ab563"
     },
     "importer_part2": {
       "path": "scripts/agent_scripts/comp_import_part2_diag.py",
-      "sha256": "c6abfba7e4546d7bf489bc018c4535d6cc8c7a749a47f50ce22c744a3c65baff"
+      "sha256": "a2c921c93cb444f7f64cc92c244b517572a4911a0f84d3ee513ec6b5c4a9dc5c"
     },
     "importer_course": {
       "path": "scripts/agent_scripts/comp_import_course_diag.py",
-      "sha256": "1f6af084af99e4dea4ecc8990e80c208b4d879ede1c925044982e7ebb63397fb"
+      "sha256": "850107dee2f53a40f0862ad073b3a7c64b0e73f91519961dfa069f50587d4b2c"
     },
     "score_tool": {
       "path": "scripts/agent_scripts/comp_score.py",
-      "sha256": "5fdfe5245b423a430e1918206dee0f140328d812e83323af66a7c3466afa0c4f"
+      "sha256": "facf94b7b24f27fd88e0dc5437e8825988ae0e498d03624098d17b4a70997249"
     },
     "scene_part1_v2": {
       "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
@@ -93,7 +93,7 @@
     },
     "eval_course_diag": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "84ca8cbc3f7722e0f5d058ac5bdb6c5d2e859fd2610c31c74c557f3bf4fcb1e9"
+      "sha256": "25c9bf218ec2c3d7b8a33b95d9ff7776008be051ace7f0b0cfc876c2f02ae8bd"
     },
     "rules_pdf_md": {
       "path": "docs/reference/team-race-2026.md",
@@ -105,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "0d4a51cd8e10b649cdf16dc455a1aecb7359a10024449e1d9f523f9a135f5e82"
+      "sha256": "96f86ff90da087e4513240e7b1522c182553c5e5745fb2a8254175a52386f2f0"
     }
   },
   "superseded": {

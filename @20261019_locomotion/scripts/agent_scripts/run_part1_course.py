@@ -29,7 +29,7 @@ import mujoco
 import numpy as np
 import torch
 
-from comp_part1_course import Part1Course
+from comp_part1_course import Part1Course, StableStopTracker
 from comp_part1_geom_tags import GEOM_TAGS
 from run_policy_scene import ACTION_SCALE, EFFORT_LIMIT, KD, KP, ScenePolicyRunner
 
@@ -65,10 +65,12 @@ class CoursePolicyRunner:
         self.bar_body = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, BAR_BODY)
         if self.bar_body < 0:
             raise RuntimeError("missing height bar body: use part1_eval_scene_v2.xml")
-        self.floor_geoms = {g for g in range(self.model.ngeom)
-                            if self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE}
         self.geom_names = {g: (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "")
                            for g in range(self.model.ngeom)}
+        self.floor_geoms = {g for g in range(self.model.ngeom)
+                            if self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE
+                            or self.geom_names.get(g, "").startswith("ground")
+                            or self.geom_names.get(g, "") in {"trench_bottom", "level_floor"}}
         self.leg_geoms: dict[str, set[int]] = {}
         for leg in ("FL", "FR", "RL", "RR"):
             body = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"{leg}_foot")
@@ -183,7 +185,7 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict],
 
     def run_policy_step(command: np.ndarray) -> bool:
         """Set one policy action, then sample the judge after each of the 4 physics steps."""
-        nonlocal aborted
+        nonlocal aborted, ev_idx
         cpr.set_action(command)
         for _ in range(4):
             cpr.physics_step()
@@ -200,10 +202,8 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict],
                     if n * 0.02 > 120.0:
                         course.abort_attempt(fake, "pause_timeout")
                         return False
-                    course.update(fake, sample["base_xyz"], sample["yaw"],
-                                  foot_tags=sample["foot_tags"],
-                                  ground_feet=sample["ground_feet"],
-                                  bar_z=sample["bar_z"])
+                    # paused: only operator events/timeouts advance; the judge must not see
+                    # repeated frozen poses (that could change obstacle state or duration)
                     ev_idx = apply_events(course, events, ev_idx, fake,
                                           pose_xy=sample["base_xyz"], pose_yaw=sample["yaw"])
                 return True
@@ -226,7 +226,8 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict],
     # Rules: the clock stops when the robot is stable after returning, not on first entry.
     stable_stop = False
     if course.active and not aborted and course.judge.report().get("returned_to_start"):
-        stable = 0.0
+        tracker = StableStopTracker()
+        dt_phys = float(cpr.model.opt.timestep)   # 5 ms, real physics dt
         prev = np.asarray(cpr.base()[0][:2], dtype=float)
         for _ in range(150):
             cpr.set_action(np.zeros(3))
@@ -235,18 +236,14 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict],
                 cpr.physics_step()
                 sample = feed()
                 pos = np.asarray(sample["base_xyz"][:2], dtype=float)
-                speed = float(np.linalg.norm(pos - prev)) / 0.02
+                speed = float(np.linalg.norm(pos - prev)) / dt_phys
                 prev = pos
                 _base, tilt = cpr.base()
-                if speed < 0.15 and tilt < 10.0:
-                    stable += 0.02
-                else:
-                    stable = 0.0
-                if not course.active:
-                    break
-                if stable >= 0.5:
+                if tracker.update(speed, tilt, dt_phys):
                     stable_stop = True
                     done = True
+                    break
+                if not course.active:
                     break
             if done or not course.active:
                 break

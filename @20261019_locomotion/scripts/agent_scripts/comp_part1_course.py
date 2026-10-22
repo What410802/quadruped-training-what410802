@@ -28,6 +28,29 @@ MAX_ATTEMPTS = 3
 RETURN_BONUS = 100.0
 
 
+class StableStopTracker:
+    """Timer stop rule (confirmed 2026-10-22): stop the clock once the robot is stable.
+
+    A robot that has returned to the start area still needs to settle; the clock stops
+    after ``hold_s`` seconds with speed < ``speed_max`` and tilt < ``tilt_max``.
+    ``dt`` must be the real physics timestep (5 ms), not the policy period.
+    """
+
+    def __init__(self, speed_max: float = 0.15, tilt_max: float = 10.0,
+                 hold_s: float = 0.5) -> None:
+        self.speed_max = speed_max
+        self.tilt_max = tilt_max
+        self.hold_s = hold_s
+        self.held = 0.0
+
+    def update(self, speed: float, tilt_deg: float, dt: float) -> bool:
+        if speed < self.speed_max and tilt_deg < self.tilt_max:
+            self.held += float(dt)
+        else:
+            self.held = 0.0
+        return self.held >= self.hold_s
+
+
 @dataclass
 class AttemptResult:
     attempt: int
@@ -273,6 +296,23 @@ def run_self_test() -> None:
     c4.update(1.1, (3.7, -9.0, 0.45), 0.0)
     r4 = c4.end_attempt(1.2)
     assert r4.score == 0.0 and r4.reason == "recovery_pose_violation", r4.to_dict()
+
+    # stable-stop timer: real physics dt, must hold for 0.5 s of stable motion
+    tracker = StableStopTracker()
+    assert not tracker.update(0.05, 3.0, 0.005)   # 5 ms only
+    held = 0.0
+    done = False
+    while held < 1.0:
+        held += 0.005
+        done = tracker.update(0.05, 3.0, 0.005)
+        if done:
+            break
+    assert done and abs(tracker.held - 0.5) < 1e-6, (held, tracker.held)
+    tracker2 = StableStopTracker()
+    tracker2.update(0.05, 3.0, 0.40)   # wrong dt (policy period) must not stop early
+    assert tracker2.held == 0.40
+    tracker2.update(0.30, 3.0, 0.005)  # speed spike resets the hold
+    assert tracker2.held == 0.0
     print("comp_part1_course self-test: OK", json.dumps(summary["rules"], ensure_ascii=False))
 
 

@@ -140,12 +140,15 @@ def main() -> int:
                       "events": ["return_to_start_after_full"], "score": 0},
             "duration_s": 0.0, "video": None,
         })
+    session = result.get("session_summary") or {}
     summary = {
         "schema_version": 1,
         "policy_id": args.policy_id,
         "part1": {"attempts_used": len(attempts), "obstacles": part1_obstacles,
                   "return_to_start": bool(return_bonus > 0), "return_score": int(return_bonus),
                   "return_evidence": return_trial_id if return_bonus > 0 else None,
+                  "final_score": session.get("final_score"),
+                  "final_time_s": session.get("final_time_s"),
                   "total": int(sum1 + return_bonus)},
         "part2": {"obstacles": {oid: {"best_success_value": None, "best_score": 0, "attempts_used": 0}
                                 for oid in [o["id"] for o in contract["parts"]["part2"]["obstacles"]]},
@@ -176,7 +179,10 @@ def main() -> int:
                              "sha256": sha256_file(Path("config/part2-levels.json"))
                              if Path("config/part2-levels.json").is_file() else ""}},
         "judge": {"version": "comp_judge_v2@" + "".join(sha256_file(p)[:6] for p in JUDGE_FILES if p.is_file()),
-                  "files": [str(p) for p in JUDGE_FILES]},
+                  "files": [str(p) for p in JUDGE_FILES],
+                  "file_hashes": [{"path": str(p), "sha256": sha256_file(p)}
+                                  for p in JUDGE_FILES if p.is_file()]},
+        "contract": {"file": str(args.contract), "sha256": sha256_file(args.contract)},
         "protocol": {
             "protocol_version": "course-diagnostic-2026-10-22",
             "mode": "course_diagnostic",

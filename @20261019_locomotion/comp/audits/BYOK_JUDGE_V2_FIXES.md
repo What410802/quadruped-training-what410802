@@ -79,3 +79,14 @@
 
 > 说明：前一轮"已修 bool"声明错误，本轮已纠正；pro 复审建议 N1–N4 修完前不要以 PASS 预期送 Codex。
 > 砂砾坑真实几何、Part2 官方场交叉核对、soft-reset 启发式、正式手动 3 次演练仍是已知残余（G1 报告需写明）。
+
+
+## 第四轮 Pro 复验后修复（N1–N4 已 PASS，P1–P4 新问题）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| P1 | 稳定停表用 policy dt（20 ms）而非物理 dt（5 ms），速度/累计时间错误 | 新增 `StableStopTracker`（stdlib，`comp_part1_course.py`），使用 `model.opt.timestep=0.005` 计算速度与 hold；course 自检断言 0.5 s 真实 hold 才停表、错误 dt 不提前停 |
+| P2 | 暂停期间仍以冻结位姿反复调用 judge（可能改变状态/时间） | 暂停循环只推进操作手事件时钟与 120 s 超时，不再调用 `course.update`；恢复后继续真实物理步 |
+| P3 | comp_score 不机器复核外部 hash、Part1 final_time、Part2 合法档位 | 已加 `validate_external_evidence`：重算 scenes（含 levels）、judge.file_hashes、contract sha256；校验 Part2 best value 是契约合法档位（bool 只认 1）；从 trials 按 attempt 复算 Part1 final_score/final_time（最高分尝试内最快） |
+| P4 | course runner 的 ground 分类只看 plane | 已扩展：plane / `ground*` 命名 / `trench_bottom` / `level_floor`；V2 单障碍 runner 同步 |
+| 演练 | 需要 pause/resume/abort/stable-stop 的 3-attempt 链路 | 已跑 3 次 pause/resume 协议演练（`config/part1-course-events-pause.json`），stable-stop 由 `StableStopTracker` 自检覆盖；abort 由 course 自检覆盖 |

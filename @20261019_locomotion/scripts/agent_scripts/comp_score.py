@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import hashlib
 import json
 import math
 import sys
@@ -77,12 +78,126 @@ def curve_points(curve: list[dict], value: float | None, unit: str | None = None
     return 0
 
 
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def _err(errors: list[str], msg: str) -> None:
     errors.append(msg)
 
 
 def _warn(warnings: list[str], msg: str) -> None:
     warnings.append(msg)
+
+
+def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
+                               task_root: Path, diagnostic: bool) -> tuple[list[str], list[str]]:
+    """Machine-check the evidence chain that summary alone cannot prove.
+
+    - recompute scene/judge/contract sha256 recorded in the manifest;
+    - Part 2 best difficulty must be a legal contract level (bool => exactly 1);
+    - Part 1 final_time must be the fastest among the best-score attempts (confirmed rule).
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    def _check_hash(entry: dict, label: str) -> None:
+        rel = entry.get("file") or entry.get("path")
+        recorded = entry.get("sha256") or ""
+        if not rel:
+            return
+        path = Path(rel)
+        if not path.is_absolute():
+            path = task_root / path
+        if not path.is_file():
+            (_warn if diagnostic else _err)(warnings if diagnostic else errors,
+                                            f"{label} 文件不存在，无法复核 hash: {rel}")
+            return
+        actual = _sha256(path)
+        if recorded and actual != recorded:
+            _err(errors, f"{label} sha256 不匹配: {rel}（manifest={recorded[:12]} actual={actual[:12]}）")
+
+    scenes = manifest.get("scenes") or {}
+    for key, entry in scenes.items():
+        if isinstance(entry, dict):
+            _check_hash(entry, f"scenes.{key}")
+            for lvl in entry.get("levels") or []:
+                _check_hash(lvl, f"scenes.{key}.levels")
+    contract_meta = manifest.get("contract") or {}
+    if isinstance(contract_meta, dict):
+        _check_hash(contract_meta, "contract")
+    judge = manifest.get("judge") or {}
+    for fh in judge.get("file_hashes") or []:
+        _check_hash(fh, "judge.file")
+    for f in judge.get("files") or []:
+        p = Path(f)
+        if not p.is_absolute():
+            p = task_root / p
+        if not p.is_file():
+            _warn(warnings, f"judge.files 路径不存在: {f}")
+
+    # Part 2 legal difficulty levels
+    p2_specs = {o["id"]: o for o in (contract.get("parts", {}).get("part2", {}) or {}).get("obstacles", [])}
+    for oid, rec in ((summary.get("part2") or {}).get("obstacles") or {}).items():
+        spec = p2_specs.get(oid)
+        if spec is None:
+            continue
+        value = rec.get("best_success_value")
+        if value is None:
+            continue
+        allowed = {float(p["value"]) for p in spec.get("score_curve", [])}
+        if spec.get("unit") == "bool":
+            if float(value) != 1.0:
+                _err(errors, f"part2.{oid}.best_success_value={value} 非法（bool 只允许 1）")
+        elif float(value) not in allowed:
+            _err(errors, f"part2.{oid}.best_success_value={value} 不是契约合法档位 {sorted(allowed)}")
+
+    # Part 1 final time: fastest among best-score attempts, computed from trials
+    s1 = summary.get("part1") or {}
+    if "final_time_s" in s1:
+        trials = []
+        # trials are not passed in here; caller adds them under the private key
+        trials = manifest.get("__trials__") or []
+        p1_obs = {o["id"]: o for o in (contract.get("parts", {}).get("part1", {}) or {}).get("obstacles", [])}
+        by_attempt: dict[int, dict] = {}
+        for t in trials:
+            if t.get("part") != "part1":
+                continue
+            attempt = int(t.get("attempt") or 0)
+            rec = by_attempt.setdefault(attempt, {"score": 0.0, "duration": float(t.get("duration_s") or 0.0),
+                                                  "full": True, "return": False})
+            oid = t.get("obstacle")
+            j = t.get("judge") or {}
+            if oid == "return_to_start":
+                if "return_to_start_after_full" in (j.get("events") or []):
+                    rec["return"] = True
+                continue
+            score = float(j.get("score") or 0.0)
+            rec["score"] += score
+            spec = p1_obs.get(oid)
+            if spec is not None and score < float(spec.get("per_obstacle_score", 0)):
+                rec["full"] = False
+        if not by_attempt:
+            (_warn if diagnostic else _err)(warnings if diagnostic else errors,
+                                            "summary 声明 final_time_s 但 trials 中没有可复算的 attempt")
+        else:
+            for rec in by_attempt.values():
+                if rec["return"] and rec["full"]:
+                    rec["score"] += float(((contract.get("parts", {}).get("part1", {}) or {})
+                                           .get("return_bonus") or {}).get("score", 100))
+            best = max(r["score"] for r in by_attempt.values())
+            best_durations = [r["duration"] for r in by_attempt.values() if r["score"] == best]
+            expected = min(best_durations)
+            got = float(s1.get("final_time_s") or 0.0)
+            if abs(got - expected) > 1e-6:
+                _err(errors, f"part1.final_time_s={got} 应为最高分尝试中最快 {expected}")
+            if "final_score" in s1 and abs(float(s1["final_score"]) - best) > 1e-6:
+                _err(errors, f"part1.final_score={s1['final_score']} 应为 {best}")
+    return errors, warnings
 
 
 # ---------------------------------------------------------------- validation
@@ -514,6 +629,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--eval", type=Path, dest="eval_dir", help="包含 <policy_id>/ 子目录的评测根目录")
     ap.add_argument("--out", type=Path, help="写 SCOREBOARD.md")
     ap.add_argument("--json-out", type=Path, help="写 SCOREBOARD.json")
+    ap.add_argument("--task-root", type=Path, default=Path("."),
+                    help="任务目录根（用于复核 manifest 中场景/judge/契约的相对路径 hash）")
     ap.add_argument("--validate-only", action="store_true")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args(argv)

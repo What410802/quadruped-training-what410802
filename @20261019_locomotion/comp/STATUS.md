@@ -67,6 +67,7 @@
 | 计时/排序口径 | ✅ 已确认：分数最高优先、同分取最快；**计时在机器人稳定停下后停止**（runner 已实现 stable-stop） | `CONTRACT.*`、`run_part1_course.py` |
 | BYOK 评审升级顺序 | flash 两轮 FAIL → **pro 第三轮 FAIL（N1–N4）→ 已修复** → Codex（需用户二次确认，因外部额度） | `comp/audits/BYOK_JUDGE_V3_PRO_REVIEW.md`、`BYOK_JUDGE_V2_FIXES.md` |
 | GPT/Codex 调用规则 | 任何 GPT 系调用须先报进度并二次确认；DeepSeek 调用无需告知；已写入 `comp/DEV_OPS.md` §4 | `comp/DEV_OPS.md` |
+| Pro 复验 P1–P4 | 稳定停表 dt、暂停误喂 judge、comp_score 外部证据校验、ground 分类已修；3-attempt pause 演练进行中 | `comp_part1_course.py`、`run_part1_course.py`、`comp_score.py` |
 | BYOK 预审（same-model，provisional） | 已执行：FAIL/26 条（11 blocker），已逐条修复或记录残余风险 | `audits/BYOK_JUDGE_V2_REVIEW.md`、`audits/BYOK_JUDGE_V2_FIXES.md` |
 | G1 重审（Codex，不同家族） | **待用户批准后执行**：gpt-6-astra 403 无权限；gpt-6.1-sol/xhigh 会话被中止（见 `CODEX_G1_REAUDIT_STOPPED_20261023.md`，非 verdict）；N1–N4 修复后待重新批准 1 次 | 第 2 版 `JUDGE_AUDIT` |
 

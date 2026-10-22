@@ -17,6 +17,7 @@
 | `BYOK_JUDGE_V2_VERIFY.md/.json` | G1 预审 2 | DeepSeek flash 复审：FAIL（7 blocker 未清） | 已修复，见 FIXES §二次预审 |
 | `BYOK_JUDGE_V3_PRO_REVIEW.md/.json` | G1 预审 3 | DeepSeek **pro** 第三轮复审：FAIL（N1–N4），已修复 | 见 FIXES §Pro 预审后修复 |
 | `CODEX_G1_REAUDIT_STOPPED_20261023.md` | G1 尝试 | Codex `gpt-6.1-sol`/xhigh 会话 00:08 被中止（非 verdict）；用户要求 GPT 调用先审批 | 见 `DEV_OPS.md` §4 |
+| `BYOK_JUDGE_V4_PRO_VERIFY.md/.json` | G1 预审 4 | DeepSeek **pro** 复验 N1–N4 修复（provisional） | 进行中/见文件 |
 | `BYOK_JUDGE_V2_FIXES.md` | — | 预审→修复/残余风险逐条映射 | — |
 
 ## HASHES.json

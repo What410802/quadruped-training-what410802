@@ -157,7 +157,10 @@ def main() -> int:
                       ]},
         },
         "judge": {"version": "comp_judge_v2@" + "".join(sha256_file(p)[:6] for p in JUDGE_FILES if p.is_file()),
-                  "files": [str(p) for p in JUDGE_FILES]},
+                  "files": [str(p) for p in JUDGE_FILES],
+                  "file_hashes": [{"path": str(p), "sha256": sha256_file(p)}
+                                  for p in JUDGE_FILES if p.is_file()]},
+        "contract": {"file": str(args.contract), "sha256": sha256_file(args.contract)},
         "protocol": {
             "protocol_version": "diagnostic-2026-10-22-v2",
             "diagnostic": True,
