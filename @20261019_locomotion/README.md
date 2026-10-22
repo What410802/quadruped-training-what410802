@@ -63,6 +63,7 @@ cd ~/rc_work/nwwolf_mjlab_training_release
 │   ├── status.md                     # 当前状态、待决、下一步（保持实时）
 │   ├── environment.md                # 本地 pixi / 远程原生 uv / EGL / TensorBoard / C++ 视窗
 │   ├── training/
+│   │   ├── p1-basic-obstacle.md       # P1 slope+stairs 训练入口
 │   │   ├── training-plan.md          # 阶段计划、手动/状态机/相机/PPO 取舍
 │   │   ├── training-baseline.md      # 现有课程/奖励基线梳理
 │   │   ├── training-health.md        # TensorBoard 体检与数值/地形问题
