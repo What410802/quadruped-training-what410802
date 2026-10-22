@@ -49,7 +49,7 @@
 - Part 1 zero-shot 诊断：八项 0 分/0 success；限高杆已改为沿 y 穿门洞，高墙已改为沿 y 跨墙，二者仍是 fail/running；这是 baseline，不是正式分。
 - 桥：blocks fail、bands running；flat 策略无桥面训练，tilt 升高；需要 P1/P2 专项。
 - 训练机 GPU smoke：`black-flat`/`black-rough` 512 envs × 11 iter 分别约 7/12 s；`black-rough` 已加载 stairs/slope 地形，P1 环境可用。
-- **P1 首个训练 run**：训练仓库新增 `black-basic-obstacle`（flat + smooth slopes + stairs，6 行难度 0–0.6；无 rough/discrete/砂砾）；从 `flat_ft_mirror01_footclear_500/model_2498.pt` resume，4096 envs × 1500 iter，远程 run 已启动（日志 `~/rc_work/nwwolf_mjlab_training_release/logs/p1/`）；任务定义见 [`training/p1-basic-obstacle.md`](training/p1-basic-obstacle.md)。
+- **P1 首个训练 run**：训练仓库新增 `black-basic-obstacle`（flat + smooth slopes + stairs，6 行难度 0–0.6；无 rough/discrete/砂砾）；从 `flat_ft_mirror01_footclear_500/model_2498.pt` resume，4096 envs × 1500 iter；远程 PID 44613，日志 `~/rc_work/nwwolf_mjlab_training_release/logs/p1/`；上次检查约 iteration 2531/3998、2.87 s/iter，预计剩余约 70 min；后台监控任务 `bash-187` 会在退出时通知。任务定义见 [`training/p1-basic-obstacle.md`](training/p1-basic-obstacle.md)。
 - rl_sar 后备自检：`check_rl_sar_fallback.sh` 的 input_map/command_limit 两项均 `all checks passed`；完整 `check_walk` 未重跑（需 GUI）。
 - 控制仓库 fork：`https://github.com/What410802/quadruped_control`，P0 分支 `main@f2b37dc` 已推送，未合并 upstream；部署栈取舍（rl_sar vs quadruped_control）见 [`reference/deployment-stack-comparison.md`](reference/deployment-stack-comparison.md)。
 

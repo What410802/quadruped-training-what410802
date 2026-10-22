@@ -48,7 +48,7 @@ MUJOCO_GL=egl .venv/bin/train black-basic-obstacle \
 - `--agent.resume True` 加载 actor/critic/optimizer；command curriculum 跨 stage 恢复按仓库既有逻辑处理；
 - 4096 envs、1500 iter；日志在远程 `logs/p1/basic_obstacle_from_flat_ft_*.log`。
 
-当前状态：P1 run 已启动，远程 PID/日志路径在任务 `docs/status.md` 记录；训练完成前不把数字当验收。
+当前状态（2026-10-22）：远程 run 已启动，PID 44613；日志 `~/rc_work/nwwolf_mjlab_training_release/logs/p1/basic_obstacle_from_flat_ft_*.log`；上次检查约 iteration 2531/3998、约 2.87 s/iter，预计剩余约 70 min。训练完成或失败由后台监控任务 `bash-187` 通知；完成前不把数字当验收。
 
 ## 3. 验收口径
 
