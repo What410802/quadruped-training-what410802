@@ -75,23 +75,29 @@ def main() -> int:
     p1_specs = {o["id"]: o for o in contract["parts"]["part1"]["obstacles"]}
     attempts = result.get("attempts") or []
 
-    # pick the best attempt (final score, then fastest active duration)
+    # Each attempt JSON carries its own AttemptResult (score/duration/return bonus); pick
+    # the best attempt by score, then fastest duration (confirmed tie rule).
+    def _att_rec(att: dict) -> dict:
+        return dict(att.get("attempt_result") or {})
+
     best_idx = 0
-    best_key = (-1.0, 0.0)
+    best_key = (-1.0, -0.0)
     for i, att in enumerate(attempts):
-        s = attempt_summary(att)
-        key = (float(s.get("final_score", 0.0)), -float(s.get("final_time_s", 0.0)))
+        rec = _att_rec(att)
+        if rec.get("skipped"):
+            continue
+        key = (float(rec.get("score", 0.0)), -float(rec.get("duration_s", 0.0)))
         if key > best_key:
             best_key, best_idx = key, i
     best = attempts[best_idx] if attempts else {"report": {"summary": {}}, "judge": {"states": {}}}
-    best_summary = attempt_summary(best)
-    best_attempt_no = int(best.get("attempt") or (best_idx + 1))
+    best_rec = _att_rec(best)
+    best_attempt_no = int(best_rec.get("attempt") or best.get("attempt") or (best_idx + 1))
     best_states = (best.get("judge") or {}).get("states") or {}
 
     trials: list[dict] = []
     for i, att in enumerate(attempts, 1):
         states = (att.get("judge") or {}).get("states") or {}
-        duration = float(attempt_summary(att).get("final_time_s", 0.0))
+        duration = float(_att_rec(att).get("duration_s", 0.0))
         for oid in p1_specs:
             st = states.get(oid) or {}
             status = st.get("status", "pending")
@@ -122,9 +128,7 @@ def main() -> int:
                                 "evidence": evidence}
     all_full = bool(part1_obstacles) and all(r["success"] and r["score"] >= int(p1_specs[o].get("per_obstacle_score", 100))
                                               for o, r in part1_obstacles.items())
-    attempt_results = best_summary.get("attempt_results") or []
-    best_attempt_rec = next((r for r in attempt_results if r.get("attempt") == best_attempt_no), {})
-    return_bonus = float(best_attempt_rec.get("return_bonus", 0.0)) if all_full else 0.0
+    return_bonus = float(best_rec.get("return_bonus", 0.0)) if all_full else 0.0
     return_trial_id = f"diag-{args.policy_id}-return_to_start-a{best_attempt_no}"
     if return_bonus > 0:
         trials.append({
@@ -199,11 +203,6 @@ def main() -> int:
             fh.write(json.dumps(t, ensure_ascii=False) + "\n")
     print(f"course diagnostic imported: {out} (grand_total={summary['grand_total']}, attempts={len(attempts)})")
     return 0
-
-
-def attempt_summary(att: dict) -> dict:
-    """Course attempt JSON stores Part1Course.export_report() under report.summary."""
-    return ((att.get("report") or {}).get("summary") or {})
 
 
 if __name__ == "__main__":

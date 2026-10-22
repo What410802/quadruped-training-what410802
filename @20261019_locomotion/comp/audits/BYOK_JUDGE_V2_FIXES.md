@@ -65,3 +65,17 @@
 3. soft-reset 阈值与相邻 zone 重叠仍为启发式（真实整场顺序通过时影响有限）；
 4. Part1 单障碍诊断 importer 的 per-obstacle 汇总口径（仅诊断用，正式用 course importer）；
 5. 正式 3 次尝试的 runner/操作手演练尚未在真实赛程上做过（当前为脚本化 2 次尝试诊断）。
+
+
+## Pro 预审后修复（2026-10-22 深夜，DeepSeek pro verdict=FAIL，N1–N4）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| N1 | `run_part1_course.py` 只在每个 policy step（20 ms）后采样，漏判"任意瞬间 ≥2 足触地" | 已重构：`CoursePolicyRunner` 拆成 `set_action`/`physics_step`，course runner **每个物理步（5 ms）**都 `course.update` + 事件处理；暂停时冻结物理但推进操作手时钟 |
+| N2 | `comp_import_course_diag.py` 用全局 session summary 选 best，导致第二次及以后尝试的 score/duration/return bonus 错 | 已修：runner 每次尝试输出 `attempt_result`（AttemptResult），importer 用 per-attempt score/duration 选 best、取 duration、判定 return bonus |
+| N3 | 同分最快时间口径未落到"最高分尝试内取最快" | 已修：`Part1Course.summary` 与 `AttemptManager.summary` 的 final_time = 最高分尝试中的最快 duration；新增 `final_time_scope` 字段 |
+| N4 | bool 曲线 `value not in (0.0,)` 仍给满分（修复声明与代码不一致） | 已修：`comp_score.curve_points`、`comp_part2_judge.curve_points_floor` 均要求 `value == 1.0` |
+| 附加 | 被中止的 Codex 会话提示限高杆静置可能掉落 | 已加 `check_part1_scene_v2.py`（空场景 5 s 仿真，横杆下落 <1 cm 才通过），并纳入复验流程 |
+
+> 说明：前一轮"已修 bool"声明错误，本轮已纠正；pro 复审建议 N1–N4 修完前不要以 PASS 预期送 Codex。
+> 砂砾坑真实几何、Part2 官方场交叉核对、soft-reset 启发式、正式手动 3 次演练仍是已知残余（G1 报告需写明）。

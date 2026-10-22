@@ -730,7 +730,8 @@ class AttemptManager:
     def summary(self) -> dict:
         scored = [a for a in self.attempts if not a.get("skipped")]
         best_score = max((a["score"] for a in scored), default=0.0)
-        fastest = min((a["duration_s"] for a in scored), default=0.0)
+        best_candidates = [a for a in scored if a["score"] == best_score]
+        fastest = min((a["duration_s"] for a in best_candidates), default=0.0)
         return {
             "attempts_used": len(self.attempts),
             "attempts": self.attempts,
@@ -742,7 +743,7 @@ class AttemptManager:
             "rules": {"max_attempts": self.max_attempts,
                       "recovery_consumes_attempt": False,
                       "final_score": "best_attempt",
-                      "final_time": "min_over_attempts"},
+                      "final_time": "min_duration_among_best_score_attempts"},
         }
 
 

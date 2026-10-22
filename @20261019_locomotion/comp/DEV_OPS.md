@@ -40,3 +40,18 @@
 - 2026-10-22 起的 judge V2/V2.1、场景 v2、Part2 evaluator、course 协议与诊断评测都在本机完成
   （CPU MuJoCo + TorchScript，无需 GPU）。
 - 训练/大规模评测仍按 `comp/PLAN.md` 走远程 GPU；此时按 §1 管理标志。
+
+## 4. 评审模型调用审批规则（2026-10-22 用户要求）
+
+- **DeepSeek/BYOK（本地 relay）**：日常预审/复审可直接调用，**无需事先告知**；
+  每次仍须落盘报告、meta、trace，并在 `comp/audits/README.md` 登记。
+- **GPT/Codex（任何 GPT 系模型、任何 provider）**：因外部额度限制，**调用前必须先向用户报告当前进度**
+  （做到哪、为什么现在需要 GPT、拟用模型/推理强度/预计 1 次、审计对象与 HASHES），
+  **得到用户二次确认后**才可以调用；未确认不得重试/换模型。
+- 每次获批的 GPT 调用都要记录：模型、effort、conversation/thread id（若有）、开始/结束时间、verdict、trace 路径；
+  失败（额度/403/中止）也要记录，不降级、不擅自换模型重试。
+- 历史：
+  - 2026-10-22 23:30 曾尝试 1 次 Codex G1（`gpt-6.1-sol`/xhigh，见 `audits/CODEX_G1_REAUDIT_STOPPED_20261023.md`），
+    会话被中止、无 verdict；另有一次 `gpt-6-astra` 因 token 无权限返回 403。
+  - 2026-10-23 起执行本审批规则；下一次 Codex G1 需用户明确批准。
+- 当前评审升级顺序（用户 2026-10-22 指定）：**deepseek flash → deepseek pro → Codex（需批准）**。

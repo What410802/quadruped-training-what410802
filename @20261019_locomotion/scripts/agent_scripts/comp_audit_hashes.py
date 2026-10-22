@@ -36,6 +36,7 @@ OBJECTS = {
     "importer_course": "scripts/agent_scripts/comp_import_course_diag.py",
     "score_tool": "scripts/agent_scripts/comp_score.py",
     "scene_part1_v2": "assets/terrain/part1/part1_eval_scene_v2.xml",
+    "scene_check": "scripts/agent_scripts/check_part1_scene_v2.py",
     "part1_route": "config/part1-route.json",
     "part2_levels_json": "config/part2-levels.json",
     "eval_part1_diag": "comp/eval/flat-ft-2500-part1-diag-v2/summary.json",

@@ -60,7 +60,7 @@ def curve_points(curve: list[dict], value: float | None, unit: str | None = None
     if value is None:
         return 0
     if unit == "bool":
-        return int(curve[-1]["points"]) if float(value) not in (0.0,) else 0
+        return int(math.floor(curve[-1]["points"])) if float(value) == 1.0 else 0
     pts = sorted((float(p["value"]), float(p["points"])) for p in curve)
     if not pts:
         return 0

@@ -106,7 +106,7 @@ class CoursePolicyRunner:
                 "foot_tags": foot_tags, "ground_feet": ground_feet,
                 "bar_z": float(self.data.xpos[self.bar_body][2])}
 
-    def step_policy(self, command: np.ndarray) -> None:
+    def set_action(self, command: np.ndarray) -> None:
         obs = self.runner.obs(command)
         with torch.no_grad():
             action = self.runner.policy(torch.from_numpy(obs).unsqueeze(0)).numpy().reshape(-1)
@@ -117,8 +117,14 @@ class CoursePolicyRunner:
         qd = np.array(self.data.qvel[self.runner.qvel_adr])
         tau = np.clip(KP * (q_target - q) - KD * qd, -EFFORT_LIMIT, EFFORT_LIMIT)
         self.data.ctrl[self.runner.motor_ids] = tau
+
+    def physics_step(self) -> None:
+        mujoco.mj_step(self.model, self.data)
+
+    def step_policy(self, command: np.ndarray) -> None:
+        self.set_action(command)
         for _ in range(4):
-            mujoco.mj_step(self.model, self.data)
+            self.physics_step()
 
 
 def waypoint_command(cpr: CoursePolicyRunner, target: tuple[float, float], speed: float) -> tuple[np.ndarray, bool]:
@@ -153,76 +159,103 @@ def apply_events(course: Part1Course, events: list[dict], idx: int, t: float,
     return idx
 
 
-def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict], course: Part1Course,
-                warmup_s: float = 0.5) -> dict:
+def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict],
+                course: Part1Course, warmup_s: float = 0.5) -> dict:
+    """Drive the scripted route; feed the judge every physics step (5 ms)."""
     for _ in range(int(warmup_s / 0.02)):
         cpr.step_policy(np.zeros(3))
-    ok = course.begin_attempt(float(cpr.data.time))
-    if not ok:
+    if not course.begin_attempt(float(cpr.data.time)):
         raise RuntimeError("course rejected attempt (budget exhausted)")
     ev_idx = 0
     aborted = False
+
+    def feed(t: float | None = None) -> dict:
+        nonlocal ev_idx
+        sample = cpr.sample()
+        if t is not None:
+            sample["t"] = float(t)
+        course.update(sample["t"], sample["base_xyz"], sample["yaw"],
+                      foot_tags=sample["foot_tags"], ground_feet=sample["ground_feet"],
+                      bar_z=sample["bar_z"])
+        ev_idx = apply_events(course, events, ev_idx, sample["t"],
+                              pose_xy=sample["base_xyz"], pose_yaw=sample["yaw"])
+        return sample
+
+    def run_policy_step(command: np.ndarray) -> bool:
+        """Set one policy action, then sample the judge after each of the 4 physics steps."""
+        nonlocal aborted
+        cpr.set_action(command)
+        for _ in range(4):
+            cpr.physics_step()
+            sample = feed()
+            if not course.active:
+                return False
+            if course.paused:
+                # physics frozen; advance the operator clock so pause/resume events fire
+                fake = float(sample["t"])
+                n = 0
+                while course.paused and course.active:
+                    n += 1
+                    fake += 0.02
+                    if n * 0.02 > 120.0:
+                        course.abort_attempt(fake, "pause_timeout")
+                        return False
+                    course.update(fake, sample["base_xyz"], sample["yaw"],
+                                  foot_tags=sample["foot_tags"],
+                                  ground_feet=sample["ground_feet"],
+                                  bar_z=sample["bar_z"])
+                    ev_idx = apply_events(course, events, ev_idx, fake,
+                                          pose_xy=sample["base_xyz"], pose_yaw=sample["yaw"])
+                return True
+        return True
+
     for seg in route["segments"]:
         target = tuple(seg["target"])
         speed = float(seg.get("speed", 0.5))
         t_end = float(cpr.data.time) + float(seg.get("max_s", 4.0))
         while cpr.data.time < t_end:
             cmd, reached = waypoint_command(cpr, target, speed)
-            cpr.step_policy(cmd)
-            s = cpr.sample()
-            # While paused the simulation must not advance, but the operator clock keeps
-            # running so pause/resume events at later times still fire (no deadlock).
-            paused_steps = 0
-            while True:
-                course.update(s["t"], s["base_xyz"], s["yaw"], foot_tags=s["foot_tags"],
-                              ground_feet=s["ground_feet"], bar_z=s["bar_z"])
-                ev_idx = apply_events(course, events, ev_idx, s["t"],
-                                      pose_xy=s["base_xyz"], pose_yaw=s["yaw"])
-                if not course.paused:
-                    break
-                paused_steps += 1
-                if paused_steps * 0.02 > 120.0:
-                    course.abort_attempt(s["t"], "pause_timeout")
-                    break
-                s = cpr.sample()
-                s["t"] = float(s["t"]) + paused_steps * 0.02
-                if not course.active:
-                    break
-            if not course.active:
+            if not run_policy_step(cmd):
                 aborted = True
                 break
             if reached:
                 break
         if aborted:
             break
-    # Rules: the clock stops when the robot is stable, not on first entering the start
-    # area. If the whole course was cleared and the robot is back in the start area,
-    # wait for a stable stand (speed < 0.15 m/s, tilt < 10 deg for 0.5 s) and stop there.
+
+    # Rules: the clock stops when the robot is stable after returning, not on first entry.
     stable_stop = False
-    if course.active and not aborted:
-        report = course.judge.report()
-        if report.get("returned_to_start"):
-            stable = 0.0
-            prev = np.asarray(cpr.base()[0][:2], dtype=float)
-            for _ in range(150):
-                cpr.step_policy(np.zeros(3))
-                s = cpr.sample()
-                pos = np.asarray(s["base_xyz"][:2], dtype=float)
+    if course.active and not aborted and course.judge.report().get("returned_to_start"):
+        stable = 0.0
+        prev = np.asarray(cpr.base()[0][:2], dtype=float)
+        for _ in range(150):
+            cpr.set_action(np.zeros(3))
+            done = False
+            for _ in range(4):
+                cpr.physics_step()
+                sample = feed()
+                pos = np.asarray(sample["base_xyz"][:2], dtype=float)
                 speed = float(np.linalg.norm(pos - prev)) / 0.02
                 prev = pos
-                course.update(s["t"], s["base_xyz"], s["yaw"], foot_tags=s["foot_tags"],
-                              ground_feet=s["ground_feet"], bar_z=s["bar_z"])
                 _base, tilt = cpr.base()
                 if speed < 0.15 and tilt < 10.0:
                     stable += 0.02
                 else:
                     stable = 0.0
+                if not course.active:
+                    break
                 if stable >= 0.5:
                     stable_stop = True
+                    done = True
                     break
+            if done or not course.active:
+                break
+
     if course.active:
         course.end_attempt(float(cpr.data.time), "stable_stop" if stable_stop else "route_complete")
+    attempt_result = course.results[-1].to_dict() if course.results else {}
     return {"attempt": course.attempt_no, "aborted": aborted, "stable_stop": stable_stop,
+            "attempt_result": attempt_result,
             "report": course.export_report(), "judge": course.judge.report()}
 
 

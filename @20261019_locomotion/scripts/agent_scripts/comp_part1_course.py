@@ -189,9 +189,13 @@ class Part1Course:
     def summary(self) -> dict:
         summary = self.manager.summary()
         summary["attempt_results"] = [r.to_dict() for r in self.results]
-        summary["final_score"] = max((r.score for r in self.results if not r.skipped), default=0.0)
-        summary["final_time_s"] = min((r.duration_s for r in self.results if not r.skipped),
-                                      default=0.0)
+        scored = [r for r in self.results if not r.skipped]
+        best_score = max((r.score for r in scored), default=0.0)
+        # confirmed rule: highest score first; on a tie take the fastest attempt
+        best_candidates = [r for r in scored if r.score == best_score]
+        summary["final_score"] = best_score
+        summary["final_time_s"] = min((r.duration_s for r in best_candidates), default=0.0)
+        summary["final_time_scope"] = "min_duration_among_best_score_attempts"
         summary["attempts_allowed"] = self.manager.max_attempts
         return summary
 

@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T00:15:17+08:00",
+  "generated_at": "2026-10-23T00:38:33+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -17,7 +17,7 @@
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "b1cda06aebe9f6b2fd1dc973b2c5d1a328dcd73242cb89059c715f7ad68e7a44"
+      "sha256": "850caac8ee29b27f970defa3a62ee30eca8617ebe8a5bacb4460155987554d4e"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
@@ -25,11 +25,11 @@
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
-      "sha256": "bc2619084db5168a13948e0fc7edcc44d172932613ec0647ee8697f57e615806"
+      "sha256": "3e1e3b0b36d9bb23e630ae67ef38132b90864f6976b0843f77963195182084ce"
     },
     "judge_part2_v2": {
       "path": "scripts/agent_scripts/comp_part2_judge.py",
-      "sha256": "3f9bad61cbe8981c4e792270946ae30a0ab87b31524ece1e1919256852e2815d"
+      "sha256": "bb43b16de2fce17f363273a5b36b492d17891e2bb8b86103ac1c8f8c6f3ef1ab"
     },
     "geom_tags": {
       "path": "scripts/agent_scripts/comp_part1_geom_tags.py",
@@ -45,7 +45,7 @@
     },
     "runner_course": {
       "path": "scripts/agent_scripts/run_part1_course.py",
-      "sha256": "73eacde9ad4c15116900e8ab42d72ee39bc66a94c7337595c495b67c3ad50a4c"
+      "sha256": "f6955111d1c74b4f6fa889406027682dde926f41bb895c381c10c1254194a891"
     },
     "runner_part2_v2": {
       "path": "scripts/agent_scripts/run_part2_judged_eval.py",
@@ -61,15 +61,19 @@
     },
     "importer_course": {
       "path": "scripts/agent_scripts/comp_import_course_diag.py",
-      "sha256": "d9b77cc1ccbd218f7ebbc0fe1a6aebed1879cafe6878089e312dedf70c1e6d03"
+      "sha256": "1f6af084af99e4dea4ecc8990e80c208b4d879ede1c925044982e7ebb63397fb"
     },
     "score_tool": {
       "path": "scripts/agent_scripts/comp_score.py",
-      "sha256": "441c948c761aa293348c34c0e68a1ea055e03349ef163f86e3276edfe3b62ed7"
+      "sha256": "5fdfe5245b423a430e1918206dee0f140328d812e83323af66a7c3466afa0c4f"
     },
     "scene_part1_v2": {
       "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
       "sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242"
+    },
+    "scene_check": {
+      "path": "scripts/agent_scripts/check_part1_scene_v2.py",
+      "sha256": "57fdbf7fe344c57c3bd0d672bb3b0d058f7ac46589f1d6d238021160d0d6d100"
     },
     "part1_route": {
       "path": "config/part1-route.json",
@@ -101,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "d9e70f84295bfbdb7874cff3940299030ba1bfc188518bcd857f5183d2f758de"
+      "sha256": "0d4a51cd8e10b649cdf16dc455a1aecb7359a10024449e1d9f523f9a135f5e82"
     }
   },
   "superseded": {
