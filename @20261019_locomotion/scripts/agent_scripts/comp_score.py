@@ -108,6 +108,10 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
     warnings: list[str] = []
 
     def _check_hash(entry: dict, label: str, required: bool = True) -> None:
+        if not isinstance(entry, dict):
+            if required:
+                _err(errors, f"{label} 不是对象，无法机器复核")
+            return
         rel = entry.get("file") or entry.get("path") or entry.get("scene")
         recorded = entry.get("sha256") or ""
         if not rel:
@@ -138,7 +142,11 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
             _err(errors, "正式 manifest 缺 contract.file/sha256，无法机器复核")
         if not scenes:
             _err(errors, "正式 manifest 缺 scenes，无法机器复核场景证据")
-        for required in ("part1", "part2"):
+        part2_has_evidence = any(
+            (rec or {}).get("best_success_value") is not None or int((rec or {}).get("attempts_used") or 0) > 0
+            for rec in ((summary.get("part2") or {}).get("obstacles") or {}).values())
+        required_scenes = ["part1"] + (["part2"] if part2_has_evidence else [])
+        for required in required_scenes:
             if not (isinstance(scenes.get(required), dict) and scenes[required].get("file")):
                 _err(errors, f"正式 manifest 缺 scenes.{required}.file")
         if not (judge.get("file_hashes") or []):
@@ -150,7 +158,7 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                                                 f"scenes.{key} 缺 file 字段")
             _check_hash(entry, f"scenes.{key}", required=not diagnostic)
             levels = entry.get("levels") or []
-            if not diagnostic and key == "part2" and not levels:
+            if not diagnostic and key == "part2" and part2_has_evidence and not levels:
                 _err(errors, "正式 manifest scenes.part2.levels 为空（Part2 档位证据缺失）")
             for lvl in levels:
                 _check_hash(lvl, f"scenes.{key}.levels", required=not diagnostic)
@@ -425,6 +433,8 @@ def validate_summary(summary: dict, manifest: dict, contract: dict,
 
 def validate_trials(policy_dir: Path, manifest: dict) -> list[str]:
     errors: list[str] = []
+    ids: set[str] = set()
+    seen_dup: set[str] = set()
     rel = (manifest.get("results") or {}).get("trials")
     if not rel or not (policy_dir / rel).is_file():
         return errors
@@ -441,8 +451,15 @@ def validate_trials(policy_dir: Path, manifest: dict) -> list[str]:
                 continue
             if seeds and rec.get("seed") is not None and rec["seed"] not in seeds:
                 _err(errors, f"trials 第 {lineno} 行 seed={rec['seed']} 不在协议种子里")
-            if not rec.get("trial_id"):
+            tid = rec.get("trial_id")
+            if not tid:
                 _err(errors, f"trials 第 {lineno} 行缺 trial_id")
+            elif tid in ids:
+                _err(errors, f"trials 重复 trial_id: {tid}")
+            else:
+                ids.add(tid)
+            if rec.get("skipped") and float(rec.get("duration_s") or 0.0) != 0.0:
+                _warn([], f"trials 第 {lineno} 行 skipped 但 duration_s 非 0")
     return errors
 
 
@@ -706,6 +723,30 @@ def run_self_test() -> int:
     summary3 = {"part1": {"final_score": 100, "final_time_s": 10.0}}
     errs, _ = validate_external_evidence(man_ok, summary3, contract3, tmp, False, trials3)
     assert not errs, errs
+    # empty judge.file_hashes entry / empty level entry / tampered level hash / duplicate ids
+    man_empty = json.loads(json.dumps(man_ok))
+    man_empty["judge"]["file_hashes"] = [{}]
+    errs, _ = validate_external_evidence(man_empty, {"part2": {"obstacles": {}}},
+                                         {"parts": {}}, tmp, False, [])
+    assert any("缺 path" in e or "无法机器复核" in e for e in errs), errs
+    man_level_empty = json.loads(json.dumps(man_ok))
+    man_level_empty["scenes"]["part2"]["levels"] = [{}]
+    errs, _ = validate_external_evidence(man_level_empty, {"part2": {"obstacles": {}}},
+                                         {"parts": {}}, tmp, False, [])
+    assert any("levels" in e for e in errs), errs
+    man_level_bad = json.loads(json.dumps(man_ok))
+    man_level_bad["scenes"]["part2"]["levels"] = [{"scene": "scene.xml", "sha256": "0" * 64}]
+    errs, _ = validate_external_evidence(man_level_bad, {"part2": {"obstacles": {}}},
+                                         {"parts": {}}, tmp, False, [])
+    assert any("sha256" in e for e in errs), errs
+    dup_root = tmp / "dup_policy"
+    dup_root.mkdir()
+    (dup_root / "trials.jsonl").write_text(
+        json.dumps({"trial_id": "x"}) + "\n" + json.dumps({"trial_id": "x"}) + "\n",
+        encoding="utf-8")
+    dup_manifest = {"results": {"trials": "trials.jsonl"}, "protocol": {"seeds": []}}
+    dup_errs = validate_trials(dup_root, dup_manifest)
+    assert any("重复 trial_id" in e for e in dup_errs), dup_errs
     summary3_bad = {"part1": {"final_score": 100, "final_time_s": 5.0}}
     errs, _ = validate_external_evidence(man_ok, summary3_bad, contract3, tmp, False, trials3)
     assert any("final_time_s" in e for e in errs), errs

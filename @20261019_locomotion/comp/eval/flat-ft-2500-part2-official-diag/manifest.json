@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "policy_id": "flat-ft-2500-part2-official-diag",
+  "created_at": "2026-10-23T01:42:09+08:00",
+  "repos": {
+    "task": {
+      "path": ".",
+      "commit": "fd22b7868b719757134571ed7e9a440d67ce2e5d",
+      "dirty": true,
+      "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
+    },
+    "training": {
+      "path": "prep.d/training_repo_local（非 git 副本）",
+      "commit": "unknown:flat-ft-2500-part2-official-diag",
+      "dirty": true,
+      "note": "训练仓 commit 未在运行时采集"
+    },
+    "control": {
+      "path": "prep.d/quadruped_control_local",
+      "commit": "unknown:not-used",
+      "dirty": true,
+      "note": "诊断评测未经过控制仓"
+    }
+  },
+  "policy": {
+    "checkpoint": "policy.pt",
+    "checkpoint_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
+    "exported": "policy.pt",
+    "exported_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
+    "obs_dim": 45,
+    "action_dim": 12,
+    "policy_dt_ms": 20.0,
+    "checkpoint_note": "原始 checkpoint 未单独保留；sha256 为导出 policy.pt"
+  },
+  "scenes": {
+    "part1": {
+      "file": "assets/terrain/part1/part1_eval_scene_v2.xml",
+      "sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242"
+    },
+    "part2": {
+      "file": "config/part2-levels.json",
+      "sha256": "10c73a25a1678999fb1a32d3ef6ee0dd78650c697d5222dc15c613255fa39848",
+      "levels": [
+        {
+          "category": "high_platform",
+          "level": 10,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/high_platform_10cm.xml",
+          "sha256": "311217667a929e7a36bcc6b9efef37f564d334f291c4dd0804f8520f0df37006"
+        },
+        {
+          "category": "high_platform",
+          "level": 20,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/high_platform_20cm.xml",
+          "sha256": "07fbb62dddf06d9cde8ecb4de1e06da5334f121d57c8e7a443d2840f15a42eed"
+        },
+        {
+          "category": "high_platform",
+          "level": 30,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/high_platform_30cm.xml",
+          "sha256": "9bb64ead31f005a1c3700231dae30d69cec5400ee6c7ecba3c627269606ca6c9"
+        },
+        {
+          "category": "high_platform",
+          "level": 40,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/high_platform_40cm.xml",
+          "sha256": "d5cd5062158fa1daf83050c76723873b229e492f0c9d66875ed72e5e66cfaa94"
+        },
+        {
+          "category": "stairs",
+          "level": 10,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/stairs_10cm.xml",
+          "sha256": "101c331e4c3491ab348f62abeab551a3cb3d2bb68872988586e34f07f517c5d2"
+        },
+        {
+          "category": "stairs",
+          "level": 15,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/stairs_15cm.xml",
+          "sha256": "dc1f6ab4fa07567b6d7f1ecf2b9dc20f803da93bc36ea1739adc80f8d4c06579"
+        },
+        {
+          "category": "stairs",
+          "level": 20,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/stairs_20cm.xml",
+          "sha256": "991b8f4fbfafed20b05edbd45380f9a246ea0195e6ee77acb66869eecf8cbd22"
+        },
+        {
+          "category": "stairs",
+          "level": 30,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/stairs_30cm.xml",
+          "sha256": "f4d24c62e8da4ebc41d45b2ee87e9346e51bc7fcad53ea4b2f68e1221078fd08"
+        },
+        {
+          "category": "slope",
+          "level": 20,
+          "unit": "deg",
+          "scene": "assets/terrain/part2/levels/slope_20deg.xml",
+          "sha256": "fe8cef0a502900d252c109ebe8101b32230e7b1c41c44232da6e5698c48591ce"
+        },
+        {
+          "category": "slope",
+          "level": 30,
+          "unit": "deg",
+          "scene": "assets/terrain/part2/levels/slope_30deg.xml",
+          "sha256": "039008d201f8af942b971b38a1c3ee89143868b4cfc33c4a3613dc4216f2401e"
+        },
+        {
+          "category": "slope",
+          "level": 35,
+          "unit": "deg",
+          "scene": "assets/terrain/part2/levels/slope_35deg.xml",
+          "sha256": "2ce7f69245e981a5ea01e0be545980956798c7ff78d7d6ab9f5e5a4464d80895"
+        },
+        {
+          "category": "slope",
+          "level": 45,
+          "unit": "deg",
+          "scene": "assets/terrain/part2/levels/slope_45deg.xml",
+          "sha256": "a86a6eda9f6fe0a10bd84219516d66332b9ca81bf28c80590aea25c5185ea94a"
+        },
+        {
+          "category": "high_wall",
+          "level": 10,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/high_wall_10cm.xml",
+          "sha256": "b61acdb4b7337729ba1f6d97edaca90cb90e3c21e1e5618743705dd716f838ce"
+        },
+        {
+          "category": "high_wall",
+          "level": 20,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/high_wall_20cm.xml",
+          "sha256": "4534ea7061b90d4171a20de89e9e26962c55071c4f0f19f5b68af93560db0319"
+        },
+        {
+          "category": "high_wall",
+          "level": 30,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/high_wall_30cm.xml",
+          "sha256": "c0328db2841f61afc383b8871b6353f955937dbc14a0c763d1f1a711d76ee77d"
+        },
+        {
+          "category": "high_wall",
+          "level": 40,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/high_wall_40cm.xml",
+          "sha256": "08a8300078457c6ff20c3cfffa5b1d5d1dcd37436526db79bfbd3bef1c419787"
+        },
+        {
+          "category": "trench",
+          "level": 10,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/trench_10cm.xml",
+          "sha256": "ebd9f60390c7ed29b1833f2db86d90e34eed3ce5d67cdd4333d54b651fe1f470"
+        },
+        {
+          "category": "trench",
+          "level": 20,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/trench_20cm.xml",
+          "sha256": "ac6ff63a240aa920dcfa7b346c4ef8326ce6cbc3148f382eda06d1d48b9b67ff"
+        },
+        {
+          "category": "trench",
+          "level": 30,
+          "unit": "cm",
+          "scene": "assets/terrain/part2/levels/trench_30cm.xml",
+          "sha256": "6f0b4b16924c7fa2c8193b32abc486d4581c9c5b37d16b410716ec6e3d3debeb"
+        },
+        {
+          "category": "plum",
+          "level": 1,
+          "unit": "bool",
+          "scene": "assets/terrain/part2/part2_plum_eval_scene.xml",
+          "sha256": "8d44f16887899ff916261dbe7feca536e75beb789a9d146a34d8720a668910fc"
+        }
+      ]
+    }
+  },
+  "judge": {
+    "version": "comp_judge_v2@850caabb43b1",
+    "files": [
+      "scripts/agent_scripts/comp_part1_judge.py",
+      "scripts/agent_scripts/comp_part2_judge.py"
+    ],
+    "file_hashes": [
+      {
+        "path": "scripts/agent_scripts/comp_part1_judge.py",
+        "sha256": "850caac8ee29b27f970defa3a62ee30eca8617ebe8a5bacb4460155987554d4e"
+      },
+      {
+        "path": "scripts/agent_scripts/comp_part2_judge.py",
+        "sha256": "bb43b16de2fce17f363273a5b36b492d17891e2bb8b86103ac1c8f8c6f3ef1ab"
+      }
+    ]
+  },
+  "contract": {
+    "file": "comp/CONTRACT.json",
+    "sha256": "627d61356fc8ec96b39cfbdf66d0261f65b9282d6e5fe8ab432c6082bef7e054"
+  },
+  "protocol": {
+    "protocol_version": "part2-official_diagnostic-2026-10-22",
+    "mode": "official_diagnostic",
+    "diagnostic": true,
+    "seeds": [],
+    "attempts_part1_total": 3,
+    "attempts_part2_per_obstacle": 4,
+    "operator": "scripted:run_part2_judged_eval.py",
+    "seed_control": "none（runner 未设种子/扰动；名义 seed 不应被当作已执行）",
+    "start_pose_policy": "parametric level starts (not yet protocol-frozen)"
+  },
+  "results": {
+    "trials": "trials.jsonl",
+    "summary": "summary.json"
+  },
+  "notes": "导入自 run_part2_judged_eval.py 诊断 JSON（comp_part2_judge.Part2JudgeV2）；无种子/扰动、每难度一次尝试，非正式协议"
+}

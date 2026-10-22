@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "policy_id": "flat-ft-2500-part2-official-diag",
+  "part1": {
+    "attempts_used": 0,
+    "obstacles": {
+      "slalom": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_run",
+        "evidence": []
+      },
+      "gravel_pit": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_run",
+        "evidence": []
+      },
+      "high_wall": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_run",
+        "evidence": []
+      },
+      "height_bar": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_run",
+        "evidence": []
+      },
+      "t_stairs": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_run",
+        "evidence": []
+      },
+      "slope": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_run",
+        "evidence": []
+      },
+      "bridge_blocks": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_run",
+        "evidence": []
+      },
+      "bridge_bands": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_run",
+        "evidence": []
+      }
+    },
+    "return_to_start": false,
+    "return_score": 0,
+    "total": 0
+  },
+  "part2": {
+    "obstacles": {
+      "high_platform": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 4
+      },
+      "stairs": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 4
+      },
+      "slope": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 4
+      },
+      "high_wall": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 4
+      },
+      "trench": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 4
+      },
+      "plum": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 4
+      }
+    },
+    "total": 0
+  },
+  "grand_total": 0,
+  "notes": "导入自 run_part2_judged_eval.py 诊断 JSON（comp_part2_judge.Part2JudgeV2）；无种子/扰动、每难度一次尝试，非正式协议"
+}

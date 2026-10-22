@@ -53,6 +53,8 @@ def main() -> int:
     ap.add_argument("--result-json", type=Path, required=True)
     ap.add_argument("--policy", type=Path, required=True)
     ap.add_argument("--policy-id", required=True)
+    ap.add_argument("--mode", default="diagnostic",
+                    help="diagnostic / official_diagnostic（每 category 4 次挑战的落盘证据）")
     ap.add_argument("--out-dir", type=Path, default=Path("comp/eval"))
     ap.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
     ap.add_argument("--levels", type=Path, default=DEFAULT_LEVELS)
@@ -87,7 +89,8 @@ def main() -> int:
                 "difficulty": att["level"],
                 "value": att["level"],
                 "unit": unit,
-                "attempt": i,
+                "attempt": int(att.get("attempt_index") or i),
+                "entry_seq": trial_seq,
                 "seed": None,
                 "start": {"pose": start_map.get((cat, level)), "note": "diagnostic level start"},
                 "commands": [{"cmd": [0.5, 0.0, 0.0], "seconds": run.get("duration_s")}],
@@ -164,7 +167,8 @@ def main() -> int:
                                   for p in JUDGE_FILES if p.is_file()]},
         "contract": {"file": str(args.contract), "sha256": sha256_file(args.contract)},
         "protocol": {
-            "protocol_version": "diagnostic-2026-10-22-v2",
+            "protocol_version": f"part2-{args.mode}-2026-10-22",
+            "mode": args.mode,
             "diagnostic": True,
             "seeds": [],
             "attempts_part1_total": 3,

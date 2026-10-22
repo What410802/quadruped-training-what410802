@@ -83,7 +83,7 @@ def main() -> int:
         rel = lvl.relative_to(ROOT).as_posix()
         out["objects"][f"level_{lvl.stem}"] = {"path": rel, "sha256": sha256(lvl)}
     for pid in ("flat-ft-2500-part1-diag-v2", "flat-ft-2500-part2-diag-v2",
-                "flat-ft-2500-part1-course-diag"):
+                "flat-ft-2500-part2-official-diag", "flat-ft-2500-part1-course-diag"):
         for fname in ("manifest.json", "trials.jsonl"):
             rel = f"comp/eval/{pid}/{fname}"
             p = ROOT / rel

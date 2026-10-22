@@ -134,7 +134,8 @@ class Part1Course:
         self.paused = True
         if base_xyz is not None and yaw is not None:
             self.pause_pose = ((float(base_xyz[0]), float(base_xyz[1])), float(yaw))
-        self._current_events.append({"t": float(t), "event": "pause",
+        sim_t = float(self.last_sim_t)
+        self._current_events.append({"t": sim_t, "event": "pause", "operator_t": float(t),
                                      "pose": list(base_xyz) if base_xyz is not None else None})
         self.manager.note_recovery(self.last_sim_t)
 
@@ -154,9 +155,10 @@ class Part1Course:
         self.paused = False
         if self.manager._current and self.manager._current["pauses"]:
             self.manager._current["pauses"][-1][1] = float(self.last_sim_t)  # sim clock
-        self._current_events.append({"t": float(t), "event": "resume",
+        sim_t = float(self.last_sim_t)
+        self._current_events.append({"t": sim_t, "event": "resume", "operator_t": float(t),
                                      "pose": list(base_xyz) if base_xyz is not None else None})
-        self.manager.events.append({"t": float(t), "event": "resume",
+        self.manager.events.append({"t": sim_t, "event": "resume", "operator_t": float(t),
                                     "consumes_attempt": False,
                                     "attempt": self.attempt_no})
 
@@ -170,7 +172,8 @@ class Part1Course:
             return
         obs.result.status = "skipped"
         obs.result.reason = "operator_skip"
-        self._current_events.append({"t": float(t), "event": "skip_obstacle", "obstacle": name})
+        self._current_events.append({"t": float(self.last_sim_t), "event": "skip_obstacle",
+                                     "operator_t": float(t), "obstacle": name})
 
     def end_attempt(self, t: float, reason: str = "finished") -> AttemptResult:
         if not self.active:
@@ -207,7 +210,8 @@ class Part1Course:
         duration = max(0.0, float(self.last_sim_t) - float(self.attempt_start_t))
         result = AttemptResult(attempt=self.attempt_no, score=0.0, duration_s=duration,
                                skipped=True, reason=reason, events=list(self._current_events))
-        self.manager.skip(t, reason=reason)
+        sim_t = float(self.last_sim_t)
+        self.manager.skip(sim_t, reason=reason)
         self.recovery_violation = False
         self.pause_pose = None
         self.manager.attempts[-1]["duration_s"] = result.duration_s

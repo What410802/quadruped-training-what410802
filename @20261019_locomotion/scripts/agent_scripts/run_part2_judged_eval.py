@@ -173,6 +173,7 @@ def main() -> None:
                 official.append(ordered[0])
         selected = official
     results = []
+    official_counter: dict[str, int] = {}
     for entry in selected:
         scene = str(ROOT / entry["scene"])
         start = tuple(entry["judge"]["start"])
@@ -182,8 +183,15 @@ def main() -> None:
             lr = LevelRunner(scene, str(args.policy), start)
             attempts.append(lr.run_attempt(entry, args.seconds))
         successes = sum(1 for a in attempts if a["judge"]["status"] == "success")
-        record = {"category": entry["category"], "level": entry["level"], "unit": entry["unit"],
-                  "scene": entry["scene"], "attempts": attempts,
+        cat = entry["category"]
+        if args.official:
+            official_counter[cat] = official_counter.get(cat, 0) + 1
+            attempt_index = official_counter[cat]
+        else:
+            attempt_index = None
+        record = {"category": cat, "level": entry["level"], "unit": entry["unit"],
+                  "scene": entry["scene"], "attempt_index": attempt_index,
+                  "attempts": attempts,
                   "success_count": successes, "attempt_count": len(attempts),
                   "best_success": successes > 0}
         results.append(record)
