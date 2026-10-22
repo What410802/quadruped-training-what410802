@@ -59,6 +59,7 @@
 - **正式整场分**：尚无官方多尝试计分；现有 0/8 只是独立障碍诊断。
 - **P1 训练门槛**：数值安全、foot clearance、地形课程未验证；训练机已可用，GPU smoke 通过，进入 capability task smoke。
 - **部署栈**：主栈 `quadruped_control`；`rl_sar` 保留为 P2 前保底/参考，不在 P1 并行维护；后备 runbook 见 [`reference/rl-sar-fallback.md`](reference/rl-sar-fallback.md)。
+- **模型/窗口对齐**：理想 MIT 公式一致，但 control 无死区/延迟/噪声且 Black 模型默认参数/限幅不同；P2 前做 legacy-black 对齐 profile。旧自建窗口 `viewer.hpp` 可复用但需适配，P1 暂用官方 Simulate。详见 [`reference/motor-model-and-viewer.md`](reference/motor-model-and-viewer.md)。
 - **控制仓库升级**：`coverMoon/quadruped_control` 是团队 fork 的上游，领先 17 commits，含 target-expiry 修复、RL 布局、测试、地图/实机计划；当前 P0 fork 可用，P1 期间不切，P2/部署前做一次受控 rebase。
 - **没有阻塞 P1 启动的决策**；若出现奖励/课程取舍或资源冲突再停下。
 
