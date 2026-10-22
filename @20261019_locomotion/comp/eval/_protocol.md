@@ -9,7 +9,7 @@
 | 项 | 值 |
 |---|---|
 | Part 1 场景（V2） | `assets/terrain/part1/part1_eval_scene_v2.xml`（可动横杆 + 命名台阶/平台/坡面；sha256 由 manifest 记录） |
-| Part 1 judge（V2） | `scripts/agent_scripts/comp_part1_judge.py`（纯事件式，成功语义/接触历史/任意瞬间 1-2 足/落杆检测） |
+| Part 1 judge（V2.1） | `scripts/agent_scripts/comp_part1_judge.py`（成功语义/接触历史/全足支撑后的 1-2 足/落杆/双向绕杆/三臂台阶/失败可重试）+ `comp_part1_geom_tags.py` |
 | Part 1 整场协议 | `scripts/agent_scripts/comp_part1_course.py`（3 次尝试/恢复不消耗/跳过/返回奖励/best score+fastest time） |
 | Part 1 runner（诊断） | `scripts/agent_scripts/run_part1_judged_rollout_v2.py`（逐物理步接触分类） |
 | Part 2 参数化档位 | `config/part2-levels.json` + `assets/terrain/part2/levels/*.xml`（20 档，官方种类不变） |
@@ -107,5 +107,6 @@ judge 必须在策略回路外；actor 输入遵守传感器红线（IMU+编码�
 2. Part 2 evaluator 已有参数化 20 档，但未在**官方能力场**上交叉核对（当前只在自定义同种类 level 上验证）；
 3. 正式整场 MuJoCo runner（操作手/键盘或控制仓接入）未接；协议类 `comp_part1_course.py` 已实现并自检；
 4. 跳过/主动重跑是否消耗尝试、最终分数是否取 best 的**书面确认**仍缺（当前按恢复不消耗、开始/重跑消耗、best score 落地）；
-5. T 台阶部分分 Q2 数值冲突（112.5 > 100）未裁决；
-6. judge 版本以 sha256 记录，语义变更→重审流程目前人工（`audits/HASHES.json`）。
+5. T 台阶部分分 Q2 数值冲突（112.5 > 100）未裁决（当前保守 75/50）；
+6. 砂砾坑真实几何未 recut（本地为凸起盒代理）；Part2 官方能力场交叉核对未做；
+7. judge 版本以 sha256 记录，语义变更→重审流程目前人工（`audits/HASHES.json`）。

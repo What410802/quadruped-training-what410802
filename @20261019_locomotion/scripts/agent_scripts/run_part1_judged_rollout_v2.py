@@ -28,6 +28,7 @@ import mujoco
 import numpy as np
 import torch
 
+from comp_part1_geom_tags import GEOM_TAGS
 from comp_part1_judge import Part1JudgeV2
 from run_policy_scene import (
     ACTION_SCALE, EFFORT_LIMIT, KD, KP, POLICY_JOINT_ORDER, Q_DEFAULT, ScenePolicyRunner,
@@ -43,36 +44,12 @@ TASKS = {
     "high_wall": ((1.8, -7.8, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 4.0, "cross wall along +y"),
     "bridge_blocks": ((1.8, 0.0, 0.65), 0.0, (0.3, 0.0, 0.0), 5.0, "left platform -> +x"),
     "bridge_bands": ((5.7, -3.5, 0.65), np.pi / 2, (0.3, 0.0, 0.0), 5.0, "lower platform -> +y"),
-    "gravel_pit": ((3.5, -12.0, 0.55), 0.0, (0.45, 0.0, 0.0), 6.0, "approach pit along +x"),
+    "gravel_pit": ((5.0, -13.4, 0.55), np.pi / 2, (0.45, 0.0, 0.0), 6.0, "short-edge approach along +y"),
     "t_stairs": ((1.8, -5.2, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 5.0, "main limb -> +y"),
-    "slope": ((3.6, -5.5, 0.55), 0.0, (0.5, 0.0, 0.0), 5.0, "slope -> +x"),
+    "slope": ((4.6, -6.5, 0.55), np.pi / 2, (0.5, 0.0, 0.0), 6.0, "slope long edge -> +y"),
     "slalom": ((1.8, -9.25, 0.55), -np.pi / 2, (0.45, 0.0, 0.0), 4.5, "first post -> -y"),
 }
 
-# Geo name -> surface tags used by the judge (see comp_part1_judge.py).
-GEOM_TAGS: dict[str, set[str]] = {
-    "bridge_blocks_platform_l": {"platform_left"},
-    "bridge_platform_r": {"platform_right", "platform_high"},
-    "bridge_bands_platform_low": {"platform_low"},
-    "slope_a": {"slope"},
-    "slope_b": {"slope"},
-    "gravel_pit_a": {"gravel"},
-    "gravel_pit_b": {"gravel"},
-    "high_wall": {"wall"},
-    "ramp_blocks_l": {"ramp"},
-    "ramp_blocks_r": {"ramp"},
-    # T stairs: same level tag on both y sides; x arm is the second branch.
-    "t_stairs_y_low1": {"step:y:1"},
-    "t_stairs_y_low2": {"step:y:2"},
-    "t_stairs_y_low3": {"step:y:3"},
-    "t_stairs_y_high1": {"step:y:1"},
-    "t_stairs_y_high2": {"step:y:2"},
-    "t_stairs_y_high3": {"step:y:3"},
-    "t_stairs_x_low1": {"step:x:1"},
-    "t_stairs_x_mid2": {"step:x:2"},
-    "t_stairs_x_high3": {"step:x:3"},
-    "t_stairs_top": {"step:top"},
-}
 
 
 def sha256_file(path: Path) -> str:
@@ -155,7 +132,10 @@ class V2Runner:
                     ground_feet.add(leg)
                 tags = GEOM_TAGS.get(self.geom_names.get(other, ""))
                 if tags:
-                    foot_tags[leg].update(tags)
+                    normal = np.asarray(c.frame[:3], dtype=float)
+                    is_wall = "wall" in tags
+                    if is_wall or abs(float(normal[2])) >= 0.5:
+                        foot_tags[leg].update(tags)
         base = np.asarray(self.data.xpos[self.trunk], dtype=float)
         bar_z = float(self.data.xpos[self.bar_body][2])
         self.judge.update(float(self.data.time), (float(base[0]), float(base[1]), float(base[2])),

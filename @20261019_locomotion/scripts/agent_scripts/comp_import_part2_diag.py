@@ -65,6 +65,7 @@ def main() -> int:
     levels_meta = json.loads(args.levels.read_text(encoding="utf-8"))
     start_map = {(e["category"], float(e["level"])): e["judge"].get("start")
                  for e in levels_meta["levels"]}
+    scene_map = {(e["category"], float(e["level"])): e["scene"] for e in levels_meta["levels"]}
     p1_obstacles = [o["id"] for o in contract["parts"]["part1"]["obstacles"]]
     p2_specs = contract["parts"]["part2"]["obstacles"]
 
@@ -90,7 +91,9 @@ def main() -> int:
                 "commands": [{"cmd": [0.5, 0.0, 0.0], "seconds": run.get("duration_s")}],
                 "judge": {"status": status,
                           "failure_reason": judge.get("reason") or None,
-                          "events": [], "score": 0},
+                          "events": [],
+                          "score": score_for_level(contract["parts"]["part2"], cat, att["level"])
+                          if status == "success" else 0},
                 "success": status == "success",
                 "duration_s": run.get("duration_s"),
                 "tilt_deg": run.get("tilt_deg"),
@@ -145,7 +148,13 @@ def main() -> int:
             "part1": {"file": str(args.part1_scene),
                       "sha256": sha256_file(args.part1_scene) if args.part1_scene.is_file() else ""},
             "part2": {"file": str(args.levels),
-                      "sha256": sha256_file(args.levels) if args.levels.is_file() else ""},
+                      "sha256": sha256_file(args.levels) if args.levels.is_file() else "",
+                      "levels": [
+                          {"category": e["category"], "level": e["level"], "unit": e["unit"],
+                           "scene": e["scene"],
+                           "sha256": sha256_file(Path(e["scene"])) if Path(e["scene"]).is_file() else ""}
+                          for e in levels_meta["levels"]
+                      ]},
         },
         "judge": {"version": "comp_judge_v2@" + "".join(sha256_file(p)[:6] for p in JUDGE_FILES if p.is_file()),
                   "files": [str(p) for p in JUDGE_FILES]},

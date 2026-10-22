@@ -54,10 +54,50 @@ class LevelRunner:
         self.data = self.runner.data
         self.policy = self.runner.policy
         self.judge: Part2JudgeV2 | None = None
+        self.floor_geoms = {g for g in range(self.model.ngeom)
+                            if self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE}
+        self.geom_names = {g: (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "")
+                           for g in range(self.model.ngeom)}
+        self.leg_geoms: dict[str, set[int]] = {}
+        for leg in ("FL", "FR", "RL", "RR"):
+            body = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"{leg}_foot")
+            start_i = int(self.model.body_geomadr[body])
+            self.leg_geoms[leg] = set(range(start_i, start_i + int(self.model.body_geomnum[body])))
 
     def warmup(self, seconds: float = 0.5) -> None:
         for _ in range(int(seconds / 0.02)):
             self._policy_step(np.zeros(3), judge=None)
+
+    def _sample(self, judge: Part2JudgeV2) -> None:
+        foot_tags: dict[str, set[str]] = {leg: set() for leg in self.leg_geoms}
+        ground_feet: set[str] = set()
+        for ci in range(self.data.ncon):
+            c = self.data.contact[ci]
+            g1, g2 = int(c.geom1), int(c.geom2)
+            for leg, geoms in self.leg_geoms.items():
+                if g1 in geoms:
+                    other = g2
+                elif g2 in geoms:
+                    other = g1
+                else:
+                    continue
+                name = self.geom_names.get(other, "")
+                if other in self.floor_geoms or name in {"ground_left", "ground_right", "trench_bottom"}:
+                    ground_feet.add(leg)
+                elif name.startswith("platform"):
+                    foot_tags[leg].add("platform")
+                elif name.startswith("stair"):
+                    foot_tags[leg].add("stairs")
+                elif name.startswith("slope"):
+                    foot_tags[leg].add("slope")
+                elif name == "wall":
+                    foot_tags[leg].add("wall")
+                elif name.startswith("plum"):
+                    foot_tags[leg].add("plum")
+        base, tilt = self.runner.base()
+        judge.update(float(self.data.time),
+                     (float(base[0]), float(base[1]), float(base[2])), tilt,
+                     foot_tags=foot_tags, ground_feet=ground_feet)
 
     def _policy_step(self, command: np.ndarray, judge: Part2JudgeV2 | None) -> None:
         obs = self.runner.obs(command)
@@ -73,8 +113,7 @@ class LevelRunner:
         for _ in range(4):
             mujoco.mj_step(self.model, self.data)
             if judge is not None:
-                base, tilt = self.runner.base()
-                judge.update(float(self.data.time), (float(base[0]), float(base[1]), float(base[2])), tilt)
+                self._sample(judge)
 
     def run_attempt(self, entry: dict, seconds: float | None = None) -> dict:
         j = entry["judge"]

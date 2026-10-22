@@ -180,3 +180,10 @@ overall:    FAIL
 | Q3 | 雷达不采用，优先深度相机 | 合规证据改为 depth camera；actor 仍不得含禁止量；盲策略 fallback |
 | Q4 | 稳定性目标 0 失败；无计时压力，先按失败比例优化 | 稳定性评测：target_failures=0、metric=failure_ratio、≥100 次 |
 
+
+## 10. V2.1 预审与修复（2026-10-22）
+
+- 首轮 G1 FAIL 后按 P0 重写 judge V2/V2.1；pre-audit 报告：`BYOK_JUDGE_V2_REVIEW.md`（same-model-provisional，FAIL/26 条）。
+- 逐条处置：`BYOK_JUDGE_V2_FIXES.md`（修复/残余风险）；conformance 13 组、course 自检、Part2 自检、comp_score 自检全过。
+- 审计对象哈希：`HASHES.json`（25 个对象，verdict=pending）；G1 重审 prompt：`prompts/g1-reaudit-prompt.md`。
+- 待 Codex 不同家族复审给出最终 G1 verdict 后，更新本文件与 `HASHES.json.audit`。

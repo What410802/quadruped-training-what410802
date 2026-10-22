@@ -85,40 +85,57 @@ class Part2JudgeV2:
         self.j = level_entry.get("judge", {})
         self.result = Part2Result(self.category, self.level, self.unit)
         self.t = 0.0
-        self.dt = 0.0
         self.held = 0.0
         self.max_z = 0.0
         self.max_z_near = 0.0
-        self.last_xy = None
+        self.wall_crossed = False
+        self.last_x: float | None = None
         self.last_t: float | None = None
+        self.lane_y = float((self.j.get("start") or [0.0, 0.0])[1])
 
     # ------------------------------------------------------------------ hooks
-    def _cond(self, x: float, y: float, z: float) -> bool:
+    def _lateral_ok(self, y: float) -> bool:
+        return abs(y - self.lane_y) <= float(self.j.get("lane_half_width", 0.70))
+
+    def _cond(self, x: float, y: float, z: float, ground_feet: set[str]) -> bool:
         kind = self.j.get("kind")
         if kind == "platform":
             lo, hi = self.j.get("goal_x", [0.0, 0.0])
-            return lo <= x <= hi and z >= self.j["top_z"] + 0.38
+            return (lo <= x <= hi and z >= self.j["top_z"] + 0.38 and self._lateral_ok(y)
+                    and not ground_feet)
         if kind == "stairs":
-            return x >= self.j["goal_x_min"] and z >= self.j["top_z"] + 0.38
+            return (x >= self.j["goal_x_min"] and z >= self.j["top_z"] + 0.38
+                    and self._lateral_ok(y) and not ground_feet)
         if kind == "slope":
-            return x >= self.j["goal_x_min"] and z >= self.j["rise_z"] + 0.38
+            return (x >= self.j["goal_x_min"] and z >= self.j["rise_z"] + 0.38
+                    and self._lateral_ok(y) and not ground_feet)
         if kind == "wall":
-            return (x >= self.j["goal_x_min"]
+            return (self.wall_crossed and x >= self.j["goal_x_min"]
                     and self.max_z_near >= max(self.j["wall_h"] + 0.10, 0.55)
-                    and z >= 0.25)
+                    and self._lateral_ok(y))
         if kind == "gap":
-            return x >= self.j["goal_x_min"] and z >= self.j.get("min_z", 0.3)
+            return (x >= self.j["goal_x_min"] and z >= self.j.get("min_z", 0.3)
+                    and self._lateral_ok(y))
         if kind == "plum":
-            return x >= self.j["goal_x_min"] and z >= self.j["goal_z_min"]
+            return (x >= self.j["goal_x_min"] and z >= self.j["goal_z_min"]
+                    and self._lateral_ok(y) and not ground_feet)
         raise ValueError(f"unknown part2 judge kind: {kind}")
 
-    def update(self, t: float, base_xyz: tuple[float, float, float], tilt_deg: float) -> dict:
+    def update(self, t: float, base_xyz: tuple[float, float, float], tilt_deg: float,
+               *, foot_tags: dict[str, set[str]] | None = None,
+               ground_feet: set[str] | None = None) -> dict:
         self.t = float(t)
         if self.result.status in ("success", "fail"):
             return self.result.to_dict()
+        ground_feet = ground_feet or set()
         x, y, z = map(float, base_xyz)
         self.max_z = max(self.max_z, z)
         if self.j.get("kind") == "wall":
+            if self.last_x is not None:
+                wx = float(self.j["wall_x"])
+                if (self.last_x - wx) * (x - wx) <= 0 and abs(x - self.last_x) < 1.0:
+                    self.wall_crossed = True
+            self.last_x = x
             if abs(x - self.j["wall_x"]) <= 0.8:
                 self.max_z_near = max(self.max_z_near, z)
         self.result.detail = {"x": round(x, 3), "z": round(z, 3),
@@ -131,7 +148,7 @@ class Part2JudgeV2:
             self.result.status = "fail"
             self.result.reason = f"fell:base_z={z:.2f}"
             return self.result.to_dict()
-        cond = self._cond(x, y, z)
+        cond = self._cond(x, y, z, ground_feet)
         hold_s = float(self.j.get("hold_s", 0.2))
         # hold time is accumulated in finalize/update by caller-provided dt; default 20 ms
         dt = 0.02 if self.last_t is None else max(0.0, self.t - self.last_t)

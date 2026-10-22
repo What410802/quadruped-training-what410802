@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "skill": "comp-review",
+  "backend": "http",
+  "backend_kind": "openai-compatible",
+  "config": "comp/reviewer.json",
+  "prompt_file": "comp/audits/prompts/judge-v2-review-prompt.md",
+  "prompt_sha256": "e8258bea096ddb912abeea856393a8bc12ad2026a2b38b5b7456b19e173e3519",
+  "payload_bytes": 224690,
+  "files": [
+    {
+      "path": "scripts/agent_scripts/comp_part1_judge.py",
+      "exists": true,
+      "bytes": 28076,
+      "sha256": "cd31f813a979de62a0636ad9f443dcd0312c4e34ff1fb4d01f0a53197db56600",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_judge_conformance.py",
+      "exists": true,
+      "bytes": 12338,
+      "sha256": "ecfd0551cb21510c5b4f34ee28429cbc657d0a9d847fac0877db2c6d457c3023",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_part1_course.py",
+      "exists": true,
+      "bytes": 12251,
+      "sha256": "c211f47b4fc695f32fc3e6b2f890f63c9190c35fbc2392eecabf17c96b9a8b70",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_part2_judge.py",
+      "exists": true,
+      "bytes": 10097,
+      "sha256": "0ed9e34017692c36d83badce59da4b4c0eef604764a108d10f8693e0a73957e3",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/make_part2_levels.py",
+      "exists": true,
+      "bytes": 7239,
+      "sha256": "a5d9c82445fbe3616375566cba0f6a17f4e45c9a3ff6be7bbd5566ee69bd7294",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/run_part1_judged_rollout_v2.py",
+      "exists": true,
+      "bytes": 9495,
+      "sha256": "1f44aff46475222b39ca93088bd02c46af07429087d4275efcf14d9f4d6f8352",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/run_part2_judged_eval.py",
+      "exists": true,
+      "bytes": 7478,
+      "sha256": "8280a618916891cfa9896db4798545315bd433f409d6f7be424dcf401f8e2e92",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_import_diagnostic.py",
+      "exists": true,
+      "bytes": 8279,
+      "sha256": "39ade6d606ea3400b0fe114ba64d3c47e3e9f81dc51aea0beef60805b2fe5299",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_import_part2_diag.py",
+      "exists": true,
+      "bytes": 8506,
+      "sha256": "23765b17d68c53b60ce40e786084824ee5f930db909ba0e6537510e93f2fdeea",
+      "included": true
+    },
+    {
+      "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
+      "exists": true,
+      "bytes": 28534,
+      "sha256": "e88b83fe54ae50b9dabeee6a472ad3dba42ec2e6c1835fb70e5a8445a08604ae",
+      "included": true
+    },
+    {
+      "path": "config/part2-levels.json",
+      "exists": true,
+      "bytes": 9761,
+      "sha256": "5bc6222ace0358c6f0b55575cde4dc83bc5b8304fc30f2348ee5d9238e9c10d7",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-diag-v2/manifest.json",
+      "exists": true,
+      "bytes": 2278,
+      "sha256": "d418de4c3dd2f6b8aabbc9084d4e64493257025da37b13da1bec6c848af95251",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-diag-v2/summary.json",
+      "exists": true,
+      "bytes": 2756,
+      "sha256": "b1e68586844bbcb99a3e78a13b01e7df822b45f1576fdc6823b9fe981be04b83",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-diag-v2/trials.jsonl",
+      "exists": true,
+      "bytes": 3460,
+      "sha256": "15bf11364a57c288778ca2cc7fde7829a3400f98ce8a3700d2612347ec2c4308",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-diag-v2/manifest.json",
+      "exists": true,
+      "bytes": 2316,
+      "sha256": "38c063b27873d6cde653fb0251a05c1b7f22896639059e1bac2e05cf02a99899",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-diag-v2/summary.json",
+      "exists": true,
+      "bytes": 2227,
+      "sha256": "13a9c15912c4f54981c66988007f97501576ae3b7846f1dda467b201205911ef",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-diag-v2/trials.jsonl",
+      "exists": true,
+      "bytes": 9925,
+      "sha256": "7f88b097a87e0add32fc674297c95f1e177dcd0c44987660a3d5b9ae10ca1571",
+      "included": true
+    },
+    {
+      "path": "comp/CONTRACT.md",
+      "exists": true,
+      "bytes": 6226,
+      "sha256": "d308c5218ccd2e01deaee3408ef0f66eb3fabbd6fb84a35f0732b0ca89536abf",
+      "included": true
+    },
+    {
+      "path": "comp/CONTRACT.json",
+      "exists": true,
+      "bytes": 12545,
+      "sha256": "fc29fb1910bb946a5e65581b5f809ee29ac306fe6c427d886dd4ec95deb17cc7",
+      "included": true
+    },
+    {
+      "path": "comp/eval/_protocol.md",
+      "exists": true,
+      "bytes": 6937,
+      "sha256": "17163ef71eec9567907954c23da1c9319d4b06f3dba2459a90a8f45420b98d54",
+      "included": true
+    },
+    {
+      "path": "comp/audits/JUDGE_AUDIT.md",
+      "exists": true,
+      "bytes": 16967,
+      "sha256": "db54776e4c9aea9ea5ed5ded4a772c12a645f8968ece299d3b4c6190330bfdf7",
+      "included": true
+    },
+    {
+      "path": "docs/reference/team-race-2026.md",
+      "exists": true,
+      "bytes": 8047,
+      "sha256": "37986030982bba5ed5a73238eb12f06824602f8846dc2a2f702b3fc19c709744",
+      "included": true
+    }
+  ],
+  "executor": "deepseek-v4.1-flash",
+  "reviewer_model": "deepseek-v4.1-flash",
+  "independence": {
+    "executor_model": "deepseek-v4.1-flash",
+    "reviewer_model": "deepseek-v4.1-flash",
+    "executor_family": "deepseek",
+    "reviewer_family": "deepseek",
+    "status": "same-model-provisional",
+    "reason": "executor 与 reviewer 是同一模型 deepseek-v4.1-flash：同模型自审，只能驱动改进，不能 acquit Type-B 门"
+  },
+  "started_at": "2026-10-22T23:02:11+08:00",
+  "status": "ok",
+  "endpoint_host": "ai-sourcing.discover-robotics.com",
+  "key_source": "dsh-process-env(pid=8612):MY_CHAT_API_KEY",
+  "attempts": [
+    {
+      "max_tokens": 32000,
+      "status": "error",
+      "error": "RuntimeError: 流式响应为空 content（finish_reason=length）"
+    },
+    {
+      "max_tokens": 64000,
+      "status": "ok",
+      "latency_s": 211.6,
+      "usage": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": null,
+  "latency_s": 211.6,
+  "model_reported": "deepseek-flash",
+  "finish_reason": "stop",
+  "overall_hint": null,
+  "response_sha256": "814aae90c20bae23c7ebde413ced594670dbeaa2e9797770eb109ef482dee6fb",
+  "finished_at": "2026-10-22T23:08:22+08:00"
+}

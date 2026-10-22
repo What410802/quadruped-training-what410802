@@ -1,0 +1,33 @@
+"""Part 1 scene geom-name -> judge surface-tag mapping (stdlib only).
+
+Kept separate from the MuJoCo runner so the conformance suite can verify that every
+named obstacle geom in the scene is mapped (the 2026-10-22 BYOK audit caught missing
+bridge_blocks/bands tags this way).
+"""
+
+GEOM_TAGS: dict[str, set[str]] = {
+    "bridge_blocks_0": {"bridge"}, "bridge_blocks_1": {"bridge"}, "bridge_blocks_2": {"bridge"},
+    "bridge_blocks_3": {"bridge"}, "bridge_blocks_4": {"bridge"},
+    "bridge_bands_0": {"bridge"}, "bridge_bands_1": {"bridge"}, "bridge_bands_2": {"bridge"},
+    "bridge_blocks_platform_l": {"platform_left"},
+    "bridge_platform_r": {"platform_right", "platform_high"},
+    "bridge_bands_platform_low": {"platform_low"},
+    "slope_a": {"slope"},
+    "slope_b": {"slope"},
+    "gravel_pit_a": {"gravel"},
+    "gravel_pit_b": {"gravel"},
+    "high_wall": {"wall"},
+    "ramp_blocks_l": {"ramp"},
+    "ramp_blocks_r": {"ramp"},
+    # T stairs: three arms (south / north / east) with explicit level tags.
+    "t_stairs_y_low1": {"step:s:1"},
+    "t_stairs_y_low2": {"step:s:2"},
+    "t_stairs_y_low3": {"step:s:3"},
+    "t_stairs_y_high1": {"step:n:1"},
+    "t_stairs_y_high2": {"step:n:2"},
+    "t_stairs_y_high3": {"step:n:3"},
+    "t_stairs_x_low1": {"step:e:1"},
+    "t_stairs_x_mid2": {"step:e:2"},
+    "t_stairs_x_high3": {"step:e:3"},
+    "t_stairs_top": {"step:top"},
+}

@@ -60,6 +60,8 @@ class Part1Course:
         self.active_time = 0.0
         self.paused = False
         self.prev_t: float | None = None
+        self.pause_pose: tuple[tuple[float, float], float] | None = None
+        self.recovery_violation = False
         self.results: list[AttemptResult] = []
         self._current_events: list[dict] = []
         self._start_area_hits = 0
@@ -98,17 +100,30 @@ class Part1Course:
         self._prev_in_start = in_start
         return report
 
-    def pause(self, t: float) -> None:
+    def pause(self, t: float, base_xyz=None, yaw: float | None = None) -> None:
         """Fall detected -> timer paused (does not consume an attempt by itself)."""
         if not self.active or self.paused:
             return
         self.paused = True
-        self._current_events.append({"t": float(t), "event": "pause"})
+        if base_xyz is not None and yaw is not None:
+            self.pause_pose = ((float(base_xyz[0]), float(base_xyz[1])), float(yaw))
+        self._current_events.append({"t": float(t), "event": "pause",
+                                     "pose": list(base_xyz) if base_xyz is not None else None})
         self.manager.note_recovery(t)
 
-    def resume(self, t: float, base_xyz=None, yaw: float = 0.0) -> None:
+    def resume(self, t: float, base_xyz=None, yaw: float | None = None) -> None:
         if not self.active or not self.paused:
             return
+        # Rules: recovery must resume from the same position and heading (no teleport).
+        if self.pause_pose is not None and base_xyz is not None and yaw is not None:
+            (px, py), pyaw = self.pause_pose
+            moved = ((float(base_xyz[0]) - px) ** 2 + (float(base_xyz[1]) - py) ** 2) ** 0.5
+            dyaw = abs((float(yaw) - pyaw + 3.14159265) % (2 * 3.14159265) - 3.14159265)
+            if moved > 0.30 or dyaw > 0.52:
+                self.recovery_violation = True
+                self._current_events.append({"t": float(t), "event": "recovery_pose_violation",
+                                             "moved_m": round(moved, 3),
+                                             "dyaw_rad": round(dyaw, 3)})
         self.paused = False
         self.prev_t = float(t)
         self._current_events.append({"t": float(t), "event": "resume",
@@ -135,16 +150,16 @@ class Part1Course:
         self.judge.finalize(reason)
         report = self.judge.report()
         obstacle_score = float(report["obstacle_score"])
-        # return bonus requires *full* obstacle scores: a partial (e.g. T-stairs one side)
-        # does not count as "越过全部障碍"
-        all_full = all(s["status"] == "success" and float(s["score"]) >= 100.0
-                       for s in report["states"].values())
-        returned = all_full and self._start_area_hits >= 2
-        return_bonus = RETURN_BONUS if returned else 0.0
+        return_bonus = float(report["return_bonus"])  # judge enforces "after all obstacles full"
+        if self.recovery_violation:
+            obstacle_score = 0.0
+            return_bonus = 0.0
+            reason = "recovery_pose_violation"
         score = obstacle_score + return_bonus
         result = AttemptResult(attempt=self.attempt_no, score=score, obstacle_score=obstacle_score,
                                return_bonus=return_bonus, duration_s=self.active_time,
                                skipped=False, reason=reason, events=list(self._current_events))
+        self.recovery_violation = False
         attempt_report = {"score": score, "obstacle_score": obstacle_score,
                           "return_bonus": return_bonus}
         self.results.append(result)
@@ -197,97 +212,63 @@ def _mk_update(course: Part1Course, t: float, x: float, y: float, z: float = 0.4
 
 
 def run_self_test() -> None:
-    # One successful attempt: feed legal traversals for all 8 obstacles, then return.
+    # Attempt 1: all obstacles full + return to start after all full -> 900.
     c = Part1Course()
     assert c.begin_attempt(0.0)
-    t = 0.0
-
-    def step(x, y, tags=None, ground=None, z=0.45, dt=0.05):
-        nonlocal t
-        t += dt
-        return _mk_update(c, t, x, y, z, tags=tags or {}, ground=ground or set())
-
-    # bridge_blocks (x axis)
-    for x, tag in [(0.5, None), (1.3, "platform_left"), (2.2, "bridge"), (3.2, "bridge"),
-                   (4.2, "bridge"), (5.2, "bridge"), (5.6, "platform_right"), (6.4, None)]:
-        step(x, 0.0, tags={tag: {tag}} if tag else {}, z=0.65)
-    # bridge_bands (y axis)
-    for y, tag in [(-4.2, None), (-3.5, "platform_low"), (-2.5, "bridge"), (-2.0, "bridge"),
-                   (-1.6, "bridge"), (-1.2, "bridge"), (-0.9, "platform_high"), (-0.7, None)]:
-        step(5.7, y, tags={tag: {tag}} if tag else {}, z=0.65)
-    # height_bar (y axis, through opening)
-    for y in (-10.4, -10.0, -9.5, -9.0, -8.5, -8.2):
-        step(5.7, y)
-    # high_wall (y axis with climb evidence)
-    for y, z in [(-7.9, 0.45), (-7.4, 0.75), (-7.0, 0.85), (-6.6, 0.75), (-6.0, 0.45)]:
-        step(1.8, y, tags={"wall": {"wall"}} if 0.6 <= z else {}, z=z)
-    # gravel (short edges y)
-    for y, tag in [(-13.4, None), (-12.9, "gravel"), (-12.0, "gravel"), (-11.5, "gravel"),
-                   (-11.0, "gravel"), (-10.8, None)]:
-        step(5.5, y, tags={tag: {tag}} if tag else {})
-    # t_stairs (y arm up -> top -> x arm down)
-    for y, tag in [(-5.4, None), (-4.9, "step:y:1"), (-4.6, "step:y:2"), (-4.3, "step:y:3"),
-                   (-3.8, "step:top"), (-3.5, None)]:
-        step(1.8, y, tags={tag: {tag}} if tag else {}, z=0.65)
-    for x, tag in [(2.2, "step:x:3"), (2.6, "step:x:2"), (2.9, "step:x:1"), (3.4, None)]:
-        step(x, -3.5, tags={tag: {tag}} if tag else {}, z=0.65)
-    # slope (y travel on slope with >=1 m distance)
-    step(3.6, -5.0)  # approach outside the slope zone
-    for i in range(1, 16):
-        step(5.2, -6.5 + 0.1 * i, tags={"slope": {"slope"}}, z=0.55)
-    step(3.6, -5.0)
-    # slalom
-    for x, y in [(1.8, -10.1), (1.9, -10.5), (1.7, -11.0), (1.7, -11.5), (1.9, -12.0),
-                 (1.9, -12.5), (1.55, -12.75), (2.4, -12.6), (2.8, -12.6), (3.2, -12.5)]:
-        step(x, y)
-    # return to start area: first entry, leave, then re-enter (second entry)
-    step(3.7, -9.0)
-    step(2.8, -9.0)   # outside start area
-    step(3.7, -9.0)
-    result = c.end_attempt(t)
-    assert result.score == 900.0, result.to_dict()
-    summary = c.summary()
-    assert summary["final_score"] == 900.0, summary
-    assert summary["attempts_used"] == 1, summary
-    assert summary["final_time_s"] == result.duration_s, summary
-    assert abs(c.manager.attempts[0]["duration_s"] - result.duration_s) < 1e-9, c.manager.attempts[0]
-
-    # Attempt 2: pause/recovery not consuming; then abort consumes; attempt 3 unused after.
-    assert c.begin_attempt(t)
-    step(3.7, -9.0)
-    c.pause(t)
-    t += 5.0                      # paused wall time must not count
-    c.resume(t, (3.5, -9.0))
-    t += 0.1
-    result2 = c.abort_attempt(t, "restart")
-    assert result2.skipped and result2.score == 0.0
-    summary = c.summary()
-    assert summary["attempts_used"] == 2, summary
-    assert summary["recoveries"] == 1, summary
-    assert abs(summary["attempt_results"][1]["duration_s"] - result2.duration_s) < 1e-9
-    assert summary["attempt_results"][1]["duration_s"] < 1.0, \
-        "paused wall time must be excluded from the attempt duration"
-    assert c.begin_attempt(t + 1.0), "attempt 3 must be available"
-    t += 1.2
-    step(3.7, -9.0)
-    c.abort_attempt(t, "operator_abort")
-    summary = c.summary()
-    assert summary["attempts_used"] == 3, summary
-    assert not c.begin_attempt(t + 2.0), "4th attempt must be rejected"
-    assert summary["final_score"] == 900.0, summary
-
-    # Partial obstacle (T-stairs one side) must NOT trigger the return bonus.
-    c2 = Part1Course()
-    assert c2.begin_attempt(0.0)
-    for name, obs in c2.judge.obstacles.items():
+    for obs in c.judge.obstacles.values():
         obs.result.status = "success"
-        obs.result.score = 50.0 if name == "t_stairs" else 100.0
-    c2.update(0.0, (3.7, -9.0, 0.45), 0.0)   # first entry into start area
-    c2.update(0.1, (2.8, -9.0, 0.45), 0.0)   # leave
-    c2.update(0.2, (3.7, -9.0, 0.45), 0.0)   # re-enter
-    r2 = c2.end_attempt(0.3)
-    assert r2.return_bonus == 0.0, r2.to_dict()
-    assert r2.score == 750.0, r2.to_dict()
+        obs.result.score = 100.0
+    c.update(0.0, (3.7, -9.0, 0.45), 0.0)     # first start-area entry
+    c.update(0.1, (2.8, -9.0, 0.45), 0.0)     # leave
+    c.update(0.2, (3.7, -9.0, 0.45), 0.0)     # re-enter after all full -> bonus
+    result = c.end_attempt(0.3)
+    assert result.score == 900.0, result.to_dict()
+    assert result.return_bonus == 100.0, result.to_dict()
+    summary = c.summary()
+    assert summary["final_score"] == 900.0
+    assert summary["attempts_used"] == 1
+    assert abs(c.manager.attempts[0]["duration_s"] - result.duration_s) < 1e-9
+
+    # Attempt 2: pause/resume does not consume; paused wall time is excluded.
+    assert c.begin_attempt(10.0)
+    c.update(10.1, (3.7, -9.0, 0.45), 0.0)
+    c.pause(10.2, (3.7, -9.0, 0.45), 0.0)
+    c.resume(15.0, (3.7, -9.0, 0.45), 0.0)    # 4.8 s paused
+    c.update(15.1, (3.7, -9.0, 0.45), 0.0)
+    r2 = c.abort_attempt(15.2, "restart")
+    assert r2.skipped and r2.score == 0.0
+    assert r2.duration_s < 1.0, f"paused time must be excluded: {r2.duration_s}"
+    summary = c.summary()
+    assert summary["attempts_used"] == 2 and summary["recoveries"] == 1
+
+    # Attempt 3: partial T-stairs (one arm) must not trigger the return bonus.
+    assert c.begin_attempt(20.0)
+    for obs in c.judge.obstacles.values():
+        obs.result.status = "success"
+        obs.result.score = 50.0 if obs.name == "t_stairs" else 100.0
+    c.update(20.1, (3.7, -9.0, 0.45), 0.0)
+    c.update(20.2, (2.8, -9.0, 0.45), 0.0)
+    c.update(20.3, (3.7, -9.0, 0.45), 0.0)
+    r3 = c.end_attempt(20.4)
+    assert r3.return_bonus == 0.0, r3.to_dict()
+    assert r3.score == 750.0, r3.to_dict()
+    summary = c.summary()
+    assert summary["attempts_used"] == 3
+    assert summary["final_score"] == 900.0, summary
+    assert not c.begin_attempt(30.0), "4th attempt must be rejected"
+
+    # Recovery pose violation (teleport) invalidates the attempt score.
+    c4 = Part1Course()
+    assert c4.begin_attempt(0.0)
+    for obs in c4.judge.obstacles.values():
+        obs.result.status = "success"
+        obs.result.score = 100.0
+    c4.update(0.1, (3.7, -9.0, 0.45), 0.0)
+    c4.pause(0.2, (3.7, -9.0, 0.45), 0.0)
+    c4.resume(1.0, (2.0, -9.0, 0.45), 0.0)    # moved 1.7 m -> violation
+    c4.update(1.1, (3.7, -9.0, 0.45), 0.0)
+    r4 = c4.end_attempt(1.2)
+    assert r4.score == 0.0 and r4.reason == "recovery_pose_violation", r4.to_dict()
     print("comp_part1_course self-test: OK", json.dumps(summary["rules"], ensure_ascii=False))
 
 

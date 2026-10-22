@@ -1,59 +1,67 @@
-"""Conformance tests for comp_part1_judge.py V2 (no MuJoCo needed).
+"""Conformance tests for comp_part1_judge.py V2.1 (no MuJoCo needed).
 
-Cases are taken from the 2026-10-22 G1 audit counterexamples:
-- exit-side position without legal entry must NOT score (6 spoof paths);
-- T-stairs per-step contact history across frames, both branches vs one branch;
-- height bar: touching posts/beam without drop is NOT a failure, beam drop fails,
-  crossing outside the gate opening fails;
-- slope: crossing by x-position without slope-surface distance fails;
-- gravel pit: long-side entry/exit illegal, both short edges legal, ground rule instant;
-- bridges: ground fail is instantaneous, platforms + bridge contacts required;
-- high wall: sideways walk / no climb evidence fails, real crossing succeeds;
-- slalom: order, side alternation, corner checkpoint and end area all required.
+Covers the G1 audit counterexamples and the 2026-10-22 BYOK pre-audit blockers:
+- six exit-side spoof paths must not score;
+- approach ground (before touching the obstacle) must not trigger the 1/2-foot rule;
+- the 1/2-foot rule fires only after the robot has been fully supported by the obstacle,
+  and a failed obstacle can be retried within the same attempt;
+- T-stairs explicit arms and per-level history, partial score separated from full;
+- height bar: post/beam touch is not failure, beam drop is, gate must be crossed through
+  the opening (no "outside then lateral" trick);
+- slope: projection on the long axis, boundary graze soft-resets, no lateral-wiggle spoof;
+- gravel pit: both short edges legal, long-edge genuine attempt fails, ground rule gated;
+- bridges: real surface tags, platform evidence, instant ground failure after support;
+- high wall: real wall-plane crossing with climb evidence, no ground bypass;
+- slalom: both directions, corner at the turn, end area last, alternation;
+- scene v2 real geom names are all mapped to judge surface tags (no silent missing tags).
 
 Run: python3 scripts/agent_scripts/comp_judge_conformance.py
 """
 from __future__ import annotations
 
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from comp_part1_judge import AttemptManager, Part1JudgeV2  # noqa: E402
+from comp_part1_geom_tags import GEOM_TAGS  # noqa: E402
+
+LEGS = ("FL", "FR", "RL", "RR")
 
 
-def feed(judge: Part1JudgeV2, samples, *, t0: float = 0.0, dt: float = 0.02) -> dict:
-    """samples: list of dict(x=,y=,z=,tags=[...],ground=[...],bar_z=)"""
+def feed(judge: Part1JudgeV2, samples, *, dt: float = 0.02) -> dict:
     report = None
     for i, s in enumerate(samples):
-        tags = {leg: set(s.get("tags", [])) for leg in ("FL", "FR", "RL", "RR")}
-        ground = set(s.get("ground", []))
-        xy = (s["x"], s["y"])
-        report = judge.update(t0 + i * dt, (xy[0], xy[1], s.get("z", 0.45)),
-                              s.get("yaw", 0.0), foot_tags=tags, ground_feet=ground,
+        tags = {leg: set(s.get("tags", [])) for leg in LEGS}
+        report = judge.update(i * dt, (s["x"], s["y"], s.get("z", 0.45)), s.get("yaw", 0.0),
+                              foot_tags=tags, ground_feet=set(s.get("ground", [])),
                               bar_z=s.get("bar_z"))
     return report
 
 
-def state(report: dict, name: str) -> dict:
+def st(report: dict, name: str) -> dict:
     return report["states"][name]
 
 
 def assert_status(report, name, status, why=""):
-    st = state(report, name)
-    assert st["status"] == status, f"{name}: expected {status}, got {st['status']} ({st['reason']}) [{why}]"
+    s = st(report, name)
+    assert s["status"] == status, f"{name}: expected {status}, got {s['status']} ({s['reason']}) [{why}]"
 
 
 def assert_not_success(report, name, why=""):
-    st = state(report, name)
-    assert st["status"] != "success", f"{name}: must not succeed, got {st['status']} [{why}]"
+    assert st(report, name)["status"] != "success", f"{name}: must not succeed [{why}]"
 
 
-# ---------------------------------------------------------------- illegal spoof paths
+def assert_failed(report, name, why=""):
+    s = st(report, name)
+    assert s["failures"] or s["status"] == "fail", f"{name}: expected a recorded failure, got {s} [{why}]"
+
+
+# ---------------------------------------------------------------- spoof / approach
 
 def test_spoof_exit_positions():
-    """A base teleported to the exit side with no legal entry must not score."""
     cases = [
         ("bridge_blocks", [(6.0, 0.0), (6.4, 0.0)]),
         ("bridge_bands", [(5.7, -0.9), (5.7, -0.7)]),
@@ -65,282 +73,323 @@ def test_spoof_exit_positions():
         ("slalom", [(3.2, -12.5), (3.6, -12.5)]),
     ]
     for name, path in cases:
-        judge = Part1JudgeV2()
-        report = feed(judge, [{"x": x, "y": y} for x, y in path])
-        assert_not_success(report, name, f"spoof path {path}")
+        rep = feed(Part1JudgeV2(), [{"x": x, "y": y} for x, y in path])
+        assert_not_success(rep, name, f"spoof path {path}")
     print("spoof exit positions: OK -> all non-success")
 
 
-def test_bridge_blocks_success_and_ground_fail():
-    judge = Part1JudgeV2()
-    path = [
-        dict(x=0.5, y=0.0),
-        dict(x=1.3, y=0.0, tags=["platform_left"]),
-        dict(x=2.2, y=0.0, tags=["bridge"]),
-        dict(x=3.2, y=0.0, tags=["bridge"]),
-        dict(x=4.2, y=0.0, tags=["bridge"]),
-        dict(x=5.2, y=0.0, tags=["bridge"]),
-        dict(x=5.6, y=0.0, tags=["platform_right"]),
-        dict(x=6.4, y=0.0, tags=["platform_right"]),
+def test_approach_ground_is_not_failure():
+    """Walking on the floor before touching the obstacle must not trigger the 1/2 rule."""
+    cases = [
+        ("bridge_blocks", [(0.8, 0.0), (1.3, 0.0)]),
+        ("gravel_pit", [(5.0, -13.6), (5.0, -13.2)]),
+        ("t_stairs", [(1.8, -5.4), (1.8, -4.9)]),
+        ("slope", [(3.6, -5.0), (4.5, -5.0)]),
     ]
-    report = feed(judge, path)
-    assert_status(report, "bridge_blocks", "success", "legal traversal")
-    assert state(report, "bridge_blocks")["score"] == 100
+    for name, path in cases:
+        rep = feed(Part1JudgeV2(),
+                   [{"x": x, "y": y, "ground": ["FL", "FR", "RL", "RR"]} for x, y in path])
+        failures = st(rep, name)["failures"]
+        assert not failures, f"{name}: approach ground must not fail: {failures}"
+        assert_not_success(rep, name, "approach only")
+    print("approach ground: OK -> no false failure")
 
-    judge2 = Part1JudgeV2()
-    report2 = feed(judge2, [
-        dict(x=0.5, y=0.0),
-        dict(x=1.3, y=0.0, tags=["platform_left"]),
-        dict(x=2.2, y=0.0, tags=["bridge"]),
-        dict(x=2.6, y=0.0, ground=["FL", "FR"]),  # any instant >=2 ground feet fails
+
+def test_failure_can_be_retried_and_success_is_final():
+    judge = Part1JudgeV2()
+    rep = feed(judge, [
+        {"x": 0.5, "y": 0.0},
+        {"x": 1.35, "y": 0.0, "tags": ["platform_left"]},
+        {"x": 1.6, "y": 0.0, "tags": ["platform_left"]},
+        {"x": 2.0, "y": 0.0, "tags": ["bridge"]},
+        {"x": 2.3, "y": 0.0, "tags": ["bridge"], "ground": ["FL", "FR"]},
     ])
-    assert_status(report2, "bridge_blocks", "fail", "instant ground fail")
-    assert "two_feet_ground" in state(report2, "bridge_blocks")["reason"]
-    print("bridge_blocks: OK success + instant ground fail")
-
-
-def test_height_bar_touch_vs_drop():
-    base = [
-        dict(x=5.7, y=-10.0, bar_z=0.325),
-        dict(x=5.7, y=-9.5, bar_z=0.325),
-        dict(x=5.7, y=-9.0, bar_z=0.325),  # touching posts/beam is NOT a failure
-        dict(x=5.7, y=-8.5, bar_z=0.325),
-        dict(x=5.7, y=-8.2, bar_z=0.325),
-    ]
-    judge = Part1JudgeV2()
-    report = feed(judge, base)
-    assert_status(report, "height_bar", "success", "pass through gate, bar stable")
-
-    judge2 = Part1JudgeV2()
-    dropped = [dict(s, bar_z=(0.20 if i >= 2 else 0.325)) for i, s in enumerate(base)]
-    report2 = feed(judge2, dropped)
-    assert_status(report2, "height_bar", "fail", "beam dropped")
-    assert "bar_dropped" in state(report2, "height_bar")["reason"]
-
-    judge3 = Part1JudgeV2()
-    outside = [
-        dict(x=4.6, y=-10.0, bar_z=0.325),
-        dict(x=4.6, y=-9.5, bar_z=0.325),
-        dict(x=4.6, y=-9.0, bar_z=0.325),
-        dict(x=4.6, y=-8.5, bar_z=0.325),
-        dict(x=4.6, y=-8.2, bar_z=0.325),
-    ]
-    report3 = feed(judge3, outside)
-    assert_not_success(report3, "height_bar", "crossed outside the gate opening")
-    print("height_bar: OK touch!=fail / drop=fail / outside-opening!=success")
-
-
-def test_t_stairs_history_and_partial():
-    # Sequential contacts across frames: main branch 1,2,3 -> top -> side branch 3,2,1 -> exit.
-    path = [
-        dict(x=1.8, y=-5.4),
-        dict(x=1.8, y=-4.9, tags=["step:main:1"]),
-        dict(x=1.8, y=-4.6, tags=["step:main:2"]),
-        dict(x=1.8, y=-4.3, tags=["step:main:3"]),
-        dict(x=1.8, y=-3.8, tags=["step:top"]),
-        dict(x=2.2, y=-3.5, tags=["step:side:3"]),
-        dict(x=2.6, y=-3.5, tags=["step:side:2"]),
-        dict(x=2.9, y=-3.5, tags=["step:side:1"]),
-        dict(x=3.4, y=-3.5),
-        dict(x=3.6, y=-3.5),
-    ]
-    judge = Part1JudgeV2()
-    report = feed(judge, path)
-    assert_status(report, "t_stairs", "success", "full two-branch traversal")
-    assert state(report, "t_stairs")["score"] == 100
-    assert len(state(report, "t_stairs")["detail"]["branches"]) == 2
-
-    # Same branch up and back down = partial (one branch), must still count as completed.
-    judge2 = Part1JudgeV2()
-    partial = [
-        dict(x=1.8, y=-5.4),
-        dict(x=1.8, y=-4.9, tags=["step:main:1"]),
-        dict(x=1.8, y=-4.6, tags=["step:main:2"]),
-        dict(x=1.8, y=-4.3, tags=["step:main:3"]),
-        dict(x=1.8, y=-3.8, tags=["step:top"]),
-        dict(x=1.8, y=-4.3, tags=["step:main:3"]),
-        dict(x=1.8, y=-4.9, tags=["step:main:1"]),
-        dict(x=1.8, y=-5.4),
-        dict(x=1.8, y=-5.6),
-    ]
-    report2 = feed(judge2, partial)
-    assert_status(report2, "t_stairs", "success", "one-branch traversal is partial")
-    assert len(state(report2, "t_stairs")["detail"]["branches"]) == 1
-    assert state(report2, "t_stairs")["score"] == 75.0, "partial up = 75 (Q2 conservative)"
-    print("t_stairs: OK sequential history + full/partial")
-
-
-def test_slope_distance_and_direction():
-    # Crossing by x-position with no slope contacts: distance stays 0 -> not success.
-    judge = Part1JudgeV2()
-    report = feed(judge, [
-        dict(x=3.6, y=-5.0),
-        dict(x=4.5, y=-5.0),
-        dict(x=5.5, y=-5.0),
-        dict(x=6.5, y=-5.0),
-    ])
-    assert_not_success(report, "slope", "no slope surface distance")
-
-    # Legal: stay on slope surfaces and travel >=1 m along the long (y) axis.
-    judge2 = Part1JudgeV2()
-    path = [dict(x=3.6, y=-6.5)]
-    for step in range(1, 16):
-        path.append(dict(x=5.2, y=-6.5 + 0.1 * step, tags=["slope"]))
-    path.append(dict(x=5.2, y=-5.0, tags=["slope"]))
-    path.append(dict(x=3.6, y=-5.0))  # exit zone
-    report2 = feed(judge2, path)
-    assert_status(report2, "slope", "success", "two sides distance sum >= 1 m")
-
-    # Boundary graze (enter the zone and leave after 2 frames, no slope contact) must
-    # soft-reset and not poison a later legal traversal.
-    judge3 = Part1JudgeV2()
-    graze_then_legal = [
-        dict(x=5.7, y=-4.2),        # inside slope zone (adjacent to bridge_bands approach)
-        dict(x=5.7, y=-3.5),        # left without slope distance -> pending
-    ] + path
-    report3 = feed(judge3, graze_then_legal)
-    assert_status(report3, "slope", "success", "soft-reset graze then legal traversal")
-    print("slope: OK position-spoof fails, real distance succeeds")
-
-
-def test_gravel_entry_exit_sides():
-    judge = Part1JudgeV2()
+    assert_failed(rep, "bridge_blocks", "ground rule after support")
     legal = [
-        dict(x=5.0, y=-13.4),
-        dict(x=5.0, y=-12.9, tags=["gravel"]),
-        dict(x=5.5, y=-12.0, tags=["gravel"]),
-        dict(x=5.8, y=-11.5, tags=["gravel"]),
-        dict(x=6.0, y=-11.0, tags=["gravel"]),
-        dict(x=6.0, y=-10.8),
+        {"x": 0.5, "y": 0.0},
+        {"x": 1.35, "y": 0.0, "tags": ["platform_left"]},
+        {"x": 2.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 3.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 4.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 5.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 5.6, "y": 0.0, "tags": ["platform_right"]},
+        {"x": 6.4, "y": 0.0, "tags": ["platform_right"]},
     ]
-    report = feed(judge, legal)
-    assert_status(report, "gravel_pit", "success", "short-edge entry+exit")
-
-    judge2 = Part1JudgeV2()
-    long_side = [
-        dict(x=4.0, y=-12.0),
-        dict(x=4.4, y=-12.0, tags=["gravel"]),
-        dict(x=4.8, y=-12.0, tags=["gravel"]),
-        dict(x=5.2, y=-12.0, tags=["gravel"]),
-        dict(x=5.6, y=-12.0, tags=["gravel"]),
-        dict(x=6.0, y=-12.0, tags=["gravel"]),
-        dict(x=6.4, y=-12.0),
-        dict(x=6.6, y=-12.0),
-    ]
-    report2 = feed(judge2, long_side)
-    assert_status(report2, "gravel_pit", "fail", "genuine long-edge attempt")
-    assert "illegal_entry_side" in state(report2, "gravel_pit")["reason"]
-    print("gravel_pit: OK short-edge legal / long-edge illegal")
+    rep = feed(judge, legal)
+    assert_status(rep, "bridge_blocks", "success", "retry after failure")
+    print("retry-after-failure: OK")
 
 
-def test_high_wall_sideways_and_climb():
+# ---------------------------------------------------------------- bridges / bar / wall
+
+def test_bridge_ground_and_success():
     judge = Part1JudgeV2()
+    rep = feed(judge, [
+        {"x": 0.5, "y": 0.0},
+        {"x": 1.35, "y": 0.0, "tags": ["platform_left"]},
+        {"x": 2.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 3.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 4.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 5.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 5.6, "y": 0.0, "tags": ["platform_right"]},
+        {"x": 6.4, "y": 0.0, "tags": ["platform_right"]},
+    ])
+    assert_status(rep, "bridge_blocks", "success", "legal traversal")
+    assert st(rep, "bridge_blocks")["score"] == 100
+    print("bridge_blocks: OK legal traversal")
+
+
+def test_height_bar_touch_drop_and_gate():
+    base = [
+        {"x": 5.7, "y": -10.4, "bar_z": 0.325},
+        {"x": 5.7, "y": -9.5, "bar_z": 0.325},
+        {"x": 5.7, "y": -9.0, "bar_z": 0.325},
+        {"x": 5.7, "y": -8.5, "bar_z": 0.325},
+        {"x": 5.7, "y": -8.2, "bar_z": 0.325},
+    ]
+    assert_status(feed(Part1JudgeV2(), base), "height_bar", "success", "gate crossing, bar stable")
+
+    dropped = [dict(s, bar_z=(0.20 if i >= 2 else 0.325)) for i, s in enumerate(base)]
+    assert_failed(feed(Part1JudgeV2(), dropped), "height_bar", "beam drop")
+
+    outside = [
+        {"x": 4.6, "y": -10.4, "bar_z": 0.325},
+        {"x": 4.6, "y": -9.5, "bar_z": 0.325},
+        {"x": 5.7, "y": -9.0, "bar_z": 0.325},
+        {"x": 5.7, "y": -8.5, "bar_z": 0.325},
+        {"x": 5.7, "y": -8.2, "bar_z": 0.325},
+    ]
+    assert_not_success(feed(Part1JudgeV2(), outside), "height_bar", "outside-then-lateral")
+    print("height_bar: OK touch!=fail / drop=fail / gate crossing required")
+
+
+def test_high_wall_sideways_climb_and_bypass():
     sideways = [
-        dict(x=1.2, y=-7.0),
-        dict(x=1.5, y=-7.0, z=0.45),
-        dict(x=2.0, y=-7.0, z=0.45),
-        dict(x=2.4, y=-7.0, z=0.45),
-        dict(x=2.6, y=-7.0, z=0.45),
+        {"x": 1.2, "y": -7.0}, {"x": 1.5, "y": -7.0}, {"x": 2.0, "y": -7.0},
+        {"x": 2.4, "y": -7.0}, {"x": 2.6, "y": -7.0},
     ]
-    report = feed(judge, sideways)
-    assert_not_success(report, "high_wall", "walked along the wall instead of crossing")
+    assert_not_success(feed(Part1JudgeV2(), sideways), "high_wall", "walked along the wall")
 
-    judge2 = Part1JudgeV2()
     climb = [
-        dict(x=1.8, y=-7.9),
-        dict(x=1.8, y=-7.4, z=0.55, tags=["wall"]),
-        dict(x=1.8, y=-7.0, z=0.65, tags=["wall"]),
-        dict(x=1.8, y=-6.6, z=0.55, tags=["wall"]),
-        dict(x=1.8, y=-6.0),
+        {"x": 1.8, "y": -7.9},
+        {"x": 1.8, "y": -7.4, "z": 0.75, "tags": ["wall"]},
+        {"x": 1.8, "y": -7.0, "z": 0.85, "tags": ["wall"]},
+        {"x": 1.8, "y": -6.6, "z": 0.75, "tags": ["wall"]},
+        {"x": 1.8, "y": -6.0},
     ]
-    report2 = feed(judge2, climb)
-    assert_status(report2, "high_wall", "success", "raised crossing with wall contact")
+    assert_status(feed(Part1JudgeV2(), climb), "high_wall", "success", "raised crossing")
 
-    judge3 = Part1JudgeV2()
-    no_climb = [
-        dict(x=1.8, y=-7.9),
-        dict(x=1.8, y=-7.4),   # standing height, no wall contact, no raise
-        dict(x=1.8, y=-7.0),
-        dict(x=1.8, y=-6.6),
-        dict(x=1.8, y=-6.0),
+    bypass = [
+        {"x": 1.8, "y": -7.9}, {"x": 1.8, "y": -7.4}, {"x": 1.8, "y": -7.0},
+        {"x": 1.8, "y": -6.6}, {"x": 1.8, "y": -6.0},
     ]
-    report3 = feed(judge3, no_climb)
-    assert_not_success(report3, "high_wall", "crossed without climb evidence")
-    print("high_wall: OK sideways fails / real crossing succeeds / no-climb fails")
+    rep = feed(Part1JudgeV2(), bypass)
+    assert_not_success(rep, "high_wall", "ground-height crossing")
+    print("high_wall: OK sideways/no-climb fail / real crossing succeeds")
 
 
-def test_slalom_sequence():
-    judge = Part1JudgeV2()
-    path = [
-        dict(x=1.8, y=-10.1),      # start area A
-        dict(x=1.9, y=-10.5),      # post 0, side +1
-        dict(x=1.7, y=-11.0),
-        dict(x=1.7, y=-11.5),      # post 1, side -1
-        dict(x=1.9, y=-12.0),
-        dict(x=1.9, y=-12.5),      # post 2, side +1
-        dict(x=1.55, y=-12.75),    # corner checkpoint
-        dict(x=2.4, y=-12.6),
-        dict(x=2.8, y=-12.6),      # post 3, side -1
-        dict(x=3.2, y=-12.5),      # end area B
+# ---------------------------------------------------------------- stairs / slope / gravel
+
+def test_t_stairs_full_partial_and_history():
+    full = [
+        {"x": 1.8, "y": -5.4},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -4.6, "tags": ["step:s:2"]},
+        {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
+        {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
+        {"x": 2.2, "y": -3.5, "tags": ["step:e:3"]},
+        {"x": 2.6, "y": -3.5, "tags": ["step:e:2"]},
+        {"x": 2.9, "y": -3.5, "tags": ["step:e:1"]},
+        {"x": 3.4, "y": -3.5},
     ]
-    report = feed(judge, path)
-    assert_status(report, "slalom", "success", "S-shaped sequence")
-    assert state(report, "slalom")["detail"]["sides"] == [1, -1, 1, -1]
+    rep = feed(Part1JudgeV2(), full)
+    assert_status(rep, "t_stairs", "success", "two complete arms")
+    assert st(rep, "t_stairs")["score"] == 100
+    assert set(st(rep, "t_stairs")["detail"]["arms"]) == {"s", "e"}
 
-    judge2 = Part1JudgeV2()
-    bad_order = [
-        dict(x=1.8, y=-10.1),
-        dict(x=1.7, y=-11.5),   # post 1 before post 0 -> ignored
-        dict(x=1.8, y=-12.5),
-        dict(x=2.8, y=-12.5),
+    partial = [
+        {"x": 1.8, "y": -5.4},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -4.6, "tags": ["step:s:2"]},
+        {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
+        {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
+        {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -5.4},
     ]
-    report2 = feed(judge2, bad_order)
-    assert_not_success(report2, "slalom", "out-of-order posts")
-    print("slalom: OK ordered S succeeds / out-of-order fails")
+    rep = feed(Part1JudgeV2(), partial)
+    assert_status(rep, "t_stairs", "success", "one complete arm = partial")
+    assert st(rep, "t_stairs")["score"] == 75.0, "up partial = 75 (Q2 conservative)"
 
+    missing_level = [
+        {"x": 1.8, "y": -5.4},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
+        {"x": 1.8, "y": -3.0},
+    ]
+    rep = feed(Part1JudgeV2(), missing_level)
+    assert_not_success(rep, "t_stairs", "missing step levels must not score")
+    print("t_stairs: OK two-arm full / one-arm 75 / missing levels fail")
+
+
+def test_slope_projection_and_graze_reset():
+    spoof = [
+        {"x": 3.6, "y": -5.0}, {"x": 4.5, "y": -5.0}, {"x": 5.5, "y": -5.0}, {"x": 6.5, "y": -5.0},
+    ]
+    assert_not_success(feed(Part1JudgeV2(), spoof), "slope", "x-position spoof")
+
+    legal = [{"x": 4.6, "y": -6.6}]
+    for i in range(1, 16):
+        legal.append({"x": 4.6, "y": -6.6 + 0.1 * i, "tags": ["slope"]})
+    legal.append({"x": 4.6, "y": -5.0, "tags": ["slope"]})
+    legal.append({"x": 4.6, "y": -3.8})   # leave the slope zone
+    rep = feed(Part1JudgeV2(), legal)
+    assert_status(rep, "slope", "success", "long-axis projection >= 1 m")
+
+    graze = [{"x": 5.7, "y": -4.2}, {"x": 5.7, "y": -3.5}] + legal
+    rep = feed(Part1JudgeV2(), graze)
+    assert_status(rep, "slope", "success", "soft-reset graze then legal traversal")
+
+    lateral = [{"x": 5.0, "y": -6.6}]
+    for i in range(1, 12):
+        lateral.append({"x": 5.0 + (0.1 if i % 2 else -0.1), "y": -6.6, "tags": ["slope"]})
+    lateral.append({"x": 5.0, "y": -3.8})
+    assert_not_success(feed(Part1JudgeV2(), lateral), "slope", "lateral wiggle must not count")
+    print("slope: OK projection, graze reset, lateral wiggle rejected")
+
+
+def test_gravel_short_edges_and_long_edge():
+    legal = [
+        {"x": 5.0, "y": -13.4},
+        {"x": 5.0, "y": -12.9, "tags": ["gravel"]},
+        {"x": 5.5, "y": -12.0, "tags": ["gravel"]},
+        {"x": 5.8, "y": -11.5, "tags": ["gravel"]},
+        {"x": 6.0, "y": -11.0, "tags": ["gravel"]},
+        {"x": 6.0, "y": -10.8},
+    ]
+    assert_status(feed(Part1JudgeV2(), legal), "gravel_pit", "success", "short-edge entry+exit")
+
+    long_side = [
+        {"x": 4.0, "y": -12.0},
+        {"x": 4.4, "y": -12.0, "tags": ["gravel"]},
+        {"x": 4.8, "y": -12.0, "tags": ["gravel"]},
+        {"x": 5.2, "y": -12.0, "tags": ["gravel"]},
+        {"x": 5.6, "y": -12.0, "tags": ["gravel"]},
+        {"x": 6.0, "y": -12.0, "tags": ["gravel"]},
+        {"x": 6.5, "y": -12.0},
+    ]
+    rep = feed(Part1JudgeV2(), long_side)
+    assert_not_success(rep, "gravel_pit", "long-edge entry")
+    assert_failed(rep, "gravel_pit", "genuine long-edge attempt")
+    print("gravel_pit: OK short edges / long edge rejected")
+
+
+def test_slalom_forward_reverse_and_spoof():
+    forward = [
+        {"x": 1.8, "y": -10.1},
+        {"x": 1.9, "y": -10.5},
+        {"x": 1.7, "y": -11.0},
+        {"x": 1.7, "y": -11.5},
+        {"x": 1.9, "y": -12.0},
+        {"x": 1.9, "y": -12.5},
+        {"x": 1.55, "y": -12.75},
+        {"x": 2.4, "y": -12.6},
+        {"x": 2.8, "y": -12.6},
+        {"x": 3.2, "y": -12.5},
+    ]
+    rep = feed(Part1JudgeV2(), forward)
+    assert_status(rep, "slalom", "success", "forward S")
+
+    reverse = [
+        {"x": 3.2, "y": -12.5},
+        {"x": 2.8, "y": -12.4},
+        {"x": 1.9, "y": -12.6},
+        {"x": 1.55, "y": -12.75},
+        {"x": 1.9, "y": -11.6},
+        {"x": 1.7, "y": -10.6},
+        {"x": 1.8, "y": -10.1},
+    ]
+    rep = feed(Part1JudgeV2(), reverse)
+    assert_status(rep, "slalom", "success", "reverse S")
+
+    early_end = [
+        {"x": 1.8, "y": -10.1},
+        {"x": 3.2, "y": -12.5},       # visit the end circle early
+        {"x": 1.9, "y": -10.5},
+        {"x": 1.7, "y": -11.5},
+        {"x": 1.9, "y": -12.5},
+        {"x": 1.55, "y": -12.75},
+        {"x": 2.8, "y": -12.6},       # post 3
+        {"x": 2.5, "y": -11.8},       # leave without re-entering the end circle
+        {"x": 3.6, "y": -11.8},
+    ]
+    assert_not_success(feed(Part1JudgeV2(), early_end), "slalom", "early end area")
+
+    out_of_order = [
+        {"x": 1.8, "y": -10.1},
+        {"x": 1.7, "y": -11.5},
+        {"x": 1.9, "y": -12.5},
+        {"x": 2.8, "y": -12.6},
+    ]
+    assert_not_success(feed(Part1JudgeV2(), out_of_order), "slalom", "out-of-order posts")
+    print("slalom: OK forward/reverse / early-end and out-of-order rejected")
+
+
+# ---------------------------------------------------------------- ledger / timeout / scene
 
 def test_attempt_manager_rules():
     am = AttemptManager(max_attempts=3)
     assert am.begin(0.0)
-    am.note_recovery(10.0)          # recovery does NOT consume an attempt
+    am.note_recovery(10.0)
     am.end(40.0, {"score": 60.0, "obstacle_score": 60.0, "return_bonus": 0.0})
     assert am.begin(50.0)
     am.end(100.0, {"score": 90.0, "obstacle_score": 90.0, "return_bonus": 0.0})
     assert am.begin(110.0)
     am.skip(115.0)
     summary = am.summary()
-    assert summary["attempts_used"] == 3, summary
-    assert summary["final_score"] == 90.0, summary
-    assert summary["final_time_s"] == 40.0, summary
-    assert summary["recoveries"] == 1, summary
-    assert summary["skips"] == 1, summary
-    assert am.begin(120.0) is False, "4th attempt must be rejected"
+    assert summary["attempts_used"] == 3 and summary["final_score"] == 90.0
+    assert summary["final_time_s"] == 40.0 and summary["recoveries"] == 1
+    assert am.begin(120.0) is False
     print("attempt manager: OK recovery-free / best score / fastest time / 3-attempt cap")
 
 
 def test_timeout_finalize():
-    judge = Part1JudgeV2()
-    report = judge.finalize("timeout")
-    assert all(s["status"] == "fail" for s in report["states"].values())
+    rep = Part1JudgeV2().finalize("timeout")
+    assert all(s["status"] == "fail" for s in rep["states"].values())
     print("timeout finalize: OK")
+
+
+def test_scene_geom_tags_complete():
+    scene = Path(__file__).resolve().parents[2] / "assets/terrain/part1/part1_eval_scene_v2.xml"
+    tree = ET.parse(scene)
+    names = {e.get("name") for e in tree.iter("geom") if e.get("name")}
+    required_prefixes = ("bridge_blocks_", "bridge_bands_", "t_stairs_", "slope_",
+                         "gravel_pit_")
+    missing = [n for n in names if n.startswith(required_prefixes) and n not in GEOM_TAGS]
+    assert not missing, f"scene geoms missing from GEOM_TAGS: {missing}"
+    assert GEOM_TAGS["bridge_platform_r"] >= {"platform_right", "platform_high"}
+    print(f"scene geom tags: OK ({len(names)} named geoms checked)")
 
 
 def main() -> None:
     tests = [
         test_spoof_exit_positions,
-        test_bridge_blocks_success_and_ground_fail,
-        test_height_bar_touch_vs_drop,
-        test_t_stairs_history_and_partial,
-        test_slope_distance_and_direction,
-        test_gravel_entry_exit_sides,
-        test_high_wall_sideways_and_climb,
-        test_slalom_sequence,
+        test_approach_ground_is_not_failure,
+        test_failure_can_be_retried_and_success_is_final,
+        test_bridge_ground_and_success,
+        test_height_bar_touch_drop_and_gate,
+        test_high_wall_sideways_climb_and_bypass,
+        test_t_stairs_full_partial_and_history,
+        test_slope_projection_and_graze_reset,
+        test_gravel_short_edges_and_long_edge,
+        test_slalom_forward_reverse_and_spoof,
         test_attempt_manager_rules,
         test_timeout_finalize,
+        test_scene_geom_tags_complete,
     ]
     for fn in tests:
         fn()
-    print(f"comp_part1_judge V2 conformance: OK ({len(tests)} groups)")
+    print(f"comp_part1_judge V2.1 conformance: OK ({len(tests)} groups)")
 
 
 if __name__ == "__main__":

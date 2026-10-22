@@ -30,7 +30,7 @@ import numpy as np
 import torch
 
 from comp_part1_course import Part1Course
-from run_part1_judged_rollout_v2 import GEOM_TAGS
+from comp_part1_geom_tags import GEOM_TAGS
 from run_policy_scene import ACTION_SCALE, EFFORT_LIMIT, KD, KP, ScenePolicyRunner
 
 ROOT = Path("@20261019_locomotion")
@@ -96,7 +96,9 @@ class CoursePolicyRunner:
                     ground_feet.add(leg)
                 tags = GEOM_TAGS.get(self.geom_names.get(other, ""))
                 if tags:
-                    foot_tags[leg].update(tags)
+                    normal = np.asarray(c.frame[:3], dtype=float)
+                    if "wall" in tags or abs(float(normal[2])) >= 0.5:
+                        foot_tags[leg].update(tags)
         base = np.asarray(self.data.xpos[self.trunk], dtype=float)
         return {"t": float(self.data.time),
                 "base_xyz": (float(base[0]), float(base[1]), float(base[2])),
@@ -133,14 +135,15 @@ def waypoint_command(cpr: CoursePolicyRunner, target: tuple[float, float], speed
     return np.array([vx, 0.0, float(np.clip(1.2 * err, -0.6, 0.6))]), False
 
 
-def apply_events(course: Part1Course, events: list[dict], idx: int, t: float) -> int:
+def apply_events(course: Part1Course, events: list[dict], idx: int, t: float,
+                 pose_xy=None, pose_yaw=None) -> int:
     while idx < len(events) and float(events[idx]["t"]) <= t:
         ev = events[idx]
         kind = ev["event"]
         if kind == "pause":
-            course.pause(t)
+            course.pause(t, pose_xy, pose_yaw)
         elif kind == "resume":
-            course.resume(t)
+            course.resume(t, pose_xy, pose_yaw)
         elif kind == "skip_obstacle":
             course.skip_obstacle(t, ev["obstacle"])
         elif kind == "abort":
@@ -168,9 +171,17 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict], attemp
             cmd, reached = waypoint_command(cpr, target, speed)
             cpr.step_policy(cmd)
             s = cpr.sample()
-            course.update(s["t"], s["base_xyz"], s["yaw"], foot_tags=s["foot_tags"],
-                          ground_feet=s["ground_feet"], bar_z=s["bar_z"])
-            ev_idx = apply_events(course, events, ev_idx, s["t"])
+            # While paused the simulation must not advance: freeze and re-sample the same state.
+            while True:
+                course.update(s["t"], s["base_xyz"], s["yaw"], foot_tags=s["foot_tags"],
+                              ground_feet=s["ground_feet"], bar_z=s["bar_z"])
+                ev_idx = apply_events(course, events, ev_idx, s["t"],
+                                      pose_xy=s["base_xyz"], pose_yaw=s["yaw"])
+                if not course.paused:
+                    break
+                s = cpr.sample()   # same pose, physics frozen
+                if not course.active:
+                    break
             if not course.active:
                 aborted = True
                 break

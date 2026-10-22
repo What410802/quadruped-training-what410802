@@ -28,6 +28,7 @@ DEFAULT_CONTRACT = Path("comp/CONTRACT.json")
 DEFAULT_ROUTE = Path("config/part1-route.json")
 DEFAULT_PART1_SCENE = Path("assets/terrain/part1/part1_eval_scene_v2.xml")
 JUDGE_FILES = [Path("scripts/agent_scripts/comp_part1_judge.py"),
+               Path("scripts/agent_scripts/comp_part1_geom_tags.py"),
                Path("scripts/agent_scripts/comp_part1_course.py")]
 NOTE = ("导入自 run_part1_course.py 整场诊断（脚本化 waypoint、单次尝试、无种子/扰动）；"
         "不是操作手正式赛程，不能当正式分数")

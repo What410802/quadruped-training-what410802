@@ -1,35 +1,23 @@
-"""Part 1 official-style judge V2 (event-driven, rule-faithful, simulation-agnostic).
+"""Part 1 official-style judge V2.1 (event-driven, rule-faithful, simulation-agnostic).
 
-Why V2
-- V1 (``part1_event_judge.py``) only checked "base reached a coordinate" and was shown in the
-  2026-10-22 G1 audit to accept illegal paths (e.g. exit-side position with no crossing, six
-  obstacles spoofable 6/6) and to miss legal traversals (T-stairs history, slope direction).
-- V2 requires: legal entry side -> actual traversal evidence (surface contacts / step history /
-  distance) -> legal exit, with per-rule failure semantics.
+V2.1 fixes the blockers found by the 2026-10-22 BYOK pre-audit:
+- ground-fail only after the robot actually touched the obstacle surface (approach
+  ground no longer kills legal attempts);
+- high wall needs a real crossing of the wall plane with climb evidence, not just a
+  y-side entry/exit;
+- T stairs tracks explicit arms (south / north / east) and every step level, with
+  partial score separated from full success;
+- height bar needs a continuous crossing through the gate opening, and bar drop is
+  tracked from the very first observed beam state;
+- slalom supports both directions, requires the corner checkpoint at the turn and the
+  end area only after all posts + corner, and uses the 1 m diameter beya circles;
+- a failed obstacle can be retried inside the same attempt (failure is recorded as an
+  event, the obstacle re-arms after leaving the zone); a success is final.
+- slope distance is the cumulative projection along the slope long axis (y), not the
+  Euclidean path length.
 
-Inputs are pure Python values so the judge can be unit-tested without MuJoCo:
-- ``base_xyz`` / ``base_yaw``
-- ``foot_tags``: ``{leg: {surface_tag, ...}}`` where tags are produced by the caller from contact
-  geoms (e.g. ``bridge``, ``platform_left``, ``step:main:2``, ``slope``, ``gravel``, ``wall``).
-- ``ground_feet``: legs touching the floor / non-allowed ground at this instant.
-- ``bar_z``: current height-bar beam z (None if unavailable -> success is blocked, see rules).
-
-Rules encoded (organizer answers 2026-10-22, see comp/CONTRACT.md):
-- 1/2-foot rule: *any instant* with >=2 feet on ground while inside a ground-fail zone -> fail
-  (no debounce).
-- height bar: touching posts/beam is NOT a failure; only beam drop fails; robot must pass under
-  the beam through the gate opening.
-- T stairs: per-step top contact history (each step at least once), both branches for full score,
-  one branch only -> partial (values from the contract; Q2 value >100 is clamped and flagged).
-- slope: cumulative path length on the slope surfaces along the long axis must be >= 1 m;
-  both sides count together.
-- gravel pit: legal entry AND exit only through the 1 m short edges; gravel surface contact
-  required; any instant >=2 ground feet fails.
-- bridges: platform before -> bridge surfaces -> opposite platform; >=2 ground feet fails.
-- high wall: cross to the other side with climb evidence (base raised or foot on wall), not by
-  walking around.
-- slalom: start in a marked circle, alternate sides around posts in order, pass the corner
-  checkpoint, finish in the other marked circle.
+Inputs are pure Python values so the judge can be unit-tested without MuJoCo; the
+runner classifies contacts into surface tags and passes them in.
 """
 
 from __future__ import annotations
@@ -41,7 +29,6 @@ from typing import Any
 
 # ---------------------------------------------------------------- geometry
 
-# Zones in world metres, from assets/terrain/part1/part1_scene.xml (2026-10-22).
 ZONES: dict[str, tuple[float, float, float, float]] = {
     "start_area": (3.2, 4.2, -9.5, -8.5),
     "height_bar": (5.0, 6.4, -9.6, -8.4),
@@ -54,7 +41,7 @@ ZONES: dict[str, tuple[float, float, float, float]] = {
     "slalom": (1.3, 3.5, -13.0, -10.0),
 }
 
-# Slalom course points (scene geoms): start/end beya circles + corner checkpoint + post centres.
+# Slalom course (1 m diameter beya circles per rules; display geoms in scene v2 match).
 SLALOM_START_A = (1.8, -10.1)
 SLALOM_START_B = (3.2, -12.5)
 SLALOM_CORNER = (1.55, -12.75)
@@ -65,32 +52,62 @@ SLALOM_POST_RADIUS_M = 0.35
 BAR_DROP_THRESHOLD_M = 0.05
 BAR_OPENING_X = (5.2, 6.2)
 WALL_CROSS_Y = -7.0
-WALL_TOP_Z = 0.30
+# climb evidence: base raised this high above standing height during the wall crossing
+WALL_CLIMB_Z = 0.55
 
-# T-stairs: two branches meeting at the top platform (scene geoms, 2026-10-22).
-# Each entry: (branch, level, surface_tag, approximate top-z). Caller-classified tags are
-# ``step:<branch>:<level>``; the judge only needs the set.
-T_STAIRS_TOP_TAG = "step:top"
+PART1_OBSTACLES = ("height_bar", "high_wall", "bridge_blocks", "bridge_bands",
+                   "gravel_pit", "t_stairs", "slope", "slalom")
 
 
 # ---------------------------------------------------------------- helpers
 
-def _side_of(zone: tuple[float, float, float, float], xy: tuple[float, float]) -> str | None:
-    """Return which side of the zone the point is nearest outside, or None if inside."""
-    x0, x1, y0, y1 = zone
-    x, y = xy
-    if x0 <= x <= x1 and y0 <= y <= y1:
-        return None
-    candidates = [
-        (abs(x - x0), "xmin"), (abs(x - x1), "xmax"),
-        (abs(y - y0), "ymin"), (abs(y - y1), "ymax"),
-    ]
-    return min(candidates)[1]
-
-
 def _in_zone(zone: tuple[float, float, float, float], xy: tuple[float, float]) -> bool:
     x0, x1, y0, y1 = zone
     return x0 <= xy[0] <= x1 and y0 <= xy[1] <= y1
+
+
+def _crossing_side(zone: tuple[float, float, float, float],
+                   prev: tuple[float, float], curr: tuple[float, float]) -> str | None:
+    """Which zone boundary the segment prev->curr crosses (entry or exit)."""
+    x0, x1, y0, y1 = zone
+    px, py = prev
+    cx, cy = curr
+    crossings: list[tuple[float, str]] = []
+
+    def _x_at(y: float) -> float:
+        if abs(cy - py) < 1e-9:
+            return (px + cx) / 2.0
+        return px + (cx - px) * (y - py) / (cy - py)
+
+    def _y_at(x: float) -> float:
+        if abs(cx - px) < 1e-9:
+            return (py + cy) / 2.0
+        return py + (cy - py) * (x - px) / (cx - px)
+
+    if (py - y0) * (cy - y0) <= 0 and min(py, cy) <= y0 <= max(py, cy):
+        if x0 <= _x_at(y0) <= x1 and py != cy:
+            crossings.append((abs(cy - py), "ymin"))
+    if (py - y1) * (cy - y1) <= 0 and min(py, cy) <= y1 <= max(py, cy):
+        if x0 <= _x_at(y1) <= x1 and py != cy:
+            crossings.append((abs(cy - py), "ymax"))
+    if (px - x0) * (cx - x0) <= 0 and min(px, cx) <= x0 <= max(px, cx):
+        if y0 <= _y_at(x0) <= y1 and px != cx:
+            crossings.append((abs(cx - px), "xmin"))
+    if (px - x1) * (cx - x1) <= 0 and min(px, cx) <= x1 <= max(px, cx):
+        if y0 <= _y_at(x1) <= y1 and px != cx:
+            crossings.append((abs(cx - px), "xmax"))
+    if crossings:
+        return max(crossings)[1]
+    return _side_of(zone, curr)
+
+
+def _side_of(zone: tuple[float, float, float, float], xy: tuple[float, float]) -> str | None:
+    x0, x1, y0, y1 = zone
+    x, y = xy
+    if _in_zone(zone, xy):
+        return None
+    return min([(abs(x - x0), "xmin"), (abs(x - x1), "xmax"),
+                (abs(y - y0), "ymin"), (abs(y - y1), "ymax")])[1]
 
 
 def _opposite(side: str) -> str:
@@ -113,11 +130,12 @@ class ObstacleResult:
     status: str = "pending"  # pending / running / success / fail / skipped
     reason: str = ""
     score: float = 0.0
+    failures: list[str] = field(default_factory=list)
     detail: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {"status": self.status, "reason": self.reason, "score": self.score,
-                "detail": self.detail}
+                "failures": list(self.failures), "detail": self.detail}
 
 
 class _Obstacle:
@@ -125,13 +143,19 @@ class _Obstacle:
 
     name = "abstract"
     zone: tuple[float, float, float, float] = (0, 0, 0, 0)
-    ground_fail = True
+    ground_fail = False
+    # surface tag prefixes/names proving the robot is actually on the obstacle
+    surface_tags: tuple[str, ...] = ()
+    per_obstacle_score = 100.0
 
     def __init__(self) -> None:
         self.result = ObstacleResult(self.name)
         self.prev_xy: tuple[float, float] | None = None
         self.prev_in_zone = False
+        self.prev_touched = False
+        self.supported = False
         self.in_zone_samples = 0
+        self.armed = True
         self._reset_evidence()
 
     # -- hooks ---------------------------------------------------------------
@@ -141,82 +165,112 @@ class _Obstacle:
     def _on_first_inside(self, side_prev: str | None, xy: tuple[float, float]) -> None:
         self.evidence["entry_side_prev"] = side_prev
 
-    def _on_sample(self, xy: tuple[float, float], tags: set[str],
-                   ground_feet: set[str], bar_z: float | None, yaw: float) -> None:
+    def _on_sample(self, xy: tuple[float, float], tags: set[str], ground_feet: set[str],
+                   bar_z: float | None, yaw: float) -> None:
         pass
 
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
-        """Return (success, reason). Called once when the base leaves the zone."""
+        """Return (success, fail_reason). Empty fail_reason = soft reset (not a failure)."""
         return False, ""
 
     def _check_immediate(self) -> tuple[bool, str] | None:
-        """Return (success, reason) if an in-zone condition finishes the obstacle."""
         return None
 
-    per_obstacle_score: float = 100.0
-
     def _score_for(self) -> float:
-        """Score awarded when the obstacle ends in success (overridden by partial-score rules)."""
         return float(self.per_obstacle_score)
+
+    def _touched(self, tags: set[str]) -> bool:
+        if not self.surface_tags:
+            return False
+        return any(tag == prefix or tag.startswith(prefix)
+                   for tag in tags for prefix in self.surface_tags)
+
+    # -- failure/attempt handling -------------------------------------------
+    def _fail(self, reason: str) -> None:
+        """Record a failed obstacle attempt; the obstacle can be retried this attempt."""
+        self.result.failures.append(reason)
+        self.result.status = "pending"
+        self.result.reason = ""
+        self.result.score = 0.0
+        self.result.detail["last_failure"] = reason
+        self._reset_evidence()
+        self.prev_touched = False
+        self.supported = False
+        self.armed = False
 
     # -- update --------------------------------------------------------------
     def update(self, t: float, base_xyz: tuple[float, float, float], yaw: float,
                foot_tags: dict[str, set[str]], ground_feet: set[str],
                bar_z: float | None) -> None:
-        if self.result.status in ("success", "fail", "skipped"):
+        if self.result.status in ("success", "skipped"):
             return
         xy = (float(base_xyz[0]), float(base_xyz[1]))
         inside = _in_zone(self.zone, xy)
         tags = {tag for values in foot_tags.values() for tag in values}
+        if not inside:
+            self.armed = True
         if inside and not self.prev_in_zone:
             self.result.status = "running"
-            self._on_first_inside(_side_of(self.zone, self.prev_xy) if self.prev_xy else None, xy)
+            entry = _crossing_side(self.zone, self.prev_xy, xy) if self.prev_xy else None
+            self._on_first_inside(entry, xy)
         if inside:
             self.in_zone_samples += 1
             self.result.detail["in_zone_samples"] = self.in_zone_samples
-            if self.ground_fail and len(ground_feet) >= 2:
-                self.result.status = "fail"
-                self.result.reason = "two_feet_ground:" + ",".join(sorted(ground_feet))
-                return
-            self._on_sample(xy, tags, ground_feet, bar_z, yaw)
-            imm = self._check_immediate()
-            if imm is not None:
-                ok, reason = imm
-                self.result.status = "success" if ok else "fail"
-                self.result.reason = reason
-                if ok:
-                    self.result.score = self._score_for()
-                return
+            if self.armed:
+                touched = self.prev_touched or self._touched(tags)
+                self.prev_touched = touched
+                if touched and not ground_feet:
+                    self.supported = True
+                self.result.detail["touched"] = touched
+                if self.ground_fail and self.supported and len(ground_feet) >= 2:
+                    self._fail("two_feet_ground:" + ",".join(sorted(ground_feet)))
+                    self.prev_in_zone = inside
+                    self.prev_xy = xy
+                    return
+                self.evidence["touched"] = touched
+                self._on_sample(xy, tags, ground_feet, bar_z, yaw)
+                imm = self._check_immediate()
+                if imm is not None:
+                    ok, reason = imm
+                    if ok:
+                        self.result.status = "success"
+                        self.result.reason = ""
+                        self.result.score = self._score_for()
+                    else:
+                        self._fail(reason or "failed")
+                    self.prev_in_zone = inside
+                    self.prev_xy = xy
+                    return
         elif self.prev_in_zone and self.result.status == "running":
-            side = _side_of(self.zone, xy)
-            ok, reason = self._check_exit(side or "unknown", tags, ground_feet)
-            if ok:
-                self.result.status = "success"
-                self.result.reason = ""
-                self.result.score = self._score_for()
-            elif reason:
-                self.result.status = "fail"
-                self.result.reason = reason
-            else:  # left the zone without legal exit: allow another try
-                self.result.status = "pending"
-                self.result.detail["aborted_exit"] = side
-                self._reset_evidence()
+            side = _crossing_side(self.zone, self.prev_xy, xy) if self.prev_xy else _side_of(self.zone, xy)
+            if self.armed:
+                ok, reason = self._check_exit(side or "unknown", tags, ground_feet)
+                if ok:
+                    self.result.status = "success"
+                    self.result.reason = ""
+                    self.result.score = self._score_for()
+                elif reason:
+                    self._fail(reason)
+                else:
+                    self.result.status = "pending"
+                    self.result.detail["aborted_exit"] = side
+                    self._reset_evidence()
+                    self.armed = True
         self.prev_in_zone = inside
         self.prev_xy = xy
 
 
 class TraversalBridge(_Obstacle):
-    """Platform -> bridge surfaces -> opposite platform; >=2 ground feet fails."""
+    """Platform -> bridge surfaces -> opposite platform."""
 
     ground_fail = True
-    axis = "x"
 
     def __init__(self, name: str, zone, axis: str, surface_tag: str,
-                 platform_tags: tuple[str, str], opposite: bool = True) -> None:
+                 platform_tags: tuple[str, str]) -> None:
         self.name, self.zone, self.axis = name, zone, axis
         self.surface_tag = surface_tag
         self.platform_tags = platform_tags
-        self.opposite = opposite
+        self.surface_tags = (surface_tag, platform_tags[0], platform_tags[1])
         super().__init__()
 
     def _reset_evidence(self) -> None:
@@ -231,100 +285,93 @@ class TraversalBridge(_Obstacle):
 
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
-        soft = self.in_zone_samples < 5
         if entry is None:
-            return False, "" if soft else "illegal_entry"
-        if self.opposite and side != _opposite(entry):
-            return False, "" if soft else "wrong_exit_side"
+            return False, "illegal_entry" if self.in_zone_samples >= 5 else ""
+        if side != _opposite(entry):
+            return False, "wrong_exit_side"
         if self.evidence.get("bridge_hits", 0) < 3:
-            return False, "" if soft else "missing_bridge_contact"
+            return False, "missing_bridge_contact"
         if len(self.evidence.get("platforms", ())) < 2:
-            return False, "" if soft else "missing_platform_evidence"
+            return False, "missing_platform_evidence"
         return True, ""
 
 
 class HeightBar(_Obstacle):
-    ground_fail = False
-
     def __init__(self) -> None:
         self.name, self.zone = "height_bar", ZONES["height_bar"]
         super().__init__()
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"bar_z0": None, "through_opening": False, "bar_drop": False,
-                         "crossed": False, "bad_opening": False}
-
-    def _on_first_inside(self, side_prev, xy) -> None:
-        super()._on_first_inside(side_prev, xy)
-        self.evidence["bar_z0"] = self.evidence.get("bar_z0")
+        self.evidence = {"cross_valid": 0, "cross_bad": 0, "bar_base": None,
+                         "prev_y": None}
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
         x, y = xy
+        prev_y = self.evidence.get("prev_y")
         if bar_z is not None:
-            if self.evidence["bar_z0"] is None:
-                self.evidence["bar_z0"] = bar_z
-            elif self.evidence["bar_z0"] - bar_z > BAR_DROP_THRESHOLD_M:
-                self.evidence["bar_drop"] = True
-        if abs(y - (-9.0)) < 0.35:
+            if self.evidence["bar_base"] is None:
+                self.evidence["bar_base"] = bar_z
+            elif self.evidence["bar_base"] - bar_z > BAR_DROP_THRESHOLD_M:
+                self._fail("bar_dropped")
+                return
+        if prev_y is not None and (prev_y - (-9.0)) * (y - (-9.0)) <= 0 and abs(prev_y - y) < 1.0:
             if BAR_OPENING_X[0] <= x <= BAR_OPENING_X[1]:
-                self.evidence["through_opening"] = True
+                self.evidence["cross_valid"] += 1
             else:
-                self.evidence["bad_opening"] = True
-        if self.evidence["bar_drop"]:
-            self.result.status = "fail"
-            self.result.reason = "bar_dropped"
+                self.evidence["cross_bad"] += 1
+        self.evidence["prev_y"] = y
 
-    def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
+    def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
-        soft = self.in_zone_samples < 5
         if entry not in ("ymin", "ymax"):
-            return False, "" if soft else "illegal_entry_side"
-        if side not in ("ymin", "ymax"):
-            return False, "" if soft else "wrong_exit_side"
-        if side != _opposite(entry):
-            return False, "" if soft else "wrong_exit_side"
-        if self.evidence["bad_opening"] and not self.evidence["through_opening"]:
-            return False, "not_through_opening"
-        if self.evidence["bar_z0"] is None:
-            return False, "" if soft else "bar_state_unknown"
+            return False, "illegal_entry_side" if self.in_zone_samples >= 5 else ""
+        if side not in ("ymin", "ymax") or side != _opposite(entry):
+            return False, "wrong_exit_side"
+        if self.evidence["cross_valid"] < 1:
+            return False, "no_valid_gate_crossing"
+        if self.evidence["bar_base"] is None:
+            return False, "bar_state_unknown"
         return True, ""
 
 
 class HighWall(_Obstacle):
-    ground_fail = False
-
     def __init__(self) -> None:
         self.name, self.zone = "high_wall", ZONES["high_wall"]
         super().__init__()
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"max_z": 0.0, "wall_contact": False}
+        self.evidence = {"max_z": 0.0, "wall_contact": False, "cross_valid": 0,
+                         "prev_y": None}
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
-        self.evidence["max_z"] = max(self.evidence["max_z"], float(self._last_z))
+        x, y = xy
+        self.evidence["max_z"] = max(self.evidence["max_z"], self._last_z)
         if "wall" in tags:
             self.evidence["wall_contact"] = True
+        prev_y = self.evidence.get("prev_y")
+        if prev_y is not None and (prev_y - WALL_CROSS_Y) * (y - WALL_CROSS_Y) <= 0:
+            if abs(prev_y - y) < 1.0:
+                if self._last_z >= WALL_CLIMB_Z or "wall" in tags:
+                    self.evidence["cross_valid"] += 1
+        self.evidence["prev_y"] = y
 
     def update(self, t, base_xyz, yaw, foot_tags, ground_feet, bar_z):
         self._last_z = float(base_xyz[2])
         super().update(t, base_xyz, yaw, foot_tags, ground_feet, bar_z)
 
-    def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
+    def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
-        soft = self.in_zone_samples < 5
         if entry not in ("ymin", "ymax"):
-            return False, "" if soft else "illegal_entry_side"
-        if side not in ("ymin", "ymax"):
-            return False, "" if soft else "wrong_exit_side"
-        if side != _opposite(entry):
-            return False, "" if soft else "wrong_exit_side"
-        # climb evidence: wall contact OR base raised well above standing height
-        if not self.evidence["wall_contact"] and self.evidence["max_z"] < 0.55:
-            return False, "" if soft else "no_climb_evidence"
+            return False, "illegal_entry_side" if self.in_zone_samples >= 5 else ""
+        if side not in ("ymin", "ymax") or side != _opposite(entry):
+            return False, "wrong_exit_side"
+        if self.evidence["cross_valid"] < 1:
+            return False, "no_climb_crossing"
         return True, ""
 
 
 class GravelPit(_Obstacle):
+    surface_tags = ("gravel",)
     ground_fail = True
 
     def __init__(self) -> None:
@@ -338,21 +385,21 @@ class GravelPit(_Obstacle):
         if "gravel" in tags:
             self.evidence["gravel_hits"] += 1
 
-    def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
+    def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
-        soft = self.in_zone_samples < 5
         if entry not in ("ymin", "ymax"):
-            return False, "" if soft else "illegal_entry_side"
+            return False, "illegal_entry_side" if self.in_zone_samples >= 5 else ""
         if side not in ("ymin", "ymax"):
-            return False, "" if soft else "illegal_exit_side"
+            return False, "illegal_exit_side" if self.in_zone_samples >= 5 else ""
         if side == entry:
-            return False, "" if soft else "no_crossing"
+            return False, "no_crossing"
         if self.evidence["gravel_hits"] < 3:
-            return False, "" if soft else "missing_gravel_contact"
+            return False, "missing_gravel_contact"
         return True, ""
 
 
 class Slope(_Obstacle):
+    surface_tags = ("slope",)
     ground_fail = True
 
     def __init__(self) -> None:
@@ -360,24 +407,33 @@ class Slope(_Obstacle):
         super().__init__()
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"distance": 0.0, "last": None}
+        self.evidence = {"distance": 0.0, "last_y": None}
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
-        on_slope = "slope" in tags
-        if on_slope:
-            if self.evidence["last"] is not None:
-                self.evidence["distance"] += _dist(self.evidence["last"], xy)
-            self.evidence["last"] = xy
+        x, y = xy
+        if "slope" in tags:
+            last_y = self.evidence.get("last_y")
+            if last_y is not None:
+                self.evidence["distance"] += abs(y - last_y)   # projection on long axis
+            self.evidence["last_y"] = y
         else:
-            self.evidence["last"] = None
+            self.evidence["last_y"] = None
 
-    def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
+    def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         if self.evidence["distance"] < 1.0:
-            return False, ""   # boundary graze / insufficient distance: not a scored failure
+            return False, ""
         return True, ""
 
 
 class TStairs(_Obstacle):
+    """T-shaped stairs: three arms (south / north / east) meet at the top platform.
+
+    Tags: ``step:s:1..3``, ``step:n:1..3``, ``step:e:1..3``, ``step:top``.
+    Full success = two different arms each with levels 1,2,3 visited + top + returned
+    to the ground. One complete arm + top = partial score (up = 75 / down = 50).
+    """
+
+    surface_tags = ("step:",)
     ground_fail = True
 
     def __init__(self, partial_up: float = 75.0, partial_down: float = 50.0,
@@ -387,116 +443,123 @@ class TStairs(_Obstacle):
         super().__init__()
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"steps": set(), "branches": [], "top": False,
-                         "entry_branch": None, "exit_branch": None}
+        self.evidence = {"arms": {}, "top": False, "ground_after_top": False,
+                         "entry_arm": None, "exit_arm": None}
 
-    def _step_tags(self, tags: set[str]) -> set[str]:
-        return {t for t in tags if t.startswith("step:")}
+    def _step_tags(self, tags: set[str]) -> list[str]:
+        return [t for t in tags if t.startswith("step:")]
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
         for tag in self._step_tags(tags):
-            self.evidence["steps"].add(tag)
             parts = tag.split(":")
-            if len(parts) == 2:          # "step:top" = the top platform
+            if len(parts) == 2:  # step:top
                 self.evidence["top"] = True
                 continue
-            _, branch, level = parts
-            if branch not in self.evidence["branches"]:
-                self.evidence["branches"].append(branch)
-            if level == "top":
-                self.evidence["top"] = True
-        if self.evidence["entry_branch"] is None and self.evidence["branches"]:
-            self.evidence["entry_branch"] = self.evidence["branches"][0]
-        if self.evidence["top"] and len(self.evidence["branches"]) >= 1:
-            self.evidence["exit_branch"] = self.evidence["branches"][-1]
-        self.result.detail["branches"] = list(self.evidence["branches"])
-        self.result.detail["steps"] = sorted(self.evidence["steps"])
-        self.result.detail["top"] = bool(self.evidence["top"])
+            _, arm, level = parts
+            self.evidence["arms"].setdefault(arm, set()).add(int(level))
+            if self.evidence["entry_arm"] is None:
+                self.evidence["entry_arm"] = arm
+            self.evidence["exit_arm"] = arm
+        if self.evidence["top"] and ground_feet:
+            self.evidence["ground_after_top"] = True
+        self.result.detail["arms"] = {k: sorted(v) for k, v in self.evidence["arms"].items()}
+
+    def _complete_arms(self) -> list[str]:
+        return [arm for arm, levels in self.evidence["arms"].items() if levels >= {1, 2, 3}]
 
     def _score_for(self) -> float:
-        ev = self.evidence
-        if ev["top"] and len(ev["branches"]) >= 2:
-            return float(self.max_score)
-        if ev["top"] and len(ev["branches"]) == 1:
-            raw = self.partial_up if ev["branches"][0] == "main" else self.partial_down
+        complete = self._complete_arms()
+        if len(complete) >= 2:
+            return float(min(self.max_score, self.per_obstacle_score))
+        if len(complete) == 1:
+            arm = complete[0]
+            raw = self.partial_up if arm == "s" else self.partial_down
             return float(min(raw, self.max_score))
         return 0.0
 
-    def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
+    def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         ev = self.evidence
-        if not ev["steps"]:
-            return False, "" if self.in_zone_samples < 5 else "no_step_contacts"
         if not ev["top"]:
-            return False, "missing_top_platform"
-        if len(ev["branches"]) < 1:
-            return False, "missing_step_contacts"
-        if len(ev["branches"]) == 1:
-            # one-branch traversal: partial but still a completed obstacle for scoring purposes
-            return True, ""
+            return False, "" if self.in_zone_samples < 5 else "missing_top_platform"
+        if not self._complete_arms():
+            return False, "incomplete_step_history"
         return True, ""
 
 
 class Slalom(_Obstacle):
-    ground_fail = False
+    """Slalom: start in one beya circle, alternate sides around the poles in order,
+    pass the corner checkpoint at the turn, finish in the other beya circle.
+
+    Direction is inferred from the start circle: A -> posts 0,1,2,3; B -> 3,2,1,0.
+    """
 
     def __init__(self) -> None:
         self.name, self.zone = "slalom", ZONES["slalom"]
         super().__init__()
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"start_area": None, "posts": [], "sides": [], "corner": False,
-                         "end_area": None}
+        self.evidence = {"start_area": None, "order": [], "order_expected": [],
+                         "sides": [], "corner": False, "end_area": None,
+                         "corner_after": None}
 
     def _near(self, xy, point, radius=SLALOM_RADIUS_M) -> bool:
         return _dist(xy, point) <= radius
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
         ev = self.evidence
+        done_before = len(ev["order"])
         if ev["start_area"] is None:
             if self._near(xy, SLALOM_START_A):
                 ev["start_area"] = "A"
+                ev["order_expected"] = [0, 1, 2, 3]
             elif self._near(xy, SLALOM_START_B):
                 ev["start_area"] = "B"
-        for idx, post in enumerate(SLALOM_POSTS):
-            if idx in ev["posts"]:
-                continue
+                ev["order_expected"] = [3, 2, 1, 0]
+        expected = ev["order_expected"]
+        idx = len(ev["order"])
+        if idx < len(expected):
+            target = expected[idx]
+            post = SLALOM_POSTS[target]
             if self._near(xy, post, SLALOM_POST_RADIUS_M):
-                if idx == 0 or (idx - 1) in ev["posts"]:
-                    ev["posts"].append(idx)
-                    # side relative to the post in the local travel frame (sign of cross product)
-                    prev = ev["posts"][-2] if len(ev["posts"]) > 1 else 0
-                    ref = SLALOM_POSTS[prev] if len(ev["posts"]) > 1 else (SLALOM_START_A if ev["start_area"] != "B" else SLALOM_START_B)
-                    tx, ty = post[0] - ref[0], post[1] - ref[1]
-                    nx, ny = -ty, tx
-                    side = _sign(nx * (xy[0] - post[0]) + ny * (xy[1] - post[1]))
-                    ev["sides"].append(side)
-        if self._near(xy, SLALOM_CORNER) and len(ev["posts"]) >= 2:
+                ev["order"].append(target)
+                ref = SLALOM_START_A if ev["start_area"] == "A" else SLALOM_START_B
+                if idx >= 1:
+                    ref = SLALOM_POSTS[expected[idx - 1]]
+                tx, ty = post[0] - ref[0], post[1] - ref[1]
+                nx, ny = -ty, tx
+                ev["sides"].append(_sign(nx * (xy[0] - post[0]) + ny * (xy[1] - post[1])))
+        if self._near(xy, SLALOM_CORNER) and len(ev["order"]) >= 2 and not ev["corner"]:
             ev["corner"] = True
-        if ev["start_area"] == "A" and self._near(xy, SLALOM_START_B):
-            ev["end_area"] = "B"
-        elif ev["start_area"] == "B" and self._near(xy, SLALOM_START_A):
-            ev["end_area"] = "A"
+            ev["corner_after"] = len(ev["order"])
+        # the end circle is only a valid finish if all four posts were already
+        # registered before this sample (not in the same sample as the last post,
+        # which can be geometrically inside the end circle)
+        if done_before == 4 and ev["corner"]:
+            if ev["start_area"] == "A" and self._near(xy, SLALOM_START_B):
+                ev["end_area"] = "B"
+            elif ev["start_area"] == "B" and self._near(xy, SLALOM_START_A):
+                ev["end_area"] = "A"
 
     def _check_immediate(self):
         ev = self.evidence
-        if ev["start_area"] and len(ev["posts"]) == len(SLALOM_POSTS):
-            alternated = all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:]))
-            complete = alternated and ev["corner"] and ev["end_area"]
-            if complete:
-                self.result.detail["sides"] = ev["sides"]
-                return True, ""
+        if (ev["start_area"] and ev["end_area"] and len(ev["order"]) == 4
+                and ev["corner"] and ev["corner_after"] in (2, 3)
+                and all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:]))):
+            return True, ""
         return None
 
-    def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
+    def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         ev = self.evidence
         if not ev["start_area"]:
             return False, "" if self.in_zone_samples < 5 else "no_start_area"
-        if len(ev["posts"]) < len(SLALOM_POSTS):
+        if len(ev["order"]) < 4:
             return False, "missing_posts"
         if not ev["corner"]:
             return False, "missing_corner_checkpoint"
         if not ev["end_area"]:
             return False, "no_end_area"
+        if ev["corner_after"] not in (2, 3):
+            return False, "corner_out_of_order"
         if not all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:])):
             return False, "not_s_shaped_sides"
         return True, ""
@@ -505,7 +568,7 @@ class Slalom(_Obstacle):
 # ---------------------------------------------------------------- aggregate judge
 
 class Part1JudgeV2:
-    """One instance judges one continuous course attempt (all 8 obstacles)."""
+    """One instance judges one continuous course attempt."""
 
     def __init__(self, *, partial_up: float = 75.0, partial_down: float = 50.0,
                  max_obstacle_score: float = 100.0) -> None:
@@ -522,10 +585,12 @@ class Part1JudgeV2:
             "slalom": Slalom(),
         }
         self.t = 0.0
-        self.returned_to_start = False
-        self._all_done_once = False
+        self.bar_base: float | None = None
+        self.bar_dropped = False
+        self.all_full_done = False
+        self.start_area_entries: list[float] = []
+        self.return_after_full = False
         self.prev_start_inside = False
-        self.start_area_hits = 0
 
     def update(self, t: float, base_xyz, yaw: float = 0.0, *,
                foot_tags: dict[str, set[str]] | None = None,
@@ -534,51 +599,52 @@ class Part1JudgeV2:
         foot_tags = foot_tags or {}
         ground_feet = ground_feet or set()
         self.t = float(t)
+        if bar_z is not None:
+            if self.bar_base is None:
+                self.bar_base = float(bar_z)
+            elif self.bar_base - float(bar_z) > BAR_DROP_THRESHOLD_M:
+                self.bar_dropped = True
         for obs in self.obstacles.values():
             obs.update(self.t, base_xyz, yaw, foot_tags, ground_feet, bar_z)
-        in_start = _in_zone(ZONES["start_area"], (base_xyz[0], base_xyz[1]))
+        in_start = _in_zone(ZONES["start_area"], (float(base_xyz[0]), float(base_xyz[1])))
         if in_start and not self.prev_start_inside:
-            self.start_area_hits += 1
+            self.start_area_entries.append(self.t)
+            if self.all_full_done:
+                self.return_after_full = True
         self.prev_start_inside = in_start
-        statuses = [o.result.status for o in self.obstacles.values()]
-        if all(s == "success" for s in statuses):
-            self._all_done_once = True
-        if self._all_done_once and in_start and self.start_area_hits >= 2:
-            self.returned_to_start = True
+        if not self.all_full_done and all(
+                o.result.status == "success" and o.result.score >= o.per_obstacle_score
+                for o in self.obstacles.values()):
+            self.all_full_done = True
         return self.report()
 
     def report(self) -> dict:
         obstacles = {name: o.result.to_dict() for name, o in self.obstacles.items()}
         obstacle_total = sum(o.result.score for o in self.obstacles.values())
-        return_bonus = 100.0 if self.returned_to_start else 0.0
-        total = obstacle_total + return_bonus
+        return_bonus = 100.0 if self.return_after_full else 0.0
         return {
-            "score": total,
+            "score": obstacle_total + return_bonus,
             "obstacle_score": obstacle_total,
             "return_bonus": return_bonus,
-            "returned_to_start": self.returned_to_start,
+            "returned_to_start": self.return_after_full,
+            "all_full_success": self.all_full_done,
+            "bar_dropped": self.bar_dropped,
             "states": obstacles,
             "statuses": {name: o.result.status for name, o in self.obstacles.items()},
         }
 
     def finalize(self, reason: str = "timeout") -> dict:
-        """End of attempt: unresolved obstacles become fail(timeout) for scoring purposes."""
         for obs in self.obstacles.values():
             if obs.result.status in ("pending", "running"):
                 obs.result.status = "fail"
-                obs.result.reason = reason
+                obs.result.reason = obs.result.detail.get("last_failure") or reason
         return self.report()
 
 
 # ---------------------------------------------------------------- attempts ledger
 
 class AttemptManager:
-    """Whole-run attempt bookkeeping per organizer answers (2026-10-22).
-
-    - 3 attempts per run; recovery does not consume an attempt (timer paused, same attempt).
-    - Starting / restarting a run consumes an attempt; skip consumes one.
-    - final_score = best attempt score; final_time = fastest attempt duration (seconds).
-    """
+    """Whole-run attempt bookkeeping per organizer answers (2026-10-22)."""
 
     def __init__(self, max_attempts: int = 3) -> None:
         self.max_attempts = max_attempts
@@ -604,7 +670,7 @@ class AttemptManager:
         if self._current is None:
             raise RuntimeError("no running attempt")
         self._current["recoveries"] += 1
-        self._current["pauses"].append([float(t), float(t)])  # pause window (resume extends it)
+        self._current["pauses"].append([float(t), float(t)])
         self.events.append({"t": float(t), "event": "recovery", "consumes_attempt": False,
                             "attempt": self._current["attempt"]})
 

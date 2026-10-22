@@ -55,7 +55,7 @@
 
 | P0 项 | 状态 | 产物 |
 |---|---|---|
-| Part 1 V2 judge（六类语义状态机、部分分、落杆检测） | **已实现 + conformance 全过** | `scripts/agent_scripts/comp_part1_judge.py`、`comp_judge_conformance.py` |
+| Part 1 V2.1 judge（合法进入/跨越证据/离开、三臂 T 台阶、限高杆连续穿越、双向绕杆、失败可重试、返回奖励只认全满分） | **已实现 + 13 组 conformance 全过** | `scripts/agent_scripts/comp_part1_judge.py`、`comp_judge_conformance.py` |
 | AttemptManager（3 次、恢复不消耗、账本、best score/fastest time） | 已实现 | 同文件 + `comp_part1_course.py` |
 | 场景 v2（可掉落横杆 + 命名台阶/平台/坡面） | **已实现**（横杆静置稳定，掉落可检测） | `assets/terrain/part1/part1_eval_scene_v2.xml` |
 | runner 接入 V2（每物理步接触分类/bar 位移） | **已实现**，8 障碍 diagnostic 已跑 | `run_part1_judged_rollout_v2.py`、`comp/eval/flat-ft-2500-part1-diag-v2/` |
@@ -64,7 +64,8 @@
 | 边界擦碰语义（路过相邻障碍区不得永久判失败） | 已修：soft-reset | `comp_part1_judge.py` + conformance/course 自检 |
 | 证据链：整场 course 诊断导入 + 重算校验 | 已完成（attempts_used=1 ≤ 3，score 由 trials 复算） | `comp_import_course_diag.py`、`comp/SCOREBOARD.md` |
 | T 台阶 Q2 数值冲突 | **保守落地**：部分分上=75/下=50（转述 112.5 与满分 100 冲突），返回奖励只认满分；待书面裁决 | `CONTRACT.*`、`_protocol.md` |
-| G1 重审（Codex 1 次） | 待 BYOK 预审通过后执行 | 第 2 版 `JUDGE_AUDIT` |
+| BYOK 预审（same-model，provisional） | 已执行：FAIL/26 条（11 blocker），已逐条修复或记录残余风险 | `audits/BYOK_JUDGE_V2_REVIEW.md`、`audits/BYOK_JUDGE_V2_FIXES.md` |
+| G1 重审（Codex 1 次，不同家族） | 待执行（BYOK 预审修复后） | 第 2 版 `JUDGE_AUDIT` |
 
 **V2 评测链路（2026-10-22 晚）**：Part1 judge V2 `comp_part1_judge.py`（10 组 conformance 全过，含 G1 反例：6 条出口骗分、T 台阶跨帧历史、限高杆 touch/drop、斜坡距离、砂砾短边、高墙侧走、绕杆顺序、尝试规则）+ 场景 v2 + 逐物理步 runner + 整场协议 `comp_part1_course.py`（3 次、恢复不消耗、最快用时、返回奖励）+ Part2 六类 judge/参数化 20 档 evaluator；两条 diagnostic 产物已进 `comp/SCOREBOARD.md`（`flat-ft-2500-part1-diag-v2`/`-part2-diag-v2`，均 0 分，符合 flat 策略预期）。
 

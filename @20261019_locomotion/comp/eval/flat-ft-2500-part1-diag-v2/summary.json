@@ -47,7 +47,7 @@
       "slope": {
         "success": false,
         "score": 0,
-        "failure_reason": "two_feet_ground:FL,RR",
+        "failure_reason": "two_feet_ground:RL,RR",
         "evidence": [
           "diag-flat-ft-2500-part1-diag-v2-slope-a7"
         ]

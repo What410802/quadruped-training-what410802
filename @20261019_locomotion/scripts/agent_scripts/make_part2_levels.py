@@ -118,31 +118,36 @@ def build() -> dict:
             if spec["kind"] == "plum":
                 scene = "assets/terrain/part2/part2_plum_eval_scene.xml"
                 judge = {"kind": "plum", "goal_x_min": 2.7, "goal_z_min": 0.5, "hold_s": 0.2,
+                         "lane_y": 0.4, "lane_half_width": 0.70,
                          "start": [0.4, 0.4, 0.65, 0.0], "command": [0.5, 0.0, 0.0], "seconds": 6.0}
             else:
                 name = f"{category}_{level}{spec['unit']}"
                 if spec["kind"] == "platform":
                     body = platform_xml(level / 100.0)
                     judge = {"kind": "platform", "top_z": level / 100.0,
-                             "goal_x": [1.9, 3.1], "hold_s": 0.2}
+                             "goal_x": [1.9, 3.1], "hold_s": 0.2,
+                             "lane_y": 0.0, "lane_half_width": 0.70}
                 elif spec["kind"] == "stairs":
                     body = stairs_xml(level / 100.0)
                     n, tread = 6, 0.3
                     judge = {"kind": "stairs", "top_z": level / 100.0,
-                             "goal_x_min": 1.5 + n * tread, "hold_s": 0.2}
+                             "goal_x_min": 1.5 + n * tread, "hold_s": 0.2,
+                             "lane_y": 0.0, "lane_half_width": 0.70}
                 elif spec["kind"] == "slope":
                     body = slope_xml(level)
                     rise = 1.5 * math.tan(math.radians(level))
                     judge = {"kind": "slope", "rise_z": rise, "goal_x_min": 1.5 + 1.5,
-                             "hold_s": 0.2}
+                             "hold_s": 0.2, "lane_y": 0.0, "lane_half_width": 0.70}
                 elif spec["kind"] == "wall":
                     body = wall_xml(level / 100.0)
                     judge = {"kind": "wall", "wall_x": 2.5, "wall_h": level / 100.0,
-                             "goal_x_min": 2.5 + 0.5, "climb_z_margin": 0.30, "hold_s": 0.2}
+                             "goal_x_min": 2.5 + 0.5, "climb_z_margin": 0.30, "hold_s": 0.2,
+                             "lane_y": 0.0, "lane_half_width": 0.70}
                 elif spec["kind"] == "gap":  # contract id: trench
                     body = gap_xml(level / 100.0)
                     judge = {"kind": "gap", "gap_x": 2.5, "width": level / 100.0,
-                             "goal_x_min": 2.5 + level / 200.0 + 0.4, "min_z": 0.3, "hold_s": 0.2}
+                             "goal_x_min": 2.5 + level / 200.0 + 0.4, "min_z": 0.3, "hold_s": 0.2,
+                             "lane_y": 0.0, "lane_half_width": 0.70}
                 else:  # pragma: no cover
                     raise ValueError(spec["kind"])
                 scene = f"assets/terrain/part2/levels/{name}.xml"

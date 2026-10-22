@@ -63,6 +63,8 @@ def main() -> int:
     ap.add_argument("--contract", type=Path, default=Path(DEFAULT_CONTRACT))
     ap.add_argument("--scene", type=Path, default=Path(DEFAULT_SCENE))
     ap.add_argument("--judge", type=Path, default=Path(DEFAULT_JUDGE))
+    ap.add_argument("--judge-extra", action="append", default=[], type=Path,
+                    help="额外的 judge/映射文件（如 comp_part1_judge.py、comp_part1_geom_tags.py）")
     ap.add_argument("--task-root", type=Path, default=Path("."))
     ap.add_argument("--part2-scene", type=Path,
                     default=Path("assets/terrain/part2/ability_field/part2_ability_field.xml"))
@@ -152,8 +154,9 @@ def main() -> int:
             "part1": {"file": str(args.scene), "sha256": sha256_file(args.scene)},
             "part2": {"file": str(p2_scene), "sha256": sha256_file(p2_scene) if p2_scene.is_file() else ""},
         },
-        "judge": {"version": "part1_event_judge@" + sha256_file(args.judge)[:12],
-                  "files": [str(args.judge)]},
+        "judge": {"version": "comp_part1_judge_v2_1@"
+                  + "".join(sha256_file(p)[:6] for p in [args.judge] + list(args.judge_extra) if p.is_file()),
+                  "files": [str(p) for p in [args.judge] + list(args.judge_extra)]},
         "protocol": {
             "protocol_version": "diagnostic-2026-10-22",
             "diagnostic": True,
