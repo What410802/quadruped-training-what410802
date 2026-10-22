@@ -4,13 +4,18 @@
   "competition": "2026 第二十四届全国大学生机器人大赛 ROBOCON 仿生足式机器人挑战赛 · 队内赛（纯仿真）",
   "rules_sources": [
     "队内赛.pdf（只读材料，2026-10-20，4 页）",
-    "docs/reference/team-race-2026.md"
+    "docs/reference/team-race-2026.md",
+    "主办方口径补充：用户转述，2026-10-22"
   ],
   "deadline": "2026-11-04T22:00:00+08:00",
   "scoring": {
     "part_scores_weight": 0.7,
     "defense_weight": 0.3,
-    "defense_minutes": 7
+    "defense_minutes": 7,
+    "tiebreak": {
+      "part1": "time_asc"
+    },
+    "part2_rounding": "floor"
   },
   "parts": {
     "part1": {
@@ -18,7 +23,9 @@
       "max_score": 900,
       "attempts": {
         "scope": "run",
-        "count": 3
+        "count": 3,
+        "all_attempts_consumed": true,
+        "note": "整场 3 次；开始、重试、摔倒恢复、跳过均消耗次数（2026-10-22 主办方口径）"
       },
       "operator": "manual_allowed_auto_no_bonus",
       "fixed_actions_allowed": true,
@@ -38,11 +45,12 @@
           "id": "gravel_pit",
           "name": "砂砾碎木坑",
           "per_obstacle_score": 100,
-          "success_criteria": "从 1 m 短边进入/离开并跨越坑",
+          "success_criteria": "从 1 m 短边进入且从 1 m 短边离开并跨越坑",
           "fail_conditions": [
             "feet_on_ground>=2",
             "从长边进出"
-          ]
+          ],
+          "entry_exit_required": "both_legal_short_edges"
         },
         {
           "id": "high_wall",
@@ -59,12 +67,12 @@
           "id": "height_bar",
           "name": "限高杆",
           "per_obstacle_score": 100,
-          "success_criteria": "任何运动姿态从限高杆下方、垂直于门平面穿过且杆不落",
+          "success_criteria": "任何运动姿态从限高杆下方穿过；横杆不掉落",
           "fail_conditions": [
             "bar_dropped",
-            "撞侧柱/横梁",
-            "绕行"
-          ]
+            "绕行/未从门洞下穿过"
+          ],
+          "contact_semantics": "碰柱/碰梁但横杆未掉落不算失败（2026-10-22 主办方口径）"
         },
         {
           "id": "t_stairs",
@@ -74,17 +82,25 @@
           "fail_conditions": [
             "feet_on_ground>=2",
             "漏级"
-          ]
+          ],
+          "partial_scores": {
+            "both_sides": 100,
+            "one_side_up": 75,
+            "one_side_down": 50,
+            "note": "按用户转述：75/50 相对 100 记部分分（全部按手动遥控计分）"
+          }
         },
         {
           "id": "slope",
           "name": "斜坡",
           "per_obstacle_score": 100,
-          "success_criteria": "从任意位置迈上斜坡，沿 3 m 长边方向累计行走 >= 1 m",
+          "success_criteria": "两侧合计沿 3 m 长边方向累计行走 >= 1 m",
           "fail_conditions": [
             "feet_on_ground>=2",
             "距离不足"
-          ]
+          ],
+          "required_distance_m": 1.0,
+          "distance_scope": "two_sides_combined"
         },
         {
           "id": "bridge_blocks",
@@ -110,8 +126,10 @@
       "return_bonus": {
         "id": "return_to_start",
         "score": 100,
-        "requires": "all_obstacles_success"
-      }
+        "requires": "all_obstacles_success",
+        "note": "越过全部障碍并回到启动区额外 +100"
+      },
+      "feet_on_ground_semantics": "any_instant_ge_2"
     },
     "part2": {
       "name": "越障能力测试（仅 RL）",
@@ -141,7 +159,8 @@
               "value": 40,
               "points": 200
             }
-          ]
+          ],
+          "below_min_points": 0
         },
         {
           "id": "stairs",
@@ -165,7 +184,8 @@
               "value": 30,
               "points": 200
             }
-          ]
+          ],
+          "below_min_points": 0
         },
         {
           "id": "slope",
@@ -189,7 +209,8 @@
               "value": 45,
               "points": 200
             }
-          ]
+          ],
+          "below_min_points": 0
         },
         {
           "id": "high_wall",
@@ -213,7 +234,9 @@
               "value": 40,
               "points": 200
             }
-          ]
+          ],
+          "endpoint_note": "10 cm 端点不得分（2026-10-22 主办方口径）",
+          "below_min_points": 0
         },
         {
           "id": "trench",
@@ -229,7 +252,9 @@
               "value": 30,
               "points": 300
             }
-          ]
+          ],
+          "endpoint_note": "10 cm 端点不得分（2026-10-22 主办方口径）",
+          "below_min_points": 0
         },
         {
           "id": "plum",
@@ -241,9 +266,17 @@
               "value": 1,
               "points": 200
             }
-          ]
+          ],
+          "below_min_points": 0
         }
-      ]
+      ],
+      "rounding": "floor",
+      "stability": {
+        "failure_ratio_max": 0.01,
+        "min_attempts": 100,
+        "formula": "fail_count / attempts < failure_ratio_max；attempts>=min_attempts",
+        "note": "若主办方真实意图是\"0 失败\"，把 failure_ratio_max 改为 0"
+      }
     }
   },
   "constraints": {
@@ -251,9 +284,9 @@
       "imu",
       "joint_encoder",
       "camera",
-      "lidar"
+      "radar"
     ],
-    "sensor_notes": "相机/雷达必须模拟真实相机/雷达；IMU、电机编码器为基本传感器",
+    "sensor_notes": "规则写\"相机、雷达\"；若主办方指的是激光雷达（lidar）需书面确认后再改",
     "sensors_forbidden": [
       "body_lin_vel",
       "heightmap",
@@ -317,27 +350,51 @@
   "ambiguities": [
     {
       "id": "Q1",
-      "question": "Part 1 的 3 次尝试是整场 3 次还是每障碍 3 次？",
-      "owner": "organizer",
-      "status": "pending"
+      "question": "Part 1 的 3 次尝试是整场还是每障碍？",
+      "status": "resolved",
+      "resolution": "整场 3 次；开始/重试/恢复/跳过都消耗",
+      "source": "用户转述主办方，2026-10-22"
     },
     {
       "id": "Q2",
-      "question": "Part 1 允许的局部自动/固定动作是否影响裁判计时口径？",
-      "owner": "organizer",
-      "status": "pending"
+      "question": "T 台阶表 3 的 75/50 如何计分？",
+      "status": "resolved",
+      "resolution": "按比例缩放到 100 分：两侧都过=100，仅上=75，仅下=50（全部按手动遥控计分）",
+      "source": "用户转述主办方，2026-10-22（上/下与 75/50 的对应按表顺序，仍需最终确认）"
+    },
+    {
+      "id": "Q3",
+      "question": "1/2 足触地的瞬时/持续语义；限高杆碰柱/梁是否失败",
+      "status": "resolved",
+      "resolution": "任何瞬间≥2 足触地即失败；碰柱/碰梁但横杆未掉落不算失败",
+      "source": "用户转述主办方，2026-10-22"
     },
     {
       "id": "Q4",
-      "question": "PDF 图 1 的 A/B 标注与方墩/窄带桥的对应关系（当前契约不按 A/B 断言）",
-      "owner": "organizer",
-      "status": "pending"
+      "question": "砂砾坑短边进出与两侧斜坡距离口径",
+      "status": "resolved",
+      "resolution": "砂砾坑进入和离开两端都需合法（1 m 短边）；斜坡两侧合计走 ≥1 m 即可",
+      "source": "用户转述主办方，2026-10-22"
     },
     {
       "id": "Q5",
-      "question": "限高杆“碰柱/碰梁但横杆未落”是否判失败；高墙/沟壑在未给阈值区间的插值口径",
-      "owner": "organizer",
-      "status": "pending"
+      "question": "Part 2 10cm 端点/小数/稳定重复",
+      "status": "resolved",
+      "resolution": "高墙与沟壑 10 cm 端点均 0 分；小数按舍去计；反复稳定 = 失效率 <1%（≥100 次尝试）",
+      "source": "用户转述主办方，2026-10-22"
+    },
+    {
+      "id": "Q6",
+      "question": "Part 1 局部自动/固定动作是否影响计时与计分口径",
+      "status": "resolved",
+      "resolution": "全部按手动遥控计分；自动/固定动作无额外分，计时口径不变（Part 1 同分看用时）",
+      "source": "用户确认，2026-10-22"
     }
+  ],
+  "open_questions_for_organizer": [
+    "Q1: 摔倒恢复是否消耗一次尝试（规则原文\"暂停计时并恢复\"，当前按用户转述\"都消耗\"落地）",
+    "Q2: T 台阶\"仅上/仅下\"与 75/50 的对应关系",
+    "Q7: 允许的\"雷达\"是传统雷达还是激光雷达（当前 JSON 写 radar）",
+    "Q8: 稳定性是\"严格 0 失败\"还是\"失败比例 <1%\"（当前按 <1% 公式）"
   ]
 }

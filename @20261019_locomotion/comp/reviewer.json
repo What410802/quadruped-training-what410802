@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "executor_model": "deepseek-v4.1-flash",
+  "default_backend": "http",
+  "allow_dsh_process_env": true,
+  "backends": {
+    "codex": {
+      "kind": "host-mcp",
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "note": "由宿主 agent 直接调用 mcp__codex__codex；不同家族，Type-B 可 acquit。14 天额度 ≤4 次，留给 G1/冻结红队/最终分数审计。"
+    },
+    "http": {
+      "kind": "openai-compatible",
+      "base_url": "https://ai-sourcing.discover-robotics.com/v1",
+      "model": "deepseek-v4-pro",
+      "api_key_env": [
+        "MY_CHAT_API_KEY",
+        "MY_DS_KEY",
+        "DEEPSEEK_API_KEY",
+        "LLM_API_KEY"
+      ],
+      "temperature": 0.2,
+      "max_tokens": 32000,
+      "timeout_s": 3600,
+      "note": "BYOK：与 DSH 同一 relay；默认 SSE 流式（长 reasoning 请求不被网关超时断开），空 content+finish=length 时加倍 max_tokens 重试，瞬断重试一次。同家族 → verdict provisional。",
+      "stream": true
+    },
+    "manual": {
+      "kind": "manual",
+      "note": "用户作为协调者在 DSH 另开会话（评价者）写响应文件，训练会话用 --manual-response 导入；需 --reviewer-model 记录实际模型。"
+    }
+  },
+  "budget": {
+    "codex_calls_max": 4,
+    "window_days": 14,
+    "plan": [
+      "1 次：G1 judge 重审（不同家族，必须）",
+      "1 次：冻结前红队",
+      "1 次：最终分数/答辩数字审计",
+      "1 次：预算外备用（异常/争议）"
+    ],
+    "routine": "日常训练系统审计、失败诊断、里程碑初筛用 BYOK（http）或 manual；结论标 provisional，G4 的正式 acquittal 仍留给 Codex。"
+  }
+}

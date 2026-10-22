@@ -7,10 +7,11 @@
 
 - **stage**：C1（**G1 judge 审计已完成：FAIL**，2026-10-22）
 - **deadline**：2026-11-04 晚（截至 2026-10-22 约 12.5 天）
-- **next**：按 `audits/JUDGE_AUDIT.md` 的 P0 清单修 judge/evaluator（成功语义、T 台阶、斜坡、限高杆、Part2）
+- **next**：按 `audits/JUDGE_AUDIT.md` 的 P0 清单修 judge/evaluator（成功语义、T 台阶部分分、斜坡、限高杆落杆、Part2 门槛/舍去/稳定性）
   → 补人工标定集（≥64 条）→ 重跑 G1（含盲写第二实现）→ 正式协议评测 → 基线记分
 - **blockers**：
-  1. **G1 FAIL**：judge 存在可直接触发的错误成功路径与漏判（详见 `audits/JUDGE_AUDIT.md` §3/§4）；
+  1. **G1 FAIL**：judge 存在可直接触发的错误成功路径与漏判（详见 `audits/JUDGE_AUDIT.md` §3/§4）；规则口径已补齐（Q1–Q6），P0 重写按已确认口径执行；
+  0. **评审后端已就绪**：Codex（≤4 次/14 天）+ BYOK DeepSeek（provisional）+ manual 协调者；首次 BYOK 契约审计 completed（WARN，13 条已合入契约/协议修正），见 `audits/BYOK_CONTRACT_REVIEW.md`。
   2. Part 2 六类 evaluator/起点/难度判定缺失（当前只有测试/几何，无完整 evaluator）；
   3. 人工标定集为空（`eval/_calibration/` 只有 README）；
   4. 尝试账本/暂停恢复（AttemptManager）未实现，现有 runner 覆盖写结果；
@@ -20,7 +21,7 @@
 
 | 门禁 | 状态 | 说明 |
 |---|---|---|
-| G0 规则契约 | WARN | `CONTRACT.*` 初版；Q1–Q5 歧义 pending（需主办方确认） |
+| G0 规则契约 | **PASS** | Q1–Q6 已于 2026-10-22 由用户转述主办方口径并写入 `CONTRACT.*`（Q2 的上/下↔75/50 建议书面确认） |
 | G1 评测器可信 | **FAIL** | 2026-10-22 Codex ultra 审计：overall FAIL；修复 P0 后重审；见 `audits/JUDGE_AUDIT.{md,json}` |
 | G2 基线可复现 | pending | 待正式协议评测（当前只有诊断导入） |
 | G3 单轮评测有效 | pending | 诊断行为 `diagnostic`，不计正式分 |
@@ -48,6 +49,7 @@
   `CONTRACT.json` 修正 Part2 最低门槛曲线（高台/楼梯 <10 cm、坡 <20° 为 0）；诊断导入诚实化（seeds 为空、dirty 标注、
   checkpoint 说明）。
 - 未做：盲写第二实现交叉比对（`JUDGE_CROSSCHECK.md`）——与 P0 judge 修复一起做，才能对比"新 judge vs 独立实现"。
+- **评审后端（2026-10-22 新增）**：Codex 额度 ≤4 次/14 天，留给 G1/红队/最终分数/争议各 1 次；日常审计用 BYOK（`competition/tools/comp_review.py` + `reviewer.json`，DeepSeek relay，同家族 → verdict 标 provisional），或由用户作为协调者在 DSH 另开会话执行（manual backend）。
 
 ## 4. 下一步顺序
 

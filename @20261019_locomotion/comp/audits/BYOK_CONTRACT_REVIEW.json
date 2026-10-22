@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "skill": "comp-contract-review",
+  "backend": "http",
+  "backend_kind": "openai-compatible",
+  "config": "comp/reviewer.json",
+  "prompt_file": "comp/audits/prompts/contract-review-prompt.md",
+  "prompt_sha256": "8161e0fdbfbd6d0ae24969b2ebb5456167e703b2a4645360fa87bd4c7a6fe5a9",
+  "payload_bytes": 30719,
+  "files": [
+    {
+      "path": "comp/CONTRACT.md",
+      "exists": true,
+      "bytes": 4952,
+      "sha256": "baab33872503fe3fa3984ac3a444edb54c32cd52e2fb295eff8a28edbb3a8a2f",
+      "included": true
+    },
+    {
+      "path": "comp/CONTRACT.json",
+      "exists": true,
+      "bytes": 10827,
+      "sha256": "f172619287c9db861b93c7a42db038f0716b0a46526cdd1a9240dc82f724b207",
+      "included": true
+    },
+    {
+      "path": "comp/eval/_protocol.md",
+      "exists": true,
+      "bytes": 5204,
+      "sha256": "6cf7ca7e0758e7e3d9bb07a876f7ea24b83dafecf52d60dddd8920ac6ca8e4df",
+      "included": true
+    },
+    {
+      "path": "docs/reference/team-race-2026.md",
+      "exists": true,
+      "bytes": 8047,
+      "sha256": "37986030982bba5ed5a73238eb12f06824602f8846dc2a2f702b3fc19c709744",
+      "included": true
+    }
+  ],
+  "executor": "deepseek-v4.1-flash",
+  "reviewer_model": "deepseek-v4-pro",
+  "independence": {
+    "executor_model": "deepseek-v4.1-flash",
+    "reviewer_model": "deepseek-v4-pro",
+    "executor_family": "deepseek",
+    "reviewer_family": "deepseek",
+    "status": "same-family-provisional",
+    "reason": "executor 与 reviewer 同为 deepseek 家族：可用于驱动改进，不能单独 acquit Type-B 门"
+  },
+  "started_at": "2026-10-22T21:17:42+08:00",
+  "status": "ok",
+  "endpoint_host": "ai-sourcing.discover-robotics.com",
+  "key_source": "dsh-process-env(pid=8612):MY_CHAT_API_KEY",
+  "attempts": [
+    {
+      "max_tokens": 32000,
+      "status": "ok",
+      "latency_s": 694.8,
+      "usage": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": null,
+  "latency_s": 694.8,
+  "model_reported": "deepseek-v4-pro",
+  "finish_reason": "stop",
+  "overall_hint": "WARN",
+  "response_sha256": "848bc768e1ca0a9fd79230a51dcc9ff99724240cf32772c0cb5011a7dd6d5240",
+  "finished_at": "2026-10-22T21:29:17+08:00"
+}

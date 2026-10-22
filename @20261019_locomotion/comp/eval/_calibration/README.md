@@ -9,6 +9,10 @@
 {"trial_id": "cal-001", "obstacle": "height_bar", "video": "<prep.d 路径>", "human": {"success": true, "failure_reason": null}, "notes": "从门洞中心通过，杆未落"}
 ```
 
+**它不是用来训练判定神经网络的。** judge 是规则程序（读仿真接触/位姿，按规则判 success/fail），
+人工标签是它的**测试集/ground truth**，用来发现规则误判、做回归、并与盲写第二实现交叉比对。
+训练一个学习型 judge 会让评分不可复现、不可审计，也不会被官方接受。
+
 用途：
 1. judge 与人工标签一致性（默认要求 100%，例外需逐条规则依据）；
 2. 盲写第二实现与现有 judge 的逐条比对（`audits/JUDGE_CROSSCHECK.md`）；

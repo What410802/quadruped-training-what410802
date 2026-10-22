@@ -58,7 +58,14 @@ pixi run python @20261019_locomotion/scripts/agent_scripts/comp_compliance.py \
 
 # 4) 冻结清单（C5）
 pixi run python @20261019_locomotion/scripts/agent_scripts/comp_freeze.py ...（见 --help）
+
+# 5) BYOK 独立评审（Codex 额度紧张时；配置在 comp/reviewer.json，密钥从环境/DSH 进程解析，不落盘）
+pixi run python @20261019_locomotion/scripts/agent_scripts/comp_review.py   --config @20261019_locomotion/comp/reviewer.json   --prompt-file @20261019_locomotion/comp/audits/prompts/contract-review-prompt.md   --file @20261019_locomotion/comp/CONTRACT.md --file @20261019_locomotion/comp/CONTRACT.json   --out @20261019_locomotion/comp/audits/BYOK_xxx.md   --json-out @20261019_locomotion/comp/audits/BYOK_xxx.json   --executor-model deepseek-v4.1-flash
 ```
+
+> 评审后端分工：**Codex（不同家族）≤4 次/14 天**，只用于 G1 重审、冻结前红队、最终分数/答辩数字审计、争议复核；
+> 日常训练系统审计/失败诊断/契约初筛用 BYOK（同家族时 verdict 标 `provisional`），或由用户作为协调者另开会话（manual backend）。
+> 详见比赛工作流包 `shared-references/reviewer-cadence.md` §0。
 
 工具只做 Type-A 检查；"评测器是否忠实规则 / 分数是否支持结论"必须由 Codex 审计
 （见该仓库 `competition/shared-references/audit-prompts.md`）。

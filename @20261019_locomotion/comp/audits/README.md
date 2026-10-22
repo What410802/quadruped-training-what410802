@@ -11,6 +11,8 @@
 | `SCORE_AUDIT.md` | G4 | 记分板数字 → 证据路径核对与白名单 | 未做 |
 | `TRAIN_SYSTEM_AUDIT.md` | — | reward/课程/终止/观测契约系统性问题 | 未做 |
 | `REDTEAM.md` | G5 | 冻结前"决赛为什么失败"红队 | 未做 |
+| `BYOK_CONTRACT_REVIEW.md/.json` | G0 辅助 | BYOK（DeepSeek v4-pro，provisional）对契约/协议的独立初筛：WARN，13 条问题 | 已做；问题已按需修正 |
+| `prompts/` | — | 审计 prompt 存档（可复用于 Codex/BYOK/manual 后端） | — |
 
 ## HASHES.json
 

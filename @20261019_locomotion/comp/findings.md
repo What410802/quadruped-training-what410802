@@ -10,3 +10,7 @@
 - [2026-10-22] **G1 judge 审计 FAIL**（codex ultra）。六类 Part1 障碍可用"空接触+出口位置"骗到 100 分（reviewer 实测 6/6）；T 台阶把当前帧接触当历史，逐级通过被漏判；斜坡方向误判；限高杆横杆固定不可掉落；Part2 低于门槛给 5 分；`summary↔trials` 无关联校验。详见 `audits/JUDGE_AUDIT.md`。
 - [2026-10-22] 工具侧修复：`comp_score.py` 增加 summary↔trials 证据链/最高难度/attempts 校验（伪造 success 判 invalid）；`CONTRACT.json` 修正 Part2 最低门槛曲线；诊断导入改为诚实 provenance（seeds 空、dirty 标注、checkpoint 说明）。
 - [2026-10-22] 审计同时指出：A/B 桥标注与 PDF 图 1 相反（已改为不按 A/B 断言并加歧义 Q4）；Python 端动作限幅 ±1 vs 部署 ±100（C3 WARN，待统一）。
+- [2026-10-22] **主办方口径 Q1–Q6 已确认**：Part1 整场 3 次且开始/重试/恢复/跳过都消耗；T 台阶部分分 100/75/50；任何瞬间 ≥2 足触地即失败、限高杆碰柱/梁但未落杆不算失败；砂砾坑两端都需合法、斜坡两侧合计 1 m；Part2 高墙/沟壑 10 cm 端点 0 分、小数舍去、稳定 = 失效率 <1%（≥100 次）；Part1 全部按手动遥控计分（Q6）。已写入 CONTRACT/protocol。
+- [2026-10-22] 新增 BYOK 评审后端：`comp_review.py` 支持 OpenAI 兼容 API（DeepSeek relay），密钥不落盘；同家族评审标 provisional，Codex 额度只用于 4 个关键 gate。
+- [2026-10-22] BYOK 后端打通并完成首次真实审计：DeepSeek v4-pro 流式调用 ~11.6 min、overall WARN、13 条问题（整场 vs 单障碍协议、稳定性 <1% 定义、tiebreak/返回奖励/红线缺失、radar vs lidar 等），已修契约/协议 11 项；同家族 → provisional。
+- [2026-10-22] 待主办方书面确认：恢复是否消耗尝试、T 台阶上/下↔75/50、radar 是否激光雷达、稳定性严格 0 失败还是 <1%；CONTRACT.md §5.1 已留痕。
