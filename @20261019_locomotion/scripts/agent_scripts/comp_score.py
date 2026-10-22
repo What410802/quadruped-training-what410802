@@ -127,16 +127,30 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
         if recorded and actual != recorded:
             _err(errors, f"{label} sha256 不匹配: {rel}（manifest={recorded[:12]} actual={actual[:12]}）")
 
+    contract_meta = manifest.get("contract") or {}
+    judge = manifest.get("judge") or {}
     scenes = manifest.get("scenes") or {}
+    if not diagnostic:
+        if not (isinstance(contract_meta, dict) and contract_meta.get("file")
+                and contract_meta.get("sha256")):
+            _err(errors, "正式 manifest 缺 contract.file/sha256，无法机器复核")
+        if not scenes:
+            _err(errors, "正式 manifest 缺 scenes，无法机器复核场景证据")
+        for required in ("part1", "part2"):
+            if not (isinstance(scenes.get(required), dict) and scenes[required].get("file")):
+                _err(errors, f"正式 manifest 缺 scenes.{required}.file")
+        if not (judge.get("file_hashes") or []):
+            _err(errors, "正式 manifest 缺 judge.file_hashes，无法机器复核 judge")
     for key, entry in scenes.items():
         if isinstance(entry, dict):
+            if not (entry.get("file") or entry.get("path") or entry.get("scene")):
+                (_warn if diagnostic else _err)(warnings if diagnostic else errors,
+                                                f"scenes.{key} 缺 file 字段")
             _check_hash(entry, f"scenes.{key}")
             for lvl in entry.get("levels") or []:
                 _check_hash(lvl, f"scenes.{key}.levels")
-    contract_meta = manifest.get("contract") or {}
     if isinstance(contract_meta, dict):
         _check_hash(contract_meta, "contract")
-    judge = manifest.get("judge") or {}
     for fh in judge.get("file_hashes") or []:
         _check_hash(fh, "judge.file")
     for f in judge.get("files") or []:
@@ -576,6 +590,21 @@ def run_self_test() -> int:
     ]
     summary["part1"]["obstacles"]["a"]["evidence"] = ["t-a"]
     summary["part1"]["obstacles"]["b"]["evidence"] = ["t-b"]
+    # external-evidence fixtures (formal manifests now require scene/contract/judge hashes)
+    fixture = Path(tempfile.mkdtemp(prefix="compscore_fixture_"))
+    scene_file = fixture / "scene.xml"
+    scene_file.write_text("<mujoco/>", encoding="utf-8")
+    contract_file = fixture / "contract.json"
+    contract_file.write_text(json.dumps(contract), encoding="utf-8")
+    judge_file = fixture / "judge.py"
+    judge_file.write_text("# judge fixture\n", encoding="utf-8")
+    manifest["scenes"] = {
+        "part1": {"file": str(scene_file), "sha256": _sha256(scene_file)},
+        "part2": {"file": str(scene_file), "sha256": _sha256(scene_file)},
+    }
+    manifest["contract"] = {"file": str(contract_file), "sha256": _sha256(contract_file)}
+    manifest["judge"] = {"version": "j", "files": [str(judge_file)],
+                         "file_hashes": [{"path": str(judge_file), "sha256": _sha256(judge_file)}]}
     assert curve_points([{"value": 10, "points": 10}, {"value": 20, "points": 50}], 5, "cm") == 0
     assert curve_points([{"value": 10, "points": 10}, {"value": 20, "points": 50}], 20, "cm") == 50
     with tempfile.TemporaryDirectory() as td:
@@ -630,8 +659,13 @@ def run_self_test() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="compscore_ext_"))
     scene = tmp / "scene.xml"
     scene.write_text("<mujoco/>", encoding="utf-8")
-    man_ok = {"scenes": {"part1": {"file": "scene.xml", "sha256": _sha256(scene)}},
-              "judge": {"files": [], "file_hashes": []}}
+    sha_scene = _sha256(scene)
+    man_ok = {
+        "scenes": {"part1": {"file": "scene.xml", "sha256": sha_scene},
+                   "part2": {"file": "scene.xml", "sha256": sha_scene}},
+        "contract": {"file": "scene.xml", "sha256": sha_scene},
+        "judge": {"files": [], "file_hashes": [{"path": "scene.xml", "sha256": sha_scene}]},
+    }
     errs, _ = validate_external_evidence(man_ok, {"part2": {"obstacles": {}}},
                                          {"parts": {}}, tmp, False, [])
     assert not errs, errs

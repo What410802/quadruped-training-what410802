@@ -156,14 +156,21 @@ def main() -> None:
             if e["category"] in wanted or key in wanted:
                 selected.append(e)
     if args.official:
-        used: dict[str, int] = {}
+        by_cat: dict[str, list[dict]] = {}
+        for e in levels:
+            by_cat.setdefault(e["category"], []).append(e)
+        allowed_cats = {e["category"] for e in selected} if args.only else set(by_cat)
         official = []
-        for e in sorted(selected, key=lambda x: (x["category"], -float(x["level"]))):
-            cat = e["category"]
-            if used.get(cat, 0) >= 4:
+        for cat in sorted(allowed_cats):
+            ordered = sorted(by_cat.get(cat, []), key=lambda x: -float(x["level"]))
+            if not ordered:
                 continue
-            used[cat] = used.get(cat, 0) + 1
-            official.append(e)
+            for e in ordered[:4]:
+                official.append(e)
+            # official rule: 4 attempts per category; repeat the highest level if the
+            # category defines fewer than 4 levels (trench=3, plum=1)
+            for _ in range(4 - min(4, len(ordered))):
+                official.append(ordered[0])
         selected = official
     results = []
     for entry in selected:

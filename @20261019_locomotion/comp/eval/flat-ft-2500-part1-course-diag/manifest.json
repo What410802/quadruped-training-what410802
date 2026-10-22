@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part1-course-diag",
-  "created_at": "2026-10-23T01:10:10+08:00",
+  "created_at": "2026-10-23T01:20:34+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "b49229367d7c60abbfe9918b406d4c1faeea4d93",
+      "commit": "176df8677dee42e052269ac8b66978fdbf94563e",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -43,7 +43,7 @@
     }
   },
   "judge": {
-    "version": "comp_judge_v2@850caa23a148512c93",
+    "version": "comp_judge_v2@850caa23a14840062c",
     "files": [
       "scripts/agent_scripts/comp_part1_judge.py",
       "scripts/agent_scripts/comp_part1_geom_tags.py",
@@ -60,7 +60,7 @@
       },
       {
         "path": "scripts/agent_scripts/comp_part1_course.py",
-        "sha256": "512c93b7655d2c9371d094f8bab4eef3380766609910e71cba1e522dc52cb5ea"
+        "sha256": "40062cbe642c9a70a4056b7d2ec80a7cffa6e1562aebd5f06547ac78cdb306f4"
       }
     ]
   },

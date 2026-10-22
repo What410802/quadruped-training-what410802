@@ -99,7 +99,8 @@ def main() -> int:
     trials: list[dict] = []
     for i, att in enumerate(attempts, 1):
         states = (att.get("judge") or {}).get("states") or {}
-        duration = float(_att_rec(att).get("duration_s", 0.0))
+        rec_att = _att_rec(att)
+        duration = 0.0 if rec_att.get("skipped") else float(rec_att.get("duration_s", 0.0))
         for oid in p1_specs:
             st = states.get(oid) or {}
             status = st.get("status", "pending")
@@ -143,6 +144,9 @@ def main() -> int:
             "duration_s": 0.0, "video": None,
         })
     session = result.get("session_summary") or {}
+    non_skipped = [a for a in attempts if not _att_rec(a).get("skipped")]
+    if not non_skipped:
+        session = {"final_score": 0.0, "final_time_s": 0.0}
     summary = {
         "schema_version": 1,
         "policy_id": args.policy_id,

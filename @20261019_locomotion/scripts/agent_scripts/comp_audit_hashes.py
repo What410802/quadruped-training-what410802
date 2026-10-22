@@ -89,6 +89,10 @@ def main() -> int:
             p = ROOT / rel
             if p.is_file():
                 out["objects"][f"eval_{pid}_{fname.split('.')[0]}"] = {"path": rel, "sha256": sha256(p)}
+    evidence_dir = ROOT / "comp/audits/evidence"
+    for ev in sorted(evidence_dir.glob("*.json")):
+        rel = ev.relative_to(ROOT).as_posix()
+        out["objects"][f"evidence_{ev.stem}"] = {"path": rel, "sha256": sha256(ev)}
     for key, rel in SUPERSEDED.items():
         p = ROOT / rel
         out["superseded"][key] = {"path": rel, "sha256": sha256(p) if p.is_file() else "",

@@ -102,3 +102,14 @@
 | 状态复位 | `recovery_violation` 未在 begin/abort 复位；resume 未闭合 pause 区间 | 已修：begin/abort 复位；resume 把 `manager.pauses[-1][1]=t` 闭合 |
 | 文案/minor | `export_report.rules.final_time` 写 `min_over_attempts`；全 skipped 时 importer fallback | 已改 `min_duration_among_best_score_attempts`；importer 全 skipped 时保留首 attempt 不崩溃 |
 | 演练 | 需要 pause/resume/abort/stable-stop 3-attempt 链路 | 已跑 pause/resume 3 次完整演练（course diag，attempts_used=3）与 pause→resume→abort 3 次演练；stable-stop 由 `StableStopTracker` 自检覆盖 |
+
+
+## Flash 验收（第 6 轮）后修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| 时间账本 | pause/resume 用操作手 fake 时钟写回 `prev_t`，可能污染 active_time/final_time | 已改为**模拟器时钟**：`Part1Course` 记录 attempt_start_t，duration = end_t − start_t；暂停期间物理冻结，时长天然不含暂停；resume 不再写 fake 时钟 |
+| 证据缺失静默通过 | 非 diagnostic manifest 缺 `contract`/`scenes`/`judge.file_hashes` 仍可能 valid | `validate_external_evidence` 对正式 manifest 强制要求 contract.file+sha256、scenes.part1/part2、judge.file_hashes；scenes 条目缺 file 报错 |
+| 全 skipped 证据 | abort drill 导入时 final_time=0 与 trials 非零 duration 冲突 | 跳过 attempt 的 trial duration 置 0；全 skipped 时 final_score/final_time=0；importer 保留首条 attempt 不崩溃 |
+| Part2 official 次数 | trench 只有 3 档、plum 1 档时只跑 3/1 次，不满足"每项 4 次" | `--official` 每 category 固定 4 次：档位从高到低，不足 4 档时重复最高档（trench=30cm×2、plum×4） |
+| 证据包 | abort drill 不在 HASHES/验收包，无法独立复核 | 已复制到 `comp/audits/evidence/` 并纳入 `HASHES.json`（pause/abort 两份演练 JSON） |

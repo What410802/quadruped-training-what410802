@@ -100,6 +100,7 @@ class Part1Course:
         self.active = True
         self.attempt_no += 1
         self.active_time = 0.0
+        self.attempt_start_t = float(t)
         self.recovery_violation = False
         self.pause_pose = None
         self.paused = False
@@ -113,10 +114,9 @@ class Part1Course:
         if not self.active:
             raise RuntimeError("no active attempt; call begin_attempt() first")
         t = float(t)
-        if not self.paused and self.prev_t is not None:
-            dt = max(0.0, t - self.prev_t)
-            self.active_time += dt
-        self.prev_t = t
+        # Duration is derived from the simulator clock at end_attempt: while paused the
+        # physics clock is frozen, so no manual pause subtraction is needed (and the
+        # operator fake clock can never leak into the ledger).
         report = self.judge.update(t, base_xyz, yaw, **kwargs)
         in_start = (ZONES["start_area"][0] <= base_xyz[0] <= ZONES["start_area"][1]
                     and ZONES["start_area"][2] <= base_xyz[1] <= ZONES["start_area"][3])
@@ -150,7 +150,6 @@ class Part1Course:
                                              "moved_m": round(moved, 3),
                                              "dyaw_rad": round(dyaw, 3)})
         self.paused = False
-        self.prev_t = float(t)
         if self.manager._current and self.manager._current["pauses"]:
             self.manager._current["pauses"][-1][1] = float(t)   # close the pause interval
         self._current_events.append({"t": float(t), "event": "resume",
@@ -183,8 +182,9 @@ class Part1Course:
             return_bonus = 0.0
             reason = "recovery_pose_violation"
         score = obstacle_score + return_bonus
+        duration = max(0.0, float(t) - float(self.attempt_start_t))
         result = AttemptResult(attempt=self.attempt_no, score=score, obstacle_score=obstacle_score,
-                               return_bonus=return_bonus, duration_s=self.active_time,
+                               return_bonus=return_bonus, duration_s=duration,
                                skipped=False, reason=reason, events=list(self._current_events))
         self.recovery_violation = False
         attempt_report = {"score": score, "obstacle_score": obstacle_score,
@@ -202,7 +202,8 @@ class Part1Course:
         """Operator abort/restart: consumes the attempt, score 0."""
         if not self.active:
             raise RuntimeError("no active attempt")
-        result = AttemptResult(attempt=self.attempt_no, score=0.0, duration_s=self.active_time,
+        duration = max(0.0, float(t) - float(self.attempt_start_t))
+        result = AttemptResult(attempt=self.attempt_no, score=0.0, duration_s=duration,
                                skipped=True, reason=reason, events=list(self._current_events))
         self.manager.skip(t, reason=reason)
         self.recovery_violation = False
@@ -266,9 +267,9 @@ def run_self_test() -> None:
     assert c.begin_attempt(10.0)
     c.update(10.1, (3.7, -9.0, 0.45), 0.0)
     c.pause(10.2, (3.7, -9.0, 0.45), 0.0)
-    c.resume(15.0, (3.7, -9.0, 0.45), 0.0)    # 4.8 s paused
-    c.update(15.1, (3.7, -9.0, 0.45), 0.0)
-    r2 = c.abort_attempt(15.2, "restart")
+    c.resume(15.0, (3.7, -9.0, 0.45), 0.0)    # operator fake clock (physics frozen)
+    c.update(10.3, (3.7, -9.0, 0.45), 0.0)    # simulator clock continues after pause
+    r2 = c.abort_attempt(10.4, "restart")
     assert r2.skipped and r2.score == 0.0
     assert r2.duration_s < 1.0, f"paused time must be excluded: {r2.duration_s}"
     summary = c.summary()
