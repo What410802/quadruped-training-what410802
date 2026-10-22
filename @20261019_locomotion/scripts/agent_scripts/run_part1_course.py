@@ -70,7 +70,8 @@ class CoursePolicyRunner:
         self.floor_geoms = {g for g in range(self.model.ngeom)
                             if self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE
                             or self.geom_names.get(g, "").startswith("ground")
-                            or self.geom_names.get(g, "") in {"trench_bottom", "level_floor"}}
+                            or self.geom_names.get(g, "") in {"trench_bottom", "level_floor",
+                                                              "ramp_blocks_l", "ramp_blocks_r"}}
         self.leg_geoms: dict[str, set[int]] = {}
         for leg in ("FL", "FR", "RL", "RR"):
             body = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"{leg}_foot")
@@ -206,7 +207,9 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict],
                     # repeated frozen poses (that could change obstacle state or duration)
                     ev_idx = apply_events(course, events, ev_idx, fake,
                                           pose_xy=sample["base_xyz"], pose_yaw=sample["yaw"])
-                return True
+                    if not course.active:
+                        return False
+                return bool(course.active)
         return True
 
     for seg in route["segments"]:
@@ -281,8 +284,6 @@ def main() -> None:
         n_success = sum(1 for x in st.values() if x["status"] == "success")
         print(f"attempt {result['attempt']}: score={result['report']['summary']['final_score']} "
               f"obstacles_success={n_success} aborted={result['aborted']}")
-        if result["aborted"]:
-            break
     session_summary = course.summary()
     total_success = sum(1 for x in (attempts[-1]["judge"]["states"] if attempts else {}).values()
                         if x["status"] == "success")

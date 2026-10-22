@@ -63,6 +63,9 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+LEVEL_DIR = ROOT / "assets/terrain/part2/levels"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--verdict", default="pending", help="pending / PASS / CONCERN / FAIL")
@@ -76,6 +79,16 @@ def main() -> int:
     for key, rel in OBJECTS.items():
         p = ROOT / rel
         out["objects"][key] = {"path": rel, "sha256": sha256(p) if p.is_file() else ""}
+    for lvl in sorted(LEVEL_DIR.glob("*.xml")):
+        rel = lvl.relative_to(ROOT).as_posix()
+        out["objects"][f"level_{lvl.stem}"] = {"path": rel, "sha256": sha256(lvl)}
+    for pid in ("flat-ft-2500-part1-diag-v2", "flat-ft-2500-part2-diag-v2",
+                "flat-ft-2500-part1-course-diag"):
+        for fname in ("manifest.json", "trials.jsonl"):
+            rel = f"comp/eval/{pid}/{fname}"
+            p = ROOT / rel
+            if p.is_file():
+                out["objects"][f"eval_{pid}_{fname.split('.')[0]}"] = {"path": rel, "sha256": sha256(p)}
     for key, rel in SUPERSEDED.items():
         p = ROOT / rel
         out["superseded"][key] = {"path": rel, "sha256": sha256(p) if p.is_file() else "",

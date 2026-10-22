@@ -100,6 +100,8 @@ class Part1Course:
         self.active = True
         self.attempt_no += 1
         self.active_time = 0.0
+        self.recovery_violation = False
+        self.pause_pose = None
         self.paused = False
         self.prev_t = float(t)
         self._start_area_hits = 0
@@ -149,6 +151,8 @@ class Part1Course:
                                              "dyaw_rad": round(dyaw, 3)})
         self.paused = False
         self.prev_t = float(t)
+        if self.manager._current and self.manager._current["pauses"]:
+            self.manager._current["pauses"][-1][1] = float(t)   # close the pause interval
         self._current_events.append({"t": float(t), "event": "resume",
                                      "pose": list(base_xyz) if base_xyz is not None else None})
         self.manager.events.append({"t": float(t), "event": "resume",
@@ -201,6 +205,8 @@ class Part1Course:
         result = AttemptResult(attempt=self.attempt_no, score=0.0, duration_s=self.active_time,
                                skipped=True, reason=reason, events=list(self._current_events))
         self.manager.skip(t, reason=reason)
+        self.recovery_violation = False
+        self.pause_pose = None
         self.manager.attempts[-1]["duration_s"] = result.duration_s
         self.manager.attempts[-1]["duration_note"] = "active_time_pause_excluded"
         self.results.append(result)
@@ -228,7 +234,7 @@ class Part1Course:
                           "recovery_consumes_attempt": False,
                           "skip_obstacle_consumes_attempt": False,
                           "final_score": "best_attempt",
-                          "final_time": "min_over_attempts"}}
+                          "final_time": "min_duration_among_best_score_attempts"}}
 
 
 # ---------------------------------------------------------------- self-test

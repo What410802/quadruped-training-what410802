@@ -37,6 +37,7 @@ import json
 import math
 import sys
 import tempfile
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -95,7 +96,8 @@ def _warn(warnings: list[str], msg: str) -> None:
 
 
 def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
-                               task_root: Path, diagnostic: bool) -> tuple[list[str], list[str]]:
+                               task_root: Path, diagnostic: bool,
+                               trials: list[dict] | None = None) -> tuple[list[str], list[str]]:
     """Machine-check the evidence chain that summary alone cannot prove.
 
     - recompute scene/judge/contract sha256 recorded in the manifest;
@@ -106,9 +108,13 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
     warnings: list[str] = []
 
     def _check_hash(entry: dict, label: str) -> None:
-        rel = entry.get("file") or entry.get("path")
+        rel = entry.get("file") or entry.get("path") or entry.get("scene")
         recorded = entry.get("sha256") or ""
         if not rel:
+            return
+        if not recorded:
+            (_warn if diagnostic else _err)(warnings if diagnostic else errors,
+                                            f"{label} 缺 sha256，无法机器复核: {rel}")
             return
         path = Path(rel)
         if not path.is_absolute():
@@ -159,9 +165,7 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
     # Part 1 final time: fastest among best-score attempts, computed from trials
     s1 = summary.get("part1") or {}
     if "final_time_s" in s1:
-        trials = []
-        # trials are not passed in here; caller adds them under the private key
-        trials = manifest.get("__trials__") or []
+        trials = trials or []
         p1_obs = {o["id"]: o for o in (contract.get("parts", {}).get("part1", {}) or {}).get("obstacles", [])}
         by_attempt: dict[int, dict] = {}
         for t in trials:
@@ -440,7 +444,7 @@ def load_trials(policy_dir: Path, manifest: dict) -> tuple[list[dict], list[str]
     return trials, errors
 
 
-def score_one(policy_dir: Path, contract: dict) -> dict:
+def score_one(policy_dir: Path, contract: dict, task_root: Path = Path(".")) -> dict:
     row: dict[str, Any] = {"policy_dir": str(policy_dir), "errors": [], "warnings": []}
     manifest_path = policy_dir / "manifest.json"
     summary_path = policy_dir / "summary.json"
@@ -464,11 +468,15 @@ def score_one(policy_dir: Path, contract: dict) -> dict:
     row["errors"] += errs
     row["warnings"] += warns
     row["errors"] += validate_trials(policy_dir, manifest)
+    row["diagnostic"] = bool((manifest.get("protocol") or {}).get("diagnostic"))
+    ext_err, ext_warn = validate_external_evidence(
+        manifest, summary, contract, task_root, row["diagnostic"], trials)
+    row["errors"] += ext_err
+    row["warnings"] += ext_warn
     row["part1_total"] = int((summary.get("part1") or {}).get("total") or 0)
     row["part2_total"] = int((summary.get("part2") or {}).get("total") or 0)
     row["grand_total"] = int(summary.get("grand_total") or 0)
     row["summary_path"] = str(summary_path)
-    row["diagnostic"] = bool((manifest.get("protocol") or {}).get("diagnostic"))
     row["status"] = "valid" if not row["errors"] else "invalid"
     if row["status"] == "valid" and row["diagnostic"]:
         row["status"] = "diagnostic"
@@ -617,6 +625,45 @@ def run_self_test() -> int:
         (root / "trials.jsonl").write_text("".join(json.dumps(t) + "\n" for t in bad5), encoding="utf-8")
         row = score_one(root, contract)
         assert any("best_success_value" in e for e in row["errors"]), row
+
+    # ---- external evidence: tampered hashes / illegal levels / wrong final_time
+    tmp = Path(tempfile.mkdtemp(prefix="compscore_ext_"))
+    scene = tmp / "scene.xml"
+    scene.write_text("<mujoco/>", encoding="utf-8")
+    man_ok = {"scenes": {"part1": {"file": "scene.xml", "sha256": _sha256(scene)}},
+              "judge": {"files": [], "file_hashes": []}}
+    errs, _ = validate_external_evidence(man_ok, {"part2": {"obstacles": {}}},
+                                         {"parts": {}}, tmp, False, [])
+    assert not errs, errs
+
+    man_bad = json.loads(json.dumps(man_ok))
+    man_bad["scenes"]["part1"]["sha256"] = "0" * 64
+    errs, _ = validate_external_evidence(man_bad, {"part2": {"obstacles": {}}},
+                                         {"parts": {}}, tmp, False, [])
+    assert any("sha256" in e for e in errs), errs
+
+    contract2 = {"parts": {"part2": {"obstacles": [
+        {"id": "p", "unit": "cm", "score_curve": [{"value": 10, "points": 10},
+                                                   {"value": 20, "points": 50}]}]}}}
+    errs, _ = validate_external_evidence(
+        man_ok, {"part2": {"obstacles": {"p": {"best_success_value": 2, "best_score": 0}}}},
+        contract2, tmp, False, [])
+    assert any("契约合法档位" in e for e in errs), errs
+
+    contract3 = {"parts": {"part1": {"obstacles": [{"id": "a", "per_obstacle_score": 100}],
+                                     "return_bonus": {"score": 100}}}}
+    trials3 = [
+        {"part": "part1", "obstacle": "a", "attempt": 1, "duration_s": 10.0,
+         "judge": {"status": "success", "score": 100}},
+        {"part": "part1", "obstacle": "a", "attempt": 2, "duration_s": 20.0,
+         "judge": {"status": "success", "score": 100}},
+    ]
+    summary3 = {"part1": {"final_score": 100, "final_time_s": 10.0}}
+    errs, _ = validate_external_evidence(man_ok, summary3, contract3, tmp, False, trials3)
+    assert not errs, errs
+    summary3_bad = {"part1": {"final_score": 100, "final_time_s": 5.0}}
+    errs, _ = validate_external_evidence(man_ok, summary3_bad, contract3, tmp, False, trials3)
+    assert any("final_time_s" in e for e in errs), errs
     print("comp_score.py self-test: OK")
     return 0
 
@@ -650,7 +697,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: no policy dirs under {args.eval_dir}", file=sys.stderr)
         return 2
 
-    rows = [score_one(p, contract) for p in policy_dirs]
+    rows = [score_one(p, contract, args.task_root) for p in policy_dirs]
     bad = [r for r in rows if r["status"] == "invalid"]
     if not args.validate_only and args.out and args.json_out:
         write_scoreboard(rows, contract, args.out, args.json_out)

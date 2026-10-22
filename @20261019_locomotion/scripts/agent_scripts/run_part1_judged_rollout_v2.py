@@ -79,7 +79,7 @@ class V2Runner:
             if self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE
             or (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "").startswith("ground")
             or (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "")
-            in {"trench_bottom", "level_floor"}
+            in {"trench_bottom", "level_floor", "ramp_blocks_l", "ramp_blocks_r"}
         }
         self.geom_names = {
             g: (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "")

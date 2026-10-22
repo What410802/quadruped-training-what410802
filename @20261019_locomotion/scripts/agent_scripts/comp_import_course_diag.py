@@ -89,6 +89,8 @@ def main() -> int:
         key = (float(rec.get("score", 0.0)), -float(rec.get("duration_s", 0.0)))
         if key > best_key:
             best_key, best_idx = key, i
+    if best_key[0] < 0.0 and attempts:      # all attempts skipped: still keep a record
+        best_idx = 0
     best = attempts[best_idx] if attempts else {"report": {"summary": {}}, "judge": {"states": {}}}
     best_rec = _att_rec(best)
     best_attempt_no = int(best_rec.get("attempt") or best.get("attempt") or (best_idx + 1))
