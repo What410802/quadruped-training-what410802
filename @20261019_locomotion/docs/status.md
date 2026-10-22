@@ -21,7 +21,7 @@
 ## 1. 当前定位
 
 - **主目标**：2026-11-04 队内赛（障碍赛 900 + 能力测试 1300，占 70%；7 分钟答辩 30%）。真值见 [`reference/team-race-2026.md`](reference/team-race-2026.md)。
-- **路线位置**：**P0 已完成（2026-10-22）**；**P1 已启动**（训练机 GPU smoke 通过）。
+- **路线位置**：**P0 已完成（2026-10-22）**；**P1 进行中**：两轮训练完成、当前没有训练进程；下一步先评估/调课程，等用户指示再开下一轮。
 - **P0 范围**：场地/判定/手动状态机/评测/审计/演示链路闭环；P0 不包含训练。训练机已恢复（RTX 5060 Ti 16 GB），P1 开始使用。
 - **控制仓库独立**：`quadruped_control` 是独立 C++/ROS 仓库；个人 fork [`What410802/quadruped_control`](https://github.com/What410802/quadruped_control) 已推送 `f2b37dc`；本地 `origin`=个人 fork、`upstream`=`N-W-wolf/quadruped_control`、`local_readonly`=原只读副本。**暂不切 coverMoon**：它比团队 fork 超前 17 个提交/190 文件，但 P1 训练不依赖控制仓库；P1 baseline 稳定后再在独立分支 rebase 到 `coverMoon/quadruped_control` 并重跑 Pixi 构建/测试。
 - **当前策略**：`flat-ft-2500` 是唯一 baseline；足端 clearance 约 0.022 m，几乎拖地；不能把 zero-shot 障碍结果当验收。
@@ -35,12 +35,12 @@
 - **审计/演示**：`audit_deployment.py` 通过（45 维 actor、无禁用传感器、力矩合规）；演示指南 [`demo/acceptance-demo-guide.md`](demo/acceptance-demo-guide.md) 已写。
 - **可视化/文档**：Part 1 judge contact sheet、Part 2 stand 视频、AI 障碍方向自检 [`reference/agent-visual-checklist.md`](reference/agent-visual-checklist.md)、Pixi 迁移记录 [`reference/quadruped-control-pixi-migration.md`](reference/quadruped-control-pixi-migration.md)。
 
-## 3. P1 计划（当前阶段）
+## 3. P1 当前阶段
 
-1. **训练仓同步 + capability task smoke**：训练机 `~/rc_work/nwwolf_mjlab_training_release` 同步本地修改；生成/校验 Part 2 slope/stairs 等 capability terrain task，先跑 GPU smoke，不追指标。
-2. **slope/stairs**：从 `flat-ft-2500` 做课程训练；先看 foot clearance、摔倒、tilt、1/2 足 ground；目标是可控低档分。
-3. **Part 1 关键障碍**：limit_bar/bridge/high_wall 专项；桥窄带先低速状态机，后续再评估相机。
-4. **history/camera**：专项 baseline 稳定后再加 6 帧 history；深度相机最后。
+- **已完成**：训练仓 `black-basic-obstacle` task（flat + smooth slopes + stairs）；两轮 4096-env 训练（resume from flat-ft），各约 1 h 11 min；P1 policy 导出并做 Part 1 迁移诊断。**当前没有训练进程**。
+- **当前结论**：第一轮桥/限高杆有改善，第二轮训练地形 level 略升但 Part 1 迁移退化；不能只靠续训，也不能把训练 reward 当通过率。详见 [`training/p1-basic-obstacle.md`](training/p1-basic-obstacle.md)。
+- **下一步（等用户指示）**：先做训练环境评估和课程/奖励调整；再决定 P1 第三轮训练或转向 Part 1 专项。
+- **后续顺序**：slope/stairs 稳定 → T 台阶/高台 10–20 cm → Part 1 limit_bar/bridge/high_wall 专项 → history/camera。
 - **P1 gate**：不在本文件展开，见 [`training/eval-protocol.md`](training/eval-protocol.md) 与 [`training/training-plan.md`](training/training-plan.md)。
 
 ## 4. 最近验证（2026-10-22）

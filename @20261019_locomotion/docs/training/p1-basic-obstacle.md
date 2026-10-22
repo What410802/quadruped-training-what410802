@@ -79,10 +79,10 @@ MUJOCO_GL=egl .venv/bin/train black-basic-obstacle \
 - 本地 Part 1 迁移诊断反而变差：bridge_bands tilt≈38.7°、height_bar 重新碰杆、t_stairs fail；说明不能只靠连续训练，Part 1 迁移与训练地形不一致，需要先做训练环境评估/调课程；
 - 结果 JSON：`prep.d/results/part1_p1_cont.json`；contact sheet：`prep.d/videos/part1_p1_cont_contact.png`。
 
-### 下一步
+### 下一步（当前暂停）
 
-- 先做训练环境 play/eval（terrain level、slope/stairs 通过率、摔倒率），再决定是否延长训练、调课程或提高 stairs 比例；
-- P1 下一轮优先 T 台阶/高台 10–20 cm，不混 rough/discrete；
+- **用户已明确暂不继续下一轮训练**；先做训练环境 play/eval（terrain level、slope/stairs 通过率、摔倒率），再决定课程/奖励调整；
+- 下次训练再优先 T 台阶/高台 10–20 cm，不混 rough/discrete；
 - 恢复/桥面专项放 P2。
 
 ## 3. 验收口径
