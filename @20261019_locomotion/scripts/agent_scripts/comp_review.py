@@ -87,6 +87,9 @@ def independence(executor_model: str | None, reviewer_model: str | None) -> dict
     if ef == "unknown" or rf == "unknown":
         status = "unknown-provisional"
         reason = "无法判定家族（需要 --executor-model / --reviewer-model）"
+    elif executor_model and reviewer_model and str(executor_model) == str(reviewer_model):
+        status = "same-model-provisional"
+        reason = f"executor 与 reviewer 是同一模型 {executor_model}：同模型自审，只能驱动改进，不能 acquit Type-B 门"
     elif ef == rf:
         status = "same-family-provisional"
         reason = f"executor 与 reviewer 同为 {ef} 家族：可用于驱动改进，不能单独 acquit Type-B 门"
@@ -382,6 +385,8 @@ def run_self_test() -> int:
     assert model_family("weird-model") == "unknown"
     ind = independence("deepseek-v4.1-flash", "deepseek-v4-pro")
     assert ind["status"] == "same-family-provisional", ind
+    ind_same = independence("deepseek-v4.1-flash", "deepseek-v4.1-flash")
+    assert ind_same["status"] == "same-model-provisional", ind_same
     ind2 = independence("deepseek-v4.1-flash", "gpt-6-astra")
     assert ind2["status"] == "different-family", ind2
     assert overall_hint("...\noverall: **FAIL**\n") == "FAIL"

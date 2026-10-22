@@ -24,8 +24,10 @@
       "attempts": {
         "scope": "run",
         "count": 3,
-        "all_attempts_consumed": true,
-        "note": "整场 3 次；开始、重试、摔倒恢复、跳过均消耗次数（2026-10-22 主办方口径）"
+        "recovery_consumes_attempt": false,
+        "note": "整场 3 次；摔倒暂停计时、手动恢复后从原位置原朝向继续，恢复不额外消耗尝试；最终时长取 3 次尝试中最快者（2026-10-22 确认）",
+        "final_time": "min_over_attempts",
+        "final_score": "best_attempt（按得分优先、同分看最快用时；此条为当前落地假设，待书面确认）"
       },
       "operator": "manual_allowed_auto_no_bonus",
       "fixed_actions_allowed": true,
@@ -85,9 +87,9 @@
           ],
           "partial_scores": {
             "both_sides": 100,
-            "one_side_up": 75,
-            "one_side_down": 50,
-            "note": "按用户转述：75/50 相对 100 记部分分（全部按手动遥控计分）"
+            "one_side_up": 112.5,
+            "one_side_down": 75,
+            "note": "主办方口径：上=75*3/2、下=50*3/2（2026-10-22 确认）；注意上=112.5 超过单项 100 分，待确认是否应按 150 分制或封顶 100"
           }
         },
         {
@@ -272,10 +274,11 @@
       ],
       "rounding": "floor",
       "stability": {
-        "failure_ratio_max": 0.01,
+        "target_failures": 0,
+        "optimization_metric": "failure_ratio",
         "min_attempts": 100,
-        "formula": "fail_count / attempts < failure_ratio_max；attempts>=min_attempts",
-        "note": "若主办方真实意图是\"0 失败\"，把 failure_ratio_max 改为 0"
+        "formula": "先按 fail_count/attempts 优化；目标为 0 失败（主办方推荐）",
+        "note": "第二赛项不计时；先按失败比例优化，目标 0 失败（2026-10-22 确认）"
       }
     }
   },
@@ -283,10 +286,9 @@
     "sensors_allowed": [
       "imu",
       "joint_encoder",
-      "camera",
-      "radar"
+      "camera"
     ],
-    "sensor_notes": "规则写\"相机、雷达\"；若主办方指的是激光雷达（lidar）需书面确认后再改",
+    "sensor_notes": "规则允许 IMU/编码器/相机/雷达；本队选择：优先深度相机，雷达不采用（相机需模拟真实相机；不使用 height scan/foot force 等禁止量）",
     "sensors_forbidden": [
       "body_lin_vel",
       "heightmap",
@@ -302,7 +304,12 @@
       "calf": 60
     },
     "part2_rl_only": true,
-    "part1_fixed_actions_allowed": true
+    "part1_fixed_actions_allowed": true,
+    "perception_choice": {
+      "primary": "depth_camera",
+      "radar": "not_used",
+      "fallback": "blind（imu+encoder）"
+    }
   },
   "policy_contract": {
     "actor_obs_dim": 45,
@@ -352,14 +359,14 @@
       "id": "Q1",
       "question": "Part 1 的 3 次尝试是整场还是每障碍？",
       "status": "resolved",
-      "resolution": "整场 3 次；开始/重试/恢复/跳过都消耗",
+      "resolution": "整场 3 次；摔倒恢复不额外消耗尝试；最终时长取 3 次最快者；开始/主动重跑消耗尝试（恢复不消耗，2026-10-22 更正）",
       "source": "用户转述主办方，2026-10-22"
     },
     {
       "id": "Q2",
       "question": "T 台阶表 3 的 75/50 如何计分？",
-      "status": "resolved",
-      "resolution": "按比例缩放到 100 分：两侧都过=100，仅上=75，仅下=50（全部按手动遥控计分）",
+      "status": "resolved-partial",
+      "resolution": "上=75*3/2=112.5、下=50*3/2=75（用户转述，2026-10-22）；上>100 与单项满分冲突，待确认是否封顶/150 分制",
       "source": "用户转述主办方，2026-10-22（上/下与 75/50 的对应按表顺序，仍需最终确认）"
     },
     {
@@ -392,9 +399,9 @@
     }
   ],
   "open_questions_for_organizer": [
-    "Q1: 摔倒恢复是否消耗一次尝试（规则原文\"暂停计时并恢复\"，当前按用户转述\"都消耗\"落地）",
-    "Q2: T 台阶\"仅上/仅下\"与 75/50 的对应关系",
-    "Q7: 允许的\"雷达\"是传统雷达还是激光雷达（当前 JSON 写 radar）",
-    "Q8: 稳定性是\"严格 0 失败\"还是\"失败比例 <1%\"（当前按 <1% 公式）"
+    "Q2 修正：上=75*3/2=112.5 超过单项 100 分——应封顶 100、按 150 分制，还是公式理解有误？（当前按 100 封顶还是原值待定）",
+    "Q1 补充：跳过/主动放弃是否消耗一次尝试？最终分数是否取 3 次中的最好一次？",
+    "Q7: 相机是否需模拟深度噪声/延迟/外参；是否允许双目（当前按单目深度相机规划）",
+    "Q8: 稳定性目标 0 失败；测量至少多少次尝试（当前暂定 ≥100）？"
   ]
 }
