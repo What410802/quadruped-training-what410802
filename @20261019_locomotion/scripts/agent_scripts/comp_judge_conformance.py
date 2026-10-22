@@ -166,7 +166,7 @@ def test_t_stairs_history_and_partial():
     report2 = feed(judge2, partial)
     assert_status(report2, "t_stairs", "success", "one-branch traversal is partial")
     assert len(state(report2, "t_stairs")["detail"]["branches"]) == 1
-    assert state(report2, "t_stairs")["score"] <= 100.0
+    assert state(report2, "t_stairs")["score"] == 75.0, "partial up = 75 (Q2 conservative)"
     print("t_stairs: OK sequential history + full/partial")
 
 
@@ -190,6 +190,16 @@ def test_slope_distance_and_direction():
     path.append(dict(x=3.6, y=-5.0))  # exit zone
     report2 = feed(judge2, path)
     assert_status(report2, "slope", "success", "two sides distance sum >= 1 m")
+
+    # Boundary graze (enter the zone and leave after 2 frames, no slope contact) must
+    # soft-reset and not poison a later legal traversal.
+    judge3 = Part1JudgeV2()
+    graze_then_legal = [
+        dict(x=5.7, y=-4.2),        # inside slope zone (adjacent to bridge_bands approach)
+        dict(x=5.7, y=-3.5),        # left without slope distance -> pending
+    ] + path
+    report3 = feed(judge3, graze_then_legal)
+    assert_status(report3, "slope", "success", "soft-reset graze then legal traversal")
     print("slope: OK position-spoof fails, real distance succeeds")
 
 
@@ -210,13 +220,16 @@ def test_gravel_entry_exit_sides():
     long_side = [
         dict(x=4.0, y=-12.0),
         dict(x=4.4, y=-12.0, tags=["gravel"]),
-        dict(x=5.0, y=-12.0, tags=["gravel"]),
+        dict(x=4.8, y=-12.0, tags=["gravel"]),
+        dict(x=5.2, y=-12.0, tags=["gravel"]),
+        dict(x=5.6, y=-12.0, tags=["gravel"]),
         dict(x=6.0, y=-12.0, tags=["gravel"]),
         dict(x=6.4, y=-12.0),
         dict(x=6.6, y=-12.0),
     ]
     report2 = feed(judge2, long_side)
-    assert_not_success(report2, "gravel_pit", "entered from long edge")
+    assert_status(report2, "gravel_pit", "fail", "genuine long-edge attempt")
+    assert "illegal_entry_side" in state(report2, "gravel_pit")["reason"]
     print("gravel_pit: OK short-edge legal / long-edge illegal")
 
 
@@ -242,7 +255,18 @@ def test_high_wall_sideways_and_climb():
     ]
     report2 = feed(judge2, climb)
     assert_status(report2, "high_wall", "success", "raised crossing with wall contact")
-    print("high_wall: OK sideways fails / real crossing succeeds")
+
+    judge3 = Part1JudgeV2()
+    no_climb = [
+        dict(x=1.8, y=-7.9),
+        dict(x=1.8, y=-7.4),   # standing height, no wall contact, no raise
+        dict(x=1.8, y=-7.0),
+        dict(x=1.8, y=-6.6),
+        dict(x=1.8, y=-6.0),
+    ]
+    report3 = feed(judge3, no_climb)
+    assert_not_success(report3, "high_wall", "crossed without climb evidence")
+    print("high_wall: OK sideways fails / real crossing succeeds / no-climb fails")
 
 
 def test_slalom_sequence():

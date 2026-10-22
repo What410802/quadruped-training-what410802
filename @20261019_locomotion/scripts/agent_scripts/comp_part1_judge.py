@@ -318,7 +318,8 @@ class HighWall(_Obstacle):
             return False, "" if soft else "wrong_exit_side"
         if side != _opposite(entry):
             return False, "" if soft else "wrong_exit_side"
-        if self.evidence["max_z"] < WALL_TOP_Z and not self.evidence["wall_contact"]:
+        # climb evidence: wall contact OR base raised well above standing height
+        if not self.evidence["wall_contact"] and self.evidence["max_z"] < 0.55:
             return False, "" if soft else "no_climb_evidence"
         return True, ""
 

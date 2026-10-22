@@ -97,14 +97,14 @@ class Part2JudgeV2:
         kind = self.j.get("kind")
         if kind == "platform":
             lo, hi = self.j.get("goal_x", [0.0, 0.0])
-            return lo <= x <= hi and z >= self.j["top_z"] + 0.30
+            return lo <= x <= hi and z >= self.j["top_z"] + 0.38
         if kind == "stairs":
-            return x >= self.j["goal_x_min"] and z >= self.j["top_z"] + 0.30
+            return x >= self.j["goal_x_min"] and z >= self.j["top_z"] + 0.38
         if kind == "slope":
-            return x >= self.j["goal_x_min"] and z >= self.j["rise_z"] + 0.30
+            return x >= self.j["goal_x_min"] and z >= self.j["rise_z"] + 0.38
         if kind == "wall":
             return (x >= self.j["goal_x_min"]
-                    and self.max_z_near >= self.j["wall_h"] + self.j.get("climb_z_margin", 0.30)
+                    and self.max_z_near >= max(self.j["wall_h"] + 0.10, 0.55)
                     and z >= 0.25)
         if kind == "gap":
             return x >= self.j["goal_x_min"] and z >= self.j.get("min_z", 0.3)
@@ -183,7 +183,7 @@ def run_self_test() -> None:
 
     # slope
     e = _entry("slope", 30, {"kind": "slope", "rise_z": 0.866, "goal_x_min": 3.0, "hold_s": 0.05})
-    rep = _feed(Part2JudgeV2(e), [((2.0, 0, 0.8), 8), ((3.1, 0, 1.2), 8), ((3.1, 0, 1.2), 8), ((3.1, 0, 1.2), 8)])
+    rep = _feed(Part2JudgeV2(e), [((2.0, 0, 0.8), 8), ((3.1, 0, 1.3), 8), ((3.1, 0, 1.3), 8), ((3.1, 0, 1.3), 8)])
     assert rep["status"] == "success", rep
 
     # wall: requires climb evidence near the wall

@@ -1,41 +1,97 @@
 {
-  "audited": true,
-  "note": "G1 已完成（FAIL，2026-10-22）；修复 P0 后需重审；hash 变化即门禁失效",
+  "audited": false,
+  "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
+  "generated_at": "2026-10-22T23:06:24+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
-      "sha256": "d58ad1af440435661baf75452b312914bf0aa97bea98fdaca148bf862c31c739"
+      "sha256": "5dc6bc4247f9fcdb787f7ae0692a60dc9186a134b72556078ebd37be58821ecd"
+    },
+    "contract_md": {
+      "path": "comp/CONTRACT.md",
+      "sha256": "a36e4a1740fdc4801543b498e47043301e4234cc99399fe1c50f21d3c8950fbe"
     },
     "protocol_md": {
       "path": "comp/eval/_protocol.md",
-      "sha256": "e477ab0dd3def6fd025a5c5e3345410a01a48027398c7d6eeae6e65b200cb6b2"
+      "sha256": "2cbf581127eb1bc60564012bb0df010bb95969f7565362b0d9c9563d870a185a"
     },
-    "judge_event": {
+    "judge_part1_v2": {
+      "path": "scripts/agent_scripts/comp_part1_judge.py",
+      "sha256": "b2a96c64585f783626cc7bd0364f1f94ad246c14e033bc1d570b375e43161b4b"
+    },
+    "judge_conformance": {
+      "path": "scripts/agent_scripts/comp_judge_conformance.py",
+      "sha256": "9d2e072420be6b79c44209420e89fae05f2a328cd245fdf19cc949cc5b87f3ea"
+    },
+    "judge_course": {
+      "path": "scripts/agent_scripts/comp_part1_course.py",
+      "sha256": "28abd84997d89814a9ecc8c5c5231afc04acf92b9cc780b68a0bf514853647e5"
+    },
+    "judge_part2_v2": {
+      "path": "scripts/agent_scripts/comp_part2_judge.py",
+      "sha256": "e52bdaf01a0eaa2258a861e6642d82aa82477e1251d4335b7afc99c8440c785d"
+    },
+    "part2_levels_maker": {
+      "path": "scripts/agent_scripts/make_part2_levels.py",
+      "sha256": "a5d9c82445fbe3616375566cba0f6a17f4e45c9a3ff6be7bbd5566ee69bd7294"
+    },
+    "scene_part1_v2": {
+      "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
+      "sha256": "e88b83fe54ae50b9dabeee6a472ad3dba42ec2e6c1835fb70e5a8445a08604ae"
+    },
+    "part1_route": {
+      "path": "config/part1-route.json",
+      "sha256": "4ed5bc6bee33eefdf78c473f0e1904f309646e49d150984dbcdf9f5a278967b1"
+    },
+    "part2_levels_json": {
+      "path": "config/part2-levels.json",
+      "sha256": "5bc6222ace0358c6f0b55575cde4dc83bc5b8304fc30f2348ee5d9238e9c10d7"
+    },
+    "eval_part1_diag": {
+      "path": "comp/eval/flat-ft-2500-part1-diag-v2/summary.json",
+      "sha256": "b1e68586844bbcb99a3e78a13b01e7df822b45f1576fdc6823b9fe981be04b83"
+    },
+    "eval_part2_diag": {
+      "path": "comp/eval/flat-ft-2500-part2-diag-v2/summary.json",
+      "sha256": "13a9c15912c4f54981c66988007f97501576ae3b7846f1dda467b201205911ef"
+    },
+    "eval_course_diag": {
+      "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
+      "sha256": "4b9f7d9f16d2e779fb783cfa06e017c1ce3ac6ff16d5ad9748c48f0eb72703b3"
+    },
+    "rules_pdf_md": {
+      "path": "docs/reference/team-race-2026.md",
+      "sha256": "37986030982bba5ed5a73238eb12f06824602f8846dc2a2f702b3fc19c709744"
+    }
+  },
+  "superseded": {
+    "judge_event_v1": {
       "path": "scripts/agent_scripts/part1_event_judge.py",
-      "sha256": "546dbacd29465cb626d12c23fcae9acb8805321d502ea1472db398e180448516"
+      "sha256": "546dbacd29465cb626d12c23fcae9acb8805321d502ea1472db398e180448516",
+      "note": "G1 首轮对象，已被 V2 取代"
     },
-    "judge_contact": {
+    "judge_contact_v1": {
       "path": "scripts/agent_scripts/part1_judge.py",
-      "sha256": "b398a39d25a21542eeddd87dc8b01b551234477d5163c4f1733ca27299eb5cd4"
+      "sha256": "b398a39d25a21542eeddd87dc8b01b551234477d5163c4f1733ca27299eb5cd4",
+      "note": "G1 首轮对象，已被 V2 取代"
     },
-    "scene_part1": {
+    "scene_part1_v1": {
       "path": "assets/terrain/part1/part1_eval_scene.xml",
-      "sha256": "e7b654ad1bcf4638ccd0c86e1e70a0cf88a8011e2461912e08f86dfbe9b8d79e"
+      "sha256": "e7b654ad1bcf4638ccd0c86e1e70a0cf88a8011e2461912e08f86dfbe9b8d79e",
+      "note": "G1 首轮对象，已被 V2 取代"
     },
-    "judge_zones": {
+    "judge_zones_v1": {
       "path": "assets/terrain/part1/judge_zones.yaml",
-      "sha256": "53b1f6c0a9bae0cba639747c3400768485a96e1d75de5beb7fc1d69ca263a478"
+      "sha256": "53b1f6c0a9bae0cba639747c3400768485a96e1d75de5beb7fc1d69ca263a478",
+      "note": "G1 首轮对象，已被 V2 取代"
     }
   },
   "audit": {
     "skill": "comp-eval-audit",
     "gate": "G1",
-    "reviewer": "codex",
-    "model": "gpt-6-astra",
-    "effort": "ultra",
-    "date": "2026-10-22",
-    "thread_id": "unavailable-from-bridge",
-    "verdict": "FAIL",
+    "reviewer": "pending",
+    "date": "",
+    "verdict": "pending",
     "report": "comp/audits/JUDGE_AUDIT.md"
   }
 }
