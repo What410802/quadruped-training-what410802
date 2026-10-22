@@ -1,0 +1,336 @@
+{
+  "schema_version": 1,
+  "skill": "comp-review",
+  "backend": "http",
+  "backend_kind": "openai-compatible",
+  "config": "comp/reviewer.json",
+  "prompt_file": "comp/audits/prompts/judge-v10-flash-accept.md",
+  "prompt_sha256": "3d6dbe3f7cdb1c80f9e20f49d7557fb91d9e3e670a86a6bbd7fd84854178b586",
+  "payload_bytes": 458238,
+  "files": [
+    {
+      "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
+      "exists": true,
+      "bytes": 18842,
+      "sha256": "8222109ace225027c588f52141649c3d9bdd239f329a39d258c1c09d26ab4cf5",
+      "included": true
+    },
+    {
+      "path": "comp/audits/BYOK_JUDGE_V9_FLASH_ACCEPT.md",
+      "exists": true,
+      "bytes": 9206,
+      "sha256": "987d923d77dd82efb3133cc9b6f0b1f4b51fa9f26cc3f641b2f5df8e368ac9e1",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_part1_judge.py",
+      "exists": true,
+      "bytes": 32031,
+      "sha256": "850caac8ee29b27f970defa3a62ee30eca8617ebe8a5bacb4460155987554d4e",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_part1_geom_tags.py",
+      "exists": true,
+      "bytes": 1986,
+      "sha256": "79ce2d9d5aa7efb93b01c3b7816d036a37f501b545ffa18d67f00c22e4f7bef7",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_judge_conformance.py",
+      "exists": true,
+      "bytes": 18576,
+      "sha256": "f584fc70e74a7a13b451a9c36fce9fc00bab888dcb07e02f90d0aab69b83bec3",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_part1_course.py",
+      "exists": true,
+      "bytes": 15937,
+      "sha256": "2137a7be58cf3ab7db2685b501ff262e679716e64f551b085498b5bb6f3ecbe9",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/run_part1_course.py",
+      "exists": true,
+      "bytes": 13774,
+      "sha256": "97fef7250a86307721548ec6ec14342bc72fef2825a7af49c2998fcfcb62dcb1",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/run_part1_judged_rollout_v2.py",
+      "exists": true,
+      "bytes": 8970,
+      "sha256": "a3496b36294ec28ea045f8e4738553d1cca0cee432b1fd3a85f800f3c0809618",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_part2_judge.py",
+      "exists": true,
+      "bytes": 14595,
+      "sha256": "bb43b16de2fce17f363273a5b36b492d17891e2bb8b86103ac1c8f8c6f3ef1ab",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/make_part2_levels.py",
+      "exists": true,
+      "bytes": 7620,
+      "sha256": "e68768dbcc14f3330af4372a45ddc0fd5596a629532012098cf23be5a6c3be58",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/run_part2_judged_eval.py",
+      "exists": true,
+      "bytes": 10736,
+      "sha256": "367b1b28a0cf91601478ca7f9dd5083e85b7bdb48f2af2a8747bac5696e5130e",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_import_diagnostic.py",
+      "exists": true,
+      "bytes": 8912,
+      "sha256": "56ee0ee8eaab663551e62e686d554424501cc5bb1495189731761b590e6ab563",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_import_part2_diag.py",
+      "exists": true,
+      "bytes": 9671,
+      "sha256": "662607d0485606b0cb25281e208d0d0a1f0165607d1cefd6bb32192b515f280c",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_import_course_diag.py",
+      "exists": true,
+      "bytes": 11574,
+      "sha256": "569f0aad3cee06c3d8e6246c299eee66ff81f21c5228695b2adad66ee09a8a71",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_score.py",
+      "exists": true,
+      "bytes": 39806,
+      "sha256": "463c03093277476f07e554a012694cc6eb6b06a8364d6e1ce435740efc7d138c",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_audit_hashes.py",
+      "exists": true,
+      "bytes": 5148,
+      "sha256": "a8b7870905816c2b52a4ef9078ec2ce80f812782ee78c1d478d2740417fb0606",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/check_part1_scene_v2.py",
+      "exists": true,
+      "bytes": 2302,
+      "sha256": "57fdbf7fe344c57c3bd0d672bb3b0d058f7ac46589f1d6d238021160d0d6d100",
+      "included": true
+    },
+    {
+      "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
+      "exists": true,
+      "bytes": 28534,
+      "sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242",
+      "included": true
+    },
+    {
+      "path": "config/part1-route.json",
+      "exists": true,
+      "bytes": 2167,
+      "sha256": "4ed5bc6bee33eefdf78c473f0e1904f309646e49d150984dbcdf9f5a278967b1",
+      "included": true
+    },
+    {
+      "path": "config/part1-course-events-pause.json",
+      "exists": true,
+      "bytes": 167,
+      "sha256": "082688462b459d880b3ef5c43165116b21f8bdf34a1364ba0c04faf98f6f6c7a",
+      "included": true
+    },
+    {
+      "path": "config/part1-course-events-abort.json",
+      "exists": true,
+      "bytes": 223,
+      "sha256": "66973d1f40812c37bd00bd7441bee240272d9564678eeeaccffc9a3cf04f88a7",
+      "included": true
+    },
+    {
+      "path": "config/part2-levels.json",
+      "exists": true,
+      "bytes": 10861,
+      "sha256": "10c73a25a1678999fb1a32d3ef6ee0dd78650c697d5222dc15c613255fa39848",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-diag-v2/manifest.json",
+      "exists": true,
+      "bytes": 2833,
+      "sha256": "9c3c18e56371aef52d424124ba97cb013c7fe97bfa274a280abf50d412eb68b3",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-diag-v2/summary.json",
+      "exists": true,
+      "bytes": 2756,
+      "sha256": "bc128cb42c72d02fb8de7ec77d4f336716e6fdc1a51896158f22a55fda75f76b",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-diag-v2/trials.jsonl",
+      "exists": true,
+      "bytes": 3480,
+      "sha256": "1cf4ac50c44c5bd92f01eb653c8fe566570fc12ed7a4ceb606e2c526951c356d",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-diag-v2/manifest.json",
+      "exists": true,
+      "bytes": 7973,
+      "sha256": "2b4b900bf80968438511002cf60456f79063a5c3dcd15c996a9996cb255cc03f",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-diag-v2/summary.json",
+      "exists": true,
+      "bytes": 2227,
+      "sha256": "13a9c15912c4f54981c66988007f97501576ae3b7846f1dda467b201205911ef",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-diag-v2/trials.jsonl",
+      "exists": true,
+      "bytes": 9925,
+      "sha256": "7f88b097a87e0add32fc674297c95f1e177dcd0c44987660a3d5b9ae10ca1571",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
+      "exists": true,
+      "bytes": 8032,
+      "sha256": "4999ef3e3080bf6221fe90f25c63f7b32783bca98adbc92d4a19fc168a78fb41",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/summary.json",
+      "exists": true,
+      "bytes": 2233,
+      "sha256": "e2b277169aee2b975ef61fed3b52655bcf9a554471d5e8dcc1e2f1bf958e1e0a",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
+      "exists": true,
+      "bytes": 12518,
+      "sha256": "491646777ced8646b4af33ca00b22da9ec639f4081ab36b3465da75c763335f7",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
+      "exists": true,
+      "bytes": 3235,
+      "sha256": "6990ab5b9014d7b0194d7190f5e9e409720b7603a4a1fc181e3a262566f065ef",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
+      "exists": true,
+      "bytes": 2391,
+      "sha256": "74ca66d315d60972e7944ee56376c8f6a88372e09a731279b3b4064f27643dd6",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
+      "exists": true,
+      "bytes": 10950,
+      "sha256": "f5fb3320908035314ab4671d54be4aba41330e462a4760460a8e7609e74e7fa1",
+      "included": true
+    },
+    {
+      "path": "comp/audits/evidence/part1_course_pause_resume_drill.json",
+      "exists": true,
+      "bytes": 32556,
+      "sha256": "f1fff094753bfb09299e87138889dcd7e2eb16d4dd6051c29b1b998cea50ae51",
+      "included": true
+    },
+    {
+      "path": "comp/audits/evidence/part1_course_abort_drill.json",
+      "exists": true,
+      "bytes": 31486,
+      "sha256": "15e971a89004cdf13dba9e4d8a1379c414059bfc5a0b12e9a1704810813775d8",
+      "included": true
+    },
+    {
+      "path": "comp/SCOREBOARD.md",
+      "exists": true,
+      "bytes": 1245,
+      "sha256": "a0d324a9e4df16408ec5f97144bec20f70100ea03d7ed0a203e56453ba2d68f7",
+      "included": true
+    },
+    {
+      "path": "comp/CONTRACT.md",
+      "exists": true,
+      "bytes": 6166,
+      "sha256": "17093b868bd2b1756ff9e1a3e6ce9ae07a911387b71bf801ed0ed010347a1dc5",
+      "included": true
+    },
+    {
+      "path": "comp/CONTRACT.json",
+      "exists": true,
+      "bytes": 12412,
+      "sha256": "627d61356fc8ec96b39cfbdf66d0261f65b9282d6e5fe8ab432c6082bef7e054",
+      "included": true
+    },
+    {
+      "path": "comp/eval/_protocol.md",
+      "exists": true,
+      "bytes": 8736,
+      "sha256": "1604298aa03bf0b7a1c79308c81d14e1e624472b23a4b46902ef89d5da032fbb",
+      "included": true
+    },
+    {
+      "path": "comp/audits/HASHES.json",
+      "exists": true,
+      "bytes": 12138,
+      "sha256": "6376dbd5227ab56768a73f6446d8cd5704d6a487d3699c43c2393c023a3e03af",
+      "included": true
+    },
+    {
+      "path": "comp/DEV_OPS.md",
+      "exists": true,
+      "bytes": 4331,
+      "sha256": "0aefcd05231485d332918adf7664e6ab73e5e703bc859ff564c1ea2a260cfaa7",
+      "included": true
+    }
+  ],
+  "executor": "deepseek-v4.1-flash",
+  "reviewer_model": "deepseek-v4.1-flash",
+  "independence": {
+    "executor_model": "deepseek-v4.1-flash",
+    "reviewer_model": "deepseek-v4.1-flash",
+    "executor_family": "deepseek",
+    "reviewer_family": "deepseek",
+    "status": "same-model-provisional",
+    "reason": "executor 与 reviewer 是同一模型 deepseek-v4.1-flash：同模型自审，只能驱动改进，不能 acquit Type-B 门"
+  },
+  "started_at": "2026-10-23T01:51:23+08:00",
+  "status": "ok",
+  "endpoint_host": "ai-sourcing.discover-robotics.com",
+  "key_source": "dsh-process-env(pid=8612):MY_CHAT_API_KEY",
+  "attempts": [
+    {
+      "max_tokens": 32000,
+      "status": "ok",
+      "latency_s": 69.3,
+      "usage": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": null,
+  "latency_s": 69.3,
+  "model_reported": "deepseek-flash",
+  "finish_reason": "stop",
+  "overall_hint": null,
+  "response_sha256": "43c47e8e7dc777214c5cc4f17ebb0fe0ca7445ab8718f1c9b8ad1e7dcd67a3fd",
+  "finished_at": "2026-10-23T01:52:33+08:00"
+}

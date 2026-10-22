@@ -1,6 +1,6 @@
 # 记分板（由 comp_score.py 生成，不要手改数字）
 
-> 生成时间：2026-10-23 01:51　契约：robocon-2026-internal-v1
+> 生成时间：2026-10-23 02:01　契约：robocon-2026-internal-v1
 > 对外引用规则：只有 `valid` 且通过 G4 的行可以被引用，且必须带 policy_id + 证据路径。
 
 | policy_id | 日期 | Part1 | Part2 | 总分 | 状态 | 证据 |

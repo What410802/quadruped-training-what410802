@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T01:51:18+08:00",
+  "generated_at": "2026-10-23T02:01:08+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -25,7 +25,7 @@
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
-      "sha256": "2137a7be58cf3ab7db2685b501ff262e679716e64f551b085498b5bb6f3ecbe9"
+      "sha256": "9adf6d3697d2a73da587268321591333481337d555215446bcc7282624343e41"
     },
     "judge_part2_v2": {
       "path": "scripts/agent_scripts/comp_part2_judge.py",
@@ -45,7 +45,7 @@
     },
     "runner_course": {
       "path": "scripts/agent_scripts/run_part1_course.py",
-      "sha256": "97fef7250a86307721548ec6ec14342bc72fef2825a7af49c2998fcfcb62dcb1"
+      "sha256": "fd1d0f9ef52bcefb7980f5d418cc8a107d5b19d5cf20b715fc44fbf2199b8cce"
     },
     "runner_part2_v2": {
       "path": "scripts/agent_scripts/run_part2_judged_eval.py",
@@ -57,7 +57,7 @@
     },
     "importer_part2": {
       "path": "scripts/agent_scripts/comp_import_part2_diag.py",
-      "sha256": "662607d0485606b0cb25281e208d0d0a1f0165607d1cefd6bb32192b515f280c"
+      "sha256": "cfd500da816d6ce879430a9a7bca302cbd0e9d15e26e06fed421ad337f358399"
     },
     "importer_course": {
       "path": "scripts/agent_scripts/comp_import_course_diag.py",
@@ -65,7 +65,7 @@
     },
     "score_tool": {
       "path": "scripts/agent_scripts/comp_score.py",
-      "sha256": "463c03093277476f07e554a012694cc6eb6b06a8364d6e1ce435740efc7d138c"
+      "sha256": "baf55cb159ac4e6366d5a2f2e98be237369cab737fc2a2ab5a447c9dd0d8962b"
     },
     "scene_part1_v2": {
       "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
@@ -105,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "8222109ace225027c588f52141649c3d9bdd239f329a39d258c1c09d26ab4cf5"
+      "sha256": "67cf76826af8c2e7aef7e2ee3c84c5d4b28691c7323be51822831b7cf1c0469f"
     },
     "level_high_platform_10cm": {
       "path": "assets/terrain/part2/levels/high_platform_10cm.xml",
@@ -209,11 +209,11 @@
     },
     "eval_flat-ft-2500-part2-official-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
-      "sha256": "4999ef3e3080bf6221fe90f25c63f7b32783bca98adbc92d4a19fc168a78fb41"
+      "sha256": "85e868c7a23b8316d5f2ce3adf599c72f825e15a3b749205a1b11346327bcb7e"
     },
     "eval_flat-ft-2500-part2-official-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
-      "sha256": "491646777ced8646b4af33ca00b22da9ec639f4081ab36b3465da75c763335f7"
+      "sha256": "fa7661ad241292267aaad67dcc75805ccadbc34188bbc7f6b221ac6babed0abb"
     },
     "eval_flat-ft-2500-part2-official-diag_summary": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/summary.json",
@@ -221,7 +221,7 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "6990ab5b9014d7b0194d7190f5e9e409720b7603a4a1fc181e3a262566f065ef"
+      "sha256": "0766956fa6e833e5ae7d4e44e1feb8cf9845fbd0571e9f501f853ba927a51c87"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
@@ -233,11 +233,15 @@
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
-      "sha256": "15e971a89004cdf13dba9e4d8a1379c414059bfc5a0b12e9a1704810813775d8"
+      "sha256": "e6b228428178e6e4466d2dd68caa54e6f850dc6e7eeaab61c45f13030311958d"
     },
     "evidence_part1_course_pause_resume_drill": {
       "path": "comp/audits/evidence/part1_course_pause_resume_drill.json",
       "sha256": "f1fff094753bfb09299e87138889dcd7e2eb16d4dd6051c29b1b998cea50ae51"
+    },
+    "evidence_part1_course_pause_timeout_drill": {
+      "path": "comp/audits/evidence/part1_course_pause_timeout_drill.json",
+      "sha256": "f6b3aa2a4a7d3a6bf38f294ec4f95f3a8d668a60e5d9390210c63dbd8fe1b95a"
     }
   },
   "superseded": {

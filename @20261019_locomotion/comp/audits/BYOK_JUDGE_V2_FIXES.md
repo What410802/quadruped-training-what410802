@@ -142,3 +142,13 @@
 | Part2 attempts 对账 | diagnostic 允许 attempts_used 与 trials 不一致，formal 不报错；part2_has_evidence 未考虑 trials | formal 下不一致改为 error；part2_has_evidence 同时依据 trials 计数 |
 | fallback 证据 | Part1-only formal manifest 可能被误判 Part2 证据缺失 | `part2_has_evidence` 依据 summary + trials，Part1-only 不再强制 part2 scenes |
 | official attempt 编号 | 需要 category 内 1–4 | runner 写 `attempt_index`（official_counter），importer 落 `attempt`；official artifact 24 slots 已生成 |
+
+
+## Flash 验收（第 10 轮）后修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| formal Part2 空 trials 绕过 | `attempts_used>0` 但 trials 0 条时 `obs_trials and ...` 短路不报错 | `validate_summary` 改为无条件比较 `attempts_used` 与该 obstacle 的 trials 条数；formal 下不一致一律 error（零条也报） |
+| official trial_id 歧义 | official 每 record 只有 1 次 run，`i` 恒为 1，trial_id 全是 `-a1-` | trial_id 用真实 `attempt_index`：`...-a{attempt_num}-r{trial_seq}` |
+| pause_timeout operator_t 丢失 | 事件在 `abort_attempt` 拷贝 `_current_events` 之后才 append，且 manager.skip 无 operator_t | timeout 事件先 append 再 abort；`abort_attempt` 给 manager skip 事件补 `operator_t` |
+| 演练证据 | 需 pause_timeout 证据 | 新增 `config/part1-course-events-pause-timeout.json` 与 `comp/audits/evidence/part1_course_pause_timeout_drill.json`（reason=pause_timeout，事件含 pause_timeout/operator_t） |

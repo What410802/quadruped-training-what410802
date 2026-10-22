@@ -82,14 +82,15 @@ def main() -> int:
             trial_seq += 1
             judge = run.get("judge") or {}
             status = judge.get("status", "fail")
+            attempt_num = int(att.get("attempt_index") or i)
             trial = {
-                "trial_id": f"diag-{args.policy_id}-{cat}-{att['level']}{unit}-a{i}-r{trial_seq}",
+                "trial_id": f"diag-{args.policy_id}-{cat}-{att['level']}{unit}-a{attempt_num}-r{trial_seq}",
                 "part": "part2",
                 "obstacle": cat,
                 "difficulty": att["level"],
                 "value": att["level"],
                 "unit": unit,
-                "attempt": int(att.get("attempt_index") or i),
+                "attempt": attempt_num,
                 "entry_seq": trial_seq,
                 "seed": None,
                 "start": {"pose": start_map.get((cat, level)), "note": "diagnostic level start"},

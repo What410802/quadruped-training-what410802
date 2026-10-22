@@ -200,10 +200,10 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict],
                     n += 1
                     fake += 0.02
                     if n * 0.02 > 120.0:
-                        course.abort_attempt(fake, "pause_timeout")
                         course._current_events.append({"t": float(course.last_sim_t),
                                                        "event": "pause_timeout",
                                                        "operator_t": fake})
+                        course.abort_attempt(fake, "pause_timeout")
                         return False
                     # paused: only operator events/timeouts advance; the judge must not see
                     # repeated frozen poses (that could change obstacle state or duration)

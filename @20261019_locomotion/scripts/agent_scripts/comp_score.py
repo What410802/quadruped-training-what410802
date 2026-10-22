@@ -418,9 +418,13 @@ def validate_summary(summary: dict, manifest: dict, contract: dict,
                        if t.get("difficulty") == value or t.get("value") == value]
             if not matched:
                 _err(errors, f"part2.{oid} best_success_value={value} 无对应成功 trial")
-        if obs_trials and int(rec.get("attempts_used") or 0) != len(obs_trials):
-            msg = f"part2.{oid} attempts_used 与 trials 条数不一致"
-            (_warn(warnings, msg + "（diagnostic）") if diagnostic else _err(errors, msg))
+        reported = int(rec.get("attempts_used") or 0)
+        if reported != len(obs_trials):
+            msg = f"part2.{oid} attempts_used={reported} 与 trials 条数={len(obs_trials)} 不一致"
+            if diagnostic and obs_trials:
+                _warn(warnings, msg + "（diagnostic）")
+            else:
+                _err(errors, msg)
     if int(s2.get("total") or 0) != sum2:
         _err(errors, f"part2.total={s2.get('total')} 重算为 {sum2}")
     if proto.get("attempts_part2_per_obstacle") not in (None, budget2) and not diagnostic:

@@ -1,0 +1,297 @@
+{
+  "kind": "part1_course_diagnostic",
+  "protocol": "comp_part1_course.Part1Course",
+  "judge": "comp_part1_judge.Part1JudgeV2",
+  "scene": "@20261019_locomotion/assets/terrain/part1/part1_eval_scene_v2.xml",
+  "scene_sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242",
+  "route": "@20261019_locomotion/config/part1-route.json",
+  "route_sha256": "4ed5bc6bee33eefdf78c473f0e1904f309646e49d150984dbcdf9f5a278967b1",
+  "policy": "@20261019_locomotion/assets/policies/flat-ft-2500/policy.pt",
+  "policy_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
+  "attempts": [
+    {
+      "attempt": 1,
+      "aborted": true,
+      "stable_stop": false,
+      "attempt_result": {
+        "attempt": 1,
+        "score": 0.0,
+        "obstacle_score": 0.0,
+        "return_bonus": 0.0,
+        "duration_s": 0.5000000000000003,
+        "skipped": true,
+        "reason": "pause_timeout",
+        "events": [
+          {
+            "t": 1.0000000000000007,
+            "event": "pause",
+            "operator_t": 1.0000000000000007,
+            "pose": [
+              3.8534889863742476,
+              -9.020163514265592,
+              0.42455306592300784
+            ]
+          },
+          {
+            "t": 1.0000000000000007,
+            "event": "pause_timeout",
+            "operator_t": 121.01999999999306
+          }
+        ]
+      },
+      "report": {
+        "summary": {
+          "attempts_used": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "started_at": 0.5000000000000003,
+              "recoveries": 1,
+              "pauses": [
+                [
+                  1.0000000000000007,
+                  1.0000000000000007
+                ]
+              ],
+              "events": 0,
+              "ended_at": 1.0000000000000007,
+              "skipped": true,
+              "reason": "pause_timeout",
+              "score": 0.0,
+              "duration_s": 0.5000000000000003,
+              "duration_note": "active_time_pause_excluded"
+            }
+          ],
+          "events": [
+            {
+              "t": 0.5000000000000003,
+              "event": "attempt_start",
+              "attempt": 1
+            },
+            {
+              "t": 1.0000000000000007,
+              "event": "recovery",
+              "consumes_attempt": false,
+              "attempt": 1
+            },
+            {
+              "t": 1.0000000000000007,
+              "event": "skip",
+              "consumes_attempt": true,
+              "attempt": 1,
+              "operator_t": 121.01999999999306
+            }
+          ],
+          "final_score": 0.0,
+          "final_time_s": 0.0,
+          "skips": 1,
+          "recoveries": 1,
+          "rules": {
+            "max_attempts": 3,
+            "recovery_consumes_attempt": false,
+            "final_score": "best_attempt",
+            "final_time": "min_duration_among_best_score_attempts"
+          },
+          "attempt_results": [
+            {
+              "attempt": 1,
+              "score": 0.0,
+              "obstacle_score": 0.0,
+              "return_bonus": 0.0,
+              "duration_s": 0.5000000000000003,
+              "skipped": true,
+              "reason": "pause_timeout",
+              "events": [
+                {
+                  "t": 1.0000000000000007,
+                  "event": "pause",
+                  "operator_t": 1.0000000000000007,
+                  "pose": [
+                    3.8534889863742476,
+                    -9.020163514265592,
+                    0.42455306592300784
+                  ]
+                },
+                {
+                  "t": 1.0000000000000007,
+                  "event": "pause_timeout",
+                  "operator_t": 121.01999999999306
+                }
+              ]
+            }
+          ],
+          "final_time_scope": "min_duration_among_best_score_attempts",
+          "attempts_allowed": 3
+        },
+        "rules": {
+          "return_bonus": 100.0,
+          "recovery_consumes_attempt": false,
+          "skip_obstacle_consumes_attempt": false,
+          "final_score": "best_attempt",
+          "final_time": "min_duration_among_best_score_attempts"
+        }
+      },
+      "judge": {
+        "score": 0.0,
+        "obstacle_score": 0.0,
+        "return_bonus": 0.0,
+        "returned_to_start": false,
+        "all_full_success": false,
+        "bar_dropped": false,
+        "states": {
+          "height_bar": {
+            "status": "pending",
+            "reason": "",
+            "score": 0.0,
+            "failures": [],
+            "detail": {}
+          },
+          "high_wall": {
+            "status": "pending",
+            "reason": "",
+            "score": 0.0,
+            "failures": [],
+            "detail": {}
+          },
+          "bridge_blocks": {
+            "status": "pending",
+            "reason": "",
+            "score": 0.0,
+            "failures": [],
+            "detail": {}
+          },
+          "bridge_bands": {
+            "status": "pending",
+            "reason": "",
+            "score": 0.0,
+            "failures": [],
+            "detail": {}
+          },
+          "gravel_pit": {
+            "status": "pending",
+            "reason": "",
+            "score": 0.0,
+            "failures": [],
+            "detail": {}
+          },
+          "t_stairs": {
+            "status": "pending",
+            "reason": "",
+            "score": 0.0,
+            "failures": [],
+            "detail": {}
+          },
+          "slope": {
+            "status": "pending",
+            "reason": "",
+            "score": 0.0,
+            "failures": [],
+            "detail": {}
+          },
+          "slalom": {
+            "status": "pending",
+            "reason": "",
+            "score": 0.0,
+            "failures": [],
+            "detail": {}
+          }
+        },
+        "statuses": {
+          "height_bar": "pending",
+          "high_wall": "pending",
+          "bridge_blocks": "pending",
+          "bridge_bands": "pending",
+          "gravel_pit": "pending",
+          "t_stairs": "pending",
+          "slope": "pending",
+          "slalom": "pending"
+        }
+      }
+    }
+  ],
+  "session_summary": {
+    "attempts_used": 1,
+    "attempts": [
+      {
+        "attempt": 1,
+        "started_at": 0.5000000000000003,
+        "recoveries": 1,
+        "pauses": [
+          [
+            1.0000000000000007,
+            1.0000000000000007
+          ]
+        ],
+        "events": 0,
+        "ended_at": 1.0000000000000007,
+        "skipped": true,
+        "reason": "pause_timeout",
+        "score": 0.0,
+        "duration_s": 0.5000000000000003,
+        "duration_note": "active_time_pause_excluded"
+      }
+    ],
+    "events": [
+      {
+        "t": 0.5000000000000003,
+        "event": "attempt_start",
+        "attempt": 1
+      },
+      {
+        "t": 1.0000000000000007,
+        "event": "recovery",
+        "consumes_attempt": false,
+        "attempt": 1
+      },
+      {
+        "t": 1.0000000000000007,
+        "event": "skip",
+        "consumes_attempt": true,
+        "attempt": 1,
+        "operator_t": 121.01999999999306
+      }
+    ],
+    "final_score": 0.0,
+    "final_time_s": 0.0,
+    "skips": 1,
+    "recoveries": 1,
+    "rules": {
+      "max_attempts": 3,
+      "recovery_consumes_attempt": false,
+      "final_score": "best_attempt",
+      "final_time": "min_duration_among_best_score_attempts"
+    },
+    "attempt_results": [
+      {
+        "attempt": 1,
+        "score": 0.0,
+        "obstacle_score": 0.0,
+        "return_bonus": 0.0,
+        "duration_s": 0.5000000000000003,
+        "skipped": true,
+        "reason": "pause_timeout",
+        "events": [
+          {
+            "t": 1.0000000000000007,
+            "event": "pause",
+            "operator_t": 1.0000000000000007,
+            "pose": [
+              3.8534889863742476,
+              -9.020163514265592,
+              0.42455306592300784
+            ]
+          },
+          {
+            "t": 1.0000000000000007,
+            "event": "pause_timeout",
+            "operator_t": 121.01999999999306
+          }
+        ]
+      }
+    ],
+    "final_time_scope": "min_duration_among_best_score_attempts",
+    "attempts_allowed": 3
+  },
+  "last_attempt_success_count": 0,
+  "notes": "scripted route is a P0 diagnostic harness; real run is manual, not approved protocol"
+}

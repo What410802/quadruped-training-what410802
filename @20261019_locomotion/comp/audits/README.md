@@ -23,7 +23,8 @@
 | `BYOK_JUDGE_V7_FLASH_ACCEPT.md/.json` | G1 预审 7 | DeepSeek **flash**：主项 PASS，提出空条目/重复 trial_id/fake 账本 | 已修复，见 FIXES §Flash 第 7 轮后修复 |
 | `BYOK_JUDGE_V8_FLASH_ACCEPT.md/.json` | G1 预审 8 | DeepSeek **flash**：CONCERN（无 scorer blocker，4 项审计清理） | 已修复，见 FIXES §Flash 第 8 轮 |
 | `BYOK_JUDGE_V9_FLASH_ACCEPT.md/.json` | G1 预审 9 | DeepSeek **flash**：PASS 技术项，minor 快照/hash/对账残留 | 已修复，见 FIXES §Flash 第 8 轮（补） |
-| `BYOK_JUDGE_V10_FLASH_ACCEPT.md/.json` | G1 预审 10 | DeepSeek **flash** 最终验收（待运行） | — |
+| `BYOK_JUDGE_V10_FLASH_ACCEPT.md/.json` | G1 预审 10 | DeepSeek **flash**：CONCERN（无 scorer blocker，3 项 minor） | 已修复，见 FIXES §Flash 第 10 轮 |
+| `BYOK_JUDGE_V11_FLASH_ACCEPT.md/.json` | G1 预审 11 | DeepSeek **flash** 最终验收（待运行） | — |
 | `evidence/part1_course_*_drill.json` | 协议演练证据 | 3 次 pause/resume 与 pause→resume→abort 的 runner 证据（纳入 HASHES） | — |
 | `BYOK_JUDGE_V2_FIXES.md` | — | 预审→修复/残余风险逐条映射 | — |
 

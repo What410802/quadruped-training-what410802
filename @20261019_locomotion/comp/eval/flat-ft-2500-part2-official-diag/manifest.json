@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part2-official-diag",
-  "created_at": "2026-10-23T01:42:09+08:00",
+  "created_at": "2026-10-23T02:01:07+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "fd22b7868b719757134571ed7e9a440d67ce2e5d",
+      "commit": "32aea8f0e3717649321231906cbcc83f424925ed",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },

@@ -212,6 +212,7 @@ class Part1Course:
                                skipped=True, reason=reason, events=list(self._current_events))
         sim_t = float(self.last_sim_t)
         self.manager.skip(sim_t, reason=reason)
+        self.manager.events[-1]["operator_t"] = float(t)
         self.recovery_violation = False
         self.pause_pose = None
         self.manager.attempts[-1]["duration_s"] = result.duration_s
