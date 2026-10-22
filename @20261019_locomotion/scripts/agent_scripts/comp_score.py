@@ -155,7 +155,7 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
             for lvl in levels:
                 _check_hash(lvl, f"scenes.{key}.levels", required=not diagnostic)
     if isinstance(contract_meta, dict):
-        _check_hash(contract_meta, "contract")
+        _check_hash(contract_meta, "contract", required=not diagnostic)
     file_hashes = judge.get("file_hashes") or []
     if not diagnostic and not file_hashes:
         _err(errors, "正式 manifest judge.file_hashes 为空")

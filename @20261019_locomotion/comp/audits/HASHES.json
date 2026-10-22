@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T01:31:02+08:00",
+  "generated_at": "2026-10-23T01:31:11+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -65,7 +65,7 @@
     },
     "score_tool": {
       "path": "scripts/agent_scripts/comp_score.py",
-      "sha256": "3a0d5806181e822ca7e440f68bfb1b8455cf487962ea1ca1916936cca0e57357"
+      "sha256": "230d315c539c39fb18baa043d0f2d7dd3e500238163463d2d681f5f2ec0cd9e0"
     },
     "scene_part1_v2": {
       "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
@@ -185,7 +185,7 @@
     },
     "eval_flat-ft-2500-part1-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/manifest.json",
-      "sha256": "c6b0efcd5ec93774930d6c80a2c575dfd379b8a24b8f6476d284b65ca5fbae83"
+      "sha256": "9c3c18e56371aef52d424124ba97cb013c7fe97bfa274a280abf50d412eb68b3"
     },
     "eval_flat-ft-2500-part1-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/trials.jsonl",

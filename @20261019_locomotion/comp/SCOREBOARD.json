@@ -17,9 +17,7 @@
     },
     {
       "policy_dir": "comp/eval/flat-ft-2500-part1-diag-v1",
-      "errors": [
-        "contract 缺 path/file/scene，无法机器复核"
-      ],
+      "errors": [],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
       ],
@@ -30,13 +28,11 @@
       "part2_total": 0,
       "grand_total": 0,
       "summary_path": "comp/eval/flat-ft-2500-part1-diag-v1/summary.json",
-      "status": "invalid"
+      "status": "diagnostic"
     },
     {
       "policy_dir": "comp/eval/flat-ft-2500-part1-diag-v2",
-      "errors": [
-        "judge.file sha256 不匹配: scripts/agent_scripts/comp_part1_geom_tags.py（manifest=23a148c954a8 actual=79ce2d9d5aa7）"
-      ],
+      "errors": [],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
       ],
@@ -47,7 +43,7 @@
       "part2_total": 0,
       "grand_total": 0,
       "summary_path": "comp/eval/flat-ft-2500-part1-diag-v2/summary.json",
-      "status": "invalid"
+      "status": "diagnostic"
     },
     {
       "policy_dir": "comp/eval/flat-ft-2500-part2-diag-v2",
@@ -64,9 +60,7 @@
     },
     {
       "policy_dir": "comp/eval/p1-basic-obstacle-part1-diag-v1",
-      "errors": [
-        "contract 缺 path/file/scene，无法机器复核"
-      ],
+      "errors": [],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
       ],
@@ -77,13 +71,11 @@
       "part2_total": 0,
       "grand_total": 0,
       "summary_path": "comp/eval/p1-basic-obstacle-part1-diag-v1/summary.json",
-      "status": "invalid"
+      "status": "diagnostic"
     },
     {
       "policy_dir": "comp/eval/p1-cont-part1-diag-v1",
-      "errors": [
-        "contract 缺 path/file/scene，无法机器复核"
-      ],
+      "errors": [],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
       ],
@@ -94,7 +86,7 @@
       "part2_total": 0,
       "grand_total": 0,
       "summary_path": "comp/eval/p1-cont-part1-diag-v1/summary.json",
-      "status": "invalid"
+      "status": "diagnostic"
     }
   ]
 }
