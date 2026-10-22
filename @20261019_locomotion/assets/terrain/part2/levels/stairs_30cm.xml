@@ -1,0 +1,16 @@
+<mujoco model="part2_stairs_30cm">
+  <include file="../black_policy.xml"/>
+  <statistic center="2.0 0 0.5" extent="3.0"/>
+  <visual><global azimuth="90" elevation="-20"/></visual>
+  <worldbody>
+    <light pos="0 0 2" dir="0 0 -1" directional="true"/>
+    <geom name="level_floor" type="plane" size="0 0 0.05" rgba="0.2 0.2 0.2 1"/>
+    <geom name="stair_0" type="box" pos="1.6500 0 0.0250" size="0.1500 0.6 0.0250" rgba="0.25 0.55 0.9 1"/>
+    <geom name="stair_1" type="box" pos="1.9500 0 0.0750" size="0.1500 0.6 0.0250" rgba="0.25 0.55 0.9 1"/>
+    <geom name="stair_2" type="box" pos="2.2500 0 0.1250" size="0.1500 0.6 0.0250" rgba="0.25 0.55 0.9 1"/>
+    <geom name="stair_3" type="box" pos="2.5500 0 0.1750" size="0.1500 0.6 0.0250" rgba="0.25 0.55 0.9 1"/>
+    <geom name="stair_4" type="box" pos="2.8500 0 0.2250" size="0.1500 0.6 0.0250" rgba="0.25 0.55 0.9 1"/>
+    <geom name="stair_5" type="box" pos="3.1500 0 0.2750" size="0.1500 0.6 0.0250" rgba="0.25 0.55 0.9 1"/>
+    <geom name="stair_top" type="box" pos="4.0000 0 0.1500" size="0.7 0.6 0.1500" rgba="0.25 0.55 0.9 1"/>
+  </worldbody>
+</mujoco>

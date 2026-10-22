@@ -55,13 +55,16 @@
 
 | P0 项 | 状态 | 产物 |
 |---|---|---|
-| Part 1 V2 judge（六类语义状态机、部分分、落杆检测接口） | **已实现 + 10 组 conformance 全过** | `scripts/agent_scripts/comp_part1_judge.py`、`comp_judge_conformance.py` |
-| AttemptManager（3 次、恢复不消耗、账本、best score/fastest time） | 已实现（同文件） | 同上 |
-| 场景 v2（可掉落横杆 + 命名台阶/平台/坡面） | 待做 | `assets/terrain/part1/part1_eval_scene_v2.xml` |
-| runner 接入 V2（每物理步接触分类/bar 位移/trials 追加写） | 待做 | `run_part1_judged_rollout_v2.py` |
-| 正式 Part 1 整场赛程协议 | 待做 | `comp/eval/_protocol.md` + 整场 runner |
-| Part 2 六类 evaluator | 待做 | `comp_part2_judge.py` |
-| G1 重审（Codex 1 次） | 待前五项完成 | 第 2 版 `JUDGE_AUDIT` |
+| Part 1 V2 judge（六类语义状态机、部分分、落杆检测） | **已实现 + conformance 全过** | `scripts/agent_scripts/comp_part1_judge.py`、`comp_judge_conformance.py` |
+| AttemptManager（3 次、恢复不消耗、账本、best score/fastest time） | 已实现 | 同文件 + `comp_part1_course.py` |
+| 场景 v2（可掉落横杆 + 命名台阶/平台/坡面） | **已实现**（横杆静置稳定，掉落可检测） | `assets/terrain/part1/part1_eval_scene_v2.xml` |
+| runner 接入 V2（每物理步接触分类/bar 位移） | **已实现**，8 障碍 diagnostic 已跑 | `run_part1_judged_rollout_v2.py`、`comp/eval/flat-ft-2500-part1-diag-v2/` |
+| 正式 Part 1 整场赛程协议 | **协议类已实现 + 自检**；MuJoCo 整场 runner 待接操作手 | `comp_part1_course.py`（3 次/暂停恢复/跳过/返回奖励/最快用时） |
+| Part 2 六类 evaluator | **已实现**（参数化 20 档 + 计分 floor/端点 0） | `comp_part2_judge.py`、`make_part2_levels.py`、`run_part2_judged_eval.py`、`comp/eval/flat-ft-2500-part2-diag-v2/` |
+| 边界擦碰语义（路过相邻障碍区不得永久判失败） | 已修：soft-reset | `comp_part1_judge.py` + conformance/course 自检 |
+| G1 重审（Codex 1 次） | 待 BYOK 预审通过后执行 | 第 2 版 `JUDGE_AUDIT` |
+
+**V2 评测链路（2026-10-22 晚）**：Part1 judge V2 `comp_part1_judge.py`（10 组 conformance 全过，含 G1 反例：6 条出口骗分、T 台阶跨帧历史、限高杆 touch/drop、斜坡距离、砂砾短边、高墙侧走、绕杆顺序、尝试规则）+ 场景 v2 + 逐物理步 runner + 整场协议 `comp_part1_course.py`（3 次、恢复不消耗、最快用时、返回奖励）+ Part2 六类 judge/参数化 20 档 evaluator；两条 diagnostic 产物已进 `comp/SCOREBOARD.md`（`flat-ft-2500-part1-diag-v2`/`-part2-diag-v2`，均 0 分，符合 flat 策略预期）。
 
 ## 4. 下一步顺序
 

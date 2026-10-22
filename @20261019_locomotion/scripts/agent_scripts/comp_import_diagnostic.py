@@ -105,7 +105,11 @@ def main() -> int:
     for oid in p1_obstacles:
         t = per_task.get(oid)
         success = bool(t and t["judge"]["status"] == "success")
-        score = int(p1_obstacles[oid].get("per_obstacle_score", 100)) if success else 0
+        # partial-score obstacles (T stairs partial) carry their judge score; full success = max
+        if success and t is not None:
+            score = int(t["judge"].get("score") or p1_obstacles[oid].get("per_obstacle_score", 100))
+        else:
+            score = 0
         total += score
         part1_obstacles[oid] = {
             "success": success,

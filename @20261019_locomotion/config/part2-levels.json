@@ -1,0 +1,511 @@
+{
+  "schema_version": 1,
+  "levels": [
+    {
+      "category": "high_platform",
+      "level": 10,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_platform_10cm.xml",
+      "judge": {
+        "kind": "platform",
+        "top_z": 0.1,
+        "goal_x": [
+          1.9,
+          3.1
+        ],
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "high_platform",
+      "level": 20,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_platform_20cm.xml",
+      "judge": {
+        "kind": "platform",
+        "top_z": 0.2,
+        "goal_x": [
+          1.9,
+          3.1
+        ],
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "high_platform",
+      "level": 30,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_platform_30cm.xml",
+      "judge": {
+        "kind": "platform",
+        "top_z": 0.3,
+        "goal_x": [
+          1.9,
+          3.1
+        ],
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "high_platform",
+      "level": 40,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_platform_40cm.xml",
+      "judge": {
+        "kind": "platform",
+        "top_z": 0.4,
+        "goal_x": [
+          1.9,
+          3.1
+        ],
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "stairs",
+      "level": 10,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/stairs_10cm.xml",
+      "judge": {
+        "kind": "stairs",
+        "top_z": 0.1,
+        "goal_x_min": 3.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "stairs",
+      "level": 15,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/stairs_15cm.xml",
+      "judge": {
+        "kind": "stairs",
+        "top_z": 0.15,
+        "goal_x_min": 3.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "stairs",
+      "level": 20,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/stairs_20cm.xml",
+      "judge": {
+        "kind": "stairs",
+        "top_z": 0.2,
+        "goal_x_min": 3.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "stairs",
+      "level": 30,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/stairs_30cm.xml",
+      "judge": {
+        "kind": "stairs",
+        "top_z": 0.3,
+        "goal_x_min": 3.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "slope",
+      "level": 20,
+      "unit": "deg",
+      "scene": "assets/terrain/part2/levels/slope_20deg.xml",
+      "judge": {
+        "kind": "slope",
+        "rise_z": 0.5459553513993035,
+        "goal_x_min": 3.0,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "slope",
+      "level": 30,
+      "unit": "deg",
+      "scene": "assets/terrain/part2/levels/slope_30deg.xml",
+      "judge": {
+        "kind": "slope",
+        "rise_z": 0.8660254037844386,
+        "goal_x_min": 3.0,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "slope",
+      "level": 35,
+      "unit": "deg",
+      "scene": "assets/terrain/part2/levels/slope_35deg.xml",
+      "judge": {
+        "kind": "slope",
+        "rise_z": 1.0503113073145647,
+        "goal_x_min": 3.0,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "slope",
+      "level": 45,
+      "unit": "deg",
+      "scene": "assets/terrain/part2/levels/slope_45deg.xml",
+      "judge": {
+        "kind": "slope",
+        "rise_z": 1.4999999999999998,
+        "goal_x_min": 3.0,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "high_wall",
+      "level": 10,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_wall_10cm.xml",
+      "judge": {
+        "kind": "wall",
+        "wall_x": 2.5,
+        "wall_h": 0.1,
+        "goal_x_min": 3.0,
+        "climb_z_margin": 0.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "high_wall",
+      "level": 20,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_wall_20cm.xml",
+      "judge": {
+        "kind": "wall",
+        "wall_x": 2.5,
+        "wall_h": 0.2,
+        "goal_x_min": 3.0,
+        "climb_z_margin": 0.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "high_wall",
+      "level": 30,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_wall_30cm.xml",
+      "judge": {
+        "kind": "wall",
+        "wall_x": 2.5,
+        "wall_h": 0.3,
+        "goal_x_min": 3.0,
+        "climb_z_margin": 0.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "high_wall",
+      "level": 40,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_wall_40cm.xml",
+      "judge": {
+        "kind": "wall",
+        "wall_x": 2.5,
+        "wall_h": 0.4,
+        "goal_x_min": 3.0,
+        "climb_z_margin": 0.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "trench",
+      "level": 10,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/trench_10cm.xml",
+      "judge": {
+        "kind": "gap",
+        "gap_x": 2.5,
+        "width": 0.1,
+        "goal_x_min": 2.9499999999999997,
+        "min_z": 0.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "trench",
+      "level": 20,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/trench_20cm.xml",
+      "judge": {
+        "kind": "gap",
+        "gap_x": 2.5,
+        "width": 0.2,
+        "goal_x_min": 3.0,
+        "min_z": 0.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "trench",
+      "level": 30,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/trench_30cm.xml",
+      "judge": {
+        "kind": "gap",
+        "gap_x": 2.5,
+        "width": 0.3,
+        "goal_x_min": 3.05,
+        "min_z": 0.3,
+        "hold_s": 0.2,
+        "start": [
+          0.0,
+          0.0,
+          0.55,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    },
+    {
+      "category": "plum",
+      "level": 1,
+      "unit": "bool",
+      "scene": "assets/terrain/part2/part2_plum_eval_scene.xml",
+      "judge": {
+        "kind": "plum",
+        "goal_x_min": 2.7,
+        "goal_z_min": 0.5,
+        "hold_s": 0.2,
+        "start": [
+          0.4,
+          0.4,
+          0.65,
+          0.0
+        ],
+        "command": [
+          0.5,
+          0.0,
+          0.0
+        ],
+        "seconds": 6.0
+      }
+    }
+  ]
+}

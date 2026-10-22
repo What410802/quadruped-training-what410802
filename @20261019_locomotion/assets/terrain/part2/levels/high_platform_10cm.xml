@@ -1,0 +1,11 @@
+<mujoco model="part2_high_platform_10cm">
+  <include file="../black_policy.xml"/>
+  <statistic center="2.0 0 0.5" extent="3.0"/>
+  <visual><global azimuth="90" elevation="-20"/></visual>
+  <worldbody>
+    <light pos="0 0 2" dir="0 0 -1" directional="true"/>
+    <geom name="level_floor" type="plane" size="0 0 0.05" rgba="0.2 0.2 0.2 1"/>
+    <geom name="platform" type="box" pos="2.5 0 0.0500" size="0.6 0.6 0.0500"
+          rgba="0.25 0.55 0.9 1"/>
+  </worldbody>
+</mujoco>

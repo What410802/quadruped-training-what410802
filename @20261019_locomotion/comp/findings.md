@@ -15,3 +15,6 @@
 - [2026-10-22] BYOK 后端打通并完成首次真实审计：DeepSeek v4-pro 流式调用 ~11.6 min、overall WARN、13 条问题（整场 vs 单障碍协议、稳定性 <1% 定义、tiebreak/返回奖励/红线缺失、radar vs lidar 等），已修契约/协议 11 项；同家族 → provisional。
 - [2026-10-22] 待主办方书面确认：恢复是否消耗尝试、T 台阶上/下↔75/50、radar 是否激光雷达、稳定性严格 0 失败还是 <1%；CONTRACT.md §5.1 已留痕。
 - [2026-10-22] Part 1 judge V2 落地：纯 Python 事件式、规则语义化（合法进入→跨越证据→合法离开），10 组 conformance 覆盖 G1 审计反例（6 条 spoof、T 台阶历史、限高杆 touch/drop、斜坡距离、砂砾短边、高墙侧走、绕杆顺序、尝试规则）全部通过。待接 MuJoCo 接触分类/可掉落横杆/Part2。
+- [2026-10-22] Part1 judge V2 接入 MuJoCo：场景 v2（横杆 slide joint、命名台阶/平台/坡面）+ 逐物理步接触分类 runner；8 障碍 diagnostic 全 0（flat 策略预期），边界擦碰改 soft-reset（避免相邻障碍区误占失败）。
+- [2026-10-22] Part2 evaluator V2：参数化高台/楼梯/斜坡/高墙/沟壑/梅花桩 20 档 + 计分 floor/10cm 端点 0/稳定性按失败比例；flat 策略 20 档全失败（trench 20/30cm 落入），与 baseline 能力一致。
+- [2026-10-22] 整场 Part1 协议类：3 次尝试、恢复不消耗（暂停时间不计入 duration）、开始/跳过消耗、返回奖励（8 障碍全过+二次进入出发区）、best score/fastest time；合成全通过 run 得 900 分自检通过。

@@ -11,12 +11,16 @@
 | `p1_basic_obstacle` | 2026-10-22 | `black-basic-obstacle` | flat-ft `model_2498` | 4096 | 1500 | 1:11 | 训练仓 fork（`model_3997`） | `8deb41a6ab3b…` | `p1-basic-obstacle-part1-diag-v1` | 0 | EVAL_DONE（诊断；slope/stairs 未过） |
 | `p1_basic_obstacle_cont` | 2026-10-22 | `black-basic-obstacle` | `model_3997` resume → `model_5496` | 4096 | 1500 | 1:11 | 训练仓 fork | `035749ffab32…` | `p1-cont-part1-diag-v1` | 0 | EVAL_DONE（诊断） |
 
+| `eval-only:part1-v2` | 2026-10-22 | — | 复用 flat-ft-2500 | — | — | — | 训练仓 `24c7f16`（同 v1） | 同 `332737933d75…` | `flat-ft-2500-part1-diag-v2` | 0 | EVAL_DONE（V2 judge 诊断） |
+| `eval-only:part2-v2` | 2026-10-22 | — | 复用 flat-ft-2500 | — | — | — | 训练仓 `24c7f16`（同 v1） | 同 `332737933d75…` | `flat-ft-2500-part2-diag-v2` | 0 | EVAL_DONE（V2 evaluator 诊断；20 档全失败） |
+
 ## 单开关说明
 
 | run_id | 相对上一版改了什么（只许一项） | 预期 | 实际 |
 |---|---|---|---|
 | `flat_ft_mirror01_footclear_500` | 加 mirror loss 0.1 + foot_clearance | 步态对称性/离地高度改善 | 见 docs/training/experiments.md |
 | `p1_basic_obstacle` | 混合 terrain generator（flat+smooth slope+stairs，无 rough/discrete） | 坡度/台阶通过 | 部分改善，未过 gate |
+| `eval-only:part1-v2` / `part2-v2` | 只替换评测器（judge V2 + 参数化 Part2 档位），策略未变 | 得到可审计的 0 分诊断，验证评测链路 | 与 v1 一致（flat 策略 0 分），链路跑通 |
 
 ## 失败 run
 

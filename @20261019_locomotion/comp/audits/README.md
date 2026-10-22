@@ -13,6 +13,7 @@
 | `REDTEAM.md` | G5 | 冻结前"决赛为什么失败"红队 | 未做 |
 | `BYOK_CONTRACT_REVIEW.md/.json` | G0 辅助 | BYOK（DeepSeek v4-pro，provisional）对契约/协议的独立初筛：WARN，13 条问题 | 已做；问题已按需修正 |
 | `prompts/` | — | 审计 prompt 存档（可复用于 Codex/BYOK/manual 后端） | — |
+| `BYOK_JUDGE_V2_REVIEW.md/.json` | G1 预审 | BYOK（DeepSeek flash，provisional）对 judge V2/Part2/协议/证据链的独立预审 | 进行中/见文件 |
 
 ## HASHES.json
 

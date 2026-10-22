@@ -1,0 +1,11 @@
+<mujoco model="part2_trench_20cm">
+  <include file="../black_policy.xml"/>
+  <statistic center="2.0 0 0.5" extent="3.0"/>
+  <visual><global azimuth="90" elevation="-20"/></visual>
+  <worldbody>
+    <light pos="0 0 2" dir="0 0 -1" directional="true"/>
+    <geom name="ground_left" type="box" pos="0.7000 0 -0.025" size="1.7000 1.2 0.025" rgba="0.2 0.2 0.2 1"/>
+    <geom name="ground_right" type="box" pos="4.3000 0 -0.025" size="1.7000 1.2 0.025" rgba="0.2 0.2 0.2 1"/>
+    <geom name="trench_bottom" type="box" pos="2.5000 0 -0.6" size="0.1000 1.2 0.025" rgba="0.3 0.1 0.1 1"/>
+  </worldbody>
+</mujoco>

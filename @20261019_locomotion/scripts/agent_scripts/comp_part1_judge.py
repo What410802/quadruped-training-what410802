@@ -231,14 +231,15 @@ class TraversalBridge(_Obstacle):
 
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
+        soft = self.in_zone_samples < 5
         if entry is None:
-            return False, "illegal_entry"
+            return False, "" if soft else "illegal_entry"
         if self.opposite and side != _opposite(entry):
-            return False, "wrong_exit_side"
+            return False, "" if soft else "wrong_exit_side"
         if self.evidence.get("bridge_hits", 0) < 3:
-            return False, "missing_bridge_contact"
+            return False, "" if soft else "missing_bridge_contact"
         if len(self.evidence.get("platforms", ())) < 2:
-            return False, "missing_platform_evidence"
+            return False, "" if soft else "missing_platform_evidence"
         return True, ""
 
 
@@ -275,16 +276,17 @@ class HeightBar(_Obstacle):
 
     def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
+        soft = self.in_zone_samples < 5
         if entry not in ("ymin", "ymax"):
-            return False, "illegal_entry_side"   # must pass under the beam, not sideways
+            return False, "" if soft else "illegal_entry_side"
         if side not in ("ymin", "ymax"):
-            return False, "wrong_exit_side"      # leaving through x sides is not the gate
+            return False, "" if soft else "wrong_exit_side"
         if side != _opposite(entry):
-            return False, "wrong_exit_side"
+            return False, "" if soft else "wrong_exit_side"
         if self.evidence["bad_opening"] and not self.evidence["through_opening"]:
             return False, "not_through_opening"
         if self.evidence["bar_z0"] is None:
-            return False, "bar_state_unknown"
+            return False, "" if soft else "bar_state_unknown"
         return True, ""
 
 
@@ -309,14 +311,15 @@ class HighWall(_Obstacle):
 
     def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
+        soft = self.in_zone_samples < 5
         if entry not in ("ymin", "ymax"):
-            return False, "illegal_entry_side"   # wall is thin along y: must cross along y
+            return False, "" if soft else "illegal_entry_side"
         if side not in ("ymin", "ymax"):
-            return False, "wrong_exit_side"      # walking along the wall is not a crossing
+            return False, "" if soft else "wrong_exit_side"
         if side != _opposite(entry):
-            return False, "wrong_exit_side"
+            return False, "" if soft else "wrong_exit_side"
         if self.evidence["max_z"] < WALL_TOP_Z and not self.evidence["wall_contact"]:
-            return False, "no_climb_evidence"
+            return False, "" if soft else "no_climb_evidence"
         return True, ""
 
 
@@ -336,14 +339,15 @@ class GravelPit(_Obstacle):
 
     def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
+        soft = self.in_zone_samples < 5
         if entry not in ("ymin", "ymax"):
-            return False, "illegal_entry_side"
+            return False, "" if soft else "illegal_entry_side"
         if side not in ("ymin", "ymax"):
-            return False, "illegal_exit_side"
+            return False, "" if soft else "illegal_exit_side"
         if side == entry:
-            return False, "no_crossing"
+            return False, "" if soft else "no_crossing"
         if self.evidence["gravel_hits"] < 3:
-            return False, "missing_gravel_contact"
+            return False, "" if soft else "missing_gravel_contact"
         return True, ""
 
 
@@ -368,7 +372,7 @@ class Slope(_Obstacle):
 
     def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
         if self.evidence["distance"] < 1.0:
-            return False, f"slope_distance<1m:{self.evidence['distance']:.2f}"
+            return False, ""   # boundary graze / insufficient distance: not a scored failure
         return True, ""
 
 
@@ -419,6 +423,8 @@ class TStairs(_Obstacle):
 
     def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
         ev = self.evidence
+        if not ev["steps"]:
+            return False, "" if self.in_zone_samples < 5 else "no_step_contacts"
         if not ev["top"]:
             return False, "missing_top_platform"
         if len(ev["branches"]) < 1:
@@ -483,7 +489,7 @@ class Slalom(_Obstacle):
     def _check_exit(self, side, tags, ground_feet) -> tuple[bool, str]:
         ev = self.evidence
         if not ev["start_area"]:
-            return False, "no_start_area"
+            return False, "" if self.in_zone_samples < 5 else "no_start_area"
         if len(ev["posts"]) < len(SLALOM_POSTS):
             return False, "missing_posts"
         if not ev["corner"]:

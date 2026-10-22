@@ -1,0 +1,11 @@
+<mujoco model="part2_slope_35deg">
+  <include file="../black_policy.xml"/>
+  <statistic center="2.0 0 0.5" extent="3.0"/>
+  <visual><global azimuth="90" elevation="-20"/></visual>
+  <worldbody>
+    <light pos="0 0 2" dir="0 0 -1" directional="true"/>
+    <geom name="level_floor" type="plane" size="0 0 0.05" rgba="0.2 0.2 0.2 1"/>
+    <geom name="slope_ramp" type="box" pos="2.2500 0 0.5252" size="0.9156 0.6 0.02" quat="0.95371695 0 -0.30070580 0" rgba="0.25 0.55 0.9 1"/>
+    <geom name="slope_top" type="box" pos="3.8000 0 0.5252" size="0.8 0.6 0.5252" rgba="0.25 0.55 0.9 1"/>
+  </worldbody>
+</mujoco>

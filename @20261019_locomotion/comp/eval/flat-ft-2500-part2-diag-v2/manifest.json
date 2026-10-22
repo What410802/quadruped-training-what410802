@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "policy_id": "flat-ft-2500-part2-diag-v2",
+  "created_at": "2026-10-22T23:01:25+08:00",
+  "repos": {
+    "task": {
+      "path": ".",
+      "commit": "dcdeff9ce6484905e006f4b82cc747bef7f9c236",
+      "dirty": true,
+      "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
+    },
+    "training": {
+      "path": "prep.d/training_repo_local（非 git 副本）",
+      "commit": "unknown:flat-ft-2500-part2-diag-v2",
+      "dirty": true,
+      "note": "训练仓 commit 未在运行时采集"
+    },
+    "control": {
+      "path": "prep.d/quadruped_control_local",
+      "commit": "unknown:not-used",
+      "dirty": true,
+      "note": "诊断评测未经过控制仓"
+    }
+  },
+  "policy": {
+    "checkpoint": "policy.pt",
+    "checkpoint_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
+    "exported": "policy.pt",
+    "exported_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
+    "obs_dim": 45,
+    "action_dim": 12,
+    "policy_dt_ms": 20.0,
+    "checkpoint_note": "原始 checkpoint 未单独保留；sha256 为导出 policy.pt"
+  },
+  "scenes": {
+    "part1": {
+      "file": "assets/terrain/part1/part1_eval_scene_v2.xml",
+      "sha256": "e88b83fe54ae50b9dabeee6a472ad3dba42ec2e6c1835fb70e5a8445a08604ae"
+    },
+    "part2": {
+      "file": "config/part2-levels.json",
+      "sha256": "5bc6222ace0358c6f0b55575cde4dc83bc5b8304fc30f2348ee5d9238e9c10d7"
+    }
+  },
+  "judge": {
+    "version": "comp_judge_v2@cd31f80ed9e3",
+    "files": [
+      "scripts/agent_scripts/comp_part1_judge.py",
+      "scripts/agent_scripts/comp_part2_judge.py"
+    ]
+  },
+  "protocol": {
+    "protocol_version": "diagnostic-2026-10-22-v2",
+    "diagnostic": true,
+    "seeds": [],
+    "attempts_part1_total": 3,
+    "attempts_part2_per_obstacle": 4,
+    "operator": "scripted:run_part2_judged_eval.py",
+    "seed_control": "none（runner 未设种子/扰动；名义 seed 不应被当作已执行）",
+    "start_pose_policy": "parametric level starts (not yet protocol-frozen)"
+  },
+  "results": {
+    "trials": "trials.jsonl",
+    "summary": "summary.json"
+  },
+  "notes": "导入自 run_part2_judged_eval.py 诊断 JSON（comp_part2_judge.Part2JudgeV2）；无种子/扰动、每难度一次尝试，非正式协议"
+}
