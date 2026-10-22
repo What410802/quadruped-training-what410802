@@ -52,6 +52,10 @@ SLALOM_POST_RADIUS_M = 0.35
 BAR_DROP_THRESHOLD_M = 0.05
 BAR_OPENING_X = (5.2, 6.2)
 WALL_CROSS_Y = -7.0
+# High wall geom: pos x=1.8, size x=0.5 rotated 90 deg about z -> actual x span [1.30, 2.30].
+# A raised base crossing y=-7 outside this span is walking around the wall, not surmounting.
+WALL_X_MIN = 1.30
+WALL_X_MAX = 2.30
 # climb evidence: base raised this high above standing height during the wall crossing
 WALL_CLIMB_Z = 0.55
 
@@ -363,7 +367,7 @@ class HighWall(_Obstacle):
 
     def _reset_evidence(self) -> None:
         self.evidence = {"max_z": 0.0, "wall_contact": False, "cross_valid": 0,
-                         "prev_y": None, "prev_x": None}
+                         "outside_x_cross": 0, "prev_y": None, "prev_x": None}
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
         x, y = xy
@@ -377,8 +381,12 @@ class HighWall(_Obstacle):
                 # real climb: base raised well above standing height at the crossing;
                 # a sideways wall touch at ground height is not evidence of surmounting.
                 raised = self._last_z >= 0.60
-                if raised:
+                within_x = (WALL_X_MIN <= float(prev_x) <= WALL_X_MAX
+                            and WALL_X_MIN <= float(x) <= WALL_X_MAX)
+                if raised and within_x:
                     self.evidence["cross_valid"] += 1
+                elif raised:
+                    self.evidence["outside_x_cross"] += 1
                 else:
                     self.evidence["ground_cross"] = self.evidence.get("ground_cross", 0) + 1
         self.evidence["prev_y"] = y

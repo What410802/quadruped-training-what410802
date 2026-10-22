@@ -69,7 +69,8 @@
 | GPT/Codex 调用规则 | 任何 GPT 系调用须先报进度并二次确认；DeepSeek 调用无需告知；已写入 `comp/DEV_OPS.md` §4 | `comp/DEV_OPS.md` |
 | Pro 复验 P1–P4 | 稳定停表 dt、暂停误喂 judge、comp_score 外部证据校验、ground 分类已修；3-attempt pause 演练进行中 | `comp_part1_course.py`、`run_part1_course.py`、`comp_score.py` |
 | BYOK 预审（same-model，provisional） | 已执行：FAIL/26 条（11 blocker），已逐条修复或记录残余风险 | `audits/BYOK_JUDGE_V2_REVIEW.md`、`audits/BYOK_JUDGE_V2_FIXES.md` |
-| G1 重审（Codex，不同家族） | **待用户批准后执行**：gpt-6-astra 403 无权限；gpt-6.1-sol/xhigh 会话被中止（见 `CODEX_G1_REAUDIT_STOPPED_20261023.md`，非 verdict）；N1–N4 修复后待重新批准 1 次 | 第 2 版 `JUDGE_AUDIT` |
+| BYOK 最终验收 | flash 第 11 轮 **PASS**；pro 第 12 轮复核进行中（用户要求 flash+pro 两轮均无问题后再申请 Codex） | `BYOK_JUDGE_V11_FLASH_ACCEPT.md` |
+| G1 重审（Codex，不同家族） | **待用户批准后执行**：不得私自调用；需 flash+pro 均 PASS 且用户二次确认。gpt-6-astra 403 无权限；gpt-6.1-sol/xhigh 曾中止（非 verdict，见 `CODEX_G1_REAUDIT_STOPPED_20261023.md`） | 第 2 版 `JUDGE_AUDIT` |
 
 **V2 评测链路（2026-10-22 晚）**：Part1 judge V2 `comp_part1_judge.py`（10 组 conformance 全过，含 G1 反例：6 条出口骗分、T 台阶跨帧历史、限高杆 touch/drop、斜坡距离、砂砾短边、高墙侧走、绕杆顺序、尝试规则）+ 场景 v2 + 逐物理步 runner + 整场协议 `comp_part1_course.py`（3 次、恢复不消耗、最快用时、返回奖励）+ Part2 六类 judge/参数化 20 档 evaluator；两条 diagnostic 产物已进 `comp/SCOREBOARD.md`（`flat-ft-2500-part1-diag-v2`/`-part2-diag-v2`，均 0 分，符合 flat 策略预期）。
 

@@ -152,3 +152,12 @@
 | official trial_id 歧义 | official 每 record 只有 1 次 run，`i` 恒为 1，trial_id 全是 `-a1-` | trial_id 用真实 `attempt_index`：`...-a{attempt_num}-r{trial_seq}` |
 | pause_timeout operator_t 丢失 | 事件在 `abort_attempt` 拷贝 `_current_events` 之后才 append，且 manager.skip 无 operator_t | timeout 事件先 append 再 abort；`abort_attempt` 给 manager skip 事件补 `operator_t` |
 | 演练证据 | 需 pause_timeout 证据 | 新增 `config/part1-course-events-pause-timeout.json` 与 `comp/audits/evidence/part1_course_pause_timeout_drill.json`（reason=pause_timeout，事件含 pause_timeout/operator_t） |
+
+
+## Pro 最终验收（第 12 轮）blocker 修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| 高墙假成功（scorer blocker） | `HighWall` 只判 y=-7 穿越 + base z≥0.60，未约束穿越点 x 在真实墙段内（墙 geom pos x=1.8, size x=0.5 旋转后覆盖 x∈[1.30,2.30]），从墙外侧抬高绕过可被判成功 | 新增 `WALL_X_MIN=1.30/WALL_X_MAX=2.30`；穿越样本要求 prev_x 与 x 均在墙段内；新增 evidence `outside_x_cross`；conformance 增加"墙外侧抬高穿越必须失败"用例 |
+| T 台阶 s/n/e 映射未测 | 仅测 s 臂部分分（50），未测 n/e 臂 | conformance 新增 n 臂、e 臂各一次完整臂+top 的 partial 用例，断言 score=33（Q2×2/3）；s=50 保持 |
+| 契约表格陈旧措辞 | CONTRACT.md ambiguities 表仍写 75/50 | 更新为 ×2/3（仅上 50、仅下 33） |

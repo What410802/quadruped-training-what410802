@@ -207,7 +207,18 @@ def test_high_wall_sideways_climb_and_bypass():
     ]
     assert_not_success(feed(Part1JudgeV2(), wall_touch_ground), "high_wall",
                        "sideways wall touch at ground height")
-    print("high_wall: OK sideways/no-climb/wall-touch useless / real crossing succeeds")
+
+    # raised crossing outside the actual wall x span [1.30, 2.30] must not count
+    outside_x = [
+        {"x": 2.7, "y": -7.9},
+        {"x": 2.7, "y": -7.4, "z": 0.75},
+        {"x": 2.7, "y": -7.0, "z": 0.85},
+        {"x": 2.7, "y": -6.6, "z": 0.75},
+        {"x": 2.7, "y": -6.0},
+    ]
+    assert_not_success(feed(Part1JudgeV2(), outside_x), "high_wall",
+                       "raised crossing outside wall x span")
+    print("high_wall: OK sideways/no-climb/wall-touch/outside-span useless / real crossing succeeds")
 
 
 # ---------------------------------------------------------------- stairs / slope / gravel
@@ -266,7 +277,35 @@ def test_t_stairs_full_partial_and_history():
     rep = feed(j2, upgrade)
     assert_status(rep, "t_stairs", "success", "partial upgraded to full")
     assert st(rep, "t_stairs")["score"] == 100.0, st(rep, "t_stairs")
-    print("t_stairs: OK two-arm full / one-arm 75 / missing levels fail")
+    # north arm only (downward direction) = 33 (Q2 x2/3); east arm only = 33 as well
+    for arm, y0 in (("n", -1.9), ("e", None)):
+        if arm == "n":
+            seq = [
+                {"x": 1.8, "y": -2.9},
+                {"x": 1.8, "y": -3.3, "tags": ["step:n:1"]},
+                {"x": 1.8, "y": -3.6, "tags": ["step:n:2"]},
+                {"x": 1.8, "y": -3.9, "tags": ["step:n:3"]},
+                {"x": 1.8, "y": -4.3, "tags": ["step:top"]},
+                {"x": 1.8, "y": -4.6, "tags": ["step:s:3"]},
+                {"x": 1.8, "y": -4.9, "tags": ["step:s:2"]},
+                {"x": 1.8, "y": -5.3, "tags": ["step:s:1"]},
+                {"x": 1.8, "y": -5.8},
+            ]
+        else:
+            seq = [
+                {"x": 3.4, "y": -3.5},
+                {"x": 3.0, "y": -3.5, "tags": ["step:e:1"]},
+                {"x": 2.6, "y": -3.5, "tags": ["step:e:2"]},
+                {"x": 2.2, "y": -3.5, "tags": ["step:e:3"]},
+                {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
+                {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
+                {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+                {"x": 1.8, "y": -5.6},
+            ]
+        rep = feed(Part1JudgeV2(), seq)
+        assert_status(rep, "t_stairs", "success", f"one-arm {arm} partial")
+        assert st(rep, "t_stairs")["score"] == 33.0, (arm, st(rep, "t_stairs"))
+    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels fail")
 
 
 def test_slope_projection_and_graze_reset():
