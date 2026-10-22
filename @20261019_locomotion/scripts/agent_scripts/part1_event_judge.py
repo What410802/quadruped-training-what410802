@@ -56,11 +56,12 @@ class Part1EventJudge:
             if self.states["height_bar"].status == "pending":
                 self.states["height_bar"].status = "running"
             setstate("height_bar", success=(y > -8.95), fail=bar_touched, reason="bar_touched")
-        # High wall: cross the vertical wall at x~1.8.
-        if 1.2 <= x <= 2.6 and -7.7 <= y <= -6.3:
+        # High wall: the wall box is thin along world y (quat=yaw 90), spans
+        # x=1.3..2.3 at y=-7; cross it along +y, not along +x.
+        if 1.2 <= x <= 2.4 and -7.9 <= y <= -6.1:
             if self.states["high_wall"].status == "pending":
                 self.states["high_wall"].status = "running"
-            setstate("high_wall", success=x > 2.0, fail=False)
+            setstate("high_wall", success=y > -6.9, fail=False)
         # 5 separated blocks: cross from left platform to right platform along +x.
         if 1.2 <= x <= 6.4 and -1.1 <= y <= 1.1:
             if self.states["bridge_blocks"].status == "pending":
@@ -145,6 +146,18 @@ def _synthetic() -> None:
     j6.update((4.5, 0.0, 0.42), ["FL", "FR"], False)
     print("bridge_ground_fail", j6.states["bridge_blocks"])
     assert j6.states["bridge_blocks"].status == "fail"
+    # High wall: correct traversal is +y through the thin wall direction;
+    # moving along +x while at the wall must not succeed.
+    j8 = Part1EventJudge()
+    for y in (-7.8, -7.4, -6.8):
+        j8.update((1.8, y, 0.42), [], False)
+    print("high_wall", j8.states["high_wall"])
+    assert j8.states["high_wall"].status == "success"
+    j9 = Part1EventJudge()
+    for x in (1.3, 1.8, 2.3):
+        j9.update((x, -7.0, 0.42), [], False)
+    print("high_wall_sideways", j9.states["high_wall"])
+    assert j9.states["high_wall"].status != "success"
     print("synthetic OK")
 
 

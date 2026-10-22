@@ -24,10 +24,10 @@ POLICY = "@20261019_locomotion/assets/policies/flat-ft-2500/policy.pt"
 # name: (start xyz, yaw, command, seconds, note)
 TASKS = {
     "height_bar": ((5.7, -10.4, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 4.0, "through gate opening along +y"),
-    "high_wall": ((1.15, -7.0, 0.55), 0.0, (0.4, 0.0, 0.0), 4.0, "approach wall along +x"),
+    "high_wall": ((1.8, -7.8, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 4.0, "cross wall along +y"),
     "bridge_blocks": ((1.8, 0.0, 0.65), 0.0, (0.3, 0.0, 0.0), 5.0, "left platform -> +x"),
     "bridge_bands": ((5.7, -3.5, 0.65), np.pi / 2, (0.3, 0.0, 0.0), 5.0, "lower platform -> +y"),
-    "gravel_pit": ((4.0, -12.0, 0.55), 0.0, (0.45, 0.0, 0.0), 4.0, "enter pit along +x"),
+    "gravel_pit": ((3.5, -12.0, 0.55), 0.0, (0.45, 0.0, 0.0), 6.0, "approach pit from half-width outside along +x"),
     "t_stairs": ((1.8, -5.2, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 5.0, "main limb -> +y"),
     "slope": ((3.6, -5.5, 0.55), 0.0, (0.5, 0.0, 0.0), 5.0, "slope -> +x"),
     "slalom": ((1.8, -9.25, 0.55), -np.pi / 2, (0.45, 0.0, 0.0), 4.5, "first post -> -y"),

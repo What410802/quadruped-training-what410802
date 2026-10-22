@@ -33,7 +33,7 @@ pixi run python @20261019_locomotion/scripts/agent_scripts/audit_deployment.py
 ```bash
 cd RoboCon/prep.d/quadruped_control_local
 P=../../MyMonoRepo.d/.pixi/envs/default
-cmake -S . -B .build-pixi \
+$P/bin/cmake -S . -B .build-pixi \
   -DQUADRUPED_ENABLE_MUJOCO=ON -DQUADRUPED_ENABLE_TORCH=ON \
   -DQUADRUPED_BUILD_APPS=ON \
   -DQUADRUPED_MUJOCO_SIMULATE_DIR="$PWD/third_party/mujoco_simulate" \
@@ -41,7 +41,7 @@ cmake -S . -B .build-pixi \
   -DCMAKE_CXX_COMPILER="$P/x86_64-conda-linux-gnu-c++" \
   -DPNG_LIBRARY="$P/lib/libpng.so" -DPNG_PNG_INCLUDE_DIR="$P/include" \
   -DZLIB_LIBRARY=/usr/lib/x86_64-linux-gnu/libz.so -DZLIB_INCLUDE_DIR=/usr/include
-cmake --build .build-pixi --target quadruped_mujoco_sim -j4
+$P/bin/cmake --build .build-pixi --target quadruped_mujoco_sim -j4
 LD_PRELOAD=$P/lib/libstdc++.so.6 LD_LIBRARY_PATH=$P/lib \
   .build-pixi/apps/mujoco_sim/quadruped_mujoco_sim \
   --scene ../../MyMonoRepo.d/@20261019_locomotion/assets/terrain/part1/part1_eval_scene.xml

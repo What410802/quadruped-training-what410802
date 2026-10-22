@@ -38,6 +38,7 @@
 | 高墙 | 越/爬到高墙另一侧，base/foot 过顶/过墙 | 未过墙；卡住 |
 | 限高杆 | 从门柱之间沿垂直门平面方向穿过且杆不接触 | 杆位移/掉落；撞侧柱/横梁；从门洞外侧绕行不算 |
 | T 字形台阶 | 任一侧上、另一侧下；每级顶面至少一次足接触；不触发 1/2 足 ground | 漏级；1/2 足 ground；只上不下只得部分分 |
+| 高墙 | 沿墙的薄方向（世界 ±y）跨到另一侧 | 撞墙/卡住；沿墙长方向走不算 |
 | 斜坡 | 在坡面沿 3 m 长边方向累计 ≥1 m；不触发 1/2 足 ground | 距离不足；ground contact |
 | 木桥 A/B | 一侧平台经桥到另一侧平台；不触发 1/2 足 ground。两种桥面要分开：`bridge_blocks` 5 个 0.4×1.0 m 方墩（缝 0.15 m），`bridge_bands` 3 条 0.2×1.5 m 窄带（缝 0.10 m） | 掉桥；脚到缝底/ground；ground contact |
 
@@ -79,12 +80,12 @@
 |---|---|---|
 | bridge_blocks | fail | 两足 ground fail，tilt≈25.9° |
 | bridge_bands | running | 到 y≈−3.08 后未完成，tilt≈14.9° |
-| gravel_pit | fail | 两足 ground fail，tilt≈1.4° |
-| height_bar | fail | 正确沿 +y 穿门洞，但平视策略碰到横梁；tilt≈1.6° |
-| high_wall | pending | 在 x≈1.16 卡住，未进入墙区 |
+| gravel_pit | pending | 从坑外半个宽度起步，4 s 内未进入区域 |
+| height_bar | fail | 从 y=-10.4 沿 +y 穿门洞，碰横梁；tilt≈1.6° |
+| high_wall | running | 沿 ±y 跨墙方向进入，未越过墙；tilt≈2.1° |
 | slalom | running | 只接近第一个 checkpoint |
 | slope | fail | 两足 ground fail，tilt≈6.6° |
-| t_stairs | pending | 未进入台阶区 |
+| t_stairs | pending | 未进入台阶区，未见台阶层接触 |
 
 这是**脚本起点/命令下的诊断**，不是官方整场得分；T 台阶逐级接触、限高杆位移、桥面 step 等判据仍需用真实手动轨迹校准。结果 JSON：`prep.d/results/part1_zero_shot.json`。
 

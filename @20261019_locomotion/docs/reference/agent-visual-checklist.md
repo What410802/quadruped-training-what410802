@@ -32,7 +32,7 @@
 
 | 障碍 | 通过方向 | 依据 |
 |---|---|---|
-| high_wall | 沿 ±x 跨墙 | 墙在 x=1.8，薄方向 x，跨度 y=±0.5 |
+| high_wall | 沿 ±y 跨墙 | `high_wall` quat=yaw 90°，薄方向是世界 y；跨度为 x=1.3…2.3 |
 | bridge_blocks | 沿 ±x | 方墩沿 x 排列 |
 | bridge_bands | 沿 ±y | 三条带沿 y 长、沿 x 排列 |
 | T stairs | 沿 ±y 走主肢，或从侧肢绕 | 主阶 geom 在 x=1.8、y=-4.75…-2.25 |
