@@ -82,6 +82,7 @@ cd ~/rc_work/nwwolf_mjlab_training_release
 │       ├── team-race-2026.md         # 2026 队内赛真值：两个赛项/成功定义/得分/约束
 │       ├── agent-visual-checklist.md  # AI 动手前自检：障碍方向/门洞/视觉复核
 │       ├── quadruped-control-study.md # quadruped_control 架构研读与状态机接入
+│       ├── deployment-stack-comparison.md # 部署栈对比：rl_sar vs quadruped_control
 │       ├── quadruped-control-pixi-migration.md # Pixi 依赖迁移实测与缺口
 │       ├── literature.md             # 论文清单与培训方补充材料
 │       ├── open-source.md            # 可复用实现、许可、本任务来源
