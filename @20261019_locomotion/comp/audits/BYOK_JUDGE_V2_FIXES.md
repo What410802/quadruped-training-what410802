@@ -38,3 +38,30 @@
 2. soft-reset 阈值（#13）与相邻 zone 重叠（#26）仍是启发式；
 3. Part1 单障碍诊断 importer 的 per-obstacle 汇总口径（#21，仅诊断用）；
 4. Part2 官方能力场交叉核对未做（自定义同种类 level 已验证 evaluator 逻辑）。
+
+
+## 二次预审后修复（2026-10-22 晚，BYOK 二次预审 verdict=FAIL）
+
+| 二次预审项 | 结论/处置 |
+|---|---|
+| #2 高墙仍可用侧擦墙/地面过平面 | 已修：穿越必须 base z≥0.60（抬升），删掉 `wall tag` 作为抬升证据；conformance 增加"墙高度地面侧擦"用例 |
+| #4 T 台阶 partial 锁死/不要求两臂 | 已修：partial 记录 `detail.partial` 并允许同 attempt 内二次进入升级为满分；两臂完整才 100；conformance 增加 partial→full 升级用例 |
+| #5 绕杆半径/拐角时机 | 已修：场景显示圆半径改 0.5 m；拐角要求方向相关（A 向第 3 杆后、B 向第 2 杆后）；`_check_immediate` 也校验 corner_after；conformance 增加 early-corner 用例 |
+| #6 限高杆预掉落/失败重试洗掉/成功后掉落 | 已修：横杆基高与掉落标记改为障碍对象持久状态（`bar_base_seen/bar_dropped_seen`），预掉落即失败且不可通过重试洗掉；失败前掉杆即失败；conformance 增加 pre-entry drop 用例 |
+| #9 Part2 低难度无接触证据 | 已修：平台/楼梯/斜坡/梅花桩成功需对应 foot tag 接触 + 无地面足；self-test 增加"离 lane 1 m 伪成功" |
+| #10 Part2 gap 绕行/墙未绑 lane | 已修：gap 需在 lane 内先后跨近/远边（或一次跃过）；wall 需 lane 内跨 wall_x 且 wall 接触 + 抬升；self-test 增加无跨越/无墙接触用例 |
+| #11 正式整场不是同一 ledger / importer best 匹配 | 已修：`run_part1_course.py` 单 `Part1Course` 会话跑 2 次尝试（diagnostic 验证）；importer 用实际 attempt 编号匹配 best 并生成 return evidence trial；manifest part2 scene 指向 levels 配置 |
+| 新问题：暂停无 resume 事件死锁 | 已修：暂停期间物理冻结但操作手时钟推进（>120 s 无 resume 则 abort）；runner 的 pause/resume 用冻结位姿 |
+| 新问题：comp_score 信任 return_to_start | 已修：有返回奖励时必须有 `return_to_start_after_full` evidence trial，否则报错；course importer 生成该 trial |
+| 新问题：Part2 每项 4 次未实现 | 已修：`run_part2_judged_eval.py --official` 每 category 最多 4 次（高→低档位），诊断模式仍每档 1 次 |
+| 新问题：bool 曲线任意非零满分 | 已修：`comp_score`、`comp_part2_judge` 的 bool 只认 value==1 |
+| 新问题：part1 V2 diag 总分含非目标状态 | 已修：只累计本 task 状态 |
+| 新问题：diag operator 名不符 | 已修：importer `--operator` 默认 `scripted:run_part1_judged_rollout_v2.py` |
+
+### 剩余未清零（已记录为已知局限，需在 G1 报告写明）
+
+1. 砂砾坑场景仍是凸起盒代理，不是"坑 + 碎木"真实几何；
+2. Part2 官方能力场（`terrain.zip` 地图）未做逐档交叉核对，本地为同种类参数化 level；
+3. soft-reset 阈值与相邻 zone 重叠仍为启发式（真实整场顺序通过时影响有限）；
+4. Part1 单障碍诊断 importer 的 per-obstacle 汇总口径（仅诊断用，正式用 course importer）；
+5. 正式 3 次尝试的 runner/操作手演练尚未在真实赛程上做过（当前为脚本化 2 次尝试诊断）。

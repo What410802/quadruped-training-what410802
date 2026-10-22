@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part1-course-diag",
-  "created_at": "2026-10-22T23:14:42+08:00",
+  "created_at": "2026-10-22T23:29:38+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "de876015974f8f79743c9f99d627af6a698d9be3",
+      "commit": "54149b02a34a179e23f80af6b966dc46fdd3cc48",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -35,15 +35,15 @@
   "scenes": {
     "part1": {
       "file": "assets/terrain/part1/part1_eval_scene_v2.xml",
-      "sha256": "e88b83fe54ae50b9dabeee6a472ad3dba42ec2e6c1835fb70e5a8445a08604ae"
+      "sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242"
     },
     "part2": {
-      "file": "assets/terrain/part1/part1_eval_scene_v2.xml",
-      "sha256": ""
+      "file": "config/part2-levels.json",
+      "sha256": "10c73a25a1678999fb1a32d3ef6ee0dd78650c697d5222dc15c613255fa39848"
     }
   },
   "judge": {
-    "version": "comp_judge_v2@ee7b9535ee2361ae7e",
+    "version": "comp_judge_v2@ef1b2935ee2361ae7e",
     "files": [
       "scripts/agent_scripts/comp_part1_judge.py",
       "scripts/agent_scripts/comp_part1_geom_tags.py",

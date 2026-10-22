@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-22T23:14:52+08:00",
+  "generated_at": "2026-10-22T23:29:51+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -13,15 +13,15 @@
     },
     "protocol_md": {
       "path": "comp/eval/_protocol.md",
-      "sha256": "2cbf581127eb1bc60564012bb0df010bb95969f7565362b0d9c9563d870a185a"
+      "sha256": "1a58f386ba916cd772d18b2503aa88d737ad0ac51827a181995a0cc243617405"
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "ee7b956a02907f92741417754b2a50f47df2341f3b486dc44b031e0c8da35866"
+      "sha256": "ef1b29db658860f2068435c075bbc39d3a21cb9e535c5246a1c77c59a6874ced"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "a5e3026b9b3a508d09cbb63373af0149be3e2a294bc6c4b5791f90667ad7ecfe"
+      "sha256": "d797523da7e38cbee3ab10ed679a3a534401d78ff0bf2ba252e3e319739c58d3"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -29,7 +29,7 @@
     },
     "judge_part2_v2": {
       "path": "scripts/agent_scripts/comp_part2_judge.py",
-      "sha256": "77e6562a5f5f7ea835c32554b1b0d13f834094cf26a1f363b1882259fdadb62f"
+      "sha256": "3f9bad61cbe8981c4e792270946ae30a0ab87b31524ece1e1919256852e2815d"
     },
     "geom_tags": {
       "path": "scripts/agent_scripts/comp_part1_geom_tags.py",
@@ -41,19 +41,19 @@
     },
     "runner_part1_v2": {
       "path": "scripts/agent_scripts/run_part1_judged_rollout_v2.py",
-      "sha256": "ad430125016965d17e3a2dffb8a7945e368ec5494e6a0467cec44e54e8978714"
+      "sha256": "23562b266090dc27beef4f5ddb9631e55997729987fdce8152a1520823513074"
     },
     "runner_course": {
       "path": "scripts/agent_scripts/run_part1_course.py",
-      "sha256": "d174ff655becb53435e799a1eddd0d5c24f53a540bc34ef1ee5974e532d21df5"
+      "sha256": "b1060d518c0d76f0fe46c7c7509ef37775eba32156c7560d7d1b7e67a31fead0"
     },
     "runner_part2_v2": {
       "path": "scripts/agent_scripts/run_part2_judged_eval.py",
-      "sha256": "eeee17523cb5695769701ba3d8b85cfd7e17316a0971cb050a32038e0b7a6426"
+      "sha256": "c330a634ebfb6fd256a301503ace22007099733616ca60070b2feac812db4d4c"
     },
     "importer_part1": {
       "path": "scripts/agent_scripts/comp_import_diagnostic.py",
-      "sha256": "022835fa1578aea9671c5491f8b960be4d4d2d370dbd2e39983ca6ca05785e01"
+      "sha256": "6046df550b83f55177e26a7094b6fc7e94b3a3c2cbca60c19f06550da9cb9cde"
     },
     "importer_part2": {
       "path": "scripts/agent_scripts/comp_import_part2_diag.py",
@@ -61,15 +61,15 @@
     },
     "importer_course": {
       "path": "scripts/agent_scripts/comp_import_course_diag.py",
-      "sha256": "07b746f90b54f2f24ec444da871759842c472815702523e822022ee7212ed210"
+      "sha256": "d9b77cc1ccbd218f7ebbc0fe1a6aebed1879cafe6878089e312dedf70c1e6d03"
     },
     "score_tool": {
       "path": "scripts/agent_scripts/comp_score.py",
-      "sha256": "969e378afb334e532d93f2b3dedfa051c6f9c90a0450460cab6732baf3ca2931"
+      "sha256": "441c948c761aa293348c34c0e68a1ea055e03349ef163f86e3276edfe3b62ed7"
     },
     "scene_part1_v2": {
       "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
-      "sha256": "e88b83fe54ae50b9dabeee6a472ad3dba42ec2e6c1835fb70e5a8445a08604ae"
+      "sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242"
     },
     "part1_route": {
       "path": "config/part1-route.json",
@@ -89,7 +89,7 @@
     },
     "eval_course_diag": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "4b9f7d9f16d2e779fb783cfa06e017c1ce3ac6ff16d5ad9748c48f0eb72703b3"
+      "sha256": "84ca8cbc3f7722e0f5d058ac5bdb6c5d2e859fd2610c31c74c557f3bf4fcb1e9"
     },
     "rules_pdf_md": {
       "path": "docs/reference/team-race-2026.md",
@@ -101,7 +101,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "cd041fae61430f97b4e1e1ca2ecff2caaedd9d56cc3f00486d7fe356cd3a2c17"
+      "sha256": "d9e70f84295bfbdb7874cff3940299030ba1bfc188518bcd857f5183d2f758de"
     }
   },
   "superseded": {

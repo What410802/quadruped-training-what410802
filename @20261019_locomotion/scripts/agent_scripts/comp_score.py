@@ -209,6 +209,16 @@ def validate_summary(summary: dict, manifest: dict, contract: dict,
     return_expected = int(bonus.get("score", 0)) if (all_ok and bool(s1.get("return_to_start"))) else 0
     if int(s1.get("return_score") or 0) != return_expected:
         _err(errors, f"part1.return_score={s1.get('return_score')} 应为 {return_expected}")
+    if return_expected > 0:
+        ev_id = s1.get("return_evidence")
+        t = by_id.get(ev_id) if ev_id else None
+        if t is None:
+            _err(errors, "part1 有返回奖励但缺 return_evidence trial")
+        elif (t.get("part1") if False else t.get("part")) != "part1" or \
+                t.get("obstacle") != "return_to_start" or \
+                (t.get("judge") or {}).get("status") != "success" or \
+                "return_to_start_after_full" not in ((t.get("judge") or {}).get("events") or []):
+            _err(errors, "part1 return_evidence trial 未证明全满分后返回出发区")
     p1_total = sum1 + return_expected
     if int(s1.get("total") or 0) != p1_total:
         _err(errors, f"part1.total={s1.get('total')} 重算为 {p1_total}")

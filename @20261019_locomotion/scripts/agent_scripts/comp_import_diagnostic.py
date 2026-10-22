@@ -63,6 +63,7 @@ def main() -> int:
     ap.add_argument("--contract", type=Path, default=Path(DEFAULT_CONTRACT))
     ap.add_argument("--scene", type=Path, default=Path(DEFAULT_SCENE))
     ap.add_argument("--judge", type=Path, default=Path(DEFAULT_JUDGE))
+    ap.add_argument("--operator", default="scripted:run_part1_judged_rollout_v2.py")
     ap.add_argument("--judge-extra", action="append", default=[], type=Path,
                     help="额外的 judge/映射文件（如 comp_part1_judge.py、comp_part1_geom_tags.py）")
     ap.add_argument("--task-root", type=Path, default=Path("."))
@@ -163,7 +164,7 @@ def main() -> int:
             "seeds": [],
             "attempts_part1_total": 3,
             "attempts_part2_per_obstacle": 4,
-            "operator": "scripted:run_part1_judged_rollout.py",
+            "operator": args.operator,
             "seed_control": "none（runner 未设种子/扰动；名义 seed 不应被当作已执行）",
             "start_pose_policy": "per-task diagnostic starts (not yet protocol-frozen)",
         },

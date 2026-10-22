@@ -85,6 +85,7 @@ def main() -> int:
             best_key, best_idx = key, i
     best = attempts[best_idx] if attempts else {"report": {"summary": {}}, "judge": {"states": {}}}
     best_summary = attempt_summary(best)
+    best_attempt_no = int(best.get("attempt") or (best_idx + 1))
     best_states = (best.get("judge") or {}).get("states") or {}
 
     trials: list[dict] = []
@@ -114,7 +115,7 @@ def main() -> int:
         score = int(st.get("score") or 0) if success else 0
         sum1 += score
         evidence = [t["trial_id"] for t in trials
-                    if t["obstacle"] == oid and t["attempt"] == best_idx + 1
+                    if t["obstacle"] == oid and t["attempt"] == best_attempt_no
                     and t["judge"]["status"] == "success"]
         part1_obstacles[oid] = {"success": success, "score": score,
                                 "failure_reason": None if success else failure_reason(status, st.get("reason", "")),
@@ -122,13 +123,25 @@ def main() -> int:
     all_full = bool(part1_obstacles) and all(r["success"] and r["score"] >= int(p1_specs[o].get("per_obstacle_score", 100))
                                               for o, r in part1_obstacles.items())
     attempt_results = best_summary.get("attempt_results") or []
-    best_attempt_rec = next((r for r in attempt_results if r.get("attempt") == best_idx + 1), {})
+    best_attempt_rec = next((r for r in attempt_results if r.get("attempt") == best_attempt_no), {})
     return_bonus = float(best_attempt_rec.get("return_bonus", 0.0)) if all_full else 0.0
+    return_trial_id = f"diag-{args.policy_id}-return_to_start-a{best_attempt_no}"
+    if return_bonus > 0:
+        trials.append({
+            "trial_id": return_trial_id, "part": "part1", "obstacle": "return_to_start",
+            "attempt": best_attempt_no, "seed": None,
+            "start": {"pose": None, "note": "after all obstacles full, re-entered start area"},
+            "commands": [{"cmd": "return_to_start", "seconds": 0.0}],
+            "judge": {"status": "success", "failure_reason": None,
+                      "events": ["return_to_start_after_full"], "score": 0},
+            "duration_s": 0.0, "video": None,
+        })
     summary = {
         "schema_version": 1,
         "policy_id": args.policy_id,
         "part1": {"attempts_used": len(attempts), "obstacles": part1_obstacles,
                   "return_to_start": bool(return_bonus > 0), "return_score": int(return_bonus),
+                  "return_evidence": return_trial_id if return_bonus > 0 else None,
                   "total": int(sum1 + return_bonus)},
         "part2": {"obstacles": {oid: {"best_success_value": None, "best_score": 0, "attempts_used": 0}
                                 for oid in [o["id"] for o in contract["parts"]["part2"]["obstacles"]]},
@@ -155,7 +168,9 @@ def main() -> int:
                    "checkpoint_note": "原始 checkpoint 未单独保留；sha256 为导出 policy.pt"},
         "scenes": {"part1": {"file": str(args.part1_scene),
                              "sha256": sha256_file(args.part1_scene) if args.part1_scene.is_file() else ""},
-                   "part2": {"file": str(args.part1_scene), "sha256": ""}},
+                   "part2": {"file": "config/part2-levels.json",
+                             "sha256": sha256_file(Path("config/part2-levels.json"))
+                             if Path("config/part2-levels.json").is_file() else ""}},
         "judge": {"version": "comp_judge_v2@" + "".join(sha256_file(p)[:6] for p in JUDGE_FILES if p.is_file()),
                   "files": [str(p) for p in JUDGE_FILES]},
         "protocol": {

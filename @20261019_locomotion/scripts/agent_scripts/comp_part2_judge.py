@@ -89,6 +89,9 @@ class Part2JudgeV2:
         self.max_z = 0.0
         self.max_z_near = 0.0
         self.wall_crossed = False
+        self.wall_contact = False
+        self.gap_crossed = False
+        self.gap_entered = False
         self.last_x: float | None = None
         self.last_t: float | None = None
         self.lane_y = float((self.j.get("start") or [0.0, 0.0])[1])
@@ -97,28 +100,28 @@ class Part2JudgeV2:
     def _lateral_ok(self, y: float) -> bool:
         return abs(y - self.lane_y) <= float(self.j.get("lane_half_width", 0.70))
 
-    def _cond(self, x: float, y: float, z: float, ground_feet: set[str]) -> bool:
+    def _cond(self, x: float, y: float, z: float, ground_feet: set[str], tags: set[str]) -> bool:
         kind = self.j.get("kind")
         if kind == "platform":
             lo, hi = self.j.get("goal_x", [0.0, 0.0])
             return (lo <= x <= hi and z >= self.j["top_z"] + 0.38 and self._lateral_ok(y)
-                    and not ground_feet)
+                    and not ground_feet and "platform" in tags)
         if kind == "stairs":
             return (x >= self.j["goal_x_min"] and z >= self.j["top_z"] + 0.38
-                    and self._lateral_ok(y) and not ground_feet)
+                    and self._lateral_ok(y) and not ground_feet and "stairs" in tags)
         if kind == "slope":
             return (x >= self.j["goal_x_min"] and z >= self.j["rise_z"] + 0.38
-                    and self._lateral_ok(y) and not ground_feet)
+                    and self._lateral_ok(y) and not ground_feet and "slope" in tags)
         if kind == "wall":
-            return (self.wall_crossed and x >= self.j["goal_x_min"]
+            return (self.wall_crossed and self.wall_contact and x >= self.j["goal_x_min"]
                     and self.max_z_near >= max(self.j["wall_h"] + 0.10, 0.55)
                     and self._lateral_ok(y))
         if kind == "gap":
-            return (x >= self.j["goal_x_min"] and z >= self.j.get("min_z", 0.3)
-                    and self._lateral_ok(y))
+            return (self.gap_crossed and x >= self.j["goal_x_min"]
+                    and z >= self.j.get("min_z", 0.3) and self._lateral_ok(y))
         if kind == "plum":
             return (x >= self.j["goal_x_min"] and z >= self.j["goal_z_min"]
-                    and self._lateral_ok(y) and not ground_feet)
+                    and self._lateral_ok(y) and not ground_feet and "plum" in tags)
         raise ValueError(f"unknown part2 judge kind: {kind}")
 
     def update(self, t: float, base_xyz: tuple[float, float, float], tilt_deg: float,
@@ -128,16 +131,35 @@ class Part2JudgeV2:
         if self.result.status in ("success", "fail"):
             return self.result.to_dict()
         ground_feet = ground_feet or set()
+        tags = {tag for values in (foot_tags or {}).values() for tag in values}
         x, y, z = map(float, base_xyz)
         self.max_z = max(self.max_z, z)
-        if self.j.get("kind") == "wall":
+        kind = self.j.get("kind")
+        if kind == "wall":
             if self.last_x is not None:
                 wx = float(self.j["wall_x"])
-                if (self.last_x - wx) * (x - wx) <= 0 and abs(x - self.last_x) < 1.0:
+                if ((self.last_x - wx) * (x - wx) <= 0 and abs(x - self.last_x) < 1.0
+                        and self._lateral_ok(y)):
                     self.wall_crossed = True
-            self.last_x = x
-            if abs(x - self.j["wall_x"]) <= 0.8:
+            if "wall" in tags and abs(x - self.j["wall_x"]) <= 0.8:
+                self.wall_contact = True
                 self.max_z_near = max(self.max_z_near, z)
+            self.last_x = x
+        elif kind == "gap":
+            half = float(self.j.get("width", 0.1)) / 2.0
+            gx = float(self.j["gap_x"])
+            if self.last_x is not None and abs(x - self.last_x) < 1.0:
+                near = (self.last_x - (gx - half)) * (x - (gx - half)) <= 0
+                far = (self.last_x - (gx + half)) * (x - (gx + half)) <= 0
+                if near and not far:
+                    self.gap_entered = True
+                elif far and self.gap_entered and self._lateral_ok(y):
+                    self.gap_crossed = True
+                elif near and far:  # single jump over the whole gap
+                    self.gap_entered = True
+                    if self._lateral_ok(y):
+                        self.gap_crossed = True
+            self.last_x = x
         self.result.detail = {"x": round(x, 3), "z": round(z, 3),
                               "max_z": round(self.max_z, 3), "tilt_deg": round(tilt_deg, 2)}
         if tilt_deg > FALL_TILT_DEG:
@@ -148,7 +170,7 @@ class Part2JudgeV2:
             self.result.status = "fail"
             self.result.reason = f"fell:base_z={z:.2f}"
             return self.result.to_dict()
-        cond = self._cond(x, y, z, ground_feet)
+        cond = self._cond(x, y, z, ground_feet, tags)
         hold_s = float(self.j.get("hold_s", 0.2))
         # hold time is accumulated in finalize/update by caller-provided dt; default 20 ms
         dt = 0.02 if self.last_t is None else max(0.0, self.t - self.last_t)
@@ -172,10 +194,13 @@ def _entry(category: str, level: float, judge: dict, unit: str = "cm") -> dict:
     return {"category": category, "level": level, "unit": unit, "judge": judge}
 
 
-def _feed(judge: Part2JudgeV2, samples, dt: float = 0.1) -> dict:
+def _feed(judge: Part2JudgeV2, samples, dt: float = 0.1, *,
+          tags: tuple[str, ...] = (), ground: tuple[str, ...] = ()) -> dict:
     rep = None
     for i, (xyz, tilt) in enumerate(samples):
-        rep = judge.update(i * dt, xyz, tilt)
+        foot_tags = {leg: set(tags) for leg in ("FL", "FR", "RL", "RR")}
+        rep = judge.update(i * dt, xyz, tilt, foot_tags=foot_tags,
+                           ground_feet=set(ground))
     return judge.finalize()
 
 
@@ -185,7 +210,7 @@ def run_self_test() -> None:
                                      "goal_x": [1.9, 3.1], "hold_s": 0.05})
     ok = _feed(Part2JudgeV2(e), [((0, 0, 0.5), 5), ((2.0, 0, 0.5), 5),
                                  ((2.5, 0, 0.65), 5), ((2.5, 0, 0.65), 5),
-                                 ((2.5, 0, 0.65), 5)])
+                                 ((2.5, 0, 0.65), 5)], tags=("platform",))
     assert ok["status"] == "success", ok
     low = _feed(Part2JudgeV2(e), [((0, 0, 0.5), 5), ((1.5, 0, 0.45), 5), ((2.0, 0, 0.45), 5)])
     assert low["status"] == "fail", low
@@ -193,14 +218,14 @@ def run_self_test() -> None:
     # stairs
     e = _entry("stairs", 20, {"kind": "stairs", "top_z": 0.2, "goal_x_min": 3.3, "hold_s": 0.05})
     rep = _feed(Part2JudgeV2(e), [((0, 0, 0.5), 5), ((2.0, 0, 0.7), 5), ((3.4, 0, 0.75), 5),
-                                  ((3.4, 0, 0.75), 5), ((3.4, 0, 0.75), 5)])
+                                  ((3.4, 0, 0.75), 5), ((3.4, 0, 0.75), 5)], tags=("stairs",))
     assert rep["status"] == "success", rep
     rep = _feed(Part2JudgeV2(e), [((0, 0, 0.5), 5), ((2.0, 0, 0.55), 5)])
     assert rep["status"] == "fail", rep
 
     # slope
     e = _entry("slope", 30, {"kind": "slope", "rise_z": 0.866, "goal_x_min": 3.0, "hold_s": 0.05})
-    rep = _feed(Part2JudgeV2(e), [((2.0, 0, 0.8), 8), ((3.1, 0, 1.3), 8), ((3.1, 0, 1.3), 8), ((3.1, 0, 1.3), 8)])
+    rep = _feed(Part2JudgeV2(e), [((2.0, 0, 0.8), 8), ((3.1, 0, 1.3), 8), ((3.1, 0, 1.3), 8), ((3.1, 0, 1.3), 8)], tags=("slope",))
     assert rep["status"] == "success", rep
 
     # wall: requires climb evidence near the wall
@@ -208,7 +233,7 @@ def run_self_test() -> None:
                                  "goal_x_min": 3.0, "climb_z_margin": 0.30, "hold_s": 0.05})
     rep = _feed(Part2JudgeV2(e), [((2.2, 0, 0.9), 10), ((2.5, 0, 0.95), 10),
                                   ((3.1, 0, 0.5), 10), ((3.2, 0, 0.5), 10),
-                                  ((3.2, 0, 0.5), 10), ((3.2, 0, 0.5), 10)])
+                                  ((3.2, 0, 0.5), 10), ((3.2, 0, 0.5), 10)], tags=("wall",))
     assert rep["status"] == "success", rep
     rep = _feed(Part2JudgeV2(e), [((2.2, 0, 0.5), 5), ((2.6, 0, 0.5), 5), ((3.1, 0, 0.5), 5)])
     assert rep["status"] == "fail", rep
@@ -224,8 +249,38 @@ def run_self_test() -> None:
     # plum
     e = _entry("plum", 1, {"kind": "plum", "goal_x_min": 2.7, "goal_z_min": 0.5, "hold_s": 0.05}, unit="bool")
     rep = _feed(Part2JudgeV2(e), [((1.0, 0.2, 0.6), 5), ((2.0, 0.4, 0.65), 5),
-                                  ((2.8, 0.4, 0.65), 5), ((2.8, 0.4, 0.65), 5), ((2.8, 0.4, 0.65), 5)])
+                                  ((2.8, 0.4, 0.65), 5), ((2.8, 0.4, 0.65), 5), ((2.8, 0.4, 0.65), 5)], tags=("plum",))
     assert rep["status"] == "success", rep
+
+    # lateral bypass: the same platform success but 1 m off the lane must not count
+    bypass = _feed(Part2JudgeV2(e), [((2.0, 1.0, 0.5), 5), ((2.5, 1.0, 0.65), 5),
+                                     ((2.5, 1.0, 0.65), 5), ((2.5, 1.0, 0.65), 5), ((2.5, 1.0, 0.65), 5)],
+                   tags=("platform",))
+    assert bypass["status"] == "fail", bypass
+
+    # gap: standing on the far side without crossing the trench is not a success
+    e_gap = _entry("trench", 30, {"kind": "gap", "gap_x": 2.5, "width": 0.3,
+                                   "goal_x_min": 3.05, "min_z": 0.3, "hold_s": 0.05,
+                                   "lane_y": 0.0, "lane_half_width": 0.7})
+    no_cross = _feed(Part2JudgeV2(e_gap), [((3.2, 0.0, 0.5), 5), ((3.2, 0.0, 0.5), 5),
+                                           ((3.2, 0.0, 0.5), 5), ((3.2, 0.0, 0.5), 5)])
+    assert no_cross["status"] == "fail", no_cross
+
+    # wall: crossing x at standing height without wall contact is not a climb
+    e_wall = _entry("high_wall", 30, {"kind": "wall", "wall_x": 2.5, "wall_h": 0.3,
+                                       "goal_x_min": 3.0, "hold_s": 0.05,
+                                       "lane_y": 0.0, "lane_half_width": 0.7})
+    ground_wall = _feed(Part2JudgeV2(e_wall), [((2.2, 0, 0.45), 5), ((2.6, 0, 0.45), 5),
+                                               ((3.1, 0, 0.45), 5), ((3.1, 0, 0.45), 5)])
+    assert ground_wall["status"] == "fail", ground_wall
+
+    # plum: standing on the ground before the piles is not a success
+    e_plum = _entry("plum", 1, {"kind": "plum", "goal_x_min": 2.7, "goal_z_min": 0.5,
+                                 "hold_s": 0.05, "lane_y": 0.4, "lane_half_width": 0.7,
+                                 "start": [0.4, 0.4, 0.65, 0.0]}, unit="bool")
+    ground_plum = _feed(Part2JudgeV2(e_plum), [((2.8, 0.4, 0.42), 5), ((2.8, 0.4, 0.42), 5)],
+                        ground=("FL", "FR"))
+    assert ground_plum["status"] == "fail", ground_plum
 
     # scoring: floor + 10 cm endpoints
     contract = json.loads((Path(__file__).resolve().parents[2] / "comp" / "CONTRACT.json")

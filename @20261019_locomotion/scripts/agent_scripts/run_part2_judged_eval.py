@@ -138,6 +138,8 @@ def main() -> None:
     ap.add_argument("--contract", type=Path, default=CONTRACT)
     ap.add_argument("--only", action="append", default=[], help="category or category_level e.g. trench_10cm")
     ap.add_argument("--attempts", type=int, default=1)
+    ap.add_argument("--official", action="store_true",
+                    help="official Part2 mode: at most 4 attempts per category (levels high->low)")
     ap.add_argument("--seconds", type=float, default=None)
     ap.add_argument("--json", type=Path, default=Path("../prep.d/results/part2_v2_eval.json"))
     args = ap.parse_args()
@@ -153,12 +155,23 @@ def main() -> None:
             key = e["category"] if e["unit"] == "bool" else f"{e['category']}_{e['level']}{e['unit']}"
             if e["category"] in wanted or key in wanted:
                 selected.append(e)
+    if args.official:
+        used: dict[str, int] = {}
+        official = []
+        for e in sorted(selected, key=lambda x: (x["category"], -float(x["level"]))):
+            cat = e["category"]
+            if used.get(cat, 0) >= 4:
+                continue
+            used[cat] = used.get(cat, 0) + 1
+            official.append(e)
+        selected = official
     results = []
     for entry in selected:
         scene = str(ROOT / entry["scene"])
         start = tuple(entry["judge"]["start"])
         attempts = []
-        for _ in range(max(1, args.attempts)):
+        n_attempts = 1 if args.official else max(1, args.attempts)
+        for _ in range(n_attempts):
             lr = LevelRunner(scene, str(args.policy), start)
             attempts.append(lr.run_attempt(entry, args.seconds))
         successes = sum(1 for a in attempts if a["judge"]["status"] == "success")

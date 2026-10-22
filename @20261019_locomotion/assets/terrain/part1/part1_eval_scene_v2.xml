@@ -130,21 +130,21 @@
 <!-- 直径1m圆形颜色块，仅显示，不碰撞 -->
 <geom pos="1.8 -10.1 0.0"
       type="cylinder"
-      size="0.1 0.001"
+      size="0.5 0.001"
       rgba="1.0 0.0 0.0 0.35"
       contype="0"
       conaffinity="0" />
 
 <geom pos="3.2 -12.5 0.0"
       type="cylinder"
-      size="0.1 0.001"
+      size="0.5 0.001"
       rgba="1.0 0.0 0.0 0.35"
       contype="0"
       conaffinity="0" />
 
 <geom pos="1.55 -12.75 0.0"
       type="cylinder"
-      size="0.1 0.001"
+      size="0.5 0.001"
       rgba="1.0 0.0 0.0 0.35"
       contype="0"
       conaffinity="0" />

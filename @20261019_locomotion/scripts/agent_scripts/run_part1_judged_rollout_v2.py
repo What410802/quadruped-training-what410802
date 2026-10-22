@@ -181,7 +181,7 @@ def main() -> None:
         results.append(result)
         st = result["judge"]["states"][name]
         print(f"{name:14s} status={st['status']:8s} score={st['score']:5.1f} reason={st['reason']}")
-    total = sum(r["judge"]["score"] for r in results)
+    total = sum(r["judge"]["states"][r["task"]]["score"] for r in results)
     success = sum(1 for r in results if r["judge"]["states"][r["task"]]["status"] == "success")
     payload = {
         "judge": "comp_part1_judge.Part1JudgeV2",

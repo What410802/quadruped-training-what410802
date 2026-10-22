@@ -153,9 +153,8 @@ def apply_events(course: Part1Course, events: list[dict], idx: int, t: float,
     return idx
 
 
-def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict], attempt: int,
+def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict], course: Part1Course,
                 warmup_s: float = 0.5) -> dict:
-    course = Part1Course()
     for _ in range(int(warmup_s / 0.02)):
         cpr.step_policy(np.zeros(3))
     ok = course.begin_attempt(float(cpr.data.time))
@@ -171,7 +170,9 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict], attemp
             cmd, reached = waypoint_command(cpr, target, speed)
             cpr.step_policy(cmd)
             s = cpr.sample()
-            # While paused the simulation must not advance: freeze and re-sample the same state.
+            # While paused the simulation must not advance, but the operator clock keeps
+            # running so pause/resume events at later times still fire (no deadlock).
+            paused_steps = 0
             while True:
                 course.update(s["t"], s["base_xyz"], s["yaw"], foot_tags=s["foot_tags"],
                               ground_feet=s["ground_feet"], bar_z=s["bar_z"])
@@ -179,7 +180,12 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict], attemp
                                       pose_xy=s["base_xyz"], pose_yaw=s["yaw"])
                 if not course.paused:
                     break
-                s = cpr.sample()   # same pose, physics frozen
+                paused_steps += 1
+                if paused_steps * 0.02 > 120.0:
+                    course.abort_attempt(s["t"], "pause_timeout")
+                    break
+                s = cpr.sample()
+                s["t"] = float(s["t"]) + paused_steps * 0.02
                 if not course.active:
                     break
             if not course.active:
@@ -191,8 +197,8 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict], attemp
             break
     if course.active:
         course.end_attempt(float(cpr.data.time), "route_complete")
-    return {"attempt": attempt, "aborted": aborted, "report": course.export_report(),
-            "judge": course.judge.report() if not course.active else None}
+    return {"attempt": course.attempt_no, "aborted": aborted,
+            "report": course.export_report(), "judge": course.judge.report()}
 
 
 def main() -> None:
@@ -210,19 +216,20 @@ def main() -> None:
     events = sorted(events, key=lambda e: float(e["t"]))
     start = tuple(route["start"])
     attempts = []
-    session_courses = []
-    for attempt in range(1, args.attempts + 1):
+    course = Part1Course()          # single session: 3-attempt ledger lives here
+    max_attempts = min(int(args.attempts), course.manager.max_attempts)
+    for _ in range(max_attempts):
         cpr = CoursePolicyRunner(args.scene, args.policy, start)
-        result = run_attempt(cpr, route, events, attempt)
+        result = run_attempt(cpr, route, events, course)
         attempts.append(result)
-        session_courses.append(result["judge"])
-        st = result["judge"]["states"] if result["judge"] else {}
+        st = result["judge"]["states"]
         n_success = sum(1 for x in st.values() if x["status"] == "success")
-        print(f"attempt {attempt}: score={result['report']['summary']['final_score']} "
+        print(f"attempt {result['attempt']}: score={result['report']['summary']['final_score']} "
               f"obstacles_success={n_success} aborted={result['aborted']}")
         if result["aborted"]:
             break
-    total_success = sum(1 for x in (attempts[-1]["judge"]["states"] if attempts[-1]["judge"] else {}).values()
+    session_summary = course.summary()
+    total_success = sum(1 for x in (attempts[-1]["judge"]["states"] if attempts else {}).values()
                         if x["status"] == "success")
     payload = {
         "kind": "part1_course_diagnostic",
@@ -232,6 +239,7 @@ def main() -> None:
         "route": str(args.route), "route_sha256": sha256_file(args.route),
         "policy": str(args.policy), "policy_sha256": sha256_file(args.policy),
         "attempts": attempts,
+        "session_summary": session_summary,
         "last_attempt_success_count": total_success,
         "notes": "scripted route is a P0 diagnostic harness; real run is manual, not approved protocol",
     }

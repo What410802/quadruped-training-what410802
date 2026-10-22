@@ -152,6 +152,17 @@ def test_height_bar_touch_drop_and_gate():
     dropped = [dict(s, bar_z=(0.20 if i >= 2 else 0.325)) for i, s in enumerate(base)]
     assert_failed(feed(Part1JudgeV2(), dropped), "height_bar", "beam drop")
 
+    # beam already dropped before entering the zone -> cannot succeed on a retry
+    pre_drop = [
+        {"x": 5.7, "y": -10.8, "bar_z": 0.325},
+        {"x": 5.7, "y": -10.2, "bar_z": 0.20},
+        {"x": 5.7, "y": -9.5, "bar_z": 0.20},
+        {"x": 5.7, "y": -9.0, "bar_z": 0.20},
+        {"x": 5.7, "y": -8.5, "bar_z": 0.20},
+        {"x": 5.7, "y": -8.2, "bar_z": 0.20},
+    ]
+    assert_not_success(feed(Part1JudgeV2(), pre_drop), "height_bar", "pre-entry beam drop")
+
     outside = [
         {"x": 4.6, "y": -10.4, "bar_z": 0.325},
         {"x": 4.6, "y": -9.5, "bar_z": 0.325},
@@ -185,7 +196,18 @@ def test_high_wall_sideways_climb_and_bypass():
     ]
     rep = feed(Part1JudgeV2(), bypass)
     assert_not_success(rep, "high_wall", "ground-height crossing")
-    print("high_wall: OK sideways/no-climb fail / real crossing succeeds")
+
+    # wall-touching at ground height is still not a climb
+    wall_touch_ground = [
+        {"x": 1.8, "y": -7.9},
+        {"x": 1.8, "y": -7.4, "z": 0.45, "tags": ["wall"]},
+        {"x": 1.8, "y": -7.0, "z": 0.45, "tags": ["wall"]},
+        {"x": 1.8, "y": -6.6, "z": 0.45, "tags": ["wall"]},
+        {"x": 1.8, "y": -6.0},
+    ]
+    assert_not_success(feed(Part1JudgeV2(), wall_touch_ground), "high_wall",
+                       "sideways wall touch at ground height")
+    print("high_wall: OK sideways/no-climb/wall-touch useless / real crossing succeeds")
 
 
 # ---------------------------------------------------------------- stairs / slope / gravel
@@ -229,6 +251,21 @@ def test_t_stairs_full_partial_and_history():
     ]
     rep = feed(Part1JudgeV2(), missing_level)
     assert_not_success(rep, "t_stairs", "missing step levels must not score")
+
+    # a partial result can be upgraded to full if the second arm is completed later
+    # in the same attempt (partial success must not be permanently locked)
+    j2 = Part1JudgeV2()
+    feed(j2, partial)
+    upgrade = [
+        {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
+        {"x": 2.2, "y": -3.5, "tags": ["step:e:3"]},
+        {"x": 2.6, "y": -3.5, "tags": ["step:e:2"]},
+        {"x": 3.3, "y": -3.5, "tags": ["step:e:1"]},
+        {"x": 3.5, "y": -3.5},
+    ]
+    rep = feed(j2, upgrade)
+    assert_status(rep, "t_stairs", "success", "partial upgraded to full")
+    assert st(rep, "t_stairs")["score"] == 100.0, st(rep, "t_stairs")
     print("t_stairs: OK two-arm full / one-arm 75 / missing levels fail")
 
 
@@ -332,6 +369,18 @@ def test_slalom_forward_reverse_and_spoof():
         {"x": 2.8, "y": -12.6},
     ]
     assert_not_success(feed(Part1JudgeV2(), out_of_order), "slalom", "out-of-order posts")
+
+    # corner checkpoint too early (A direction requires it after post 2)
+    early_corner = [
+        {"x": 1.8, "y": -10.1},
+        {"x": 1.9, "y": -10.5},   # post 0
+        {"x": 1.7, "y": -11.5},   # post 1
+        {"x": 1.55, "y": -12.75},  # corner after only two posts (A expects three)
+        {"x": 1.9, "y": -12.5},   # post 2
+        {"x": 2.8, "y": -12.6},   # post 3
+        {"x": 3.2, "y": -12.5},   # end
+    ]
+    assert_not_success(feed(Part1JudgeV2(), early_corner), "slalom", "corner too early")
     print("slalom: OK forward/reverse / early-end and out-of-order rejected")
 
 

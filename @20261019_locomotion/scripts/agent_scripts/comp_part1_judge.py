@@ -165,6 +165,10 @@ class _Obstacle:
     def _on_first_inside(self, side_prev: str | None, xy: tuple[float, float]) -> None:
         self.evidence["entry_side_prev"] = side_prev
 
+    def _pre_sample(self, bar_z: float | None) -> None:
+        """Called every update before zone logic; subclasses may track global state."""
+        pass
+
     def _on_sample(self, xy: tuple[float, float], tags: set[str], ground_feet: set[str],
                    bar_z: float | None, yaw: float) -> None:
         pass
@@ -178,6 +182,10 @@ class _Obstacle:
 
     def _score_for(self) -> float:
         return float(self.per_obstacle_score)
+
+    def _mark_partial(self) -> None:
+        partial = self.result.score < self.per_obstacle_score
+        self.result.detail["partial"] = bool(partial)
 
     def _touched(self, tags: set[str]) -> bool:
         if not self.surface_tags:
@@ -203,14 +211,18 @@ class _Obstacle:
                foot_tags: dict[str, set[str]], ground_feet: set[str],
                bar_z: float | None) -> None:
         if self.result.status in ("success", "skipped"):
-            return
+            if not (self.result.status == "success"
+                    and self.result.score < self.per_obstacle_score
+                    and not self.result.detail.get("upgrade_unavailable")):
+                return
+        self._pre_sample(bar_z)
         xy = (float(base_xyz[0]), float(base_xyz[1]))
         inside = _in_zone(self.zone, xy)
         tags = {tag for values in foot_tags.values() for tag in values}
         if not inside:
             self.armed = True
         if inside and not self.prev_in_zone:
-            self.result.status = "running"
+            self.result.status = "running"   # also reopens partial success for upgrade
             entry = _crossing_side(self.zone, self.prev_xy, xy) if self.prev_xy else None
             self._on_first_inside(entry, xy)
         if inside:
@@ -236,6 +248,7 @@ class _Obstacle:
                         self.result.status = "success"
                         self.result.reason = ""
                         self.result.score = self._score_for()
+                        self._mark_partial()
                     else:
                         self._fail(reason or "failed")
                     self.prev_in_zone = inside
@@ -249,8 +262,11 @@ class _Obstacle:
                     self.result.status = "success"
                     self.result.reason = ""
                     self.result.score = self._score_for()
+                    self._mark_partial()
                 elif reason:
                     self._fail(reason)
+                elif self.result.detail.get("partial"):
+                    self.result.status = "success"   # keep the partial score
                 else:
                     self.result.status = "pending"
                     self.result.detail["aborted_exit"] = side
@@ -299,26 +315,30 @@ class TraversalBridge(_Obstacle):
 class HeightBar(_Obstacle):
     def __init__(self) -> None:
         self.name, self.zone = "height_bar", ZONES["height_bar"]
+        self.bar_base_seen: float | None = None
+        self.bar_dropped_seen = False
         super().__init__()
 
+    def _pre_sample(self, bar_z: float | None) -> None:
+        if bar_z is None:
+            return
+        if self.bar_base_seen is None:
+            self.bar_base_seen = float(bar_z)
+        elif self.bar_base_seen - float(bar_z) > BAR_DROP_THRESHOLD_M:
+            self.bar_dropped_seen = True
+
     def _reset_evidence(self) -> None:
-        self.evidence = {"cross_valid": 0, "cross_bad": 0, "bar_base": None,
-                         "prev_y": None}
+        self.evidence = {"cross_valid": 0, "prev_y": None}
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
         x, y = xy
+        if self.bar_dropped_seen:
+            self._fail("bar_dropped")
+            return
         prev_y = self.evidence.get("prev_y")
-        if bar_z is not None:
-            if self.evidence["bar_base"] is None:
-                self.evidence["bar_base"] = bar_z
-            elif self.evidence["bar_base"] - bar_z > BAR_DROP_THRESHOLD_M:
-                self._fail("bar_dropped")
-                return
         if prev_y is not None and (prev_y - (-9.0)) * (y - (-9.0)) <= 0 and abs(prev_y - y) < 1.0:
             if BAR_OPENING_X[0] <= x <= BAR_OPENING_X[1]:
                 self.evidence["cross_valid"] += 1
-            else:
-                self.evidence["cross_bad"] += 1
         self.evidence["prev_y"] = y
 
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
@@ -329,8 +349,10 @@ class HeightBar(_Obstacle):
             return False, "wrong_exit_side"
         if self.evidence["cross_valid"] < 1:
             return False, "no_valid_gate_crossing"
-        if self.evidence["bar_base"] is None:
+        if self.bar_base_seen is None:
             return False, "bar_state_unknown"
+        if self.bar_dropped_seen:
+            return False, "bar_dropped"
         return True, ""
 
 
@@ -341,7 +363,7 @@ class HighWall(_Obstacle):
 
     def _reset_evidence(self) -> None:
         self.evidence = {"max_z": 0.0, "wall_contact": False, "cross_valid": 0,
-                         "prev_y": None}
+                         "prev_y": None, "prev_x": None}
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
         x, y = xy
@@ -349,11 +371,18 @@ class HighWall(_Obstacle):
         if "wall" in tags:
             self.evidence["wall_contact"] = True
         prev_y = self.evidence.get("prev_y")
+        prev_x = self.evidence.get("prev_x")
         if prev_y is not None and (prev_y - WALL_CROSS_Y) * (y - WALL_CROSS_Y) <= 0:
             if abs(prev_y - y) < 1.0:
-                if self._last_z >= WALL_CLIMB_Z or "wall" in tags:
+                # real climb: base raised well above standing height at the crossing;
+                # a sideways wall touch at ground height is not evidence of surmounting.
+                raised = self._last_z >= 0.60
+                if raised:
                     self.evidence["cross_valid"] += 1
+                else:
+                    self.evidence["ground_cross"] = self.evidence.get("ground_cross", 0) + 1
         self.evidence["prev_y"] = y
+        self.evidence["prev_x"] = x
 
     def update(self, t, base_xyz, yaw, foot_tags, ground_feet, bar_z):
         self._last_z = float(base_xyz[2])
@@ -443,8 +472,7 @@ class TStairs(_Obstacle):
         super().__init__()
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"arms": {}, "top": False, "ground_after_top": False,
-                         "entry_arm": None, "exit_arm": None}
+        self.evidence = {"arms": {}, "top": False, "entry_arm": None, "exit_arm": None}
 
     def _step_tags(self, tags: set[str]) -> list[str]:
         return [t for t in tags if t.startswith("step:")]
@@ -460,8 +488,6 @@ class TStairs(_Obstacle):
             if self.evidence["entry_arm"] is None:
                 self.evidence["entry_arm"] = arm
             self.evidence["exit_arm"] = arm
-        if self.evidence["top"] and ground_feet:
-            self.evidence["ground_after_top"] = True
         self.result.detail["arms"] = {k: sorted(v) for k, v in self.evidence["arms"].items()}
 
     def _complete_arms(self) -> list[str]:
@@ -528,9 +554,12 @@ class Slalom(_Obstacle):
                 tx, ty = post[0] - ref[0], post[1] - ref[1]
                 nx, ny = -ty, tx
                 ev["sides"].append(_sign(nx * (xy[0] - post[0]) + ny * (xy[1] - post[1])))
-        if self._near(xy, SLALOM_CORNER) and len(ev["order"]) >= 2 and not ev["corner"]:
+        expected_corner_after = 3 if ev["start_area"] == "A" else 2
+        if (self._near(xy, SLALOM_CORNER) and not ev["corner"]
+                and ev["start_area"] is not None and len(ev["order"]) >= 2):
             ev["corner"] = True
             ev["corner_after"] = len(ev["order"])
+            ev["corner_expected_after"] = expected_corner_after
         # the end circle is only a valid finish if all four posts were already
         # registered before this sample (not in the same sample as the last post,
         # which can be geometrically inside the end circle)
@@ -543,7 +572,7 @@ class Slalom(_Obstacle):
     def _check_immediate(self):
         ev = self.evidence
         if (ev["start_area"] and ev["end_area"] and len(ev["order"]) == 4
-                and ev["corner"] and ev["corner_after"] in (2, 3)
+                and ev["corner"] and ev["corner_after"] == ev.get("corner_expected_after")
                 and all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:]))):
             return True, ""
         return None
@@ -558,7 +587,7 @@ class Slalom(_Obstacle):
             return False, "missing_corner_checkpoint"
         if not ev["end_area"]:
             return False, "no_end_area"
-        if ev["corner_after"] not in (2, 3):
+        if ev["corner_after"] != ev.get("corner_expected_after"):
             return False, "corner_out_of_order"
         if not all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:])):
             return False, "not_s_shaped_sides"

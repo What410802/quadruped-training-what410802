@@ -2,7 +2,7 @@
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part1-course-diag",
   "part1": {
-    "attempts_used": 1,
+    "attempts_used": 2,
     "obstacles": {
       "slalom": {
         "success": false,
@@ -55,6 +55,7 @@
     },
     "return_to_start": false,
     "return_score": 0,
+    "return_evidence": null,
     "total": 0
   },
   "part2": {

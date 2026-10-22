@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part1-diag-v2",
-  "created_at": "2026-10-22T23:14:36+08:00",
+  "created_at": "2026-10-22T23:29:36+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "de876015974f8f79743c9f99d627af6a698d9be3",
+      "commit": "54149b02a34a179e23f80af6b966dc46fdd3cc48",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -35,7 +35,7 @@
   "scenes": {
     "part1": {
       "file": "assets/terrain/part1/part1_eval_scene_v2.xml",
-      "sha256": "e88b83fe54ae50b9dabeee6a472ad3dba42ec2e6c1835fb70e5a8445a08604ae"
+      "sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242"
     },
     "part2": {
       "file": "assets/terrain/part2/ability_field/part2_ability_field.xml",
@@ -43,7 +43,7 @@
     }
   },
   "judge": {
-    "version": "comp_part1_judge_v2_1@ee7b9535ee23",
+    "version": "comp_part1_judge_v2_1@ef1b2935ee23",
     "files": [
       "scripts/agent_scripts/comp_part1_judge.py",
       "scripts/agent_scripts/comp_part1_geom_tags.py"
@@ -55,7 +55,7 @@
     "seeds": [],
     "attempts_part1_total": 3,
     "attempts_part2_per_obstacle": 4,
-    "operator": "scripted:run_part1_judged_rollout.py",
+    "operator": "scripted:run_part1_judged_rollout_v2.py",
     "seed_control": "none（runner 未设种子/扰动；名义 seed 不应被当作已执行）",
     "start_pose_policy": "per-task diagnostic starts (not yet protocol-frozen)"
   },
