@@ -71,6 +71,14 @@ MUJOCO_GL=egl .venv/bin/train black-basic-obstacle \
 
 结论：桥面/限高杆行为有改善，但 **P1 还没有通过 slope/stairs**；不能把本轮当 P1 验收。contact sheet：`prep.d/videos/part1_p1_basic_obstacle_contact.png`。
 
+### 第二轮续训（2026-10-22）
+
+- run：`logs/rsl_rl/black_velocity/2026-10-22_16-44-17_p1_basic_obstacle_cont`；checkpoint `model_5496.pt`；
+- 4096 envs × 1500 iter，约 1 h 11 min；
+- 训练末期 terrain level：mean≈1.62（第一轮 1.54），smooth_slope_up≈1.92，stairs_up≈1.68，stairs_down≈1.09；非法接触率约 0.875，仍高；
+- 本地 Part 1 迁移诊断反而变差：bridge_bands tilt≈38.7°、height_bar 重新碰杆、t_stairs fail；说明不能只靠连续训练，Part 1 迁移与训练地形不一致，需要先做训练环境评估/调课程；
+- 结果 JSON：`prep.d/results/part1_p1_cont.json`；contact sheet：`prep.d/videos/part1_p1_cont_contact.png`。
+
 ### 下一步
 
 - 先做训练环境 play/eval（terrain level、slope/stairs 通过率、摔倒率），再决定是否延长训练、调课程或提高 stairs 比例；

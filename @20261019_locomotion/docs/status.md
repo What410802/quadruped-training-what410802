@@ -50,7 +50,7 @@
 - 桥：blocks fail、bands running；flat 策略无桥面训练，tilt 升高；需要 P1/P2 专项。
 - 训练机 GPU smoke：`black-flat`/`black-rough` 512 envs × 11 iter 分别约 7/12 s；`black-rough` 已加载 stairs/slope 地形，P1 环境可用。
 - **P1 第一轮训练完成**：`black-basic-obstacle`（flat + smooth slopes + stairs，4096 envs × 1500 iter，resume from flat-ft）耗时 **1 h 11 min**，checkpoint `model_3997.pt`；terrain level 有推进但非法接触率仍高。导出 P1 policy 在 Part 1 迁移诊断：桥/限高杆改善，slope/T stairs 仍未通过，**P1 未完成**。详见 [`training/p1-basic-obstacle.md`](training/p1-basic-obstacle.md) 与 `prep.d/videos/part1_p1_basic_obstacle_contact.png`。
-- **P1 续训已启动**：从 `model_3997.pt` 继续 1500 iter（PID 61832，约 2.79 s/iter，ETA≈70 min）；后台监控任务 `bash-202`。
+- **P1 第二轮续训完成**：`model_5496.pt`，1 h 11 min；训练地形 level 略升（mean≈1.62）但非法接触仍高；本地 Part 1 迁移变差（bands tilt≈38.7°、height 碰杆、T fail）。P1 **未完成**；不再盲目续训，下一步先做训练环境评估与课程/奖励调整。两轮训练共约 2 h 22 min；P1 总估 3–4 h。contact sheet：`prep.d/videos/part1_p1_cont_contact.png`。
 - rl_sar 后备自检：`check_rl_sar_fallback.sh` 的 input_map/command_limit 两项均 `all checks passed`；完整 `check_walk` 未重跑（需 GUI）。
 - 控制仓库 fork：`https://github.com/What410802/quadruped_control`，P0 分支 `main@f2b37dc` 已推送，未合并 upstream；部署栈取舍（rl_sar vs quadruped_control）见 [`reference/deployment-stack-comparison.md`](reference/deployment-stack-comparison.md)。
 

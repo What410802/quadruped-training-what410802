@@ -170,3 +170,5 @@ export MUJOCO_GL=egl
 
 - `prep.d/videos/part1_p1_basic_obstacle_contact.png`：P1 basic-obstacle policy 在 Part 1 八障碍上的迁移诊断；桥/限高杆改善，slope/T stairs 仍未通过。
 - `prep.d/results/part1_p1_basic_obstacle.json`：逐障碍 base/tilt/judge。
+
+- `prep.d/videos/part1_p1_cont_contact.png`：P1 续训后 Part 1 迁移诊断；桥/限高杆/台阶反而退化，说明训练地形与 Part 1 迁移存在差距。
