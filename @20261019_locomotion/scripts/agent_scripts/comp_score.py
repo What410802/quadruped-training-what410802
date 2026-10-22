@@ -185,10 +185,12 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                    if t.get("part") == "part1" and t.get("obstacle") != "return_to_start"}
     p1_attempts.discard(0)
     reported_p1 = int((summary.get("part1") or {}).get("attempts_used") or 0)
-    if p1_attempts and reported_p1 != len(p1_attempts) and not diagnostic:
+    if not diagnostic and reported_p1 != len(p1_attempts):
         _err(errors, f"part1.attempts_used={reported_p1} 与 trials 中不同 attempt 数={len(p1_attempts)} 不一致")
     elif p1_attempts and reported_p1 != len(p1_attempts):
         _warn(warnings, f"part1.attempts_used={reported_p1} 与 trials 不同 attempt 数={len(p1_attempts)} 不一致（diagnostic）")
+    if not diagnostic and reported_p1 > 0 and not p1_attempts:
+        _err(errors, "part1.attempts_used>0 但 trials 中没有任何可复算的 Part1 attempt")
 
     # Part 2 legal difficulty levels
     p2_specs = {o["id"]: o for o in (contract.get("parts", {}).get("part2", {}) or {}).get("obstacles", [])}
@@ -217,7 +219,8 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                 continue
             attempt = int(t.get("attempt") or 0)
             rec = by_attempt.setdefault(attempt, {"score": 0.0, "duration": float(t.get("duration_s") or 0.0),
-                                                  "full": True, "return": False, "seen": set()})
+                                                  "full": True, "return": False, "seen": set(),
+                                                  "skipped": False})
             oid = t.get("obstacle")
             j = t.get("judge") or {}
             if oid == "return_to_start":
@@ -225,6 +228,8 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                     rec["return"] = True
                 continue
             score = float(j.get("score") or 0.0)
+            if t.get("skipped"):
+                rec["skipped"] = True
             rec["score"] += score
             rec["seen"].add(oid)
             spec = p1_obs.get(oid)
@@ -242,8 +247,8 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                     rec["score"] += float(((contract.get("parts", {}).get("part1", {}) or {})
                                            .get("return_bonus") or {}).get("score", 100))
             best = max(r["score"] for r in by_attempt.values())
-            best_durations = [r["duration"] for r in by_attempt.values() if r["score"] == best]
-            expected = min(best_durations)
+            best_records = [r for r in by_attempt.values() if r["score"] == best and not r["skipped"]]
+            expected = min(r["duration"] for r in best_records) if best_records else 0.0
             got = float(s1.get("final_time_s") or 0.0)
             if abs(got - expected) > 1e-6:
                 _err(errors, f"part1.final_time_s={got} 应为最高分尝试中最快 {expected}")
@@ -627,9 +632,9 @@ def _synthetic() -> tuple[dict, dict, dict, dict]:
 def run_self_test() -> int:
     contract, manifest, summary, _ = _synthetic()
     trials = [
-        {"trial_id": "t-a", "part": "part1", "obstacle": "a", "seed": 0,
+        {"trial_id": "t-a", "part": "part1", "obstacle": "a", "attempt": 1, "seed": 0,
          "judge": {"status": "success"}},
-        {"trial_id": "t-b", "part": "part1", "obstacle": "b", "seed": 0,
+        {"trial_id": "t-b", "part": "part1", "obstacle": "b", "attempt": 1, "seed": 0,
          "judge": {"status": "fail"}},
         {"trial_id": "t-p", "part": "part2", "obstacle": "p", "seed": 0,
          "difficulty": 20, "success": True},
@@ -770,6 +775,13 @@ def run_self_test() -> int:
     dup_manifest = {"results": {"trials": "trials.jsonl"}, "protocol": {"seeds": []}}
     dup_errs = validate_trials(dup_root, dup_manifest)
     assert any("重复 trial_id" in e for e in dup_errs), dup_errs
+    trials3_skipped = json.loads(json.dumps(trials3))
+    trials3_skipped.append({"part": "part1", "obstacle": "a", "attempt": 3, "duration_s": 0.0,
+                            "skipped": True, "judge": {"status": "skipped", "score": 0}})
+    summary3_skip_zero = {"part1": {"attempts_used": 3, "final_score": 100, "final_time_s": 0.0}}
+    errs, _ = validate_external_evidence(man_ok, summary3_skip_zero, contract3, tmp, False,
+                                         trials3_skipped)
+    assert any("final_time_s" in e for e in errs), errs
     summary3_bad = {"part1": {"attempts_used": 2, "final_score": 100, "final_time_s": 5.0}}
     errs, _ = validate_external_evidence(man_ok, summary3_bad, contract3, tmp, False, trials3)
     assert any("final_time_s" in e for e in errs), errs

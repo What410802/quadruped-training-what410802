@@ -305,6 +305,10 @@ def test_t_stairs_full_partial_and_history():
             ]
         rep = feed(Part1JudgeV2(), seq)
         assert_status(rep, "t_stairs", "success", f"one-arm {arm} partial")
+        arms = st(rep, "t_stairs")["detail"]["arms"]
+        assert arms.get(arm) == [1, 2, 3], (arm, arms)
+        complete = [k for k, v in arms.items() if set(v) >= {1, 2, 3}]
+        assert complete == [arm], (arm, arms)   # exactly one complete arm
         assert st(rep, "t_stairs")["score"] == 33.0, (arm, st(rep, "t_stairs"))
     print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels fail")
 

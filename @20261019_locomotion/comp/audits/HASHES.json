@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T02:26:11+08:00",
+  "generated_at": "2026-10-23T02:31:56+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -21,7 +21,7 @@
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "65c2f53faf767df754d9e0d2ab0483c24e770d81a19c89d4ffee0bfdbc5438cc"
+      "sha256": "cbc70a0d54d752b7f44a0fa366feafcb2347df1653481e9967b2d4621057ddd9"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -65,7 +65,7 @@
     },
     "score_tool": {
       "path": "scripts/agent_scripts/comp_score.py",
-      "sha256": "d66bab1b9cc227a752a876f64f6eb290b62316928dc70b76678d014f963cc60a"
+      "sha256": "7aa8594b73fab7f29f8d0006d9efbdf98a596198473c4e10341532776aa683ba"
     },
     "scene_part1_v2": {
       "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
