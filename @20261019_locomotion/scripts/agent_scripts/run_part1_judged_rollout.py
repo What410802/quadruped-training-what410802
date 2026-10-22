@@ -23,7 +23,7 @@ POLICY = "@20261019_locomotion/assets/policies/flat-ft-2500/policy.pt"
 
 # name: (start xyz, yaw, command, seconds, note)
 TASKS = {
-    "height_bar": ((4.9, -9.0, 0.55), 0.0, (0.5, 0.0, 0.0), 6.0, "approach bar along +x"),
+    "height_bar": ((5.7, -10.4, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 4.0, "through gate opening along +y"),
     "high_wall": ((1.15, -7.0, 0.55), 0.0, (0.4, 0.0, 0.0), 4.0, "approach wall along +x"),
     "bridge_blocks": ((1.8, 0.0, 0.65), 0.0, (0.3, 0.0, 0.0), 5.0, "left platform -> +x"),
     "bridge_bands": ((5.7, -3.5, 0.65), np.pi / 2, (0.3, 0.0, 0.0), 5.0, "lower platform -> +y"),
@@ -127,7 +127,16 @@ def main() -> None:
               f"base={result['base']} tilt={result['tilt_deg']} reason={st['reason']}")
     out = Path(args.json)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"scene": args.scene, "policy": args.policy, "tasks": results}, indent=2))
+    total = sum(r["judge"]["score"] for r in results)
+    success = sum(1 for r in results if r["judge"]["states"][r["task"]]["status"] == "success")
+    out.write_text(json.dumps({
+        "scene": args.scene,
+        "policy": args.policy,
+        "total_score": total,
+        "success_count": success,
+        "attempts": results,
+    }, indent=2))
+    print(f"total_score={total} success={success}/{len(results)}")
     print("wrote", out)
 
 

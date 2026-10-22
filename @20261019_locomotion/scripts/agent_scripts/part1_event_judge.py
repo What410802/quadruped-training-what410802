@@ -49,11 +49,13 @@ class Part1EventJudge:
             elif success:
                 st.status, st.reason, st.score = "success", "", 100
 
-        # Height bar: cross the bar line at y~-9 without touching it.
-        if 5.0 <= x <= 6.4 and -9.6 <= y <= -8.4:
+        # Height bar is a gate in the x-z plane at y=-9: posts at x=5.2/6.2,
+        # beam spanning x=5.2..6.2.  The only valid passage is along +y/-y,
+        # through x in [5.2, 6.2], NOT along +x into a side post.
+        if 5.15 <= x <= 6.25 and -10.6 <= y <= -8.1:
             if self.states["height_bar"].status == "pending":
                 self.states["height_bar"].status = "running"
-            setstate("height_bar", success=x > 6.2, fail=bar_touched, reason="bar_touched")
+            setstate("height_bar", success=(y > -8.95), fail=bar_touched, reason="bar_touched")
         # High wall: cross the vertical wall at x~1.8.
         if 1.2 <= x <= 2.6 and -7.7 <= y <= -6.3:
             if self.states["high_wall"].status == "pending":
@@ -111,12 +113,17 @@ def _synthetic() -> None:
         j.update((x, 0.0, 0.42), [], False)
     print("bridge_blocks", j.states["bridge_blocks"])
     assert j.states["bridge_blocks"].status == "success"
-    # height bar with contact fails.
+    # Height bar: traverse the gate along y at x=5.7; contact fails.
     j2 = Part1EventJudge()
-    for x, touch in ((5.0, False), (5.5, False), (5.8, True), (6.3, False)):
-        j2.update((x, -9.0, 0.8), [], touch)
+    for y, touch in ((-10.0, False), (-9.4, False), (-9.1, True), (-8.6, False)):
+        j2.update((5.7, y, 0.8), [], touch)
     print("height_bar", j2.states["height_bar"])
     assert j2.states["height_bar"].status == "fail"
+    j7 = Part1EventJudge()
+    for y in (-10.0, -9.4, -8.6):
+        j7.update((5.7, y, 0.8), [], False)
+    print("height_bar_gate_success", j7.states["height_bar"])
+    assert j7.states["height_bar"].status == "success"
     j3 = Part1EventJudge()
     for x, y in ((1.8, -10.5), (1.8, -11.5), (1.8, -12.5), (2.8, -12.5)):
         j3.update((x, y, 0.42), [], False)
