@@ -70,6 +70,8 @@ cd ~/rc_work/nwwolf_mjlab_training_release
 │   │   ├── experiments.md            # run 表、指标、gate、步态/yaw 体检
 │   │   ├── eval-protocol.md          # 评测协议与 G1–G5
 │   │   └── visualization.md          # 训练场景/节点视频、图例、可视化代码分布
+│   ├── demo/
+│   │   └── acceptance-demo-guide.md   # 最终验收演示者的脚本/流程/降级方案
 │   ├── terrain/
 │   │   ├── materials.md              # 地形/资源盘点、尺寸、mjlab 映射、新资料
 │   │   ├── gravel-feasibility.md     # 砂砾/碎石可行性原型与社区做法
@@ -78,6 +80,7 @@ cd ~/rc_work/nwwolf_mjlab_training_release
 │   │   └── manual-fallback-state-machine.md  # 手动保底状态机/运行时真值/相机阶段
 │   └── reference/
 │       ├── team-race-2026.md         # 2026 队内赛真值：两个赛项/成功定义/得分/约束
+│       ├── agent-visual-checklist.md  # AI 动手前自检：障碍方向/门洞/视觉复核
 │       ├── quadruped-control-study.md # quadruped_control 架构研读与状态机接入
 │       ├── quadruped-control-pixi-migration.md # Pixi 依赖迁移实测与缺口
 │       ├── literature.md             # 论文清单与培训方补充材料

@@ -5,9 +5,14 @@
 ## 实施阶段长期提醒（2026-10-22）
 
 - **可视化是实施的一部分**：复杂、多步、需要视觉确认、结果精彩或能说明问题的过程，默认留视频/截图/contact sheet + 文本诊断（JSON/CSV/日志）。视频/大图放本地 `prep.d/videos/`，诊断 JSON/CSV 放本地 `prep.d/results/`，不入库；文档里记路径、结论和可复现命令。
+- **AI 动手前自检**：障碍/门洞方向先读 geom 轴与门柱，不按名字猜；限高杆正确方向是沿 y 穿门洞。完整流程与失败案例见 [`reference/agent-visual-checklist.md`](reference/agent-visual-checklist.md)。
 - **当前示例**：Part 1 zero-shot judge 汇总图 `prep.d/videos/part1_judged_zero_shot_contact.png`，逐障碍 JSON `prep.d/results/part1_zero_shot.json`（相对仓库父目录 `RoboCon/`）；Part 2 能力场 stand 视频 `prep.d/videos/part2_ability_field_stand.mp4`。
 - **Git 授权**：2026-10-22 起用户允许 AI 助手直接提交 Git（直到用户明确撤销）；任务级授权覆盖仓库级默认“AI 不代为提交”的约定，记录在本文件。提交仍不推 GitHub，不提交 `.vscode/settings.json`。
 - 该授权和可视化规则只约束本任务；仓库级默认仍见 [`docs/conventions.md`](../../docs/conventions.md) 与 [`AGENTS.md`](../../AGENTS.md)。
+
+## 演示材料（2026-10-22，P0）
+
+- 面向最终验收演示者的脚本/现场流程/降级方案见 [`demo/acceptance-demo-guide.md`](demo/acceptance-demo-guide.md)。
 
 ## 任务真值校准（2026-10-21）
 
@@ -33,7 +38,9 @@
 - ✅ 部署审计：`audit_deployment.py` 检查 45 维 actor、无禁用传感器、12 轴 effor 20 N·m、控制仓库 hip/thigh 23.7 / calf 59.25 在规则 25/60 内；通过。
 - ✅ Part 1 zero-shot 诊断：`run_part1_judged_rollout.py` 对 8 障碍做独立脚本尝试；当前全部 0 分/pending，JSON `prep.d/results/part1_zero_shot.json`。这是诊断，不是官方整场成绩。
 - ✅ 可视化规则已写入本文件顶部；当前 P0 结果 contact sheet 在 `prep.d/videos/part1_judged_zero_shot_contact.png`，诊断 JSON 在 `prep.d/results/part1_zero_shot.json`，能力场 stand 视频在 `prep.d/videos/part2_ability_field_stand.mp4`。
-- ⏳ 下一步：Part 1 success judge 用真实手动轨迹校准；Part 2 六类地形 training task 化（本地 eval spec 已就绪）；官方整场 zero-shot 计分；状态专项策略需训练机。
+- **P0 本地闭环完成（2026-10-22）**：Part 1 场景/judge/八障碍诊断、Part 2 能力场/六类 eval spec/梅花桩、手动具名状态机、传感器/力矩审计、演示指南和可视化均已就绪。
+- **P0 不包含**（转入 P1，训练机可用）：六类地形 training task 生成与 GPU smoke、专项状态策略训练、正式整场多尝试计分、真实手动轨迹的 judge 标定。
+- **训练机顺序（P1）**：① 同步训练仓库 + 生成 slope/stairs 等 capability task，先 run smoke；② 从 `flat-ft-2500` 课程训练 slope/stairs，过 foot-clearance/摔倒 gate；③ bridge/limit_bar/high_wall 专项；④ 相机/history 只在专项 baseline 稳定后加入。
 
 ### 比赛要求 vs 当前进度
 
