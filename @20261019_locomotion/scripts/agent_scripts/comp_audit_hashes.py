@@ -84,7 +84,7 @@ def main() -> int:
         out["objects"][f"level_{lvl.stem}"] = {"path": rel, "sha256": sha256(lvl)}
     for pid in ("flat-ft-2500-part1-diag-v2", "flat-ft-2500-part2-diag-v2",
                 "flat-ft-2500-part2-official-diag", "flat-ft-2500-part1-course-diag"):
-        for fname in ("manifest.json", "trials.jsonl"):
+        for fname in ("manifest.json", "trials.jsonl", "summary.json"):
             rel = f"comp/eval/{pid}/{fname}"
             p = ROOT / rel
             if p.is_file():
