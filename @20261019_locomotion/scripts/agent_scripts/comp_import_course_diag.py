@@ -112,7 +112,9 @@ def main() -> int:
                 "judge": {"status": status,
                           "failure_reason": failure_reason(status, st.get("reason", "")),
                           "events": [], "score": int(st.get("score") or 0)},
-                "duration_s": round(duration, 3), "video": None,
+                "duration_s": round(duration, 3),
+                "skipped": bool(rec_att.get("skipped")),
+                "duration_note": "0 for skipped attempts", "video": None,
             })
 
     part1_obstacles: dict[str, dict] = {}

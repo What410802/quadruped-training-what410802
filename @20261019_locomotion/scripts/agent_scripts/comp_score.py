@@ -107,10 +107,12 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
     errors: list[str] = []
     warnings: list[str] = []
 
-    def _check_hash(entry: dict, label: str) -> None:
+    def _check_hash(entry: dict, label: str, required: bool = True) -> None:
         rel = entry.get("file") or entry.get("path") or entry.get("scene")
         recorded = entry.get("sha256") or ""
         if not rel:
+            if required:
+                _err(errors, f"{label} 缺 path/file/scene，无法机器复核")
             return
         if not recorded:
             (_warn if diagnostic else _err)(warnings if diagnostic else errors,
@@ -146,13 +148,19 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
             if not (entry.get("file") or entry.get("path") or entry.get("scene")):
                 (_warn if diagnostic else _err)(warnings if diagnostic else errors,
                                                 f"scenes.{key} 缺 file 字段")
-            _check_hash(entry, f"scenes.{key}")
-            for lvl in entry.get("levels") or []:
-                _check_hash(lvl, f"scenes.{key}.levels")
+            _check_hash(entry, f"scenes.{key}", required=not diagnostic)
+            levels = entry.get("levels") or []
+            if not diagnostic and key == "part2" and not levels:
+                _err(errors, "正式 manifest scenes.part2.levels 为空（Part2 档位证据缺失）")
+            for lvl in levels:
+                _check_hash(lvl, f"scenes.{key}.levels", required=not diagnostic)
     if isinstance(contract_meta, dict):
         _check_hash(contract_meta, "contract")
-    for fh in judge.get("file_hashes") or []:
-        _check_hash(fh, "judge.file")
+    file_hashes = judge.get("file_hashes") or []
+    if not diagnostic and not file_hashes:
+        _err(errors, "正式 manifest judge.file_hashes 为空")
+    for fh in file_hashes:
+        _check_hash(fh, "judge.file", required=not diagnostic)
     for f in judge.get("files") or []:
         p = Path(f)
         if not p.is_absolute():
@@ -598,9 +606,11 @@ def run_self_test() -> int:
     contract_file.write_text(json.dumps(contract), encoding="utf-8")
     judge_file = fixture / "judge.py"
     judge_file.write_text("# judge fixture\n", encoding="utf-8")
+    level_fixture = [{"scene": str(scene_file), "sha256": _sha256(scene_file)}]
     manifest["scenes"] = {
         "part1": {"file": str(scene_file), "sha256": _sha256(scene_file)},
-        "part2": {"file": str(scene_file), "sha256": _sha256(scene_file)},
+        "part2": {"file": str(scene_file), "sha256": _sha256(scene_file),
+                  "levels": level_fixture},
     }
     manifest["contract"] = {"file": str(contract_file), "sha256": _sha256(contract_file)}
     manifest["judge"] = {"version": "j", "files": [str(judge_file)],
@@ -662,7 +672,8 @@ def run_self_test() -> int:
     sha_scene = _sha256(scene)
     man_ok = {
         "scenes": {"part1": {"file": "scene.xml", "sha256": sha_scene},
-                   "part2": {"file": "scene.xml", "sha256": sha_scene}},
+                   "part2": {"file": "scene.xml", "sha256": sha_scene,
+                             "levels": [{"scene": "scene.xml", "sha256": sha_scene}]}},
         "contract": {"file": "scene.xml", "sha256": sha_scene},
         "judge": {"files": [], "file_hashes": [{"path": "scene.xml", "sha256": sha_scene}]},
     }

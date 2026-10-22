@@ -20,7 +20,8 @@
 | `BYOK_JUDGE_V4_PRO_VERIFY.md/.json` | G1 预审 4 | DeepSeek **pro**：N1–N4 PASS，提出 P1–P4 | 已修复 |
 | `BYOK_JUDGE_V5_FLASH_ACCEPT.md/.json` | G1 预审 5 | DeepSeek **flash** 验收：N1–N4/P1/P2 PASS，P3/P4/abort 仍 broken | 已修复，见 FIXES §Flash 验收后修复 |
 | `BYOK_JUDGE_V6_FLASH_ACCEPT.md/.json` | G1 预审 6 | DeepSeek **flash**：第 5 轮 P3/P4/abort PASS，又提出时间账本/证据缺失/official 次数 | 已修复，见 FIXES §Flash 第 6 轮后修复 |
-| `BYOK_JUDGE_V7_FLASH_ACCEPT.md/.json` | G1 预审 7 | DeepSeek **flash** 复验收（第 6 轮问题修复后） | 进行中/见文件 |
+| `BYOK_JUDGE_V7_FLASH_ACCEPT.md/.json` | G1 预审 7 | DeepSeek **flash**：主项 PASS，提出空条目/重复 trial_id/fake 账本 | 已修复，见 FIXES §Flash 第 7 轮后修复 |
+| `BYOK_JUDGE_V8_FLASH_ACCEPT.md/.json` | G1 预审 8 | DeepSeek **flash** 最终验收（第 7 轮问题修复后） | 进行中/见文件 |
 | `evidence/part1_course_*_drill.json` | 协议演练证据 | 3 次 pause/resume 与 pause→resume→abort 的 runner 证据（纳入 HASHES） | — |
 | `BYOK_JUDGE_V2_FIXES.md` | — | 预审→修复/残余风险逐条映射 | — |
 

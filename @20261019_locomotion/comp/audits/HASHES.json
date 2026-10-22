@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T01:20:35+08:00",
+  "generated_at": "2026-10-23T01:31:02+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -25,7 +25,7 @@
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
-      "sha256": "40062cbe642c9a70a4056b7d2ec80a7cffa6e1562aebd5f06547ac78cdb306f4"
+      "sha256": "de50bbb7a38f4e31715a18e791d50cd4855293c03f1b174deb9a50b38c308819"
     },
     "judge_part2_v2": {
       "path": "scripts/agent_scripts/comp_part2_judge.py",
@@ -33,7 +33,7 @@
     },
     "geom_tags": {
       "path": "scripts/agent_scripts/comp_part1_geom_tags.py",
-      "sha256": "23a148c954a81c5fc21547e3bdd84061d25223aff625776dd8c59e341710f1a2"
+      "sha256": "79ce2d9d5aa7efb93b01c3b7816d036a37f501b545ffa18d67f00c22e4f7bef7"
     },
     "part2_levels_maker": {
       "path": "scripts/agent_scripts/make_part2_levels.py",
@@ -57,15 +57,15 @@
     },
     "importer_part2": {
       "path": "scripts/agent_scripts/comp_import_part2_diag.py",
-      "sha256": "a2c921c93cb444f7f64cc92c244b517572a4911a0f84d3ee513ec6b5c4a9dc5c"
+      "sha256": "22fcb4317b3af3c403f4322d2441d79342c5cf87969c26921428fe25b8a36046"
     },
     "importer_course": {
       "path": "scripts/agent_scripts/comp_import_course_diag.py",
-      "sha256": "aaeeadb13ff8a0be3215ee33cd2f2fa24a1d83e30a682290aac3affdb8bee896"
+      "sha256": "569f0aad3cee06c3d8e6246c299eee66ff81f21c5228695b2adad66ee09a8a71"
     },
     "score_tool": {
       "path": "scripts/agent_scripts/comp_score.py",
-      "sha256": "810972e1c85a37efd1dc421773277f952d5933c85ad02c718845f1da77c13008"
+      "sha256": "3a0d5806181e822ca7e440f68bfb1b8455cf487962ea1ca1916936cca0e57357"
     },
     "scene_part1_v2": {
       "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
@@ -105,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "131c059211ef89cae73d453c2caf170ea965b9acad4e3b1e310846515f5c424f"
+      "sha256": "5715d6e9101a0d2c2f44e5b9ab6ac28e45ea83a311284d0d9d13e0bd2cf10d31"
     },
     "level_high_platform_10cm": {
       "path": "assets/terrain/part2/levels/high_platform_10cm.xml",
@@ -201,19 +201,19 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "ec5d67dc57ff519ac646c84bfd05778094b344d79740388c3747c666527218a0"
+      "sha256": "6502602a4d12633da0df40ff430fb61b471f981d1abbbde3ed10beadce6c2ae5"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
-      "sha256": "8133a8edf6fe0b854476d2f5ef30db855566b0654faf1452b2941f65d4b39527"
+      "sha256": "f5fb3320908035314ab4671d54be4aba41330e462a4760460a8e7609e74e7fa1"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
-      "sha256": "5f8d472925b792951905534502b2fa7f0cd56c9105e66b427ccb7b1817ac4268"
+      "sha256": "099d86b4809d1b831e905a4abf905bf400cfa55f6772e379b12e0c8e0ae3eb28"
     },
     "evidence_part1_course_pause_resume_drill": {
       "path": "comp/audits/evidence/part1_course_pause_resume_drill.json",
-      "sha256": "b8477ed1dd0cd8c3e0dd2f89e6a6affe162a42efaa0ac8c426d2fe7708834799"
+      "sha256": "d9534a60cbcb766b2da3a4e19f3ed56040eaf5a8d2573d37ca43702c1ff179d0"
     }
   },
   "superseded": {

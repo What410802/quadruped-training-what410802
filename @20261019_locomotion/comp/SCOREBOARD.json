@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23 01:20",
+  "generated_at": "2026-10-23 01:31",
   "contract_version": "robocon-2026-internal-v1",
   "rows": [
     {
@@ -17,7 +17,9 @@
     },
     {
       "policy_dir": "comp/eval/flat-ft-2500-part1-diag-v1",
-      "errors": [],
+      "errors": [
+        "contract 缺 path/file/scene，无法机器复核"
+      ],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
       ],
@@ -28,11 +30,13 @@
       "part2_total": 0,
       "grand_total": 0,
       "summary_path": "comp/eval/flat-ft-2500-part1-diag-v1/summary.json",
-      "status": "diagnostic"
+      "status": "invalid"
     },
     {
       "policy_dir": "comp/eval/flat-ft-2500-part1-diag-v2",
-      "errors": [],
+      "errors": [
+        "judge.file sha256 不匹配: scripts/agent_scripts/comp_part1_geom_tags.py（manifest=23a148c954a8 actual=79ce2d9d5aa7）"
+      ],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
       ],
@@ -43,7 +47,7 @@
       "part2_total": 0,
       "grand_total": 0,
       "summary_path": "comp/eval/flat-ft-2500-part1-diag-v2/summary.json",
-      "status": "diagnostic"
+      "status": "invalid"
     },
     {
       "policy_dir": "comp/eval/flat-ft-2500-part2-diag-v2",
@@ -60,7 +64,9 @@
     },
     {
       "policy_dir": "comp/eval/p1-basic-obstacle-part1-diag-v1",
-      "errors": [],
+      "errors": [
+        "contract 缺 path/file/scene，无法机器复核"
+      ],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
       ],
@@ -71,11 +77,13 @@
       "part2_total": 0,
       "grand_total": 0,
       "summary_path": "comp/eval/p1-basic-obstacle-part1-diag-v1/summary.json",
-      "status": "diagnostic"
+      "status": "invalid"
     },
     {
       "policy_dir": "comp/eval/p1-cont-part1-diag-v1",
-      "errors": [],
+      "errors": [
+        "contract 缺 path/file/scene，无法机器复核"
+      ],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
       ],
@@ -86,7 +94,7 @@
       "part2_total": 0,
       "grand_total": 0,
       "summary_path": "comp/eval/p1-cont-part1-diag-v1/summary.json",
-      "status": "diagnostic"
+      "status": "invalid"
     }
   ]
 }

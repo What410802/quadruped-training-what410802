@@ -71,15 +71,17 @@ def main() -> int:
 
     trials: list[dict] = []
     by_category: dict[str, list[dict]] = {}
+    trial_seq = 0
     for att in result.get("attempts") or []:
         cat = att["category"]
         level = float(att["level"])
         unit = att.get("unit", "")
         for i, run in enumerate(att.get("attempts") or [], 1):
+            trial_seq += 1
             judge = run.get("judge") or {}
             status = judge.get("status", "fail")
             trial = {
-                "trial_id": f"diag-{args.policy_id}-{cat}-{att['level']}{unit}-a{i}",
+                "trial_id": f"diag-{args.policy_id}-{cat}-{att['level']}{unit}-a{i}-r{trial_seq}",
                 "part": "part2",
                 "obstacle": cat,
                 "difficulty": att["level"],

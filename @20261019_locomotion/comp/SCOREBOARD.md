@@ -1,13 +1,13 @@
 # 记分板（由 comp_score.py 生成，不要手改数字）
 
-> 生成时间：2026-10-23 01:20　契约：robocon-2026-internal-v1
+> 生成时间：2026-10-23 01:31　契约：robocon-2026-internal-v1
 > 对外引用规则：只有 `valid` 且通过 G4 的行可以被引用，且必须带 policy_id + 证据路径。
 
 | policy_id | 日期 | Part1 | Part2 | 总分 | 状态 | 证据 |
 |---|---|---:|---:|---:|---|---|
 | `flat-ft-2500-part1-course-diag` | 2026-10-23 | 0 | 0 | 0 | diagnostic | `comp/eval/flat-ft-2500-part1-course-diag/summary.json` |
-| `flat-ft-2500-part1-diag-v1` | 2026-10-22 | 0 | 0 | 0 | diagnostic | `comp/eval/flat-ft-2500-part1-diag-v1/summary.json` |
-| `flat-ft-2500-part1-diag-v2` | 2026-10-23 | 0 | 0 | 0 | diagnostic | `comp/eval/flat-ft-2500-part1-diag-v2/summary.json` |
+| `flat-ft-2500-part1-diag-v1` | 2026-10-22 | 0 | 0 | 0 | invalid:contract 缺 path/file/scene，无法机器复核 | `comp/eval/flat-ft-2500-part1-diag-v1/summary.json` |
+| `flat-ft-2500-part1-diag-v2` | 2026-10-23 | 0 | 0 | 0 | invalid:judge.file sha256 不匹配: scripts/agent_scripts/comp_part1_geom_tags.py（manifest=23a148c954a8 actual=79ce2d9d5aa7） | `comp/eval/flat-ft-2500-part1-diag-v2/summary.json` |
 | `flat-ft-2500-part2-diag-v2` | 2026-10-23 | 0 | 0 | 0 | diagnostic | `comp/eval/flat-ft-2500-part2-diag-v2/summary.json` |
-| `p1-basic-obstacle-part1-diag-v1` | 2026-10-22 | 0 | 0 | 0 | diagnostic | `comp/eval/p1-basic-obstacle-part1-diag-v1/summary.json` |
-| `p1-cont-part1-diag-v1` | 2026-10-22 | 0 | 0 | 0 | diagnostic | `comp/eval/p1-cont-part1-diag-v1/summary.json` |
+| `p1-basic-obstacle-part1-diag-v1` | 2026-10-22 | 0 | 0 | 0 | invalid:contract 缺 path/file/scene，无法机器复核 | `comp/eval/p1-basic-obstacle-part1-diag-v1/summary.json` |
+| `p1-cont-part1-diag-v1` | 2026-10-22 | 0 | 0 | 0 | invalid:contract 缺 path/file/scene，无法机器复核 | `comp/eval/p1-cont-part1-diag-v1/summary.json` |

@@ -113,3 +113,16 @@
 | 全 skipped 证据 | abort drill 导入时 final_time=0 与 trials 非零 duration 冲突 | 跳过 attempt 的 trial duration 置 0；全 skipped 时 final_score/final_time=0；importer 保留首条 attempt 不崩溃 |
 | Part2 official 次数 | trench 只有 3 档、plum 1 档时只跑 3/1 次，不满足"每项 4 次" | `--official` 每 category 固定 4 次：档位从高到低，不足 4 档时重复最高档（trench=30cm×2、plum×4） |
 | 证据包 | abort drill 不在 HASHES/验收包，无法独立复核 | 已复制到 `comp/audits/evidence/` 并纳入 `HASHES.json`（pause/abort 两份演练 JSON） |
+
+
+## Flash 验收（第 7 轮）后修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| 证据空条目 | 正式 manifest 的 judge.file_hashes/scenes.levels 可用空条目蒙混 | `_check_hash(required=True)`：正式 manifest 每个 file_hashes 条目、scenes.levels 条目必须含 path/scene + sha256；`scenes.part2.levels` 为空报错；自检补空条目/篡改 level hash 用例 |
+| trial_id 冲突 | Part2 official 重复最高档时同一 level 两次运行生成相同 trial_id | importer 用全局 trial_seq 生成唯一 `...-a{i}-r{trial_seq}`；attempt 仍按 category 内 1–4 记录 |
+| fake 时钟污染 | abort/pause 账本仍用操作手 fake t 计算 duration/pauses | `Part1Course` 增加 `last_sim_t`（每次 update 写入）；abort_attempt/pause 区间/resume 闭合全部用模拟器时钟；runner 的 fake 只用于事件触发 |
+| skipped 标注 | course importer 的 skipped trial 与 attempt_result duration 易混淆 | trial 增加 `skipped` 与 `duration_note`（0 for skipped） |
+| ground 白名单 | `startswith("ground")` 过宽 | 改为精确白名单（floor/trench_bottom/level_floor/ramp_blocks_l/r/ground/groundplane/ground_left/ground_right/ground_plane） |
+
+> 残余说明：official 重复最高档在确定性策略下两次结果可能相同，稳定性统计意义有限，G1 报告需写明"4 次中的重复档"口径。

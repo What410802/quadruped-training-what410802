@@ -101,6 +101,7 @@ class Part1Course:
         self.attempt_no += 1
         self.active_time = 0.0
         self.attempt_start_t = float(t)
+        self.last_sim_t = float(t)
         self.recovery_violation = False
         self.pause_pose = None
         self.paused = False
@@ -117,6 +118,7 @@ class Part1Course:
         # Duration is derived from the simulator clock at end_attempt: while paused the
         # physics clock is frozen, so no manual pause subtraction is needed (and the
         # operator fake clock can never leak into the ledger).
+        self.last_sim_t = t
         report = self.judge.update(t, base_xyz, yaw, **kwargs)
         in_start = (ZONES["start_area"][0] <= base_xyz[0] <= ZONES["start_area"][1]
                     and ZONES["start_area"][2] <= base_xyz[1] <= ZONES["start_area"][3])
@@ -134,7 +136,7 @@ class Part1Course:
             self.pause_pose = ((float(base_xyz[0]), float(base_xyz[1])), float(yaw))
         self._current_events.append({"t": float(t), "event": "pause",
                                      "pose": list(base_xyz) if base_xyz is not None else None})
-        self.manager.note_recovery(t)
+        self.manager.note_recovery(self.last_sim_t)
 
     def resume(self, t: float, base_xyz=None, yaw: float | None = None) -> None:
         if not self.active or not self.paused:
@@ -151,7 +153,7 @@ class Part1Course:
                                              "dyaw_rad": round(dyaw, 3)})
         self.paused = False
         if self.manager._current and self.manager._current["pauses"]:
-            self.manager._current["pauses"][-1][1] = float(t)   # close the pause interval
+            self.manager._current["pauses"][-1][1] = float(self.last_sim_t)  # sim clock
         self._current_events.append({"t": float(t), "event": "resume",
                                      "pose": list(base_xyz) if base_xyz is not None else None})
         self.manager.events.append({"t": float(t), "event": "resume",
@@ -202,7 +204,7 @@ class Part1Course:
         """Operator abort/restart: consumes the attempt, score 0."""
         if not self.active:
             raise RuntimeError("no active attempt")
-        duration = max(0.0, float(t) - float(self.attempt_start_t))
+        duration = max(0.0, float(self.last_sim_t) - float(self.attempt_start_t))
         result = AttemptResult(attempt=self.attempt_no, score=0.0, duration_s=duration,
                                skipped=True, reason=reason, events=list(self._current_events))
         self.manager.skip(t, reason=reason)

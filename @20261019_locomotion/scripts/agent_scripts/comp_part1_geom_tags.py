@@ -37,8 +37,9 @@ GEOM_TAGS: dict[str, set[str]] = {
 # found that only plane geoms were treated as ground, missing named non-plane approach
 # surfaces (bridge ramps). Ground = plane / floor / ground* names / known approach ramps.
 GROUND_GEOM_NAMES = {"floor", "trench_bottom", "level_floor",
-                     "ramp_blocks_l", "ramp_blocks_r"}
+                     "ramp_blocks_l", "ramp_blocks_r", "ground", "groundplane",
+                     "ground_left", "ground_right", "ground_plane"}
 
 
 def is_ground_geom(name: str, is_plane: bool = False) -> bool:
-    return bool(is_plane) or name in GROUND_GEOM_NAMES or name.startswith("ground")
+    return bool(is_plane) or name in GROUND_GEOM_NAMES
