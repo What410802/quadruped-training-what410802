@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "policy_id": "<task>-<run>-<ckpt>-v1",
+  "part1": {
+    "attempts_used": 2,
+    "obstacles": {
+      "slalom": {"success": true, "score": 100, "evidence": ["trial-id-1"]},
+      "gravel_pit": {"success": false, "score": 0, "failure_reason": "feet_on_ground>=2"},
+      "high_wall": {"success": false, "score": 0, "failure_reason": "stuck"},
+      "height_bar": {"success": false, "score": 0, "failure_reason": "bar_dropped"},
+      "t_stairs": {"success": false, "score": 0, "failure_reason": "missed_step"},
+      "slope": {"success": true, "score": 100, "evidence": ["trial-id-2"]},
+      "bridge_blocks": {"success": false, "score": 0, "failure_reason": "fell"},
+      "bridge_bands": {"success": false, "score": 0, "failure_reason": "fell"}
+    },
+    "return_to_start": false,
+    "return_score": 0,
+    "total": 200
+  },
+  "part2": {
+    "obstacles": {
+      "high_platform": {"best_success_value": 20, "best_score": 50, "attempts_used": 2},
+      "stairs": {"best_success_value": 10, "best_score": 10, "attempts_used": 1},
+      "slope": {"best_success_value": null, "best_score": 0, "attempts_used": 0},
+      "high_wall": {"best_success_value": null, "best_score": 0, "attempts_used": 0},
+      "trench": {"best_success_value": null, "best_score": 0, "attempts_used": 0},
+      "plum": {"best_success_value": null, "best_score": 0, "attempts_used": 0}
+    },
+    "total": 60
+  },
+  "grand_total": 260
+}

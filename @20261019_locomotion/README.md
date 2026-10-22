@@ -11,6 +11,7 @@
 | 事项 | 状态 | 入口 |
 |---|---|---|
 | 任务真值：2026 队内赛 PDF（障碍赛 + 越障能力 + 答辩），取代旧 2027/V2.0 假设 | 已读取并校准路线 | [`docs/reference/team-race-2026.md`](docs/reference/team-race-2026.md) |
+| 比赛迭代工作流（评测可信 / 分数证据链 / Codex 独立审计）：`comp/` 契约、协议草稿、诊断评测导入、记分板 dry-run | 已落地；G1 judge 审计待做 | [`comp/README.md`](comp/README.md) |
 | 地形与资源盘点：只读材料 `terrain.zip`、`scene_terrain.xml`，旧 2026 V2.0/2027 规则仅作参考 | 已盘点；正式队内赛障碍场尚未建模 | [`docs/terrain/materials.md`](docs/terrain/materials.md) |
 | 本地环境：沿用仓库根 `pixi.toml` 的单环境（MuJoCo 3.12 + glfw + cmake + CPU libtorch），本任务不新开本地环境 | 已确认无需新增本地依赖 | [`docs/environment.md`](docs/environment.md) |
 | 远程训练机：`bis-ms7e56`（RTX 5060 Ti 16 GB / 驱动 595.99.02 / CUDA 13.4 / 原生 uv 0.13.3），GPU、EGL 渲染与训练冒烟均通过 | 环境已核验；512–8192 envs 基准见环境文档 | [`docs/environment.md`](docs/environment.md) |
@@ -118,6 +119,7 @@ cd ~/rc_work/nwwolf_mjlab_training_release
 
 **训练与评测**
 
+- 比赛迭代工作流（契约/评测协议/记分板/独立审计/冻结/答辩）：[`comp/README.md`](comp/README.md)
 - 训练计划（阶段、手动/状态机、相机、PPO）：[`docs/training/training-plan.md`](docs/training/training-plan.md)
 - 现有课程/奖励基线：[`docs/training/training-baseline.md`](docs/training/training-baseline.md)
 - 实验记录（run 表、评测、gate、步态/yaw）：[`docs/training/experiments.md`](docs/training/experiments.md)

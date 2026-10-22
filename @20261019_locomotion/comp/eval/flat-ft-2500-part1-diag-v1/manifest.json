@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "policy_id": "flat-ft-2500-part1-diag-v1",
+  "created_at": "2026-10-22T18:29:09+08:00",
+  "repos": {
+    "task": {
+      "path": ".",
+      "commit": "d8e25e0751c0accd9a5b42717f63fa2dfc51c4b3",
+      "dirty": false
+    },
+    "training": {
+      "path": "prep.d/training_repo_local（非 git 副本）",
+      "commit": "unknown:flat-ft-2500-part1-diag-v1",
+      "dirty": true
+    },
+    "control": {
+      "path": "prep.d/quadruped_control_local",
+      "commit": "unknown:not-used",
+      "dirty": true
+    }
+  },
+  "policy": {
+    "checkpoint": "policy.pt",
+    "checkpoint_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
+    "exported": "policy.pt",
+    "exported_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
+    "obs_dim": 45,
+    "action_dim": 12,
+    "policy_dt_ms": 20.0
+  },
+  "scenes": {
+    "part1": {
+      "file": "assets/terrain/part1/part1_eval_scene.xml",
+      "sha256": "e7b654ad1bcf4638ccd0c86e1e70a0cf88a8011e2461912e08f86dfbe9b8d79e"
+    },
+    "part2": {
+      "file": "assets/terrain/part2/ability_field/part2_ability_field.xml",
+      "sha256": "f0b74bbebe5c5ee3de643a2ce8c369f9c9249be77e2c4d85618eab6cf1ad7823"
+    }
+  },
+  "judge": {
+    "version": "part1_event_judge@546dbacd2946",
+    "files": [
+      "scripts/agent_scripts/part1_event_judge.py"
+    ]
+  },
+  "protocol": {
+    "protocol_version": "diagnostic-2026-10-22",
+    "diagnostic": true,
+    "seeds": [
+      0
+    ],
+    "attempts_part1_total": 3,
+    "attempts_part2_per_obstacle": 4,
+    "operator": "scripted:run_part1_judged_rollout.py",
+    "start_pose_policy": "per-task diagnostic starts (not yet protocol-frozen)"
+  },
+  "results": {
+    "trials": "trials.jsonl",
+    "summary": "summary.json"
+  },
+  "notes": "导入自 run_part1_judged_rollout.py 诊断 JSON；单种子/每障碍一次，非正式协议"
+}

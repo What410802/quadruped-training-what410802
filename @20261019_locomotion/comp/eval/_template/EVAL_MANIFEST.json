@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "policy_id": "<task>-<run>-<ckpt>-v1",
+  "created_at": "<YYYY-MM-DDTHH:MM:SS+08:00>",
+  "repos": {
+    "task": {"path": "@20261019_locomotion", "commit": "<git sha>", "dirty": false},
+    "training": {"path": "nwwolf_mjlab_training_release", "commit": "<git sha>", "dirty": false, "uv_lock_sha256": "<sha256>"},
+    "control": {"path": "quadruped_control_local", "commit": "<git sha>", "dirty": false}
+  },
+  "policy": {
+    "checkpoint": "model_3997.pt",
+    "checkpoint_sha256": "<sha256>",
+    "exported": "policy.pt",
+    "exported_sha256": "<sha256>",
+    "obs_dim": 45,
+    "action_dim": 12,
+    "policy_dt_ms": 20.0
+  },
+  "scenes": {
+    "part1": {"file": "assets/terrain/part1/part1_eval_scene.xml", "sha256": "<sha256>"},
+    "part2": {"file": "assets/terrain/part2/ability_field/part2_ability_field.xml", "sha256": "<sha256>"}
+  },
+  "judge": {
+    "version": "part1_event_judge@<sha256-prefix>",
+    "files": ["scripts/agent_scripts/part1_event_judge.py"]
+  },
+  "protocol": {
+    "protocol_version": "protocol@2026-10-22",
+    "seeds": [0, 1, 2],
+    "attempts_part1_total": 3,
+    "attempts_part2_per_obstacle": 4,
+    "operator": "scripted",
+    "start_pose_policy": "fixed_in_protocol"
+  },
+  "results": {"trials": "trials.jsonl", "summary": "summary.json"},
+  "notes": "单开关：相对上一版只改 terrain（无 reward/课程改动）"
+}

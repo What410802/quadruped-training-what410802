@@ -1,0 +1,30 @@
+{
+  "audited": false,
+  "note": "G1 审计完成后由 /comp-eval-audit 写入 reviewer/threadId/verdict",
+  "objects": {
+    "contract_json": {
+      "path": "comp/CONTRACT.json",
+      "sha256": "d58ad1af440435661baf75452b312914bf0aa97bea98fdaca148bf862c31c739"
+    },
+    "protocol_md": {
+      "path": "comp/eval/_protocol.md",
+      "sha256": "e477ab0dd3def6fd025a5c5e3345410a01a48027398c7d6eeae6e65b200cb6b2"
+    },
+    "judge_event": {
+      "path": "scripts/agent_scripts/part1_event_judge.py",
+      "sha256": "546dbacd29465cb626d12c23fcae9acb8805321d502ea1472db398e180448516"
+    },
+    "judge_contact": {
+      "path": "scripts/agent_scripts/part1_judge.py",
+      "sha256": "b398a39d25a21542eeddd87dc8b01b551234477d5163c4f1733ca27299eb5cd4"
+    },
+    "scene_part1": {
+      "path": "assets/terrain/part1/part1_eval_scene.xml",
+      "sha256": "e7b654ad1bcf4638ccd0c86e1e70a0cf88a8011e2461912e08f86dfbe9b8d79e"
+    },
+    "judge_zones": {
+      "path": "assets/terrain/part1/judge_zones.yaml",
+      "sha256": "53b1f6c0a9bae0cba639747c3400768485a96e1d75de5beb7fc1d69ca263a478"
+    }
+  }
+}

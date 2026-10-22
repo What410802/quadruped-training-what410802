@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "policy_id": "p1-basic-obstacle-part1-diag-v1",
+  "part1": {
+    "attempts_used": 8,
+    "obstacles": {
+      "slalom": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "timeout",
+        "evidence": [
+          "diag-p1-basic-obstacle-part1-diag-v1-slalom-a6"
+        ]
+      },
+      "gravel_pit": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "two_feet_ground:FL,FR,RL,RR",
+        "evidence": [
+          "diag-p1-basic-obstacle-part1-diag-v1-gravel_pit-a3"
+        ]
+      },
+      "high_wall": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "timeout",
+        "evidence": [
+          "diag-p1-basic-obstacle-part1-diag-v1-high_wall-a5"
+        ]
+      },
+      "height_bar": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "timeout",
+        "evidence": [
+          "diag-p1-basic-obstacle-part1-diag-v1-height_bar-a4"
+        ]
+      },
+      "t_stairs": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "not_started",
+        "evidence": [
+          "diag-p1-basic-obstacle-part1-diag-v1-t_stairs-a8"
+        ]
+      },
+      "slope": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "two_feet_ground:FL,FR,RR",
+        "evidence": [
+          "diag-p1-basic-obstacle-part1-diag-v1-slope-a7"
+        ]
+      },
+      "bridge_blocks": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "timeout",
+        "evidence": [
+          "diag-p1-basic-obstacle-part1-diag-v1-bridge_blocks-a2"
+        ]
+      },
+      "bridge_bands": {
+        "success": false,
+        "score": 0,
+        "failure_reason": "timeout",
+        "evidence": [
+          "diag-p1-basic-obstacle-part1-diag-v1-bridge_bands-a1"
+        ]
+      }
+    },
+    "return_to_start": false,
+    "return_score": 0,
+    "total": 0
+  },
+  "part2": {
+    "obstacles": {
+      "high_platform": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "stairs": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "slope": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "high_wall": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "trench": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      },
+      "plum": {
+        "best_success_value": null,
+        "best_score": 0,
+        "attempts_used": 0
+      }
+    },
+    "total": 0
+  },
+  "grand_total": 0,
+  "notes": "导入自 run_part1_judged_rollout.py 诊断 JSON；单种子/每障碍一次，非正式协议"
+}

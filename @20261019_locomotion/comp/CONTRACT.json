@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "contract_version": "robocon-2026-internal-v1",
+  "competition": "2026 第二十四届全国大学生机器人大赛 ROBOCON 仿生足式机器人挑战赛 · 队内赛（纯仿真）",
+  "rules_sources": [
+    "队内赛.pdf（只读材料，2026-10-20，4 页）",
+    "docs/reference/team-race-2026.md"
+  ],
+  "deadline": "2026-11-04T22:00:00+08:00",
+  "scoring": {
+    "part_scores_weight": 0.7,
+    "defense_weight": 0.3,
+    "defense_minutes": 7
+  },
+  "parts": {
+    "part1": {
+      "name": "足式障碍赛（遥控）",
+      "max_score": 900,
+      "attempts": {
+        "scope": "run",
+        "count": 3
+      },
+      "operator": "manual_allowed_auto_no_bonus",
+      "fixed_actions_allowed": true,
+      "obstacles": [
+        {
+          "id": "slalom",
+          "name": "直角绕杆",
+          "per_obstacle_score": 100,
+          "success_criteria": "从任一圆形必达区出发，S 形绕过每根竖杆，经拐角必达区到另一侧必达区",
+          "fail_conditions": [
+            "漏杆",
+            "顺序错误",
+            "离开场地"
+          ]
+        },
+        {
+          "id": "gravel_pit",
+          "name": "砂砾碎木坑",
+          "per_obstacle_score": 100,
+          "success_criteria": "从 1 m 短边进入/离开并跨越坑",
+          "fail_conditions": [
+            "feet_on_ground>=2",
+            "从长边进出"
+          ]
+        },
+        {
+          "id": "high_wall",
+          "name": "高墙",
+          "per_obstacle_score": 100,
+          "success_criteria": "从上方越过或攀爬通过高墙到另一侧",
+          "fail_conditions": [
+            "未过墙",
+            "卡住",
+            "沿墙长方向绕行"
+          ]
+        },
+        {
+          "id": "height_bar",
+          "name": "限高杆",
+          "per_obstacle_score": 100,
+          "success_criteria": "任何运动姿态从限高杆下方、垂直于门平面穿过且杆不落",
+          "fail_conditions": [
+            "bar_dropped",
+            "撞侧柱/横梁",
+            "绕行"
+          ]
+        },
+        {
+          "id": "t_stairs",
+          "name": "T 字形台阶",
+          "per_obstacle_score": 100,
+          "success_criteria": "任一方向上、另一侧下；每级台阶顶面至少一次足底接触",
+          "fail_conditions": [
+            "feet_on_ground>=2",
+            "漏级"
+          ]
+        },
+        {
+          "id": "slope",
+          "name": "斜坡",
+          "per_obstacle_score": 100,
+          "success_criteria": "从任意位置迈上斜坡，沿 3 m 长边方向累计行走 >= 1 m",
+          "fail_conditions": [
+            "feet_on_ground>=2",
+            "距离不足"
+          ]
+        },
+        {
+          "id": "bridge_blocks",
+          "name": "木桥 A（方墩）",
+          "per_obstacle_score": 100,
+          "success_criteria": "一侧平台经 5 个 0.4x1.0 m 方墩（缝 0.15 m）到另一侧平台",
+          "fail_conditions": [
+            "掉桥",
+            "feet_on_ground>=2"
+          ]
+        },
+        {
+          "id": "bridge_bands",
+          "name": "木桥 B（窄带）",
+          "per_obstacle_score": 100,
+          "success_criteria": "一侧平台经 3 条 0.2x1.5 m 窄带（缝 0.10 m）到另一侧平台",
+          "fail_conditions": [
+            "掉桥",
+            "feet_on_ground>=2"
+          ]
+        }
+      ],
+      "return_bonus": {
+        "id": "return_to_start",
+        "score": 100,
+        "requires": "all_obstacles_success"
+      }
+    },
+    "part2": {
+      "name": "越障能力测试（仅 RL）",
+      "max_score": 1300,
+      "attempts_per_obstacle": 4,
+      "rl_only": true,
+      "obstacles": [
+        {
+          "id": "high_platform",
+          "name": "高台",
+          "max_score": 200,
+          "unit": "cm",
+          "score_curve": [
+            {
+              "value": 0,
+              "points": 0
+            },
+            {
+              "value": 10,
+              "points": 10
+            },
+            {
+              "value": 20,
+              "points": 50
+            },
+            {
+              "value": 30,
+              "points": 100
+            },
+            {
+              "value": 40,
+              "points": 200
+            }
+          ]
+        },
+        {
+          "id": "stairs",
+          "name": "楼梯",
+          "max_score": 200,
+          "unit": "cm",
+          "score_curve": [
+            {
+              "value": 0,
+              "points": 0
+            },
+            {
+              "value": 10,
+              "points": 10
+            },
+            {
+              "value": 15,
+              "points": 50
+            },
+            {
+              "value": 20,
+              "points": 100
+            },
+            {
+              "value": 30,
+              "points": 200
+            }
+          ]
+        },
+        {
+          "id": "slope",
+          "name": "斜坡一",
+          "max_score": 200,
+          "unit": "deg",
+          "score_curve": [
+            {
+              "value": 0,
+              "points": 0
+            },
+            {
+              "value": 20,
+              "points": 10
+            },
+            {
+              "value": 30,
+              "points": 50
+            },
+            {
+              "value": 35,
+              "points": 100
+            },
+            {
+              "value": 45,
+              "points": 200
+            }
+          ]
+        },
+        {
+          "id": "high_wall",
+          "name": "高墙",
+          "max_score": 200,
+          "unit": "cm",
+          "score_curve": [
+            {
+              "value": 0,
+              "points": 0
+            },
+            {
+              "value": 10,
+              "points": 0
+            },
+            {
+              "value": 20,
+              "points": 50
+            },
+            {
+              "value": 30,
+              "points": 100
+            },
+            {
+              "value": 40,
+              "points": 200
+            }
+          ]
+        },
+        {
+          "id": "trench",
+          "name": "沟壑",
+          "max_score": 300,
+          "unit": "cm",
+          "score_curve": [
+            {
+              "value": 10,
+              "points": 0
+            },
+            {
+              "value": 30,
+              "points": 300
+            }
+          ]
+        },
+        {
+          "id": "plum",
+          "name": "梅花桩",
+          "max_score": 200,
+          "unit": "bool",
+          "score_curve": [
+            {
+              "value": 1,
+              "points": 200
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": {
+    "sensors_allowed": [
+      "imu",
+      "joint_encoder",
+      "camera",
+      "lidar"
+    ],
+    "sensor_notes": "相机/雷达必须模拟真实相机/雷达；IMU、电机编码器为基本传感器",
+    "sensors_forbidden": [
+      "body_lin_vel",
+      "heightmap",
+      "foot_force",
+      "foot_height",
+      "body_height",
+      "privileged_terrain_scan"
+    ],
+    "navigation_truth_scope": "世界坐标/速度真值仅可用于生成速度指令，不得进入网络输入",
+    "torque_limits_nm": {
+      "hip": 25,
+      "thigh": 25,
+      "calf": 60
+    },
+    "part2_rl_only": true,
+    "part1_fixed_actions_allowed": true
+  },
+  "policy_contract": {
+    "actor_obs_dim": 45,
+    "actor_obs_fields": [
+      "command_xyz",
+      "base_ang_vel",
+      "projected_gravity",
+      "joint_pos_12",
+      "joint_vel_12",
+      "last_action_12"
+    ],
+    "action_dim": 12,
+    "policy_hz": 50.0,
+    "physics_dt_ms": 5.0,
+    "decimation": 4,
+    "action_scale": 0.25,
+    "kp": 40.0,
+    "kd": 1.2,
+    "q_default": [
+      0.0,
+      0.8014,
+      -1.527,
+      0.0,
+      -0.8014,
+      1.527,
+      0.0,
+      0.8014,
+      -1.527,
+      0.0,
+      -0.8014,
+      1.527
+    ],
+    "joint_order": "FL,FR,RL,RR x (hip,thigh,calf)"
+  },
+  "evaluation": {
+    "protocol_version": "diagnostic-2026-10-22",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "start_pose_policy": "fixed_in_protocol",
+    "manual_operator_required": true
+  },
+  "ambiguities": [
+    {
+      "id": "Q1",
+      "question": "Part 1 的 3 次尝试是整场 3 次还是每障碍 3 次？",
+      "owner": "organizer",
+      "status": "pending"
+    },
+    {
+      "id": "Q2",
+      "question": "Part 1 允许的局部自动/固定动作是否影响裁判计时口径？",
+      "owner": "organizer",
+      "status": "pending"
+    }
+  ]
+}

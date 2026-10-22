@@ -1,0 +1,20 @@
+{
+  "policy": {
+    "path": "assets/policies/flat-ft-2500/policy.pt",
+    "obs_dim": 45,
+    "action_dim": 12,
+    "obs_fields": ["command_xyz", "base_ang_vel", "projected_gravity", "joint_pos_12", "joint_vel_12", "last_action_12"],
+    "source": "prep.d/results/deployment_audit.json（2026-10-22）+ docs/training/eval-protocol.md §2"
+  },
+  "actuators": [
+    {"joint_type": "hip", "ctrl_max_nm": 20.0, "source": "deployment_audit: motor_*_hip_joint ctrl±20"},
+    {"joint_type": "thigh", "ctrl_max_nm": 20.0, "source": "deployment_audit: motor_*_thigh_joint ctrl±20"},
+    {"joint_type": "calf", "ctrl_max_nm": 20.0, "source": "deployment_audit: motor_*_calf_joint ctrl±20"}
+  ],
+  "runtime": {
+    "part2_has_fixed_action_sequence": false,
+    "world_truth_in_obs": false,
+    "source": "当前 runtime 为 45 维 actor + 状态机切换策略；未见固定动作序列/真值输入，待 G1 审计确认"
+  },
+  "notes": "策略级合规证据；每个新 policy 需重跑 audit_deployment.py 并更新本文件"
+}

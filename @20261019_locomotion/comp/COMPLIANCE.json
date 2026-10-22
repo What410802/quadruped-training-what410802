@@ -1,0 +1,46 @@
+{
+  "contract_version": "robocon-2026-internal-v1",
+  "overall": "PASS",
+  "checks": [
+    {
+      "id": "actor_obs_dim",
+      "verdict": "PASS",
+      "detail": "契约 45 / 证据 45"
+    },
+    {
+      "id": "action_dim",
+      "verdict": "PASS",
+      "detail": "契约 12 / 证据 12"
+    },
+    {
+      "id": "forbidden_sensors",
+      "verdict": "PASS",
+      "detail": "obs_fields 未命中禁用传感器名"
+    },
+    {
+      "id": "world_truth_scope",
+      "verdict": "PASS",
+      "detail": "world_truth_in_obs=False（规则：真值仅可用于生成速度指令）"
+    },
+    {
+      "id": "part2_rl_only",
+      "verdict": "PASS",
+      "detail": "part2_has_fixed_action_sequence=False（规则要求仅 RL）"
+    },
+    {
+      "id": "torque:hip",
+      "verdict": "PASS",
+      "detail": "证据 20.0 N·m / 上限 25.0 N·m"
+    },
+    {
+      "id": "torque:thigh",
+      "verdict": "PASS",
+      "detail": "证据 20.0 N·m / 上限 25.0 N·m"
+    },
+    {
+      "id": "torque:calf",
+      "verdict": "PASS",
+      "detail": "证据 20.0 N·m / 上限 60.0 N·m"
+    }
+  ]
+}
