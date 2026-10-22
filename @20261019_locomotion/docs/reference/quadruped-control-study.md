@@ -10,6 +10,13 @@
 - 控制周期 5 ms（200 Hz），策略 50 Hz（每 4 周期推理一次）；命令为 `BaseCommand` 的 `(vx,vy,wz)`；`CommandFrame` 显式携带控制模式、目标、KP/KD、前馈。
 - black 的现有 flat/obstacle 策略是 **6 帧历史 → 270 维输入**；我们的 `flat-ft-2500` 是 **45 维单帧**。控制仓库的 `rl_controller.cpp` 支持 `history_frames` 非空、`inference_input_dimension = observation_dimension × history_count`，所以单帧策略可以合法接入（`history_frames: [0]`）。
 
+## 1.1 上游差异与取舍（2026-10-22）
+
+- 团队仓库 `N-W-wolf/quadruped_control` 的 `e0fb567` 是 `coverMoon/quadruped_control` 的下游 fork；`coverMoon/main` 领先 **17 commits、190 files、约 +7921/−799 行**。
+- coverMoon 新增：Wolf 16 关节轮足、Car drive/fixed drive、dog26/nwbt 地图与能力场 labels、ROS 2 Jazzy/Humble 发行版脚本、`test` 270 维策略、真实后端计划、target-expiry/RL 布局修复、更多 tests。
+- 我们当前只用 black 12 关节 + single-process MuJoCo + 45 维 policy + 配置/策略切换；**blackW/Wolf、Car/bridge/low_bar fixed drive、ROS 2 三进程、replay、真实后端计划暂不使用**。地图 labels 对未来 Part1/Part2 eval 有参考价值，target-expiry/RL tests 值得吸收。
+- **决定**：P1 训练不依赖控制仓库，暂不切换；等 P1 baseline 稳定后，开 `covermoon-base` 分支 cherry-pick P0 提交、重跑 Pixi 构建与 GUI/策略测试，再决定是否把个人 fork 的 `main` 迁到 coverMoon 基线。这样不阻塞 P1，也避免现在重做 P0 的 CMake/验证。
+
 ## 2. 可借鉴点
 
 - **RobotIO 抽象**：MuJoCo、replay、实机共用一套运动层；我们的本地 eval 也应保持“策略层不直接依赖 MuJoCo”。

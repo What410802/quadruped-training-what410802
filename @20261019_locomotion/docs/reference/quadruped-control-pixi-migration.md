@@ -4,7 +4,7 @@
 
 - 上游/团队仓库：`N-W-wolf/quadruped_control`（fork 自 `coverMoon/quadruped_control`）；
 - 个人 fork：`What410802/quadruped_control`；本地 clone 的 `origin` 指个人 fork，`upstream` 指团队仓库；
-- P0 迁移提交 `f2b37dc` 已推送到个人 fork。
+- P0 迁移提交 `f2b37dc` 已推送到个人 fork；`coverMoon/main` 比团队分支领先 17 个提交，P1 baseline 稳定后再做受控 rebase（见研读文档 §1.1）。
 
 ## 结论
 

@@ -23,7 +23,7 @@
 - **主目标**：2026-11-04 队内赛（障碍赛 900 + 能力测试 1300，占 70%；7 分钟答辩 30%）。真值见 [`reference/team-race-2026.md`](reference/team-race-2026.md)。
 - **路线位置**：**P0 已完成（2026-10-22）**；**P1 已启动**（训练机 GPU smoke 通过）。
 - **P0 范围**：场地/判定/手动状态机/评测/审计/演示链路闭环；P0 不包含训练。训练机已恢复（RTX 5060 Ti 16 GB），P1 开始使用。
-- **控制仓库独立**：`quadruped_control` 是独立 C++/ROS 仓库；已创建个人 fork [`What410802/quadruped_control`](https://github.com/What410802/quadruped_control)，P0 提交 `f2b37dc` 已推送；本地 clone 的 `origin` 指个人 fork，`upstream` 指 `N-W-wolf/quadruped_control`，`local_readonly` 保留原只读副本。
+- **控制仓库独立**：`quadruped_control` 是独立 C++/ROS 仓库；个人 fork [`What410802/quadruped_control`](https://github.com/What410802/quadruped_control) 已推送 `f2b37dc`；本地 `origin`=个人 fork、`upstream`=`N-W-wolf/quadruped_control`、`local_readonly`=原只读副本。**暂不切 coverMoon**：它比团队 fork 超前 17 个提交/190 文件，但 P1 训练不依赖控制仓库；P1 baseline 稳定后再在独立分支 rebase 到 `coverMoon/quadruped_control` 并重跑 Pixi 构建/测试。
 - **当前策略**：`flat-ft-2500` 是唯一 baseline；足端 clearance 约 0.022 m，几乎拖地；不能把 zero-shot 障碍结果当验收。
 
 
@@ -56,7 +56,8 @@
 - **Part 1 是否允许局部自动/固定动作**（规则允许、自动无加分）仍待用户确认；Part 2 已确认纯 RL。
 - **judge 校准**：T 台阶逐级接触、限高杆位移、砂砾坑短边进出、桥面 step 还没有真实手动轨迹标定；当前是 P0 启发式。
 - **正式整场分**：尚无官方多尝试计分；现有 0/8 只是独立障碍诊断。
-- **P1 训练门槛**：数值安全、foot clearance、地形课程未验证；训练机已可用，先 smoke 再正式训练。
+- **P1 训练门槛**：数值安全、foot clearance、地形课程未验证；训练机已可用，GPU smoke 通过，进入 capability task smoke。
+- **控制仓库升级**：`coverMoon/quadruped_control` 是团队 fork 的上游，领先 17 commits，含 target-expiry 修复、RL 布局、测试、地图/实机计划；当前 P0 fork 可用，P1 期间不切，P2/部署前做一次受控 rebase。
 - **没有阻塞 P1 启动的决策**；若出现奖励/课程取舍或资源冲突再停下。
 
 ## 6. 关键指针
