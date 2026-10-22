@@ -48,7 +48,34 @@ MUJOCO_GL=egl .venv/bin/train black-basic-obstacle \
 - `--agent.resume True` 加载 actor/critic/optimizer；command curriculum 跨 stage 恢复按仓库既有逻辑处理；
 - 4096 envs、1500 iter；日志在远程 `logs/p1/basic_obstacle_from_flat_ft_*.log`。
 
-当前状态（2026-10-22）：远程 run 已启动，PID 44613；日志 `~/rc_work/nwwolf_mjlab_training_release/logs/p1/basic_obstacle_from_flat_ft_*.log`；上次检查约 iteration 2531/3998、约 2.87 s/iter，预计剩余约 70 min。训练完成或失败由后台监控任务 `bash-187` 通知；完成前不把数字当验收。
+## 4. 第一轮结果（2026-10-22，训练完成）
+
+- run：`logs/rsl_rl/black_velocity/2026-10-22_15-25-59_p1_basic_obstacle`
+- 最终 checkpoint：`model_3997.pt`
+- 训练：4096 envs，约 **1 h 11 min**（约 2.86 s/iter），无进程崩溃；后台监控 `bash-187` 已完成。
+- 训练末期 terrain level：mean≈1.54，stairs_up≈1.84，stairs_down≈0.85，smooth_slope_up≈1.78，smooth_slope_down≈1.53；非法接触率仍高（约 0.89），不能当通过。
+- 导出策略：远程 `~/models/p1_basic_obstacle/policy.pt`（45 维，actor-only，导出校验通过；本地副本在 `prep.d/models/p1_basic_obstacle/policy.pt`）。
+
+### 本地 Part 1 迁移诊断
+
+用 P1 policy 跑原来的八障碍脚本，和 flat-ft 对照：
+
+| 障碍 | flat-ft | P1 basic-obstacle |
+|---|---|---|
+| bridge_blocks | fail, tilt≈25.9° | running, tilt≈10.7° |
+| bridge_bands | running, tilt≈14.9° | running, tilt≈4.6° |
+| height_bar | fail(bar), tilt≈1.6° | running, tilt≈1.1° |
+| slope | fail, tilt≈6.6° | fail, tilt≈9.3° |
+| T stairs | pending | pending |
+| 其他 | 0 success | 0 success |
+
+结论：桥面/限高杆行为有改善，但 **P1 还没有通过 slope/stairs**；不能把本轮当 P1 验收。contact sheet：`prep.d/videos/part1_p1_basic_obstacle_contact.png`。
+
+### 下一步
+
+- 先做训练环境 play/eval（terrain level、slope/stairs 通过率、摔倒率），再决定是否延长训练、调课程或提高 stairs 比例；
+- P1 下一轮优先 T 台阶/高台 10–20 cm，不混 rough/discrete；
+- 恢复/桥面专项放 P2。
 
 ## 3. 验收口径
 

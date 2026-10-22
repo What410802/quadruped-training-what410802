@@ -165,3 +165,8 @@ export MUJOCO_GL=egl
 - `prep.d/videos/part1_judged_zero_shot_contact.png`：8 个 Part 1 障碍的 zero-shot judge 结果 contact sheet（每格文件名带 task/status）。
 - `prep.d/results/part1_zero_shot.json`：逐障碍 base/tilt/judge 状态/原因。
 - `prep.d/videos/part2_ability_field_stand.mp4`：Part 2 官方能力场本地 stand。
+
+## P1 诊断（2026-10-22）
+
+- `prep.d/videos/part1_p1_basic_obstacle_contact.png`：P1 basic-obstacle policy 在 Part 1 八障碍上的迁移诊断；桥/限高杆改善，slope/T stairs 仍未通过。
+- `prep.d/results/part1_p1_basic_obstacle.json`：逐障碍 base/tilt/judge。
