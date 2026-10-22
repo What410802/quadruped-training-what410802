@@ -209,12 +209,13 @@ def test_high_wall_sideways_climb_and_bypass():
                        "sideways wall touch at ground height")
 
     # raised crossing outside the actual wall x span [1.30, 2.30] must not count
+    # x=2.33 is inside the high_wall zone (1.25..2.35) but outside the wall span (<=2.30)
     outside_x = [
-        {"x": 2.7, "y": -7.9},
-        {"x": 2.7, "y": -7.4, "z": 0.75},
-        {"x": 2.7, "y": -7.0, "z": 0.85},
-        {"x": 2.7, "y": -6.6, "z": 0.75},
-        {"x": 2.7, "y": -6.0},
+        {"x": 2.33, "y": -7.9},
+        {"x": 2.33, "y": -7.4, "z": 0.75},
+        {"x": 2.33, "y": -7.0, "z": 0.85},
+        {"x": 2.33, "y": -6.6, "z": 0.75},
+        {"x": 2.33, "y": -6.0},
     ]
     assert_not_success(feed(Part1JudgeV2(), outside_x), "high_wall",
                        "raised crossing outside wall x span")

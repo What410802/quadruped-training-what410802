@@ -180,6 +180,16 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
         if not p.is_file():
             _warn(warnings, f"judge.files 路径不存在: {f}")
 
+    # Part 1 attempts_used must equal distinct attempts seen in trials (formal only)
+    p1_attempts = {int(t.get("attempt") or 0) for t in (trials or [])
+                   if t.get("part") == "part1" and t.get("obstacle") != "return_to_start"}
+    p1_attempts.discard(0)
+    reported_p1 = int((summary.get("part1") or {}).get("attempts_used") or 0)
+    if p1_attempts and reported_p1 != len(p1_attempts) and not diagnostic:
+        _err(errors, f"part1.attempts_used={reported_p1} 与 trials 中不同 attempt 数={len(p1_attempts)} 不一致")
+    elif p1_attempts and reported_p1 != len(p1_attempts):
+        _warn(warnings, f"part1.attempts_used={reported_p1} 与 trials 不同 attempt 数={len(p1_attempts)} 不一致（diagnostic）")
+
     # Part 2 legal difficulty levels
     p2_specs = {o["id"]: o for o in (contract.get("parts", {}).get("part2", {}) or {}).get("obstacles", [])}
     for oid, rec in ((summary.get("part2") or {}).get("obstacles") or {}).items():
@@ -207,7 +217,7 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                 continue
             attempt = int(t.get("attempt") or 0)
             rec = by_attempt.setdefault(attempt, {"score": 0.0, "duration": float(t.get("duration_s") or 0.0),
-                                                  "full": True, "return": False})
+                                                  "full": True, "return": False, "seen": set()})
             oid = t.get("obstacle")
             j = t.get("judge") or {}
             if oid == "return_to_start":
@@ -216,6 +226,7 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                 continue
             score = float(j.get("score") or 0.0)
             rec["score"] += score
+            rec["seen"].add(oid)
             spec = p1_obs.get(oid)
             if spec is not None and score < float(spec.get("per_obstacle_score", 0)):
                 rec["full"] = False
@@ -223,7 +234,10 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
             (_warn if diagnostic else _err)(warnings if diagnostic else errors,
                                             "summary 声明 final_time_s 但 trials 中没有可复算的 attempt")
         else:
+            expected_obs = set(p1_obs)
             for rec in by_attempt.values():
+                if rec["seen"] != expected_obs:
+                    rec["full"] = False   # incomplete attempt cannot qualify for return bonus
                 if rec["return"] and rec["full"]:
                     rec["score"] += float(((contract.get("parts", {}).get("part1", {}) or {})
                                            .get("return_bonus") or {}).get("score", 100))
@@ -729,7 +743,7 @@ def run_self_test() -> int:
         {"part": "part1", "obstacle": "a", "attempt": 2, "duration_s": 20.0,
          "judge": {"status": "success", "score": 100}},
     ]
-    summary3 = {"part1": {"final_score": 100, "final_time_s": 10.0}}
+    summary3 = {"part1": {"attempts_used": 2, "final_score": 100, "final_time_s": 10.0}}
     errs, _ = validate_external_evidence(man_ok, summary3, contract3, tmp, False, trials3)
     assert not errs, errs
     # empty judge.file_hashes entry / empty level entry / tampered level hash / duplicate ids
@@ -756,7 +770,7 @@ def run_self_test() -> int:
     dup_manifest = {"results": {"trials": "trials.jsonl"}, "protocol": {"seeds": []}}
     dup_errs = validate_trials(dup_root, dup_manifest)
     assert any("重复 trial_id" in e for e in dup_errs), dup_errs
-    summary3_bad = {"part1": {"final_score": 100, "final_time_s": 5.0}}
+    summary3_bad = {"part1": {"attempts_used": 2, "final_score": 100, "final_time_s": 5.0}}
     errs, _ = validate_external_evidence(man_ok, summary3_bad, contract3, tmp, False, trials3)
     assert any("final_time_s" in e for e in errs), errs
     print("comp_score.py self-test: OK")

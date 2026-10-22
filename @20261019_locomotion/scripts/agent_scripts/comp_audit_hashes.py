@@ -89,6 +89,11 @@ def main() -> int:
             p = ROOT / rel
             if p.is_file():
                 out["objects"][f"eval_{pid}_{fname.split('.')[0]}"] = {"path": rel, "sha256": sha256(p)}
+    for extra in ("assets/terrain/part2/ability_field/part2_ability_field.xml",
+                  "assets/terrain/part2/part2_plum_eval_scene.xml"):
+        p = ROOT / extra
+        if p.is_file():
+            out["objects"]["scene_" + p.stem] = {"path": extra, "sha256": sha256(p)}
     evidence_dir = ROOT / "comp/audits/evidence"
     for ev in sorted(evidence_dir.glob("*.json")):
         rel = ev.relative_to(ROOT).as_posix()

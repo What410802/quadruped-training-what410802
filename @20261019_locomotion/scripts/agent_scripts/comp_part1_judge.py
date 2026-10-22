@@ -467,13 +467,13 @@ class TStairs(_Obstacle):
 
     Tags: ``step:s:1..3``, ``step:n:1..3``, ``step:e:1..3``, ``step:top``.
     Full success = two different arms each with levels 1,2,3 visited + top + returned
-    to the ground. One complete arm + top = partial score (up = 75 / down = 50).
+    to the ground. One complete arm + top = partial score (Q2 x2/3: up/s = 50, down/n,e = 33).
     """
 
     surface_tags = ("step:",)
     ground_fail = True
 
-    def __init__(self, partial_up: float = 75.0, partial_down: float = 50.0,
+    def __init__(self, partial_up: float = 50.0, partial_down: float = 33.0,
                  max_score: float = 100.0) -> None:
         self.name, self.zone = "t_stairs", ZONES["t_stairs"]
         self.partial_up, self.partial_down, self.max_score = partial_up, partial_down, max_score
