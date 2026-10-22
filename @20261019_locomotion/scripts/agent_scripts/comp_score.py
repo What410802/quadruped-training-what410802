@@ -227,17 +227,20 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                 if "return_to_start_after_full" in (j.get("events") or []):
                     rec["return"] = True
                 continue
-            score = float(j.get("score") or 0.0)
             if t.get("skipped"):
-                rec["skipped"] = True
+                continue    # skipped/aborted run: never contributes score, seen, or timing
+            score = float(j.get("score") or 0.0)
             rec["score"] += score
             rec["seen"].add(oid)
             spec = p1_obs.get(oid)
             if spec is not None and score < float(spec.get("per_obstacle_score", 0)):
                 rec["full"] = False
         if not by_attempt:
-            (_warn if diagnostic else _err)(warnings if diagnostic else errors,
-                                            "summary 声明 final_time_s 但 trials 中没有可复算的 attempt")
+            if float(s1.get("final_time_s") or 0.0) == 0.0 and float(s1.get("final_score") or 0.0) == 0.0:
+                pass    # all attempts skipped/aborted: zero-score evidence is consistent
+            else:
+                (_warn if diagnostic else _err)(warnings if diagnostic else errors,
+                                                "summary 声明非零 final_time/final_score 但 trials 中没有可复算 attempt")
         else:
             expected_obs = set(p1_obs)
             for rec in by_attempt.values():
@@ -354,7 +357,8 @@ def validate_summary(summary: dict, manifest: dict, contract: dict,
     for oid, rec in seen1.items():
         ev = list(rec.get("evidence") or [])
         obs_trials = by_obstacle.get(("part1", oid), [])
-        succ_trials = [t for t in obs_trials if (t.get("judge") or {}).get("status") == "success"]
+        succ_trials = [t for t in obs_trials if not t.get("skipped")
+                       and (t.get("judge") or {}).get("status") == "success"]
         if rec.get("success"):
             if not ev:
                 _err(errors, f"part1.{oid} success 缺 evidence trial id")
@@ -362,6 +366,8 @@ def validate_summary(summary: dict, manifest: dict, contract: dict,
                 t = by_id.get(eid)
                 if t is None:
                     _err(errors, f"part1.{oid} evidence 指向不存在的 trial: {eid}")
+                elif t.get("skipped"):
+                    _err(errors, f"part1.{oid} evidence {eid} 指向 skipped attempt，不能作为成功证据")
                 elif (t.get("judge") or {}).get("status") != "success":
                     _err(errors, f"part1.{oid} evidence {eid} 的 judge 状态不是 success")
         else:
@@ -782,6 +788,22 @@ def run_self_test() -> int:
     errs, _ = validate_external_evidence(man_ok, summary3_skip_zero, contract3, tmp, False,
                                          trials3_skipped)
     assert any("final_time_s" in e for e in errs), errs
+    trials3_skip_pos = [
+        {"part": "part1", "obstacle": "a", "attempt": 1, "duration_s": 0.0,
+         "skipped": True, "judge": {"status": "success", "score": 100}},
+        {"part": "part1", "obstacle": "a", "attempt": 2, "duration_s": 20.0,
+         "judge": {"status": "success", "score": 60}},
+        {"part": "part1", "obstacle": "a", "attempt": 3, "duration_s": 30.0,
+         "judge": {"status": "success", "score": 40}},
+    ]
+    summary3_skip_ok = {"part1": {"attempts_used": 3, "final_score": 60, "final_time_s": 20.0}}
+    errs, _ = validate_external_evidence(man_ok, summary3_skip_ok, contract3, tmp, False,
+                                         trials3_skip_pos)
+    assert not errs, errs
+    summary3_skip_bad = {"part1": {"attempts_used": 3, "final_score": 100, "final_time_s": 0.0}}
+    errs, _ = validate_external_evidence(man_ok, summary3_skip_bad, contract3, tmp, False,
+                                         trials3_skip_pos)
+    assert any("final_score" in e or "final_time" in e for e in errs), errs
     summary3_bad = {"part1": {"attempts_used": 2, "final_score": 100, "final_time_s": 5.0}}
     errs, _ = validate_external_evidence(man_ok, summary3_bad, contract3, tmp, False, trials3)
     assert any("final_time_s" in e for e in errs), errs

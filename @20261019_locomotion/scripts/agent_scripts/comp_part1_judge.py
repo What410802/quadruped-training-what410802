@@ -57,7 +57,7 @@ WALL_CROSS_Y = -7.0
 WALL_X_MIN = 1.30
 WALL_X_MAX = 2.30
 # climb evidence: base raised this high above standing height during the wall crossing
-WALL_CLIMB_Z = 0.55
+WALL_CLIMB_Z = 0.60   # minimum base height at the wall crossing sample
 
 PART1_OBSTACLES = ("height_bar", "high_wall", "bridge_blocks", "bridge_bands",
                    "gravel_pit", "t_stairs", "slope", "slalom")
@@ -380,7 +380,7 @@ class HighWall(_Obstacle):
             if abs(prev_y - y) < 1.0:
                 # real climb: base raised well above standing height at the crossing;
                 # a sideways wall touch at ground height is not evidence of surmounting.
-                raised = self._last_z >= 0.60
+                raised = self._last_z >= WALL_CLIMB_Z
                 within_x = (WALL_X_MIN <= float(prev_x) <= WALL_X_MAX
                             and WALL_X_MIN <= float(x) <= WALL_X_MAX)
                 if raised and within_x:

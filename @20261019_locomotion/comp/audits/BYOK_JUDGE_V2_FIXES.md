@@ -161,3 +161,13 @@
 | 高墙假成功（scorer blocker） | `HighWall` 只判 y=-7 穿越 + base z≥0.60，未约束穿越点 x 在真实墙段内（墙 geom pos x=1.8, size x=0.5 旋转后覆盖 x∈[1.30,2.30]），从墙外侧抬高绕过可被判成功 | 新增 `WALL_X_MIN=1.30/WALL_X_MAX=2.30`；穿越样本要求 prev_x 与 x 均在墙段内；新增 evidence `outside_x_cross`；conformance 增加"墙外侧抬高穿越必须失败"用例 |
 | T 台阶 s/n/e 映射未测 | 仅测 s 臂部分分（50），未测 n/e 臂 | conformance 新增 n 臂、e 臂各一次完整臂+top 的 partial 用例，断言 score=33（Q2×2/3）；s=50 保持 |
 | 契约表格陈旧措辞 | CONTRACT.md ambiguities 表仍写 75/50 | 更新为 ×2/3（仅上 50、仅下 33） |
+
+
+## Flash 验收（第 16 轮）后修复（skipped 语义，2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| skipped trial 计入 best/evidence | `validate_external_evidence` 的 by_attempt 仍累计 skipped trial 的 judge score；`validate_summary` 的 Part1 succ_trials/evidence 未排除 skipped；abort 前已有障碍成功时可能被当证据 | by_attempt 完全跳过 skipped trial（不计分/seen/时长）；succ_trials 排除 skipped；evidence 指向 skipped trial 报 error；全 skipped 且 final 0/0 合法 |
+| importer 一致性 | skipped attempt 的 trial 仍可能带 success 状态 | course importer 对 skipped attempt 强制 `judge.status="skipped"`、`score=0`，best evidence 只取非 skipped |
+| self-test | 缺 skipped 正分场景 | 新增 skipped 正分 + 后续低分完成 attempt 用例（best/final_time 取完成 attempt；skipped 正分不得计入） |
+| 非阻塞清理 | `WALL_CLIMB_Z` 未使用；conformance n 臂测试依赖 zone 几何无注释 | `WALL_CLIMB_Z=0.60` 并被使用；n 臂用例补几何注释 |

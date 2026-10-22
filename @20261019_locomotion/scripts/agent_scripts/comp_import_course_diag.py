@@ -104,6 +104,8 @@ def main() -> int:
         for oid in p1_specs:
             st = states.get(oid) or {}
             status = st.get("status", "pending")
+            if rec_att.get("skipped"):
+                status = "skipped"
             trials.append({
                 "trial_id": f"diag-{args.policy_id}-{oid}-a{i}",
                 "part": "part1", "obstacle": oid, "attempt": i, "seed": None,
@@ -111,7 +113,7 @@ def main() -> int:
                 "commands": [{"cmd": "waypoint_route", "seconds": round(duration, 3)}],
                 "judge": {"status": status,
                           "failure_reason": failure_reason(status, st.get("reason", "")),
-                          "events": [], "score": int(st.get("score") or 0)},
+                          "events": [], "score": 0 if rec_att.get("skipped") else int(st.get("score") or 0)},
                 "duration_s": round(duration, 3),
                 "skipped": bool(rec_att.get("skipped")),
                 "duration_note": "0 for skipped attempts", "video": None,
@@ -127,7 +129,7 @@ def main() -> int:
         sum1 += score
         evidence = [t["trial_id"] for t in trials
                     if t["obstacle"] == oid and t["attempt"] == best_attempt_no
-                    and t["judge"]["status"] == "success"]
+                    and not t.get("skipped") and t["judge"]["status"] == "success"]
         part1_obstacles[oid] = {"success": success, "score": score,
                                 "failure_reason": None if success else failure_reason(status, st.get("reason", "")),
                                 "evidence": evidence}
