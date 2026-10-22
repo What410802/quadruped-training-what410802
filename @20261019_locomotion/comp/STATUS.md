@@ -63,9 +63,11 @@
 | Part 2 六类 evaluator | **已实现**（参数化 20 档 + 计分 floor/端点 0） | `comp_part2_judge.py`、`make_part2_levels.py`、`run_part2_judged_eval.py`、`comp/eval/flat-ft-2500-part2-diag-v2/` |
 | 边界擦碰语义（路过相邻障碍区不得永久判失败） | 已修：soft-reset | `comp_part1_judge.py` + conformance/course 自检 |
 | 证据链：整场 course 诊断导入 + 重算校验 | 已完成（attempts_used=1 ≤ 3，score 由 trials 复算） | `comp_import_course_diag.py`、`comp/SCOREBOARD.md` |
-| T 台阶 Q2 数值冲突 | **保守落地**：部分分上=75/下=50（转述 112.5 与满分 100 冲突），返回奖励只认满分；待书面裁决 | `CONTRACT.*`、`_protocol.md` |
+| T 台阶 Q2 | ✅ 已确认（2026-10-22）：×2/3 → 上=50、下=50×2/3≈33.33→33；返回奖励只认满分 | `CONTRACT.*`、`_protocol.md`、judge 默认值 |
+| 计时/排序口径 | ✅ 已确认：分数最高优先、同分取最快；**计时在机器人稳定停下后停止**（runner 已实现 stable-stop） | `CONTRACT.*`、`run_part1_course.py` |
+| BYOK 评审升级顺序 | flash（2 次 FAIL）→ pro（第三轮，进行中）→ Codex（需用户二次确认，因外部额度） | `comp/audits/` |
 | BYOK 预审（same-model，provisional） | 已执行：FAIL/26 条（11 blocker），已逐条修复或记录残余风险 | `audits/BYOK_JUDGE_V2_REVIEW.md`、`audits/BYOK_JUDGE_V2_FIXES.md` |
-| G1 重审（Codex 1 次，不同家族） | 待执行（BYOK 预审修复后） | 第 2 版 `JUDGE_AUDIT` |
+| G1 重审（Codex，不同家族） | **待用户批准后执行**（GPT 调用需先报进度并二次确认；gpt-6-astra 无权限、gpt-6.1-sol 调用异常，尚未产生 verdict） | 第 2 版 `JUDGE_AUDIT` |
 
 **V2 评测链路（2026-10-22 晚）**：Part1 judge V2 `comp_part1_judge.py`（10 组 conformance 全过，含 G1 反例：6 条出口骗分、T 台阶跨帧历史、限高杆 touch/drop、斜坡距离、砂砾短边、高墙侧走、绕杆顺序、尝试规则）+ 场景 v2 + 逐物理步 runner + 整场协议 `comp_part1_course.py`（3 次、恢复不消耗、最快用时、返回奖励）+ Part2 六类 judge/参数化 20 档 evaluator；两条 diagnostic 产物已进 `comp/SCOREBOARD.md`（`flat-ft-2500-part1-diag-v2`/`-part2-diag-v2`，均 0 分，符合 flat 策略预期）。
 

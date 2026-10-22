@@ -1,31 +1,31 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-22T23:29:51+08:00",
+  "generated_at": "2026-10-23T00:15:17+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
-      "sha256": "5dc6bc4247f9fcdb787f7ae0692a60dc9186a134b72556078ebd37be58821ecd"
+      "sha256": "627d61356fc8ec96b39cfbdf66d0261f65b9282d6e5fe8ab432c6082bef7e054"
     },
     "contract_md": {
       "path": "comp/CONTRACT.md",
-      "sha256": "a36e4a1740fdc4801543b498e47043301e4234cc99399fe1c50f21d3c8950fbe"
+      "sha256": "17093b868bd2b1756ff9e1a3e6ce9ae07a911387b71bf801ed0ed010347a1dc5"
     },
     "protocol_md": {
       "path": "comp/eval/_protocol.md",
-      "sha256": "1a58f386ba916cd772d18b2503aa88d737ad0ac51827a181995a0cc243617405"
+      "sha256": "1604298aa03bf0b7a1c79308c81d14e1e624472b23a4b46902ef89d5da032fbb"
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "ef1b29db658860f2068435c075bbc39d3a21cb9e535c5246a1c77c59a6874ced"
+      "sha256": "b1cda06aebe9f6b2fd1dc973b2c5d1a328dcd73242cb89059c715f7ad68e7a44"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "d797523da7e38cbee3ab10ed679a3a534401d78ff0bf2ba252e3e319739c58d3"
+      "sha256": "e26a0d269832157ba1f8bf8ee904cf8e24f66d990e9a5de7368080b49c610e88"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
-      "sha256": "61ae7edf59c50e4a6acff6f69f6af130249666998183ed9a9fff8f36852c2441"
+      "sha256": "bc2619084db5168a13948e0fc7edcc44d172932613ec0647ee8697f57e615806"
     },
     "judge_part2_v2": {
       "path": "scripts/agent_scripts/comp_part2_judge.py",
@@ -45,7 +45,7 @@
     },
     "runner_course": {
       "path": "scripts/agent_scripts/run_part1_course.py",
-      "sha256": "b1060d518c0d76f0fe46c7c7509ef37775eba32156c7560d7d1b7e67a31fead0"
+      "sha256": "73eacde9ad4c15116900e8ab42d72ee39bc66a94c7337595c495b67c3ad50a4c"
     },
     "runner_part2_v2": {
       "path": "scripts/agent_scripts/run_part2_judged_eval.py",

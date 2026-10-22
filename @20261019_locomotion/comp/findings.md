@@ -21,3 +21,5 @@
 - [2026-10-22] 整场 course 诊断 runner `run_part1_course.py` 跑通（脚本化 waypoint、1 次尝试、94 s 仿真、8 障碍 0 成功），协议类正确记录尝试/时长/失败；导入产物 `flat-ft-2500-part1-course-diag` 过 comp_score 校验（attempts_used=1 ≤ 3）。
 - [2026-10-22] Q2 保守决策：T 台阶部分分暂按 75/50（转述 75*3/2=112.5 与单项满分 100 冲突），返回奖励要求单项满分（部分分不触发）；comp_score 增加部分分允许集合 + Q5 floor。
 - [2026-10-22] BYOK 预审（same-model provisional）判 judge V2 FAIL：26 条（11 blocker），核心是地面判据缓冲误杀、高墙/限高杆/绕杆/T 台阶可欺骗、桥面 tag 缺失、Part2 低难度地面伪成功、整场协议未接 runner。已实现 V2.1 修复（supported gating、墙平面穿越+抬升、双向绕杆+终点最后、三臂 T 台阶、桥面 tag 补全、Part2 横向/无地面约束、恢复位姿校验、course runner/importer、floor/部分分），conformance 13 组全过；残余风险见 BYOK_JUDGE_V2_FIXES.md。
+- [2026-10-22] 规则最终确认：Q2 = ×2/3（上 50、下 33.33→33）；分数最高优先、同分取最快；计时在机器人稳定停下后停止。已更新契约/protocol/judge 默认值与 course runner（stable-stop）。
+- [2026-10-22] BYOK 二次预审（flash）仍 FAIL；已修复高墙抬升/限高杆持久掉杆/T 台阶 partial 升级/绕杆拐角方向/Part2 接触与绕行/整场单会话 ledger/暂停死锁/返回证据校验；第三轮改用 deepseek-v4-pro 复审。GPT/Codex 调用按用户要求先报进度待批准。

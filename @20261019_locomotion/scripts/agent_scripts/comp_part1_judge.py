@@ -599,7 +599,7 @@ class Slalom(_Obstacle):
 class Part1JudgeV2:
     """One instance judges one continuous course attempt."""
 
-    def __init__(self, *, partial_up: float = 75.0, partial_down: float = 50.0,
+    def __init__(self, *, partial_up: float = 50.0, partial_down: float = 33.0,
                  max_obstacle_score: float = 100.0) -> None:
         self.obstacles: dict[str, _Obstacle] = {
             "height_bar": HeightBar(),

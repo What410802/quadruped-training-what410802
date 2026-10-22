@@ -50,7 +50,7 @@ class Part1Course:
     """One whole-run session (up to 3 attempts) with pause/recovery/skip events."""
 
     def __init__(self, max_attempts: int = MAX_ATTEMPTS,
-                 partial_up: float = 75.0, partial_down: float = 50.0) -> None:
+                 partial_up: float = 50.0, partial_down: float = 33.0) -> None:
         self.manager = AttemptManager(max_attempts=max_attempts)
         self.judge = Part1JudgeV2(partial_up=partial_up, partial_down=partial_down)
         self.partial_up = partial_up

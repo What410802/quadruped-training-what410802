@@ -195,9 +195,34 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict], course
                 break
         if aborted:
             break
+    # Rules: the clock stops when the robot is stable, not on first entering the start
+    # area. If the whole course was cleared and the robot is back in the start area,
+    # wait for a stable stand (speed < 0.15 m/s, tilt < 10 deg for 0.5 s) and stop there.
+    stable_stop = False
+    if course.active and not aborted:
+        report = course.judge.report()
+        if report.get("returned_to_start"):
+            stable = 0.0
+            prev = np.asarray(cpr.base()[0][:2], dtype=float)
+            for _ in range(150):
+                cpr.step_policy(np.zeros(3))
+                s = cpr.sample()
+                pos = np.asarray(s["base_xyz"][:2], dtype=float)
+                speed = float(np.linalg.norm(pos - prev)) / 0.02
+                prev = pos
+                course.update(s["t"], s["base_xyz"], s["yaw"], foot_tags=s["foot_tags"],
+                              ground_feet=s["ground_feet"], bar_z=s["bar_z"])
+                _base, tilt = cpr.base()
+                if speed < 0.15 and tilt < 10.0:
+                    stable += 0.02
+                else:
+                    stable = 0.0
+                if stable >= 0.5:
+                    stable_stop = True
+                    break
     if course.active:
-        course.end_attempt(float(cpr.data.time), "route_complete")
-    return {"attempt": course.attempt_no, "aborted": aborted,
+        course.end_attempt(float(cpr.data.time), "stable_stop" if stable_stop else "route_complete")
+    return {"attempt": course.attempt_no, "aborted": aborted, "stable_stop": stable_stop,
             "report": course.export_report(), "judge": course.judge.report()}
 
 

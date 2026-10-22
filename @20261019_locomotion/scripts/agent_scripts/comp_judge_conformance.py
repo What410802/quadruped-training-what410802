@@ -241,7 +241,7 @@ def test_t_stairs_full_partial_and_history():
     ]
     rep = feed(Part1JudgeV2(), partial)
     assert_status(rep, "t_stairs", "success", "one complete arm = partial")
-    assert st(rep, "t_stairs")["score"] == 75.0, "up partial = 75 (Q2 conservative)"
+    assert st(rep, "t_stairs")["score"] == 50.0, "up partial = 50 (Q2 confirmed x2/3)"
 
     missing_level = [
         {"x": 1.8, "y": -5.4},
