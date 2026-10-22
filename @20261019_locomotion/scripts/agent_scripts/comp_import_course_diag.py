@@ -95,6 +95,12 @@ def main() -> int:
     best_rec = _att_rec(best)
     best_attempt_no = int(best_rec.get("attempt") or best.get("attempt") or (best_idx + 1))
     best_states = (best.get("judge") or {}).get("states") or {}
+    non_skipped = [a for a in attempts if not _att_rec(a).get("skipped")]
+    if not non_skipped:
+        # no completed attempt: never reuse a skipped attempt's (possibly partial-success) judge
+        # states; the legal evidence is an all-zero summary.
+        best_rec = {}
+        best_states = {}
 
     trials: list[dict] = []
     for i, att in enumerate(attempts, 1):
@@ -148,11 +154,8 @@ def main() -> int:
             "duration_s": 0.0, "video": None,
         })
     session = result.get("session_summary") or {}
-    non_skipped = [a for a in attempts if not _att_rec(a).get("skipped")]
     if not non_skipped:
         session = {"final_score": 0.0, "final_time_s": 0.0}
-        best_rec = {}
-        best_states = {}
     summary = {
         "schema_version": 1,
         "policy_id": args.policy_id,
