@@ -51,6 +51,18 @@
 - 未做：盲写第二实现交叉比对（`JUDGE_CROSSCHECK.md`）——与 P0 judge 修复一起做，才能对比"新 judge vs 独立实现"。
 - **评审后端（2026-10-22 新增）**：Codex 额度 ≤4 次/14 天，留给 G1/红队/最终分数/争议各 1 次；日常审计用 BYOK（`competition/tools/comp_review.py` + `reviewer.json`，DeepSeek relay，同家族 → verdict 标 provisional），或由用户作为协调者在 DSH 另开会话执行（manual backend）。
 
+## 4.1 P0 进度（2026-10-22 起）
+
+| P0 项 | 状态 | 产物 |
+|---|---|---|
+| Part 1 V2 judge（六类语义状态机、部分分、落杆检测接口） | **已实现 + 10 组 conformance 全过** | `scripts/agent_scripts/comp_part1_judge.py`、`comp_judge_conformance.py` |
+| AttemptManager（3 次、恢复不消耗、账本、best score/fastest time） | 已实现（同文件） | 同上 |
+| 场景 v2（可掉落横杆 + 命名台阶/平台/坡面） | 待做 | `assets/terrain/part1/part1_eval_scene_v2.xml` |
+| runner 接入 V2（每物理步接触分类/bar 位移/trials 追加写） | 待做 | `run_part1_judged_rollout_v2.py` |
+| 正式 Part 1 整场赛程协议 | 待做 | `comp/eval/_protocol.md` + 整场 runner |
+| Part 2 六类 evaluator | 待做 | `comp_part2_judge.py` |
+| G1 重审（Codex 1 次） | 待前五项完成 | 第 2 版 `JUDGE_AUDIT` |
+
 ## 4. 下一步顺序
 
 1. P0-1：重写 judge 成功语义（合法进入→实际跨越/接触历史→完整离开；六障碍逐条）+ Part2 evaluator；
