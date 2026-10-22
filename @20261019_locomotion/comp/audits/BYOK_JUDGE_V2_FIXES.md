@@ -126,3 +126,19 @@
 | ground 白名单 | `startswith("ground")` 过宽 | 改为精确白名单（floor/trench_bottom/level_floor/ramp_blocks_l/r/ground/groundplane/ground_left/ground_right/ground_plane） |
 
 > 残余说明：official 重复最高档在确定性策略下两次结果可能相同，稳定性统计意义有限，G1 报告需写明"4 次中的重复档"口径。
+
+
+## Flash 验收（第 9 轮）后修复（minor，2026-10-23）
+
+- export_report/summary 快照深拷贝；official summary 纳入 HASHES；formal Part2 attempts 对账改为 error；Part2 证据判定同时看 trials；pause_timeout 记录 operator_t。
+- 其余第 9 轮 minor 已并入上一节。
+
+## Flash 验收（第 8 轮）后修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| 事件/attempt 快照 | `Part1Course.export_report()/summary()` 直接引用 manager 的 live list，后续 attempt 会改写早先 attempt 的 report 快照 | summary/attempt_results 改为 JSON 深拷贝，早先 attempt 的证据不再被后续 append 污染 |
+| official summary hash | official Part2 的 summary 未纳入 HASHES 审计对象 | `comp_audit_hashes.py` 已把 `flat-ft-2500-part2-official-diag` 的 manifest/trials/summary 纳入；重生成后核对 |
+| Part2 attempts 对账 | diagnostic 允许 attempts_used 与 trials 不一致，formal 不报错；part2_has_evidence 未考虑 trials | formal 下不一致改为 error；part2_has_evidence 同时依据 trials 计数 |
+| fallback 证据 | Part1-only formal manifest 可能被误判 Part2 证据缺失 | `part2_has_evidence` 依据 summary + trials，Part1-only 不再强制 part2 scenes |
+| official attempt 编号 | 需要 category 内 1–4 | runner 写 `attempt_index`（official_counter），importer 落 `attempt`；official artifact 24 slots 已生成 |

@@ -65,42 +65,6 @@
               "score": 0.0,
               "duration_s": 2.5049999999999577,
               "duration_note": "active_time_pause_excluded"
-            },
-            {
-              "attempt": 2,
-              "started_at": 0.5000000000000003,
-              "recoveries": 1,
-              "pauses": [
-                [
-                  1.0000000000000007,
-                  1.0000000000000007
-                ]
-              ],
-              "events": 0,
-              "ended_at": 3.004999999999958,
-              "skipped": true,
-              "reason": "operator_abort",
-              "score": 0.0,
-              "duration_s": 2.5049999999999577,
-              "duration_note": "active_time_pause_excluded"
-            },
-            {
-              "attempt": 3,
-              "started_at": 0.5000000000000003,
-              "recoveries": 1,
-              "pauses": [
-                [
-                  1.0000000000000007,
-                  1.0000000000000007
-                ]
-              ],
-              "events": 0,
-              "ended_at": 3.004999999999958,
-              "skipped": true,
-              "reason": "operator_abort",
-              "score": 0.0,
-              "duration_s": 2.5049999999999577,
-              "duration_note": "active_time_pause_excluded"
             }
           ],
           "events": [
@@ -127,54 +91,6 @@
               "event": "skip",
               "consumes_attempt": true,
               "attempt": 1
-            },
-            {
-              "t": 0.5000000000000003,
-              "event": "attempt_start",
-              "attempt": 2
-            },
-            {
-              "t": 1.0000000000000007,
-              "event": "recovery",
-              "consumes_attempt": false,
-              "attempt": 2
-            },
-            {
-              "t": 1.0000000000000007,
-              "event": "resume",
-              "operator_t": 2.0000000000000013,
-              "consumes_attempt": false,
-              "attempt": 2
-            },
-            {
-              "t": 3.004999999999958,
-              "event": "skip",
-              "consumes_attempt": true,
-              "attempt": 2
-            },
-            {
-              "t": 0.5000000000000003,
-              "event": "attempt_start",
-              "attempt": 3
-            },
-            {
-              "t": 1.0000000000000007,
-              "event": "recovery",
-              "consumes_attempt": false,
-              "attempt": 3
-            },
-            {
-              "t": 1.0000000000000007,
-              "event": "resume",
-              "operator_t": 2.0000000000000013,
-              "consumes_attempt": false,
-              "attempt": 3
-            },
-            {
-              "t": 3.004999999999958,
-              "event": "skip",
-              "consumes_attempt": true,
-              "attempt": 3
             }
           ],
           "final_score": 0.0,
@@ -382,24 +298,6 @@
               "score": 0.0,
               "duration_s": 2.5049999999999577,
               "duration_note": "active_time_pause_excluded"
-            },
-            {
-              "attempt": 3,
-              "started_at": 0.5000000000000003,
-              "recoveries": 1,
-              "pauses": [
-                [
-                  1.0000000000000007,
-                  1.0000000000000007
-                ]
-              ],
-              "events": 0,
-              "ended_at": 3.004999999999958,
-              "skipped": true,
-              "reason": "operator_abort",
-              "score": 0.0,
-              "duration_s": 2.5049999999999577,
-              "duration_note": "active_time_pause_excluded"
             }
           ],
           "events": [
@@ -450,30 +348,6 @@
               "event": "skip",
               "consumes_attempt": true,
               "attempt": 2
-            },
-            {
-              "t": 0.5000000000000003,
-              "event": "attempt_start",
-              "attempt": 3
-            },
-            {
-              "t": 1.0000000000000007,
-              "event": "recovery",
-              "consumes_attempt": false,
-              "attempt": 3
-            },
-            {
-              "t": 1.0000000000000007,
-              "event": "resume",
-              "operator_t": 2.0000000000000013,
-              "consumes_attempt": false,
-              "attempt": 3
-            },
-            {
-              "t": 3.004999999999958,
-              "event": "skip",
-              "consumes_attempt": true,
-              "attempt": 3
             }
           ],
           "final_score": 0.0,

@@ -142,9 +142,13 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
             _err(errors, "正式 manifest 缺 contract.file/sha256，无法机器复核")
         if not scenes:
             _err(errors, "正式 manifest 缺 scenes，无法机器复核场景证据")
+        p2_trial_counts: dict[str, int] = {}
+        for t in trials or []:
+            if t.get("part") == "part2":
+                p2_trial_counts[str(t.get("obstacle"))] = p2_trial_counts.get(str(t.get("obstacle")), 0) + 1
         part2_has_evidence = any(
             (rec or {}).get("best_success_value") is not None or int((rec or {}).get("attempts_used") or 0) > 0
-            for rec in ((summary.get("part2") or {}).get("obstacles") or {}).values())
+            for rec in ((summary.get("part2") or {}).get("obstacles") or {}).values()) or bool(p2_trial_counts)
         required_scenes = ["part1"] + (["part2"] if part2_has_evidence else [])
         for required in required_scenes:
             if not (isinstance(scenes.get(required), dict) and scenes[required].get("file")):
@@ -415,7 +419,8 @@ def validate_summary(summary: dict, manifest: dict, contract: dict,
             if not matched:
                 _err(errors, f"part2.{oid} best_success_value={value} 无对应成功 trial")
         if obs_trials and int(rec.get("attempts_used") or 0) != len(obs_trials):
-            _warn(warnings, f"part2.{oid} attempts 与 trials 条数不一致（diagnostic 常见）")
+            msg = f"part2.{oid} attempts_used 与 trials 条数不一致"
+            (_warn(warnings, msg + "（diagnostic）") if diagnostic else _err(errors, msg))
     if int(s2.get("total") or 0) != sum2:
         _err(errors, f"part2.total={s2.get('total')} 重算为 {sum2}")
     if proto.get("attempts_part2_per_obstacle") not in (None, budget2) and not diagnostic:

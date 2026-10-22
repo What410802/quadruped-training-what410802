@@ -224,7 +224,11 @@ class Part1Course:
     # ---------------------------------------------------------------- results
     def summary(self) -> dict:
         summary = self.manager.summary()
-        summary["attempt_results"] = [r.to_dict() for r in self.results]
+        # snapshot live manager lists so an earlier attempt's exported report cannot be
+        # mutated by later attempts (audit/reproducibility)
+        summary["attempts"] = json.loads(json.dumps(summary.get("attempts") or []))
+        summary["events"] = json.loads(json.dumps(summary.get("events") or []))
+        summary["attempt_results"] = json.loads(json.dumps([r.to_dict() for r in self.results]))
         scored = [r for r in self.results if not r.skipped]
         best_score = max((r.score for r in scored), default=0.0)
         # confirmed rule: highest score first; on a tie take the fastest attempt
