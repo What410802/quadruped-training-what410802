@@ -218,17 +218,16 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
             if t.get("part") != "part1":
                 continue
             attempt = int(t.get("attempt") or 0)
+            if t.get("skipped"):
+                continue    # skipped/aborted run: never contributes score, seen, or timing
             rec = by_attempt.setdefault(attempt, {"score": 0.0, "duration": float(t.get("duration_s") or 0.0),
-                                                  "full": True, "return": False, "seen": set(),
-                                                  "skipped": False})
+                                                  "full": True, "return": False, "seen": set()})
             oid = t.get("obstacle")
             j = t.get("judge") or {}
             if oid == "return_to_start":
                 if "return_to_start_after_full" in (j.get("events") or []):
                     rec["return"] = True
                 continue
-            if t.get("skipped"):
-                continue    # skipped/aborted run: never contributes score, seen, or timing
             score = float(j.get("score") or 0.0)
             rec["score"] += score
             rec["seen"].add(oid)
@@ -250,7 +249,7 @@ def validate_external_evidence(manifest: dict, summary: dict, contract: dict,
                     rec["score"] += float(((contract.get("parts", {}).get("part1", {}) or {})
                                            .get("return_bonus") or {}).get("score", 100))
             best = max(r["score"] for r in by_attempt.values())
-            best_records = [r for r in by_attempt.values() if r["score"] == best and not r["skipped"]]
+            best_records = [r for r in by_attempt.values() if r["score"] == best]
             expected = min(r["duration"] for r in best_records) if best_records else 0.0
             got = float(s1.get("final_time_s") or 0.0)
             if abs(got - expected) > 1e-6:
@@ -493,7 +492,7 @@ def validate_trials(policy_dir: Path, manifest: dict) -> list[str]:
             else:
                 ids.add(tid)
             if rec.get("skipped") and float(rec.get("duration_s") or 0.0) != 0.0:
-                _warn([], f"trials 第 {lineno} 行 skipped 但 duration_s 非 0")
+                _err(errors, f"trials 第 {lineno} 行 skipped 但 duration_s 非 0")
     return errors
 
 
@@ -804,6 +803,20 @@ def run_self_test() -> int:
     errs, _ = validate_external_evidence(man_ok, summary3_skip_bad, contract3, tmp, False,
                                          trials3_skip_pos)
     assert any("final_score" in e or "final_time" in e for e in errs), errs
+    trials_zero = [
+        {"part": "part1", "obstacle": "a", "attempt": 1, "duration_s": 0.0,
+         "skipped": True, "judge": {"status": "skipped", "score": 0}},
+        {"part": "part1", "obstacle": "a", "attempt": 2, "duration_s": 10.0,
+         "judge": {"status": "fail", "score": 0}},
+    ]
+    errs, _ = validate_external_evidence(
+        man_ok, {"part1": {"attempts_used": 2, "final_score": 0, "final_time_s": 10.0}},
+        contract3, tmp, False, trials_zero)
+    assert not errs, errs
+    errs, _ = validate_external_evidence(
+        man_ok, {"part1": {"attempts_used": 2, "final_score": 0, "final_time_s": 0.0}},
+        contract3, tmp, False, trials_zero)
+    assert any("final_time_s" in e for e in errs), errs
     summary3_bad = {"part1": {"attempts_used": 2, "final_score": 100, "final_time_s": 5.0}}
     errs, _ = validate_external_evidence(man_ok, summary3_bad, contract3, tmp, False, trials3)
     assert any("final_time_s" in e for e in errs), errs

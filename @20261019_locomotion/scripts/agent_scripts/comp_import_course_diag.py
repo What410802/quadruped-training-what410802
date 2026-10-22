@@ -151,6 +151,8 @@ def main() -> int:
     non_skipped = [a for a in attempts if not _att_rec(a).get("skipped")]
     if not non_skipped:
         session = {"final_score": 0.0, "final_time_s": 0.0}
+        best_rec = {}
+        best_states = {}
     summary = {
         "schema_version": 1,
         "policy_id": args.policy_id,

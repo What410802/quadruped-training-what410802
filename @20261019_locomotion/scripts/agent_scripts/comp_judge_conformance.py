@@ -279,8 +279,8 @@ def test_t_stairs_full_partial_and_history():
     assert_status(rep, "t_stairs", "success", "partial upgraded to full")
     assert st(rep, "t_stairs")["score"] == 100.0, st(rep, "t_stairs")
     # north arm only (downward direction) = 33 (Q2 x2/3); east arm only = 33 as well
-    # note: the non-target arm intentionally only touches an incomplete level subset; s:1 at
-    # y=-5.3 also lies outside ZONES["t_stairs"] (-4.95..-3.05), so exactly one arm is complete.
+    # note: the non-target arm intentionally only touches an incomplete level subset (e.g. the
+    # s:1 sample at y=-5.3 also lies outside ZONES["t_stairs"]), so exactly one arm is complete.
     for arm, y0 in (("n", -1.9), ("e", None)):
         if arm == "n":
             seq = [

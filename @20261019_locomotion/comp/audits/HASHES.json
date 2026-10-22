@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T02:38:15+08:00",
+  "generated_at": "2026-10-23T02:44:18+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -21,7 +21,7 @@
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "01496c5bce24ff0558631e777d3de1108ce82f6daf5e8fc3d2d32c6e3ef34252"
+      "sha256": "af66a5a1d15a2b8b4a6172239ab24a9940946055a19a3205aa45fed056333ee3"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -61,11 +61,11 @@
     },
     "importer_course": {
       "path": "scripts/agent_scripts/comp_import_course_diag.py",
-      "sha256": "96c08ebd73fa1cfd3d6a76c7d747d2d6472094748686fb6fb6547fe10e28d41a"
+      "sha256": "162079deeeb391246b2a45cb7ac7eb6aabda53bbeed472ee31e914fb1e79c20b"
     },
     "score_tool": {
       "path": "scripts/agent_scripts/comp_score.py",
-      "sha256": "5d79fea30cba006f58540936744033490d1e26a213cc44bd283a16805b2f8068"
+      "sha256": "5ab75e8a793f0fe89370bb047b52e5eeb13eb740938b134f1b4c0b03471864ec"
     },
     "scene_part1_v2": {
       "path": "assets/terrain/part1/part1_eval_scene_v2.xml",
@@ -221,7 +221,7 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "eda71681104349b66b0e889b8223fc31983ec52d58f5ea9ce361d1b343a1a3fd"
+      "sha256": "e73b96f280c7057f385325595cf7781e745b8f52825942a86732d24af128a3ae"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
