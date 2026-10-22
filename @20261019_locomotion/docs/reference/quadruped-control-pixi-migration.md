@@ -1,5 +1,11 @@
 # `quadruped_control` 迁移到 Pixi 环境（2026-10-22 实测）
 
+## 仓库位置
+
+- 上游/团队仓库：`N-W-wolf/quadruped_control`（fork 自 `coverMoon/quadruped_control`）；
+- 个人 fork：`What410802/quadruped_control`；本地 clone 的 `origin` 指个人 fork，`upstream` 指团队仓库；
+- P0 迁移提交 `f2b37dc` 已推送到个人 fork。
+
 ## 结论
 
 **可以迁移，且不需要第二套环境。** 当前 Pixi 环境已经有：

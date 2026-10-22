@@ -1,6 +1,6 @@
 # `quadruped_control` 研读与接入方案（2026-10-22）
 
-> 来源：只读仓库 `ReadOnly.d/quadruped_control`（commit `e0fb567`，101 MB，含 .git）；本地工作副本在 `prep.d/quadruped_control_local`（不入库，和只读源分离，便于按需修改）。本文记架构、可借鉴点、接入方式与风险，不复制第三方代码进任务仓库。
+> 来源：只读仓库 `ReadOnly.d/quadruped_control`（commit `e0fb567`，101 MB，含 .git）；本地工作副本在 `prep.d/quadruped_control_local`。P0 已在个人 fork [`What410802/quadruped_control`](https://github.com/What410802/quadruped_control) 推送 `main@f2b37dc`；`origin` 指个人 fork，`upstream` 指 `N-W-wolf/quadruped_control`。本文记架构、可借鉴点、接入方式与风险，不复制第三方代码进任务仓库。
 
 ## 1. 架构结论
 

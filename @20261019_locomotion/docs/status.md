@@ -23,6 +23,7 @@
 - **主目标**：2026-11-04 队内赛（障碍赛 900 + 能力测试 1300，占 70%；7 分钟答辩 30%）。真值见 [`reference/team-race-2026.md`](reference/team-race-2026.md)。
 - **路线位置**：**P0 已完成（2026-10-22）**；**P1 已启动**（训练机 GPU smoke 通过）。
 - **P0 范围**：场地/判定/手动状态机/评测/审计/演示链路闭环；P0 不包含训练。训练机已恢复（RTX 5060 Ti 16 GB），P1 开始使用。
+- **控制仓库独立**：`quadruped_control` 是独立 C++/ROS 仓库；已创建个人 fork [`What410802/quadruped_control`](https://github.com/What410802/quadruped_control)，P0 提交 `f2b37dc` 已推送；本地 clone 的 `origin` 指个人 fork，`upstream` 指 `N-W-wolf/quadruped_control`，`local_readonly` 保留原只读副本。
 - **当前策略**：`flat-ft-2500` 是唯一 baseline；足端 clearance 约 0.022 m，几乎拖地；不能把 zero-shot 障碍结果当验收。
 
 
@@ -48,6 +49,7 @@
 - Part 1 zero-shot 诊断：八项 0 分/0 success；限高杆已改为沿 y 穿门洞，高墙已改为沿 y 跨墙，二者仍是 fail/running；这是 baseline，不是正式分。
 - 桥：blocks fail、bands running；flat 策略无桥面训练，tilt 升高；需要 P1/P2 专项。
 - 训练机 GPU smoke：`black-flat` 512 envs × 11 iter 约 7 s、Iteration time 0.67 s；P1 环境可用。
+- 控制仓库 fork：`https://github.com/What410802/quadruped_control`，P0 分支 `main@f2b37dc` 已推送，未合并 upstream。
 
 ## 5. 待决 / 风险
 
