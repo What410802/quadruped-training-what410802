@@ -46,7 +46,8 @@
 ## 4. 最近验证（2026-10-22）
 
 - P0 自检：`check_plum_geometry` / `check_state_machine` / `check_part2_ability_tasks` / `part1_event_judge` / `audit_deployment` / docs checker 全部通过。
-- **比赛迭代工作流落地（comp/）**：`comp/` 契约（CONTRACT.json，8+6 障碍）、评测协议草稿、诊断评测导入（3 个 `diagnostic` 行、均 0 分）、记分板 dry-run（`comp/SCOREBOARD.md`）、合规检查 PASS（45 维 actor / ±20 N·m 在 25/60 内）、审计哈希登记（`comp/audits/HASHES.json`）。**G1 judge 独立审计未做**；工具在 `scripts/agent_scripts/comp_*.py`（`--self-test` 通过）。见 [`comp/STATUS.md`](../comp/STATUS.md)。
+- **比赛迭代工作流落地（comp/）**：`comp/` 契约（CONTRACT.json，8+6 障碍）、评测协议草稿、诊断评测导入（3 个 `diagnostic` 行、均 0 分）、记分板 dry-run（`comp/SCOREBOARD.md`）、合规检查 PASS（45 维 actor / ±20 N·m 在 25/60 内）、审计哈希登记（`comp/audits/HASHES.json`）。**G1 judge 独立审计已完成：FAIL**（见下条）；工具在 `scripts/agent_scripts/comp_*.py`（`--self-test` 通过）。见 [`comp/STATUS.md`](../comp/STATUS.md)。
+- **G1 judge 独立审计（Codex gpt-6-astra ultra，2026-10-22，新线程/只给路径）**：overall **FAIL**。头号问题：① 未验证真实跨越即成功（六类 Part1 障碍可被"空接触+出口位置"骗过，reviewer 实测 6/6 各 100）；② T 台阶把当前帧接触当历史，逐级通过被漏判；③ 斜坡方向/距离/判罚阶段错误；另有 Part1 计分不完整、Part2 低于门槛给分、attempts/暂停恢复缺失、summary↔trials 无关联、provenance 不完整。修复 P0 后重审；结论与逐项证据见 [`comp/audits/JUDGE_AUDIT.md`](../comp/audits/JUDGE_AUDIT.md)。执行者已实施工具侧修复：`comp_score` 增加 summary↔trials 证据链校验、Part2 最低门槛曲线修正、诊断导入 provenance 诚实化。
 - Part 1 zero-shot 诊断：八项 0 分/0 success；限高杆已改为沿 y 穿门洞，高墙已改为沿 y 跨墙，二者仍是 fail/running；这是 baseline，不是正式分。
 - 桥：blocks fail、bands running；flat 策略无桥面训练，tilt 升高；需要 P1/P2 专项。
 - 训练机 GPU smoke：`black-flat`/`black-rough` 512 envs × 11 iter 分别约 7/12 s；`black-rough` 已加载 stairs/slope 地形，P1 环境可用。
@@ -58,7 +59,7 @@
 ## 5. 待决 / 风险
 
 - **Part 1 是否允许局部自动/固定动作**（规则允许、自动无加分）仍待用户确认；Part 2 已确认纯 RL。
-- **judge 校准**：T 台阶逐级接触、限高杆位移、砂砾坑短边进出、桥面 step 还没有真实手动轨迹标定；当前是 P0 启发式。**G1 独立审计（Codex）未做**；审计前所有评测分数只是 `diagnostic`，不得对外引用，见 [`comp/STATUS.md`](../comp/STATUS.md) 与 [`comp/eval/_protocol.md`](../comp/eval/_protocol.md)。
+- **judge 校准**：T 台阶逐级接触、限高杆位移、砂砾坑短边进出、桥面 step 还没有真实手动轨迹标定；当前是 P0 启发式。**G1 审计已做：FAIL（2026-10-22）**；修复 P0 并重审前，所有评测分数只是 `diagnostic`，不得用于选型或对外引用，见 [`comp/audits/JUDGE_AUDIT.md`](../comp/audits/JUDGE_AUDIT.md)、[`comp/STATUS.md`](../comp/STATUS.md) 与 [`comp/eval/_protocol.md`](../comp/eval/_protocol.md)。
 - **正式整场分**：尚无官方多尝试计分；现有 0/8 只是独立障碍诊断。
 - **P1 训练门槛**：数值安全、foot clearance、地形课程未验证；训练机已可用，GPU smoke 通过，进入 capability task smoke。
 - **部署栈**：主栈 `quadruped_control`；`rl_sar` 保留为 P2 前保底/参考，不在 P1 并行维护；后备 runbook 见 [`reference/rl-sar-fallback.md`](reference/rl-sar-fallback.md)。

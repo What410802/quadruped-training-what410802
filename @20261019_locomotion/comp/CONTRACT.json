@@ -88,7 +88,7 @@
         },
         {
           "id": "bridge_blocks",
-          "name": "木桥 A（方墩）",
+          "name": "木桥（方墩）",
           "per_obstacle_score": 100,
           "success_criteria": "一侧平台经 5 个 0.4x1.0 m 方墩（缝 0.15 m）到另一侧平台",
           "fail_conditions": [
@@ -98,7 +98,7 @@
         },
         {
           "id": "bridge_bands",
-          "name": "木桥 B（窄带）",
+          "name": "木桥（窄带）",
           "per_obstacle_score": 100,
           "success_criteria": "一侧平台经 3 条 0.2x1.5 m 窄带（缝 0.10 m）到另一侧平台",
           "fail_conditions": [
@@ -126,10 +126,6 @@
           "unit": "cm",
           "score_curve": [
             {
-              "value": 0,
-              "points": 0
-            },
-            {
               "value": 10,
               "points": 10
             },
@@ -153,10 +149,6 @@
           "max_score": 200,
           "unit": "cm",
           "score_curve": [
-            {
-              "value": 0,
-              "points": 0
-            },
             {
               "value": 10,
               "points": 10
@@ -182,10 +174,6 @@
           "unit": "deg",
           "score_curve": [
             {
-              "value": 0,
-              "points": 0
-            },
-            {
               "value": 20,
               "points": 10
             },
@@ -209,10 +197,6 @@
           "max_score": 200,
           "unit": "cm",
           "score_curve": [
-            {
-              "value": 0,
-              "points": 0
-            },
             {
               "value": 10,
               "points": 0
@@ -340,6 +324,18 @@
     {
       "id": "Q2",
       "question": "Part 1 允许的局部自动/固定动作是否影响裁判计时口径？",
+      "owner": "organizer",
+      "status": "pending"
+    },
+    {
+      "id": "Q4",
+      "question": "PDF 图 1 的 A/B 标注与方墩/窄带桥的对应关系（当前契约不按 A/B 断言）",
+      "owner": "organizer",
+      "status": "pending"
+    },
+    {
+      "id": "Q5",
+      "question": "限高杆“碰柱/碰梁但横杆未落”是否判失败；高墙/沟壑在未给阈值区间的插值口径",
       "owner": "organizer",
       "status": "pending"
     }

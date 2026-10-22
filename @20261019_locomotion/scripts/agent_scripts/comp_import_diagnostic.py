@@ -27,7 +27,7 @@ from pathlib import Path
 DEFAULT_CONTRACT = "comp/CONTRACT.json"
 DEFAULT_SCENE = "assets/terrain/part1/part1_eval_scene.xml"
 DEFAULT_JUDGE = "scripts/agent_scripts/part1_event_judge.py"
-NOTE = "导入自 run_part1_judged_rollout.py 诊断 JSON；单种子/每障碍一次，非正式协议"
+NOTE = "导入自 run_part1_judged_rollout.py 诊断 JSON；runner 未设种子/扰动，每障碍一次，非正式协议"
 
 
 def sha256_file(path: Path) -> str:
@@ -87,7 +87,7 @@ def main() -> int:
             "part": "part1",
             "obstacle": task,
             "attempt": idx,
-            "seed": 0,
+            "seed": None,
             "start": {"pose": att.get("start"), "note": att.get("note")},
             "commands": [{"cmd": att.get("command"), "seconds": att.get("seconds")}],
             "judge": {"status": status, "failure_reason": failure_reason(status, reason),
@@ -131,15 +131,18 @@ def main() -> int:
         "policy_id": args.policy_id,
         "created_at": _dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "repos": {
-            "task": {"path": str(args.task_root), "commit": head_commit(args.task_root), "dirty": False},
+            "task": {"path": str(args.task_root), "commit": head_commit(args.task_root),
+                     "dirty": True, "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"},
             "training": {"path": "prep.d/training_repo_local（非 git 副本）", "commit": f"unknown:{args.policy_id}",
-                         "dirty": True},
-            "control": {"path": "prep.d/quadruped_control_local", "commit": "unknown:not-used", "dirty": True},
+                         "dirty": True, "note": "训练仓 commit 未在运行时采集"},
+            "control": {"path": "prep.d/quadruped_control_local", "commit": "unknown:not-used", "dirty": True,
+                        "note": "诊断评测未经过控制仓"},
         },
         "policy": {
             "checkpoint": args.policy.name, "checkpoint_sha256": sha256_file(args.policy),
             "exported": args.policy.name, "exported_sha256": sha256_file(args.policy),
             "obs_dim": 45, "action_dim": 12, "policy_dt_ms": 20.0,
+            "checkpoint_note": "原始 checkpoint 未单独保留；sha256 为导出 policy.pt",
         },
         "scenes": {
             "part1": {"file": str(args.scene), "sha256": sha256_file(args.scene)},
@@ -150,10 +153,11 @@ def main() -> int:
         "protocol": {
             "protocol_version": "diagnostic-2026-10-22",
             "diagnostic": True,
-            "seeds": [0],
+            "seeds": [],
             "attempts_part1_total": 3,
             "attempts_part2_per_obstacle": 4,
             "operator": "scripted:run_part1_judged_rollout.py",
+            "seed_control": "none（runner 未设种子/扰动；名义 seed 不应被当作已执行）",
             "start_pose_policy": "per-task diagnostic starts (not yet protocol-frozen)",
         },
         "results": {"trials": "trials.jsonl", "summary": "summary.json"},

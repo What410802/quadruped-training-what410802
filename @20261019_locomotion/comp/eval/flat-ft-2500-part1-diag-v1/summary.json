@@ -109,5 +109,5 @@
     "total": 0
   },
   "grand_total": 0,
-  "notes": "导入自 run_part1_judged_rollout.py 诊断 JSON；单种子/每障碍一次，非正式协议"
+  "notes": "导入自 run_part1_judged_rollout.py 诊断 JSON；runner 未设种子/扰动，每障碍一次，非正式协议"
 }

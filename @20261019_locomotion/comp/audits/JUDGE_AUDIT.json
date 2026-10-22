@@ -1,0 +1,90 @@
+{
+  "gate": "G1",
+  "skill": "comp-eval-audit",
+  "reviewer": {
+    "backend": "codex",
+    "model": "gpt-6-astra",
+    "effort": "ultra",
+    "thread_id": "unavailable-from-bridge",
+    "mode": "fresh-read-only",
+    "date": "2026-10-22"
+  },
+  "scope": [
+    "队内赛.pdf(4页)",
+    "docs/reference/team-race-2026.md",
+    "comp/CONTRACT.md",
+    "comp/CONTRACT.json",
+    "comp/eval/_protocol.md",
+    "docs/training/eval-protocol.md",
+    "docs/training/competition-judge.md",
+    "scripts/agent_scripts/part1_event_judge.py",
+    "scripts/agent_scripts/part1_judge.py",
+    "scripts/agent_scripts/run_part1_judged_rollout.py",
+    "assets/terrain/part1/part1_eval_scene.xml",
+    "assets/terrain/part1/judge_zones.yaml",
+    "assets/terrain/part2/ability_field/part2_ability_field.xml",
+    "assets/terrain/part2/part2_plum_eval_scene.xml",
+    "comp/eval/flat-ft-2500-part1-diag-v1/*",
+    "comp/eval/_calibration/",
+    "prep.d/results/deployment_audit.json",
+    "scripts/agent_scripts/audit_deployment.py",
+    "docs/reference/agent-visual-checklist.md"
+  ],
+  "overall": "FAIL",
+  "checks": {
+    "A1_rule_fidelity": "FAIL",
+    "A2_direction_order": "FAIL",
+    "A3_scoring": "FAIL",
+    "A4_attempts": "FAIL",
+    "B1_illegal_path_scoring": "FAIL",
+    "B2_contact_thresholds": "FAIL",
+    "B3_reset_pause_state": "FAIL",
+    "B4_training_reward_use": "WARN",
+    "C1_protocol_fields": "FAIL",
+    "C2_attempt_logging": "FAIL",
+    "C3_scene_versions": "WARN",
+    "C4_trials_vs_summary": "PASS",
+    "D1_provenance": "FAIL",
+    "D2_evidence_crosscheck": "FAIL",
+    "D3_reproducibility": "FAIL",
+    "E1_actor_inputs": "WARN",
+    "E2_torque": "PASS",
+    "E3_part2_rl_only": "WARN",
+    "E4_world_truth": "PASS",
+    "F1_scope": "WARN",
+    "F2_layout_robustness": "WARN"
+  },
+  "top_score_losing_issues": [
+    "未验证真实跨越就成功：出口坐标/接近杆心即得分，可被绕行、漏必达区、未完成动作利用（A1/B1）",
+    "T 台阶把当前接触当历史：正常逐级通过被漏判、合法侧支路不被接受、部分分缺失（A1/A3）",
+    "斜坡方向/距离/判罚阶段错误：目标变成沿 x 越坐标阈值，规则要求沿坡面长边行走（A2/B2）"
+  ],
+  "ambiguities": [
+    "Q1 Part1 3 次尝试口径",
+    "Q2 T 台阶 75/50 的赛项归属",
+    "Q3 1/2 足触地的瞬时/跨越期语义与限高杆碰柱",
+    "Q4 A/B 桥标注与方墩/窄带对应",
+    "Q5 高墙/沟壑端点分数与稳定重复要求"
+  ],
+  "calibration_min_plan": {
+    "records": 64,
+    "part1": 32,
+    "part2": 24,
+    "session_states": 8,
+    "pass_standard": "success/score/attempt ledger 与人工标签 100% 一致；关键非法得分反例零假阳性"
+  },
+  "usage_decision": {
+    "internal_diagnosis": "WARN",
+    "policy_selection": "FAIL",
+    "external_citation_or_defense": "FAIL"
+  },
+  "executor_actions": [
+    "P0: 重写 judge 成功语义与 part2 evaluator",
+    "P0: comp_score 增加 summary<->trials 证据链强校验（已实施）",
+    "P0: CONTRACT.json Part2 最低门槛曲线修正（已实施）",
+    "P0: AttemptManager 与不覆盖写",
+    "P0: diagnostic 的种子/起点/多仓 provenance 诚实化（已部分实施）",
+    "P1: 接触阈值/逐步累计/标定集 64 条/IMU 姿态来源/动作限幅契约"
+  ],
+  "report": "comp/audits/JUDGE_AUDIT.md"
+}

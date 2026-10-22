@@ -115,8 +115,10 @@ def validate_manifest(manifest: dict, policy_dir: Path) -> list[str]:
     if not protocol.get("protocol_version"):
         _err(errors, "manifest.protocol.protocol_version 缺失")
     seeds = protocol.get("seeds")
-    if not isinstance(seeds, list) or not seeds:
-        _err(errors, "manifest.protocol.seeds 为空")
+    if not isinstance(seeds, list):
+        _err(errors, "manifest.protocol.seeds 不是数组")
+    elif not seeds and not diagnostic:
+        _err(errors, "manifest.protocol.seeds 为空（正式评测必须有种子）")
     if not (manifest.get("judge") or {}).get("version"):
         _err(errors, "manifest.judge.version 缺失")
     results = manifest.get("results") or {}
@@ -129,9 +131,15 @@ def validate_manifest(manifest: dict, policy_dir: Path) -> list[str]:
     return errors
 
 
-def validate_summary(summary: dict, manifest: dict, contract: dict) -> tuple[list[str], list[str]]:
+def validate_summary(summary: dict, manifest: dict, contract: dict,
+                     trials: list[dict] | None = None) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
+    trials = trials or []
+    by_id = {t.get("trial_id"): t for t in trials if t.get("trial_id")}
+    by_obstacle: dict[tuple[str, str], list[dict]] = {}
+    for t in trials:
+        by_obstacle.setdefault((str(t.get("part")), str(t.get("obstacle"))), []).append(t)
     if summary.get("schema_version") != SCHEMA_VERSION:
         _err(errors, "summary.schema_version 不匹配")
     if summary.get("policy_id") != manifest.get("policy_id"):
@@ -163,6 +171,28 @@ def validate_summary(summary: dict, manifest: dict, contract: dict) -> tuple[lis
     for oid in seen1:
         if oid not in p1_obs:
             _err(errors, f"part1 出现契约外障碍: {oid}")
+    for oid, rec in seen1.items():
+        ev = list(rec.get("evidence") or [])
+        obs_trials = by_obstacle.get(("part1", oid), [])
+        succ_trials = [t for t in obs_trials if (t.get("judge") or {}).get("status") == "success"]
+        if rec.get("success"):
+            if not ev:
+                _err(errors, f"part1.{oid} success 缺 evidence trial id")
+            for eid in ev:
+                t = by_id.get(eid)
+                if t is None:
+                    _err(errors, f"part1.{oid} evidence 指向不存在的 trial: {eid}")
+                elif (t.get("judge") or {}).get("status") != "success":
+                    _err(errors, f"part1.{oid} evidence {eid} 的 judge 状态不是 success")
+        else:
+            for eid in ev:
+                t = by_id.get(eid)
+                if t and (t.get("judge") or {}).get("status") == "success":
+                    _err(errors, f"part1.{oid} 标 fail 但 evidence {eid} 是 success")
+            if succ_trials:
+                _err(errors, f"part1.{oid} 标 fail 但 trials 中存在 success 记录")
+        if obs_trials and int(rec.get("attempts_used") or len(obs_trials)) != len(obs_trials):
+            _warn(warnings, f"part1.{oid} attempts 与 trials 条数不一致（diagnostic 常见）")
     all_ok = bool(p1_obs) and all(bool((seen1.get(o) or {}).get("success")) for o in p1_obs)
     bonus = part1.get("return_bonus") or {}
     return_expected = int(bonus.get("score", 0)) if (all_ok and bool(s1.get("return_to_start"))) else 0
@@ -201,6 +231,21 @@ def validate_summary(summary: dict, manifest: dict, contract: dict) -> tuple[lis
     for oid in seen2:
         if oid not in p2_obs:
             _err(errors, f"part2 出现契约外障碍: {oid}")
+    for oid, rec in seen2.items():
+        obs_trials = by_obstacle.get(("part2", oid), [])
+        succ_trials = [t for t in obs_trials
+                       if t.get("success") is True or (t.get("judge") or {}).get("status") == "success"]
+        value = rec.get("best_success_value")
+        if value is None:
+            if succ_trials:
+                _err(errors, f"part2.{oid} best_success_value 为空但 trials 中存在成功记录")
+        else:
+            matched = [t for t in succ_trials
+                       if t.get("difficulty") == value or t.get("value") == value]
+            if not matched:
+                _err(errors, f"part2.{oid} best_success_value={value} 无对应成功 trial")
+        if obs_trials and int(rec.get("attempts_used") or 0) != len(obs_trials):
+            _warn(warnings, f"part2.{oid} attempts 与 trials 条数不一致（diagnostic 常见）")
     if int(s2.get("total") or 0) != sum2:
         _err(errors, f"part2.total={s2.get('total')} 重算为 {sum2}")
     if proto.get("attempts_part2_per_obstacle") not in (None, budget2) and not diagnostic:
@@ -241,6 +286,24 @@ def validate_trials(policy_dir: Path, manifest: dict) -> list[str]:
 
 # ---------------------------------------------------------------- scoreboard
 
+def load_trials(policy_dir: Path, manifest: dict) -> tuple[list[dict], list[str]]:
+    errors: list[str] = []
+    rel = (manifest.get("results") or {}).get("trials")
+    if not rel or not (policy_dir / rel).is_file():
+        return [], errors
+    trials: list[dict] = []
+    with (policy_dir / rel).open("r", encoding="utf-8") as fh:
+        for lineno, line in enumerate(fh, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                trials.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                _err(errors, f"trials 第 {lineno} 行不是 JSON: {exc}")
+    return trials, errors
+
+
 def score_one(policy_dir: Path, contract: dict) -> dict:
     row: dict[str, Any] = {"policy_dir": str(policy_dir), "errors": [], "warnings": []}
     manifest_path = policy_dir / "manifest.json"
@@ -259,7 +322,9 @@ def score_one(policy_dir: Path, contract: dict) -> dict:
     row["policy_id"] = manifest.get("policy_id") or summary.get("policy_id") or policy_dir.name
     row["date"] = str(manifest.get("created_at"))[:10]
     row["errors"] += validate_manifest(manifest, policy_dir)
-    errs, warns = validate_summary(summary, manifest, contract)
+    trials, trial_errors = load_trials(policy_dir, manifest)
+    row["errors"] += trial_errors
+    errs, warns = validate_summary(summary, manifest, contract, trials)
     row["errors"] += errs
     row["warnings"] += warns
     row["errors"] += validate_trials(policy_dir, manifest)
@@ -345,7 +410,7 @@ def _synthetic() -> tuple[dict, dict, dict, dict]:
                   "obstacles": {"a": {"success": True, "score": 100},
                                 "b": {"success": False, "score": 0}},
                   "return_to_start": False, "return_score": 0, "total": 100},
-        "part2": {"obstacles": {"p": {"best_success_value": 20, "best_score": 50, "attempts_used": 2},
+        "part2": {"obstacles": {"p": {"best_success_value": 20, "best_score": 50, "attempts_used": 1},
                                 "q": {"best_success_value": 1, "best_score": 100, "attempts_used": 1}},
                   "total": 150},
         "grand_total": 250,
@@ -355,15 +420,26 @@ def _synthetic() -> tuple[dict, dict, dict, dict]:
 
 def run_self_test() -> int:
     contract, manifest, summary, _ = _synthetic()
+    trials = [
+        {"trial_id": "t-a", "part": "part1", "obstacle": "a", "seed": 0,
+         "judge": {"status": "success"}},
+        {"trial_id": "t-b", "part": "part1", "obstacle": "b", "seed": 0,
+         "judge": {"status": "fail"}},
+        {"trial_id": "t-p", "part": "part2", "obstacle": "p", "seed": 0,
+         "difficulty": 20, "success": True},
+        {"trial_id": "t-q", "part": "part2", "obstacle": "q", "seed": 0,
+         "difficulty": 1, "success": True},
+    ]
+    summary["part1"]["obstacles"]["a"]["evidence"] = ["t-a"]
+    summary["part1"]["obstacles"]["b"]["evidence"] = ["t-b"]
+    assert curve_points([{"value": 10, "points": 10}, {"value": 20, "points": 50}], 5, "cm") == 0
+    assert curve_points([{"value": 10, "points": 10}, {"value": 20, "points": 50}], 20, "cm") == 50
     with tempfile.TemporaryDirectory() as td:
         root = Path(td) / "comp" / "eval" / "selftest-run-v1"
         root.mkdir(parents=True)
         (root / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        (root / "trials.jsonl").write_text("".join(json.dumps(t) + "\n" for t in trials), encoding="utf-8")
         (root / "summary.json").write_text(json.dumps(summary, ensure_ascii=False), encoding="utf-8")
-        (root / "trials.jsonl").write_text(
-            json.dumps({"trial_id": "t1", "part": "part1", "obstacle": "slope", "seed": 0}) + "\n",
-            encoding="utf-8",
-        )
         row = score_one(root, contract)
         assert row["status"] == "valid", row["errors"]
         assert row["grand_total"] == 250, row
@@ -383,12 +459,28 @@ def run_self_test() -> int:
         row = score_one(root, contract)
         assert any("grand_total" in e for e in row["errors"]), row
 
-        # 违规 3：分数曲线不符（Part2 best_score 手改）
+        # 违规 3：Part2 best_score 与曲线不符
         bad3 = json.loads(json.dumps(summary))
         bad3["part2"]["obstacles"]["p"]["best_score"] = 200
         (root / "summary.json").write_text(json.dumps(bad3), encoding="utf-8")
         row = score_one(root, contract)
         assert any("best_score" in e for e in row["errors"]), row
+
+        # 违规 4：summary 报 success 但 trials 里没有 success（证据链断裂）
+        (root / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+        broken = json.loads(json.dumps(trials))
+        broken[0]["judge"]["status"] = "fail"
+        (root / "trials.jsonl").write_text("".join(json.dumps(t) + "\n" for t in broken), encoding="utf-8")
+        row = score_one(root, contract)
+        assert any("part1.a" in e for e in row["errors"]), row
+
+        # 违规 5：Part2 best_success_value 无对应成功 trial
+        (root / "trials.jsonl").write_text("".join(json.dumps(t) + "\n" for t in trials), encoding="utf-8")
+        bad5 = json.loads(json.dumps(trials))
+        bad5[2]["difficulty"] = 15
+        (root / "trials.jsonl").write_text("".join(json.dumps(t) + "\n" for t in bad5), encoding="utf-8")
+        row = score_one(root, contract)
+        assert any("best_success_value" in e for e in row["errors"]), row
     print("comp_score.py self-test: OK")
     return 0
 

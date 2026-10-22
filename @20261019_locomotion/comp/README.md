@@ -76,6 +76,7 @@ pixi run python @20261019_locomotion/scripts/agent_scripts/comp_freeze.py ...（
 
 ## 当前阶段
 
-见 `STATUS.md`。当前是 **C1（评测器 + 待 G1 独立审计）**：
-已有诊断性评测导入（单种子、每障碍一次，标 `diagnostic`），尚无正式协议评测与人工标定集。
-**G1 未过之前，0/8 等诊断数字不能作为策略能力结论，也不能对外引用。**
+见 `STATUS.md`。当前是 **C1（G1 审计 FAIL，待修 judge 后重审）**：
+诊断性评测导入已落地（未控种子、每障碍一次，全部标 `diagnostic`），尚无正式协议评测与人工标定集。
+**G1 未通过之前，0/8 等诊断数字不能作为策略能力结论，也不能对外引用；**
+首轮审计结论与修复清单见 [`audits/JUDGE_AUDIT.md`](audits/JUDGE_AUDIT.md)。

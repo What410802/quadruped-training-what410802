@@ -1,6 +1,6 @@
 {
-  "audited": false,
-  "note": "G1 审计完成后由 /comp-eval-audit 写入 reviewer/threadId/verdict",
+  "audited": true,
+  "note": "G1 已完成（FAIL，2026-10-22）；修复 P0 后需重审；hash 变化即门禁失效",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -26,5 +26,16 @@
       "path": "assets/terrain/part1/judge_zones.yaml",
       "sha256": "53b1f6c0a9bae0cba639747c3400768485a96e1d75de5beb7fc1d69ca263a478"
     }
+  },
+  "audit": {
+    "skill": "comp-eval-audit",
+    "gate": "G1",
+    "reviewer": "codex",
+    "model": "gpt-6-astra",
+    "effort": "ultra",
+    "date": "2026-10-22",
+    "thread_id": "unavailable-from-bridge",
+    "verdict": "FAIL",
+    "report": "comp/audits/JUDGE_AUDIT.md"
   }
 }
