@@ -113,6 +113,9 @@ class Part1Course:
         self.prev_t = float(t)
         self._current_events.append({"t": float(t), "event": "resume",
                                      "pose": list(base_xyz) if base_xyz is not None else None})
+        self.manager.events.append({"t": float(t), "event": "resume",
+                                    "consumes_attempt": False,
+                                    "attempt": self.attempt_no})
 
     def skip_obstacle(self, t: float, name: str) -> None:
         if not self.active:
