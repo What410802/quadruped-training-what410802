@@ -90,3 +90,15 @@
 | P3 | comp_score 不机器复核外部 hash、Part1 final_time、Part2 合法档位 | 已加 `validate_external_evidence`：重算 scenes（含 levels）、judge.file_hashes、contract sha256；校验 Part2 best value 是契约合法档位（bool 只认 1）；从 trials 按 attempt 复算 Part1 final_score/final_time（最高分尝试内最快） |
 | P4 | course runner 的 ground 分类只看 plane | 已扩展：plane / `ground*` 命名 / `trench_bottom` / `level_floor`；V2 单障碍 runner 同步 |
 | 演练 | 需要 pause/resume/abort/stable-stop 的 3-attempt 链路 | 已跑 3 次 pause/resume 协议演练（`config/part1-course-events-pause.json`），stable-stop 由 `StableStopTracker` 自检覆盖；abort 由 course 自检覆盖 |
+
+
+## Flash 验收（第 5 轮）后修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| P3 未接线 | `validate_external_evidence` 定义了但 `score_one` 未调用；level scene 用 `scene` 键被 `_check_hash` 跳过；缺 sha 不报错 | 已接入 `score_one`（传 trials/task_root）；`_check_hash` 支持 `scene` 键；缺 sha256 在非 diagnostic 下报错；新增篡改 hash/非法 Part2 档位/错误 final_time 的自检用例 |
+| P4 未清 | ground 分类只覆盖命名地面，漏 `ramp_blocks_l/r` 非 plane 接近面 | 新增共享 `comp_part1_geom_tags.is_ground_geom()`（plane / floor / ground* / trench_bottom / level_floor / 桥前 ramp），course 与单障碍 runner 共用；conformance 增加"ramp 是 ground、桥/坡/台阶不是 ground"断言 |
+| pause 内 abort 未外传 | 暂停循环里 abort 后 `run_policy_step` 返回 True，外层会以 inactive course 继续 | 暂停循环内检查 `course.active` 并 `return False`；3 次 pause→resume→abort 演练通过（`prep.d/results/part1_course_abort_drill.json`，attempts_used=3/skips=3/recoveries=3） |
+| 状态复位 | `recovery_violation` 未在 begin/abort 复位；resume 未闭合 pause 区间 | 已修：begin/abort 复位；resume 把 `manager.pauses[-1][1]=t` 闭合 |
+| 文案/minor | `export_report.rules.final_time` 写 `min_over_attempts`；全 skipped 时 importer fallback | 已改 `min_duration_among_best_score_attempts`；importer 全 skipped 时保留首 attempt 不崩溃 |
+| 演练 | 需要 pause/resume/abort/stable-stop 3-attempt 链路 | 已跑 pause/resume 3 次完整演练（course diag，attempts_used=3）与 pause→resume→abort 3 次演练；stable-stop 由 `StableStopTracker` 自检覆盖 |

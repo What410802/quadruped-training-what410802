@@ -30,7 +30,7 @@ import numpy as np
 import torch
 
 from comp_part1_course import Part1Course, StableStopTracker
-from comp_part1_geom_tags import GEOM_TAGS
+from comp_part1_geom_tags import GEOM_TAGS, is_ground_geom
 from run_policy_scene import ACTION_SCALE, EFFORT_LIMIT, KD, KP, ScenePolicyRunner
 
 ROOT = Path("@20261019_locomotion")
@@ -67,11 +67,10 @@ class CoursePolicyRunner:
             raise RuntimeError("missing height bar body: use part1_eval_scene_v2.xml")
         self.geom_names = {g: (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "")
                            for g in range(self.model.ngeom)}
-        self.floor_geoms = {g for g in range(self.model.ngeom)
-                            if self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE
-                            or self.geom_names.get(g, "").startswith("ground")
-                            or self.geom_names.get(g, "") in {"trench_bottom", "level_floor",
-                                                              "ramp_blocks_l", "ramp_blocks_r"}}
+        self.floor_geoms = {
+            g for g in range(self.model.ngeom)
+            if is_ground_geom(self.geom_names.get(g, ""),
+                              self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE)}
         self.leg_geoms: dict[str, set[int]] = {}
         for leg in ("FL", "FR", "RL", "RR"):
             body = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"{leg}_foot")

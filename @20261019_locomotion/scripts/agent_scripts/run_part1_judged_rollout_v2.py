@@ -28,7 +28,7 @@ import mujoco
 import numpy as np
 import torch
 
-from comp_part1_geom_tags import GEOM_TAGS
+from comp_part1_geom_tags import GEOM_TAGS, is_ground_geom
 from comp_part1_judge import Part1JudgeV2
 from run_policy_scene import (
     ACTION_SCALE, EFFORT_LIMIT, KD, KP, POLICY_JOINT_ORDER, Q_DEFAULT, ScenePolicyRunner,
@@ -76,10 +76,8 @@ class V2Runner:
             raise RuntimeError(f"missing body {BAR_BODY}: use part1_eval_scene_v2.xml")
         self.floor_geoms = {
             g for g in range(self.model.ngeom)
-            if self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE
-            or (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "").startswith("ground")
-            or (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "")
-            in {"trench_bottom", "level_floor", "ramp_blocks_l", "ramp_blocks_r"}
+            if is_ground_geom(mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "",
+                              self.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE)
         }
         self.geom_names = {
             g: (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "")

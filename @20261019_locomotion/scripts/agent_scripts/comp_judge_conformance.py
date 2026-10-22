@@ -26,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from comp_part1_judge import AttemptManager, Part1JudgeV2  # noqa: E402
-from comp_part1_geom_tags import GEOM_TAGS  # noqa: E402
+from comp_part1_geom_tags import GEOM_TAGS, is_ground_geom  # noqa: E402
 
 LEGS = ("FL", "FR", "RL", "RR")
 
@@ -397,7 +397,7 @@ def test_attempt_manager_rules():
     am.skip(115.0)
     summary = am.summary()
     assert summary["attempts_used"] == 3 and summary["final_score"] == 90.0
-    assert summary["final_time_s"] == 40.0 and summary["recoveries"] == 1
+    assert summary["final_time_s"] == 50.0 and summary["recoveries"] == 1
     assert am.begin(120.0) is False
     print("attempt manager: OK recovery-free / best score / fastest time / 3-attempt cap")
 
@@ -417,7 +417,15 @@ def test_scene_geom_tags_complete():
     missing = [n for n in names if n.startswith(required_prefixes) and n not in GEOM_TAGS]
     assert not missing, f"scene geoms missing from GEOM_TAGS: {missing}"
     assert GEOM_TAGS["bridge_platform_r"] >= {"platform_right", "platform_high"}
-    print(f"scene geom tags: OK ({len(names)} named geoms checked)")
+    # ground classifier (2026-10-23 flash acceptance): approach ramps are ground, while
+    # obstacle surfaces (bridge/slope/steps) must never be classified as ground.
+    assert is_ground_geom("ramp_blocks_l") and is_ground_geom("ramp_blocks_r")
+    assert is_ground_geom("floor", is_plane=True) and is_ground_geom("ground_left")
+    assert is_ground_geom("trench_bottom") and is_ground_geom("level_floor")
+    assert not is_ground_geom("bridge_blocks_0")
+    assert not is_ground_geom("slope_a")
+    assert not is_ground_geom("t_stairs_y_low1")
+    print(f"scene geom tags: OK ({len(names)} named geoms checked, ground classifier OK)")
 
 
 def main() -> None:
