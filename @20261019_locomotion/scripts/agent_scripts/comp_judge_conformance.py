@@ -420,8 +420,8 @@ def test_t_stairs_full_partial_and_history():
         {"x": 1.8, "y": -2.85, "tags": ["step:n:3"]},   # n:2 missing on the way up
         {"x": 1.8, "y": -3.5, "tags": ["step:top"]},
         {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
-        {"x": 1.8, "y": -4.9, "tags": ["step:s:2"]},
-        {"x": 1.8, "y": -5.3, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -4.6, "tags": ["step:s:2"]},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
         {"x": 1.8, "y": -5.9},
     ]
     assert_not_success(feed(Part1JudgeV2(), skipped_level_plus_complete_other), "t_stairs",
@@ -473,12 +473,12 @@ def test_t_stairs_full_partial_and_history():
     def _um(j, x, y, z=0.45, tags=(), ground=()):
         legs = {leg: set(tags) for leg in LEGS}
         return j.update(0.0, (x, y, z), 0.0, foot_tags=legs, ground_feet=set(ground), bar_z=None)
-    for x, y, tags in [(1.8, -5.4, ()), (1.8, -4.9, ("step:s:1",)), (1.8, -4.6, ("step:s:2",)),
+    for x, y, tags in [(1.8, -4.9, ("step:s:1",)), (1.8, -4.6, ("step:s:2",)),
                        (1.8, -4.3, ("step:s:3",)), (1.8, -3.8, ("step:top",)),
-                       (1.8, -4.9, ("step:s:1",)), (1.8, -5.1, ())]:
+                       (1.8, -4.3, ("step:s:3",)), (1.8, -4.9, ("step:s:1",))]:
         _um(j_merge, x, y, tags=tags)
-    # move on the ground inside the zone (partial evidence already registered)
-    _um(j_merge, 1.8, -5.1, ground=("FL", "FR"))
+    # move on the ground INSIDE the zone (partial evidence already registered)
+    _um(j_merge, 1.8, -4.9, ground=("FL", "FR"))
     _um(j_merge, 2.2, -4.6, ground=("FL", "FR"))
     # climb the e arm fully
     for x, y, tags in [(3.0, -3.5, ("step:e:1",)), (2.6, -3.5, ("step:e:2",)),

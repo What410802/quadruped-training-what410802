@@ -232,3 +232,11 @@
 | B2 乱序假成功 | `Slalom._on_sample` 只接受"期望杆"，提前进入未来杆圈不记录；之后补正确顺序仍可 success | 新增 `early_posts` 记录：`idx` 之后任何未来杆的提前到访都记违规；`_check_immediate`/`_check_exit` 要求 `early_posts` 为空，否则 `post_out_of_order`；conformance 增加"提前碰未来杆 + 后续完整顺序"反例 |
 | T 台阶地面蹭级假成功 | B1 在 partial（top+一条完整臂）后关闭地面判罚；机器人可在地面用 2 足蹭 n/e 级，把 partial 升级成 100 | `TStairs._on_sample` 在 `ground_feet` 非空时直接返回，不从"地面蹭级"样本累积 level/top 证据；conformance 增加"partial 后地面蹭第二臂仍只有 50"用例 |
 | conformance | 覆盖补充 | 13 组全绿；随本轮全量重生成四份产物与三份演练、刷新 HASHES |
+
+
+## Flash 复验（第 29 轮）blocker 修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| T 台阶同 zone partial 合并 | 退出 zone 的 partial 已锁定，但同一 zone 内先 s 上/下、再地面移动、再 e 上/下可合并成 100 | `TStairs` 新增 `arms_before_ground`：在 top+≥1 完整臂后首次出现 ≥2 足触地时快照当时的臂证据；`_score_for` 只用快照（无快照则用实时），故"地面重置后的第二臂"不参与满分；conformance 增加"同 zone 地面重置后再爬第二臂仍 50"反例 |
+| 已有连续路径 | s 上 → top → e 下（单次连续）在首次地面接触时两臂均已完整，快照含两臂 → 仍 100 | conformance 的 continuous s-up/e-down 用例保持 PASS |

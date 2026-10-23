@@ -545,7 +545,7 @@ class TStairs(_Obstacle):
         return [t for t in tags if t.startswith("step:")]
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
-        if (len(ground_feet) >= 2 and self.evidence.get("top")
+        if (len(ground_feet) >= 1 and self.evidence.get("top")
                 and len(self._complete_arms()) >= 1
                 and self.evidence.get("arms_before_ground") is None):
             # GLM/flash 2026-10-23: ground contact after a one-arm partial ends that

@@ -25,9 +25,9 @@ import subprocess
 from pathlib import Path
 
 DEFAULT_CONTRACT = "comp/CONTRACT.json"
-DEFAULT_SCENE = "assets/terrain/part1/part1_eval_scene.xml"
-DEFAULT_JUDGE = "scripts/agent_scripts/part1_event_judge.py"
-NOTE = "导入自 run_part1_judged_rollout.py 诊断 JSON；runner 未设种子/扰动，每障碍一次，非正式协议"
+DEFAULT_SCENE = "assets/terrain/part1/part1_eval_scene_v2.xml"
+DEFAULT_JUDGE = "scripts/agent_scripts/comp_part1_judge.py"
+NOTE = "导入自 run_part1_judged_rollout_v2.py 诊断 JSON（V2 judge/scene）；runner 未设种子/扰动，每障碍一次，非正式协议"
 
 
 def sha256_file(path: Path) -> str:
@@ -64,8 +64,9 @@ def main() -> int:
     ap.add_argument("--scene", type=Path, default=Path(DEFAULT_SCENE))
     ap.add_argument("--judge", type=Path, default=Path(DEFAULT_JUDGE))
     ap.add_argument("--operator", default="scripted:run_part1_judged_rollout_v2.py")
-    ap.add_argument("--judge-extra", action="append", default=[], type=Path,
-                    help="额外的 judge/映射文件（如 comp_part1_judge.py、comp_part1_geom_tags.py）")
+    ap.add_argument("--judge-extra", action="append", type=Path,
+                    default=[Path("scripts/agent_scripts/comp_part1_geom_tags.py")],
+                    help="额外的 judge/映射文件（默认 comp_part1_geom_tags.py）")
     ap.add_argument("--task-root", type=Path, default=Path("."))
     ap.add_argument("--part2-scene", type=Path,
                     default=Path("assets/terrain/part2/ability_field/part2_ability_field.xml"))

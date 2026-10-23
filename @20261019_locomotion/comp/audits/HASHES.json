@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T14:27:24+08:00",
+  "generated_at": "2026-10-23T14:35:09+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -9,19 +9,19 @@
     },
     "contract_md": {
       "path": "comp/CONTRACT.md",
-      "sha256": "5de10cc8ca230a98f841737777975a9053c6cfa887df73d8803cc1d325ad1e83"
+      "sha256": "bf65b6eb691373fc55edbc6e64fa3a31b9b8acf2f2881a8d36e39a86d7f342b1"
     },
     "protocol_md": {
       "path": "comp/eval/_protocol.md",
-      "sha256": "1604298aa03bf0b7a1c79308c81d14e1e624472b23a4b46902ef89d5da032fbb"
+      "sha256": "e76d41fb388336011f7fe9d041dd80374a259c5fe2cc68e3c43c6329fdd41cf5"
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "7496f093d244358a60fd6199c233430d4cf3dbbd9f12237f12e0a5f098914c0a"
+      "sha256": "98ee9b965025246d173e40a32df3f656c3214e05bf58672f566c826b9d703929"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "34251880f63f7b03a73e3a44d01247fcc2ae34c3736da847a9b8ffd2199e8b3d"
+      "sha256": "e3be3bb5f537cc048ce595a151468b9f31e43e4c147aaac67256f6c74dc80e2b"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -53,7 +53,7 @@
     },
     "importer_part1": {
       "path": "scripts/agent_scripts/comp_import_diagnostic.py",
-      "sha256": "56ee0ee8eaab663551e62e686d554424501cc5bb1495189731761b590e6ab563"
+      "sha256": "1b578c7be195afb1432ef8af3643860cf1b8e7442540e8a8f098a01fcad593b6"
     },
     "importer_part2": {
       "path": "scripts/agent_scripts/comp_import_part2_diag.py",
@@ -105,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "e702f0f0a571f8bfe2520b8ccebcf48c50b2ecccc3623ff8e406416542baa6df"
+      "sha256": "92786324ab9a256c5cc175f7c6877833b2b77da3aef69cd78206b9f28a3c113d"
     },
     "level_high_platform_10cm": {
       "path": "assets/terrain/part2/levels/high_platform_10cm.xml",

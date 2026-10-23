@@ -71,7 +71,7 @@
 
 | 资产 | 路径 | sha256（2026-10-22） |
 |---|---|---|
-| Part1 评测场景 | `assets/terrain/part1/part1_eval_scene.xml` | `e7b654ad1bcf4638…` |
+| Part1 评测场景 | `assets/terrain/part1/part1_eval_scene_v2.xml`（V2：滑动横杆/命名几何） | 以 `comp/audits/HASHES.json` 当前值为准 |
 | Part1 judge zones | `assets/terrain/part1/judge_zones.yaml` | 待补 |
 | Part2 能力场 | `assets/terrain/part2/ability_field/part2_ability_field.xml` | 待补 |
 | Part2 梅花桩 | `assets/terrain/part2/part2_plum_eval_scene.xml` | 待补 |
