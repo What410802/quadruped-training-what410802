@@ -75,7 +75,7 @@ def build_samples(waypoints: list[dict]) -> list[dict]:
         dur = max(0.2, dist / max(0.05, speed)) if wp.get("speed", 0.4) is not None else 0.5
         n = max(1, int(round(dur / dt)))
         for k in range(n):
-            u = _smooth(k / n)
+            u = k / n   # linear position interpolation -> constant speed, no stop at waypoints
             out.append({
                 "t": t,
                 "x": wp["x"] + (nxt["x"] - wp["x"]) * u,
@@ -232,9 +232,11 @@ def _scene_top_z(scene_path: Path, x: float, y: float) -> float | None:
     mujoco.mj_forward(model, data)
     p = np.array([x, y, 3.0], dtype=np.float64)
     v = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+    geomgroup = np.zeros(6, dtype=np.uint8)
+    geomgroup[0] = 1   # world/terrain only; the robot geoms live in groups 1/3
     g = np.array([-1], dtype=np.int32)
     n = np.zeros(3)
-    dist = mujoco.mj_ray(model, data, p, v, None, 1, -1, g, n)
+    dist = mujoco.mj_ray(model, data, p, v, geomgroup, 1, -1, g, n)
     if dist < 0:
         return None
     return float(3.0 - dist)

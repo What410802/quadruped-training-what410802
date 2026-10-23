@@ -704,9 +704,9 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.933,
+          "z": 0.42,
           "yaw": 0.0,
-          "pitch": 13.4,
+          "pitch": -1.8,
           "roll": 0.0,
           "speed": 0.54,
           "hold": 0.0
@@ -743,8 +743,8 @@
         }
       ],
       "title": "Part2 high_platform",
-      "frames": 280,
-      "duration_s": 5.58,
+      "frames": 275,
+      "duration_s": 5.48,
       "video": "../prep.d/videos/trunk_ref/p2_high_platform.mp4"
     },
     "stairs": {
@@ -755,9 +755,9 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.933,
+          "z": 0.42,
           "yaw": 0.0,
-          "pitch": 13.7,
+          "pitch": -3.4,
           "roll": 0.0,
           "speed": 0.54,
           "hold": 0.0
@@ -804,8 +804,8 @@
         }
       ],
       "title": "Part2 stairs",
-      "frames": 502,
-      "duration_s": 10.02,
+      "frames": 498,
+      "duration_s": 9.94,
       "video": "../prep.d/videos/trunk_ref/p2_stairs.mp4"
     },
     "slope": {
@@ -816,9 +816,9 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.933,
+          "z": 0.42,
           "yaw": 0.0,
-          "pitch": 15.1,
+          "pitch": -2.9,
           "roll": 0.0,
           "speed": 0.54,
           "hold": 0.0
@@ -865,8 +865,8 @@
         }
       ],
       "title": "Part2 slope",
-      "frames": 548,
-      "duration_s": 10.94,
+      "frames": 543,
+      "duration_s": 10.84,
       "video": "../prep.d/videos/trunk_ref/p2_slope.mp4"
     },
     "high_wall": {
