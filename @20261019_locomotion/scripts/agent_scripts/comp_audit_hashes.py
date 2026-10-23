@@ -106,7 +106,10 @@ def main() -> int:
                   "scripts/agent_scripts/check_calibration.py",
                   "comp/eval/_calibration/LABELS_PROVENANCE.md",
                   "comp/audits/G1_SELFCHECK.md",
-                  "comp/audits/C1_CALIBRATION_REPORT.md"):
+                  "comp/audits/C1_CALIBRATION_REPORT.md",
+                  "scripts/agent_scripts/visualize_trunk_reference.py",
+                  "comp/eval/trunk_ref_plan.json",
+                  "comp/PLAN_TRUNK_REFERENCE.md"):
         if not (ROOT / extra).is_file():
             continue
         out["objects"]["extra_" + (ROOT / extra).stem] = {"path": extra, "sha256": sha256(ROOT / extra)}

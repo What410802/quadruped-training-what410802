@@ -1,0 +1,946 @@
+{
+  "part1": {
+    "height_bar": {
+      "waypoints": [
+        {
+          "x": 5.7,
+          "y": -10.6,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -9.7,
+          "z": 0.42,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -9.3,
+          "z": 0.27,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -8.7,
+          "z": 0.27,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -8.2,
+          "z": 0.4,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -7.9,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part1 height_bar",
+      "frames": 466,
+      "duration_s": 9.3,
+      "video": "../prep.d/videos/trunk_ref/p1_height_bar.mp4"
+    },
+    "high_wall": {
+      "waypoints": [
+        {
+          "x": 1.8,
+          "y": -8.0,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -7.5,
+          "z": 0.48,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -7.15,
+          "z": 0.7,
+          "yaw": 90,
+          "pitch": -18,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -6.85,
+          "z": 0.72,
+          "yaw": 90,
+          "pitch": -10,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -6.55,
+          "z": 0.5,
+          "yaw": 90,
+          "pitch": 8,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -6.0,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part1 high_wall",
+      "frames": 338,
+      "duration_s": 6.74,
+      "video": "../prep.d/videos/trunk_ref/p1_high_wall.mp4"
+    },
+    "bridge_blocks": {
+      "waypoints": [
+        {
+          "x": 0.8,
+          "y": 0.0,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 1.4,
+          "y": 0.0,
+          "z": 0.55,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 2.3,
+          "y": 0.0,
+          "z": 0.55,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 4.0,
+          "y": 0.0,
+          "z": 0.55,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 5.5,
+          "y": 0.0,
+          "z": 0.55,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 6.4,
+          "y": 0.0,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part1 bridge_blocks",
+      "frames": 860,
+      "duration_s": 17.18,
+      "video": "../prep.d/videos/trunk_ref/p1_bridge_blocks.mp4"
+    },
+    "bridge_bands": {
+      "waypoints": [
+        {
+          "x": 5.7,
+          "y": -4.4,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -3.8,
+          "z": 0.55,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -3.0,
+          "z": 0.55,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -2.0,
+          "z": 0.55,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -1.2,
+          "z": 0.55,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -0.6,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part1 bridge_bands",
+      "frames": 621,
+      "duration_s": 12.4,
+      "video": "../prep.d/videos/trunk_ref/p1_bridge_bands.mp4"
+    },
+    "gravel_pit": {
+      "waypoints": [
+        {
+          "x": 3.6,
+          "y": -12.5,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 4.6,
+          "y": -12.5,
+          "z": 0.57,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 5.8,
+          "y": -12.5,
+          "z": 0.57,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 5.8,
+          "y": -11.5,
+          "z": 0.57,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 5.8,
+          "y": -10.6,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part1 gravel_pit",
+      "frames": 695,
+      "duration_s": 13.88,
+      "video": "../prep.d/videos/trunk_ref/p1_gravel_pit.mp4"
+    },
+    "t_stairs": {
+      "waypoints": [
+        {
+          "x": 1.8,
+          "y": -5.4,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -4.95,
+          "z": 0.55,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -4.6,
+          "z": 0.65,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.22,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -4.2,
+          "z": 0.78,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -3.85,
+          "z": 0.85,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.18,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -3.5,
+          "z": 0.85,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.15,
+          "hold": 0.0
+        },
+        {
+          "x": 2.3,
+          "y": -3.5,
+          "z": 0.8,
+          "yaw": 0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        },
+        {
+          "x": 2.8,
+          "y": -3.5,
+          "z": 0.6,
+          "yaw": 0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 3.3,
+          "y": -3.5,
+          "z": 0.45,
+          "yaw": 0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part1 t_stairs",
+      "frames": 838,
+      "duration_s": 16.74,
+      "video": "../prep.d/videos/trunk_ref/p1_t_stairs.mp4"
+    },
+    "slope": {
+      "waypoints": [
+        {
+          "x": 5.2,
+          "y": -6.9,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 5.2,
+          "y": -6.5,
+          "z": 0.62,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 5.2,
+          "y": -5.7,
+          "z": 0.62,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 5.2,
+          "y": -4.9,
+          "z": 0.62,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 5.2,
+          "y": -4.2,
+          "z": 0.62,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 5.2,
+          "y": -3.8,
+          "z": 0.62,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part1 slope",
+      "frames": 399,
+      "duration_s": 7.96,
+      "video": "../prep.d/videos/trunk_ref/p1_slope.mp4"
+    },
+    "slalom": {
+      "waypoints": [
+        {
+          "x": 1.8,
+          "y": -10.1,
+          "z": 0.45,
+          "yaw": 180,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 1.7,
+          "y": -10.5,
+          "z": 0.45,
+          "yaw": 180,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 1.9,
+          "y": -11.5,
+          "z": 0.45,
+          "yaw": 180,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 1.7,
+          "y": -12.5,
+          "z": 0.45,
+          "yaw": 180,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 1.55,
+          "y": -12.75,
+          "z": 0.45,
+          "yaw": 135,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 2.2,
+          "y": -12.6,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 2.8,
+          "y": -12.5,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 3.2,
+          "y": -12.5,
+          "z": 0.45,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part1 slalom",
+      "frames": 694,
+      "duration_s": 13.86,
+      "video": "../prep.d/videos/trunk_ref/p1_slalom.mp4"
+    }
+  },
+  "part2": {
+    "high_platform": {
+      "level": 20,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_platform_20cm.xml",
+      "waypoints": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 1.9,
+          "y": 0.0,
+          "z": 0.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 2.4,
+          "y": 0.0,
+          "z": 0.85,
+          "yaw": 0.0,
+          "pitch": -15,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 2.8,
+          "y": 0.0,
+          "z": 0.85,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.15,
+          "hold": 0.5
+        }
+      ],
+      "title": "Part2 high_platform",
+      "frames": 430,
+      "duration_s": 8.58,
+      "video": "../prep.d/videos/trunk_ref/p2_high_platform.mp4"
+    },
+    "stairs": {
+      "level": 15,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/stairs_15cm.xml",
+      "waypoints": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 1.7,
+          "y": 0.0,
+          "z": 0.55,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.3,
+          "hold": 0.0
+        },
+        {
+          "x": 2.2,
+          "y": 0.0,
+          "z": 0.65,
+          "yaw": 0.0,
+          "pitch": -12,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 2.6,
+          "y": 0.0,
+          "z": 0.75,
+          "yaw": 0.0,
+          "pitch": -12,
+          "roll": 0.0,
+          "speed": 0.22,
+          "hold": 0.0
+        },
+        {
+          "x": 3.2,
+          "y": 0.0,
+          "z": 0.78,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.3
+        }
+      ],
+      "title": "Part2 stairs",
+      "frames": 532,
+      "duration_s": 10.62,
+      "video": "../prep.d/videos/trunk_ref/p2_stairs.mp4"
+    },
+    "slope": {
+      "level": 30,
+      "unit": "deg",
+      "scene": "assets/terrain/part2/levels/slope_30deg.xml",
+      "waypoints": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 1.6,
+          "y": 0.0,
+          "z": 0.55,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 2.2,
+          "y": 0.0,
+          "z": 0.9,
+          "yaw": 0.0,
+          "pitch": -20,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 2.8,
+          "y": 0.0,
+          "z": 1.15,
+          "yaw": 0.0,
+          "pitch": -20,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        },
+        {
+          "x": 3.1,
+          "y": 0.0,
+          "z": 1.2,
+          "yaw": 0.0,
+          "pitch": 0,
+          "roll": 0.0,
+          "speed": 0.15,
+          "hold": 0.3
+        }
+      ],
+      "title": "Part2 slope",
+      "frames": 520,
+      "duration_s": 10.38,
+      "video": "../prep.d/videos/trunk_ref/p2_slope.mp4"
+    },
+    "high_wall": {
+      "level": 20,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/high_wall_20cm.xml",
+      "waypoints": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.4,
+          "hold": 0.0
+        },
+        {
+          "x": 2.0,
+          "y": 0.0,
+          "z": 0.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 2.5,
+          "y": 0.0,
+          "z": 0.72,
+          "yaw": 0.0,
+          "pitch": -22,
+          "roll": 0.0,
+          "speed": 0.28,
+          "hold": 0.0
+        },
+        {
+          "x": 2.9,
+          "y": 0.0,
+          "z": 0.72,
+          "yaw": 0.0,
+          "pitch": 0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 3.3,
+          "y": 0.0,
+          "z": 0.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part2 high_wall",
+      "frames": 490,
+      "duration_s": 9.78,
+      "video": "../prep.d/videos/trunk_ref/p2_high_wall.mp4"
+    },
+    "trench": {
+      "level": 20,
+      "unit": "cm",
+      "scene": "assets/terrain/part2/levels/trench_20cm.xml",
+      "waypoints": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.45,
+          "hold": 0.0
+        },
+        {
+          "x": 2.1,
+          "y": 0.0,
+          "z": 0.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.5,
+          "hold": 0.0
+        },
+        {
+          "x": 2.5,
+          "y": 0.0,
+          "z": 0.6,
+          "yaw": 0.0,
+          "pitch": -8,
+          "roll": 0.0,
+          "speed": 0.55,
+          "hold": 0.1
+        },
+        {
+          "x": 2.9,
+          "y": 0.0,
+          "z": 0.5,
+          "yaw": 0.0,
+          "pitch": 0,
+          "roll": 0.0,
+          "speed": 0.45,
+          "hold": 0.0
+        },
+        {
+          "x": 3.3,
+          "y": 0.0,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.2,
+          "hold": 0.0
+        }
+      ],
+      "title": "Part2 trench",
+      "frames": 361,
+      "duration_s": 7.2,
+      "video": "../prep.d/videos/trunk_ref/p2_trench.mp4"
+    },
+    "plum": {
+      "level": 1,
+      "unit": "bool",
+      "scene": "assets/terrain/part2/part2_plum_eval_scene.xml",
+      "waypoints": [
+        {
+          "x": 0.4,
+          "y": 0.4,
+          "z": 0.45,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.35,
+          "hold": 0.0
+        },
+        {
+          "x": 1.0,
+          "y": 0.4,
+          "z": 0.6,
+          "yaw": 0.0,
+          "pitch": -8,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 1.6,
+          "y": 0.4,
+          "z": 0.65,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 2.2,
+          "y": 0.4,
+          "z": 0.65,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.25,
+          "hold": 0.0
+        },
+        {
+          "x": 2.8,
+          "y": 0.4,
+          "z": 0.65,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.15,
+          "hold": 0.3
+        }
+      ],
+      "title": "Part2 plum",
+      "frames": 463,
+      "duration_s": 9.24,
+      "video": "../prep.d/videos/trunk_ref/p2_plum.mp4"
+    }
+  }
+}

@@ -7,7 +7,8 @@
 
 - **stage**：**C1 完成（PASS）**；G1 评测器复验进行中（BYOK flash→pro→GLM；Codex 未调用）。
 - **deadline**：2026-11-04 晚。
-- **next**：G1 reviewer 链 PASS 后冻结 judge → C2 基线评测 + 参考轨迹策略训练（先本地躯干可视化，用户确认后开训）。
+- **next**：用户 2026-10-23 选 **A**：G1 保持未冻结（`audited=false/pending`），先做参考轨迹训练；
+  trunk-only 可视化已生成（`prep.d/videos/trunk_ref/`），等用户检查；确认后定 reward 并开训。G1 待训练出真实成功 rollout 后补 PASS/冻结。
 - **blockers**：无已确认 scorer blocker。G1 残余：砂砾坑真实坑体/碎木未 recut；Part2 官方能力场未逐档核对；
   限高杆 under-bar 用 base z 代理；真实成功 rollout 缺失（本地策略全失败）；正式手动 3 次整场演练视频未补；
   course runner 为脚本化诊断链路；slalom 终点圆与最后一根杆在场景显示上重叠（judge 已要求离开最后一杆半径后才算终点）。
