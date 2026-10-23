@@ -430,46 +430,228 @@ RULE_P1 = {
 }
 
 
-def _svg_path_card(path: Path, title: str, subtitle: str, samples: list[dict],
-                   verdict: str, detail_lines: list[str], zones: list[tuple] = ()) -> None:
+def _world_footprints(scene_path, prefixes=None, exclude=("level_floor", "floor", "plum_floor")):
+    """Project world-body geoms to x-y footprints for the SVG rulecards."""
+    m = mujoco.MjModel.from_xml_path(str(scene_path))
+    out = []
+    for g in range(m.ngeom):
+        if int(m.geom_bodyid[g]) != 0:
+            continue
+        name = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, g) or ""
+        if name in exclude:
+            continue
+        if prefixes is not None and not any(name.startswith(p) for p in prefixes):
+            continue
+        if int(m.geom_type[g]) == int(mujoco.mjtGeom.mjGEOM_PLANE):
+            continue
+        pos = np.asarray(m.geom_pos[g], dtype=float)
+        size = np.asarray(m.geom_size[g], dtype=float)
+        typ = int(m.geom_type[g])
+        if typ == int(mujoco.mjtGeom.mjGEOM_BOX):
+            R = np.zeros(9)
+            mujoco.mju_quat2Mat(R, np.asarray(m.geom_quat[g], dtype=float))
+            R = R.reshape(3, 3)
+            pts = []
+            for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                q = pos + R @ np.array([sx * size[0], sy * size[1], 0.0])
+                pts.append((float(q[0]), float(q[1])))
+            out.append({"kind": "poly", "pts": pts, "name": name, "z": float(pos[2]),
+                        "top": float(pos[2] + abs(R[2, 2]) * size[2] if abs(R[2, 2]) < 1 else size[2])})
+        elif typ in (int(mujoco.mjtGeom.mjGEOM_CYLINDER), int(mujoco.mjtGeom.mjGEOM_CAPSULE),
+                     int(mujoco.mjtGeom.mjGEOM_SPHERE)):
+            out.append({"kind": "circle", "c": (float(pos[0]), float(pos[1])),
+                        "r": float(max(size[0], size[1])), "name": name, "z": float(pos[2])})
+    return out
+
+
+def _bounds(samples, geoms, zones, goals):
     xs = [s.get("x", 0.0) for s in samples]
     ys = [s.get("y", 0.0) for s in samples]
-    x0, x1 = min(xs) - 0.5, max(xs) + 0.5
-    y0, y1 = min(ys) - 0.5, max(ys) + 0.5
-    W, H = 900, 640
-    def sx(x): return 60 + (x - x0) / max(1e-6, x1 - x0) * (W - 120)
-    def sy(y): return H - 60 - (y - y0) / max(1e-6, y1 - y0) * (H - 180)
+    for g in geoms:
+        if g["kind"] == "poly":
+            xs.extend(p[0] for p in g["pts"])
+            ys.extend(p[1] for p in g["pts"])
+        else:
+            xs.extend([g["c"][0] - g["r"], g["c"][0] + g["r"]])
+            ys.extend([g["c"][1] - g["r"], g["c"][1] + g["r"]])
+    for z in zones:
+        xs.extend([z[0], z[1]])
+        ys.extend([z[2], z[3]])
+    for goal in goals:
+        xs.extend([goal[0], goal[1]])
+        ys.extend([goal[2], goal[3]])
+    return min(xs) - 0.4, max(xs) + 0.4, min(ys) - 0.4, max(ys) + 0.4
+
+
+def _svg_path_card(path: Path, title: str, subtitle: str, samples: list[dict],
+                   verdict: str, detail_lines: list[str], zones: list[tuple] = (),
+                   geoms: list[dict] = (), key_lines: list[str] = (),
+                   z_lines: list[tuple] = (), goals: list[tuple] = ()) -> None:
+    x0, x1, y0, y1 = _bounds(samples, geoms, zones, goals)
+    W, H = 1000, 780
+    PX0, PX1, PY0, PY1 = 70, 930, 110, 470
+    def sx(x): return PX0 + (x - x0) / max(1e-6, x1 - x0) * (PX1 - PX0)
+    def sy(y): return PY1 - (y - y0) / max(1e-6, y1 - y0) * (PY1 - PY0)
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">',
              '<rect width="100%" height="100%" fill="white"/>',
-             f'<text x="30" y="32" font-size="20" font-family="sans-serif" font-weight="bold">{title}</text>',
-             f'<text x="30" y="56" font-size="14" font-family="sans-serif" fill="#444">{subtitle}</text>',
-             f'<text x="30" y="80" font-size="16" font-family="sans-serif" fill="{"#0a7" if verdict=="success" else "#c22"}">judge verdict: {verdict}</text>']
-    for (zx0, zx1, zy0, zy1, name) in zones:
-        parts.append(f'<rect x="{sx(zx0):.1f}" y="{sy(zy1):.1f}" width="{sx(zx1)-sx(zx0):.1f}" height="{sy(zy0)-sy(zy1):.1f}" fill="none" stroke="#888" stroke-dasharray="6,4"/>')
-        parts.append(f'<text x="{sx(zx0)+4:.1f}" y="{sy(zy1)-4:.1f}" font-size="12" font-family="sans-serif" fill="#888">{name}</text>')
+             f'<text x="30" y="34" font-size="20" font-family="sans-serif" font-weight="bold">{title}</text>',
+             f'<text x="30" y="58" font-size="13" font-family="sans-serif" fill="#444">{subtitle}</text>',
+             f'<text x="30" y="84" font-size="17" font-family="sans-serif" font-weight="bold" fill="{"#0a7" if verdict=="success" else "#c22"}">judge verdict: {verdict}</text>',
+             f'<rect x="{PX0}" y="{PY0}" width="{PX1-PX0}" height="{PY1-PY0}" fill="#fafafa" stroke="#ccc"/>']
+    for z in zones:
+        parts.append(f'<rect x="{sx(z[0]):.1f}" y="{sy(z[3]):.1f}" width="{sx(z[1])-sx(z[0]):.1f}" height="{sy(z[2])-sy(z[3]):.1f}" fill="none" stroke="#999" stroke-dasharray="6,4"/>')
+        parts.append(f'<text x="{sx(z[0])+4:.1f}" y="{sy(z[3])-4:.1f}" font-size="11" font-family="sans-serif" fill="#999">{z[4] if len(z)>4 else "zone"}</text>')
+    for goal in goals:
+        parts.append(f'<rect x="{sx(goal[0]):.1f}" y="{sy(goal[3]):.1f}" width="{sx(goal[1])-sx(goal[0]):.1f}" height="{sy(goal[2])-sy(goal[3]):.1f}" fill="#2a7a2a" fill-opacity="0.07" stroke="#2a7a2a" stroke-dasharray="4,3"/>')
+        parts.append(f'<text x="{sx(goal[0])+4:.1f}" y="{sy(goal[3])+14:.1f}" font-size="11" font-family="sans-serif" fill="#2a7a2a">{goal[4] if len(goal)>4 else "goal"}</text>')
+    for g in geoms:
+        if g["kind"] == "poly":
+            pts = " ".join(f"{sx(x):.1f},{sy(y):.1f}" for x, y in g["pts"])
+            parts.append(f'<polygon points="{pts}" fill="#d9d0b8" fill-opacity="0.85" stroke="#8a7f66" stroke-width="1"/>')
+        else:
+            parts.append(f'<circle cx="{sx(g["c"][0]):.1f}" cy="{sy(g["c"][1]):.1f}" r="{max(3.0, (sx(g["c"][0]+g["r"])-sx(g["c"][0]))):.1f}" fill="#b58b5a" fill-opacity="0.8" stroke="#7a5a35"/>')
     pts = " ".join(f"{sx(s.get('x',0)):.1f},{sy(s.get('y',0)):.1f}" for s in samples)
     parts.append(f'<polyline points="{pts}" fill="none" stroke="#2463eb" stroke-width="3"/>')
-    for i, s in enumerate(samples):
-        color = "#c22" if s.get("ground") else "#2463eb"
-        parts.append(f'<circle cx="{sx(s.get("x",0)):.1f}" cy="{sy(s.get("y",0)):.1f}" r="6" fill="{color}"/>')
+    for i, smp in enumerate(samples):
+        color = "#c22" if smp.get("ground") else "#2463eb"
+        parts.append(f'<circle cx="{sx(smp.get("x",0)):.1f}" cy="{sy(smp.get("y",0)):.1f}" r="6" fill="{color}"/>')
         label = str(i + 1)
-        tags = s.get("tags") or []
+        tags = smp.get("tags") or []
         if tags:
             label += ":" + ",".join(tags)
-        if s.get("ground"):
-            label += " G:" + ",".join(s["ground"])
-        parts.append(f'<text x="{sx(s.get("x",0))+8:.1f}" y="{sy(s.get("y",0))-8:.1f}" font-size="11" font-family="monospace" fill="#333">{label}</text>')
-    for i, line in enumerate(detail_lines[:6]):
-        parts.append(f'<text x="30" y="{H-120+i*18}" font-size="12" font-family="monospace" fill="#333">{line}</text>')
+        if smp.get("ground"):
+            label += " G:" + ",".join(smp["ground"])
+        parts.append(f'<text x="{sx(smp.get("x",0))+8:.1f}" y="{sy(smp.get("y",0))-8:.1f}" font-size="11" font-family="monospace" fill="#333">{label}</text>')
+    parts.append(f'<text x="{sx(samples[0].get("x",0))-6:.1f}" y="{sy(samples[0].get("y",0))+18:.1f}" font-size="12" font-family="sans-serif" fill="#0a7">IN</text>')
+    parts.append(f'<text x="{sx(samples[-1].get("x",0))-8:.1f}" y="{sy(samples[-1].get("y",0))-14:.1f}" font-size="12" font-family="sans-serif" fill="#c22">OUT</text>')
+    # z profile subplot
+    ZY0, ZY1 = 500, 585
+    zs = [float(s.get("z", 0.45)) for s in samples]
+    bars = [s.get("bar_z") for s in samples]
+    zmin = min(zs + [b for b in bars if b is not None] + [v for v, _ in z_lines] or [0.0])
+    zmax = max(zs + [b for b in bars if b is not None] + [v for v, _ in z_lines] or [1.0])
+    zmin, zmax = zmin - 0.05, zmax + 0.05
+    def zy(z): return ZY1 - (z - zmin) / max(1e-6, zmax - zmin) * (ZY1 - ZY0)
+    def zx(i): return PX0 + (i / max(1, len(samples) - 1)) * (PX1 - PX0)
+    parts.append(f'<text x="30" y="{ZY0-6}" font-size="12" font-family="sans-serif" fill="#444">base height z (blue) / bar z (orange) vs sample index; dashed = judge threshold</text>')
+    parts.append(f'<rect x="{PX0}" y="{ZY0}" width="{PX1-PX0}" height="{ZY1-ZY0}" fill="#fafafa" stroke="#ccc"/>')
+    for v, lab in z_lines:
+        parts.append(f'<line x1="{PX0}" y1="{zy(v):.1f}" x2="{PX1}" y2="{zy(v):.1f}" stroke="#c22" stroke-dasharray="5,3"/>')
+        parts.append(f'<text x="{PX0+4}" y="{zy(v)-3:.1f}" font-size="10" font-family="monospace" fill="#c22">{lab} {v:.2f}</text>')
+    zpts = " ".join(f"{zx(i):.1f},{zy(z):.1f}" for i, z in enumerate(zs))
+    parts.append(f'<polyline points="{zpts}" fill="none" stroke="#2463eb" stroke-width="2"/>')
+    bpts = [(i, b) for i, b in enumerate(bars) if b is not None]
+    if bpts:
+        bstr = " ".join(f"{zx(i):.1f},{zy(b):.1f}" for i, b in bpts)
+        parts.append(f'<polyline points="{bstr}" fill="none" stroke="#d9822b" stroke-width="2" stroke-dasharray="4,2"/>')
+    # bottom text blocks
+    ty = 615
+    parts.append(f'<text x="30" y="{ty}" font-size="12" font-family="sans-serif" font-weight="bold" fill="#333">judge evidence（规则程序实际用到的证据）</text>')
+    for i, line in enumerate(detail_lines[:4]):
+        parts.append(f'<text x="30" y="{ty+20+i*18}" font-size="11" font-family="monospace" fill="#333">{_esc(line[:150])}</text>')
+    ty2 = ty + 100
+    parts.append(f'<text x="30" y="{ty2}" font-size="12" font-family="sans-serif" font-weight="bold" fill="#333">KEY RULE / 差异点（判 success/fail 的依据）</text>')
+    for i, line in enumerate(key_lines[:5]):
+        parts.append(f'<text x="30" y="{ty2+20+i*18}" font-size="11" font-family="sans-serif" fill="#333">{_esc(line[:120])}</text>')
+    parts.append(f'<text x="30" y="{H-14}" font-size="11" font-family="sans-serif" fill="#777">足端 tag 只表示"接触了哪个表面"；完成判定还看 base 轨迹/高度/时序/入口-出口方向，见上方证据与规则。</text>')
     parts.append('</svg>')
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(parts), encoding="utf-8")
 
 
+def _esc(text: str) -> str:
+    return (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;"))
+
+
+P1_GEOM_PREFIXES = {
+    "height_bar": ("height_bar_post",),
+    "high_wall": ("high_wall",),
+    "bridge_blocks": ("bridge_blocks", "bridge_platform_r", "ramp_blocks"),
+    "bridge_bands": ("bridge_bands", "bridge_"),
+    "gravel_pit": ("gravel_pit",),
+    "t_stairs": ("t_stairs",),
+    "slope": ("slope_",),
+    "slalom": (),
+}
+
+P1_KEY = {
+    "height_bar": {
+        "success": ["成功：从门洞下方通过（基座穿过 y 区间），横杆保持未掉落（bar_z≈0.325）；碰杆/擦杆不算失败。",
+                    "失败例：横杆被顶落到低位（bar_z 0.20）或基座未穿过门洞。",
+                    "本卡差异：bar_z 时序 + 是否穿过门洞；不是靠足端接触判定。"],
+        "fail": ["失败例：横杆被顶落到低位（bar_z 0.20）或基座未穿过门洞。",
+                 "对照 success 卡：唯一差异是 bar_z 从 0.325 掉到 0.20。",
+                 "本卡差异：bar_z 时序 + 是否穿过门洞；不是靠足端接触判定。"],
+    },
+    "high_wall": {
+        "success": ["成功：爬墙时有墙 tag 接触、max_z_near≥max(wall_h+0.10,0.55)，越过 x≥2.30 后合法退出。",
+                    "失败例：从地面高度直接穿墙（无墙接触、无爬高）。",
+                    "本卡差异：墙接触 + 近墙最大高度；不是只看 xy 路径。"],
+        "fail": ["失败例：从地面高度直接穿墙（无墙接触、无爬高）。",
+                 "对照 success 卡：路径相同，但 z/墙接触证据不同。",
+                 "本卡差异：墙接触 + 近墙最大高度；不是只看 xy 路径。"],
+    },
+    "bridge_blocks": {
+        "success": ["成功：西平台→方墩→东平台，足在 bridge/platform 上，全程无 ≥2 足触地，从东侧合法退出。",
+                    "失败例：中途落坑（某采样 ≥2 足触地）。",
+                    "本卡差异：平台/桥面接触 + 无触地 + 东侧出口。"],
+        "fail": ["失败例：中途落坑（某采样 ≥2 足触地）。",
+                 "对照 success 卡：路径相同，但轨迹中段出现地面足。",
+                 "本卡差异：平台/桥面接触 + 无触地 + 东侧出口。"],
+    },
+    "bridge_bands": {
+        "success": ["成功：南低平台→窄带→北高平台，足在 band/platform 上，从北侧退出。",
+                    "失败例：中途落带下（≥2 足地面）。",
+                    "本卡差异：窄带接触 + 无触地 + 南进北出。"],
+        "fail": ["失败例：中途落带下（≥2 足地面）。",
+                 "对照 success 卡：路径相同，但轨迹中段出现地面足。",
+                 "本卡差异：窄带接触 + 无触地 + 南进北出。"],
+    },
+    "gravel_pit": {
+        "success": ["成功：从短边（南 -y）进入坑、坑内≥3 次 gravel 接触、从对侧短边（北 +y）离开，base 距北短边≤0.35 m；出坑后落地不判罚。",
+                    "失败例：从长边（-x/+x）进入（wrong side）——即使穿过坑也不成立。",
+                    "本卡差异：入口/出口在短边 vs 长边；坑的几何与方向见上方脚印。"],
+        "fail": ["失败例：从长边（-x/+x）进入（wrong side）——即使穿过坑也不成立。",
+                 "对照 success 卡：路径形状相近，但入口/出口边不同（长边 vs 短边）。",
+                 "本卡差异：入口/出口在短边 vs 长边；坑的几何与方向见上方脚印。"],
+    },
+    "t_stairs": {
+        "success": ["成功：单次连续跨越：s 上→top→e 下（两条完整臂），无漏级、无反向乱序，任意臂无缺级。",
+                    "失败例：只走一条臂（partial 50）、缺级、或同一次尝试里分两段完成两臂（合并 partial）。",
+                    "本卡差异：完整臂数 + 连续性；不是只看是否碰到台阶。"],
+        "fail": ["失败例：只走一条臂（partial 50）、缺级、或同一次尝试里分两段完成两臂（合并 partial）。",
+                 "对照 success 卡：同样接触台阶，但臂证据不完整/不连续。",
+                 "本卡差异：完整臂数 + 连续性；不是只看是否碰到台阶。"],
+    },
+    "slope": {
+        "success": ["成功：沿坡面（slope tag）两侧合计 base 投影 ≥1.0 m，并合法退出。",
+                    "失败例：坡面接触不足（投影 <1.0 m）或中途落地。",
+                    "本卡差异：沿坡方向的位移量，不是单纯接触次数。"],
+        "fail": ["失败例：坡面接触不足（投影 <1.0 m）或中途落地。",
+                 "对照 success 卡：轨迹方向/长度不同（z 上升不足）。",
+                 "本卡差异：沿坡方向的位移量，不是单纯接触次数。"],
+    },
+    "slalom": {
+        "success": ["成功：A/B 入口 → 4 根杆按顺序 → 指定拐角 → 出口；不提前进入未来杆圆、不提前出区。",
+                    "失败例：漏杆/乱序/提前碰未来杆/未到拐角。",
+                    "本卡差异：杆的先后顺序与拐角，不是有没有碰到杆。"],
+        "fail": ["失败例：漏杆/乱序/提前碰未来杆/未到拐角。",
+                 "对照 success 卡：轨迹相同但顺序不同（或提前碰未来杆）。",
+                 "本卡差异：杆的先后顺序与拐角，不是有没有碰到杆。"],
+    },
+}
+
+
 def _part1_rulecards(out_dir: Path) -> list[dict]:
-    from comp_part1_judge import Part1JudgeV2, ZONES
+    from comp_part1_judge import Part1JudgeV2, SLALOM_CORNER, SLALOM_POSTS, ZONES
     records = []
     for task in sorted(RULE_P1):
+        geoms = _world_footprints(SCENE_P1, P1_GEOM_PREFIXES[task])
+        if task == "slalom":
+            geoms = [{"kind": "circle", "c": p, "r": 0.12, "name": "post", "z": 0.0}
+                     for p in SLALOM_POSTS]
+            geoms.append({"kind": "circle", "c": SLALOM_CORNER, "r": 0.12, "name": "corner", "z": 0.0})
         for expect, key in ((True, "success"), (False, "fail")):
             samples = RULE_P1[task][key]
             judge = Part1JudgeV2()
@@ -483,23 +665,43 @@ def _part1_rulecards(out_dir: Path) -> list[dict]:
             st = rep["states"][task]
             ok = st["status"] == "success"
             verdict = "success" if ok else "fail"
+            detail = st.get("detail") or {}
+            detail_lines = [f"score={st['score']} reason={st.get('reason') or '-'}",
+                            "detail=" + json.dumps(detail, ensure_ascii=False),
+                            "samples=" + json.dumps([{k: v for k, v in smp.items() if k != "tags"} for smp in samples], ensure_ascii=False)]
             want = "canonical success path" if expect else "rule-violating path"
             svg = out_dir / f"rule_p1_{task}_{key}.svg"
             _svg_path_card(svg, f"Part1 rulecard: {task} ({want})",
-                           "top-down x-y path; labels = foot surface tags / ground contacts",
-                           samples, verdict,
-                           [f"judge score={st['score']} reason={st.get('reason') or '-'}",
-                            "请判断：该轨迹按比赛规则应 success 还是 fail？judge 判对了吗？"],
+                           "top-down x-y path (geometry footprints) + base/bar height profile; labels = foot surface tags",
+                           samples, verdict, detail_lines,
                            zones=[(ZONES[task][0], ZONES[task][1], ZONES[task][2], ZONES[task][3],
-                                   f"ZONES[{task}]")])
+                                   f"ZONES[{task}]")],
+                           geoms=geoms, key_lines=P1_KEY[task][key])
             records.append({
                 "trial_id": None, "kind": "part1_rulecard", "obstacle": task, "media_type": "svg",
                 "video": str(svg), "judge": {"status": verdict, "score": float(st["score"]),
-                                             "reason": st.get("reason") or "", "detail": {}},
+                                             "reason": st.get("reason") or "", "detail": detail},
                 "human": {"success": None, "failure_reason": None, "judge_verdict_correct": None},
-                "note": f"rulecard: {want}；请按规则标注 success/fail 与 judge 是否正确",
+                "note": f"rulecard：{want}；看图/高度曲线判断应 success/fail，再判 judge 是否正确（差异点见卡片 KEY RULE）",
             })
     return records
+
+
+P2_PREFIXES = ("platform", "stair", "slope", "wall", "trench", "plum", "ground_left", "ground_right")
+P2_KEY = {
+    "high_platform": ["成功：踩上平台（platform tag）、x∈goal_x、z≥top_z+0.38、无地面足、保持 hold_s。",
+                      "失败：在地面高度通过、未进入 goal_x 或 z 不足。"],
+    "stairs": ["成功：踩台阶（stairs tag）、x≥goal_x_min、z≥top_z+0.38、无地面足、保持 hold_s。",
+               "失败：z 不足/未到 goal_x/仍在地面。"],
+    "slope": ["成功：坡面 tag、x≥goal_x_min、z≥rise_z+0.38、无地面足、保持 hold_s。",
+              "失败：高度不足或未越过 goal_x。"],
+    "high_wall": ["成功：墙接触 + 越过 wall_x + x≥goal_x_min + 近墙最大 z≥max(wall_h+0.10,0.55)。",
+                  "失败：无墙接触/未爬高/未越过 goal_x。"],
+    "trench": ["成功：跨过沟（近/远边都跨越）、x≥goal_x_min、z≥min_z、lane 内。",
+               "失败：掉进沟（z 过低）或未跨过。"],
+    "plum": ["成功：踩梅花桩 tag、x≥goal_x_min、z≥goal_z_min、无地面足、保持 hold_s。",
+             "失败：z 不足/未到 goal_x/仍在地面。"],
+}
 
 
 def _part2_rulecards(out_dir: Path) -> list[dict]:
@@ -565,8 +767,8 @@ def _part2_rulecards(out_dir: Path) -> list[dict]:
             half = float(j.get("width", 0.1)) / 2.0
             gmin = float(j["goal_x_min"]) + 0.2
             seq = [{"x": gx - half - 0.5, "z": 0.5, "tags": []},
-                   {"x": gx - 0.1, "z": 0.5, "tags": []},      # crosses near edge
-                   {"x": gx + 0.4, "z": 0.5, "tags": []},      # crosses far edge
+                   {"x": gx - 0.1, "z": 0.5, "tags": []},
+                   {"x": gx + 0.4, "z": 0.5, "tags": []},
                    {"x": gmin, "z": 0.5, "tags": []},
                    {"x": gmin, "z": 0.5, "tags": []},
                    {"x": gmin, "z": 0.5, "tags": []}]
@@ -589,9 +791,36 @@ def _part2_rulecards(out_dir: Path) -> list[dict]:
             seq = []
         return seq
 
+    def _z_lines(kind: str, j: dict) -> list[tuple]:
+        if kind == "platform":
+            return [(float(j["top_z"]) + 0.38, "top_z+0.38")]
+        if kind == "stairs":
+            return [(float(j["top_z"]) + 0.38, "top_z+0.38")]
+        if kind == "slope":
+            return [(float(j["rise_z"]) + 0.38, "rise_z+0.38")]
+        if kind == "wall":
+            return [(max(float(j["wall_h"]) + 0.10, 0.55), "max(wall_h+0.10,0.55)")]
+        if kind == "gap":
+            return [(float(j.get("min_z", 0.3)), "min_z")]
+        if kind == "plum":
+            return [(float(j["goal_z_min"]), "goal_z_min")]
+        return []
+
+    def _goals(kind: str, j: dict, lane: float) -> list[tuple]:
+        lo = float(j.get("lane_y", 0.0)) - lane
+        hi = float(j.get("lane_y", 0.0)) + lane
+        if kind == "platform":
+            gx = j.get("goal_x", [2.0, 3.0])
+            return [(float(gx[0]), float(gx[1]), lo, hi, "goal_x")] 
+        if kind in ("stairs", "slope", "plum", "wall", "gap"):
+            gmin = float(j.get("goal_x_min", 0.0))
+            return [(gmin, gmin + 1.5, lo, hi, "x>=goal_x_min")]
+        return []
+
     for cat in sorted(by_cat):
         entries = sorted(by_cat[cat], key=lambda x: float(x["level"]))
         entry = entries[-1]
+        geoms = _world_footprints(ROOT / entry["scene"], P2_PREFIXES)
         for want_success in (True, False):
             samples = _samples(entry["judge"]["kind"], entry["judge"], want_success)
             if not samples:
@@ -608,22 +837,24 @@ def _part2_rulecards(out_dir: Path) -> list[dict]:
                 print(f"  !! rulecard mismatch {cat} want_success={want_success} got={rep.get('status')}", flush=True)
                 continue
             score = score_for_level(contract["parts"]["part2"], cat, entry["level"]) if ok else 0
-            pts = [{"x": smp["x"], "y": 0.0, "z": smp["z"]} for smp in samples]
+            zl = _z_lines(entry["judge"]["kind"], entry["judge"])
+            goals = _goals(entry["judge"]["kind"], entry["judge"], float(entry["judge"].get("lane_half_width", 0.7)))
+            detail_lines = [f"score={score} status={rep.get('status')} reason={rep.get('reason') or '-'}",
+                            "detail=" + json.dumps(rep.get("detail") or {}, ensure_ascii=False),
+                            "judge_spec=" + json.dumps(entry["judge"], ensure_ascii=False)]
             svg = out_dir / f"rule_p2_{cat}_{'success' if want_success else 'fail'}.svg"
             _svg_path_card(svg, f"Part2 rulecard: {cat} level {entry['level']}{entry.get('unit','')}",
-                           "top-down x-y path; labels = surface tags at each sample",
-                           pts, "success" if ok else "fail",
-                           [f"judge score={score} reason={rep.get('reason') or '-'}",
-                            f"judge spec: {json.dumps(entry['judge'], ensure_ascii=False)[:120]}",
-                            "请判断：该轨迹按规则应 success 还是 fail？judge 判对了吗？"])
+                           "top-down x-y path with level geometry + base height profile; labels = surface tags",
+                           samples, "success" if ok else "fail", detail_lines,
+                           geoms=geoms, key_lines=P2_KEY[cat], z_lines=zl, goals=goals)
             records.append({
                 "trial_id": None, "kind": "part2_rulecard", "category": cat,
                 "level": entry["level"], "unit": entry.get("unit"), "media_type": "svg",
                 "video": str(svg), "judge": {"status": "success" if ok else "fail",
                                              "score": float(score),
-                                             "reason": rep.get("reason") or "", "detail": {}},
+                                             "reason": rep.get("reason") or "", "detail": rep.get("detail") or {}},
                 "human": {"success": None, "failure_reason": None, "judge_verdict_correct": None},
-                "note": "rulecard：请按规则标注 success/fail 与 judge 是否正确",
+                "note": "rulecard：看图/高度曲线判断应 success/fail，再判 judge 是否正确（差异点见卡片 KEY RULE）",
             })
     return records
 

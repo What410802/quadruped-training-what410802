@@ -91,6 +91,21 @@ td,th{{border:1px solid #ccc;padding:4px 8px;font-size:13px}}th{{background:#eee
 <p>按 <code>{args.csv.name}</code> 逐条标注；视频/图在 <code>../prep.d/videos/calibration/</code>。
 judge verdict 未显示（盲标）。标注完成后运行
 <code>pixi run python @20261019_locomotion/scripts/agent_scripts/check_calibration.py</code>。</p>
+<h2>失败原因字典（human_failure_reason）</h2>
+<table><tr><th>取值</th><th>定义</th></tr>
+<tr><td><code>fell</code></td><td>机器人翻倒/侧翻/明显失稳，已无法继续（最高优先级）</td></tr>
+<tr><td><code>bar_drop</code></td><td>限高杆被顶落到低位（横杆掉落）</td></tr>
+<tr><td><code>two_feet_ground</code></td><td>明显 ≥2 足同时触地而仍在障碍上（非完成跨越后的落地）</td></tr>
+<tr><td><code>wrong_side</code></td><td>从错误一侧进入/退出（如砂砾坑应从短边进）</td></tr>
+<tr><td><code>incomplete</code></td><td>明显只完成一部分（T 台阶单臂、桥走到一半、台阶缺级等）</td></tr>
+<tr><td><code>no_crossing</code></td><td>保持站立但没完成障碍：停住/卡住/走偏/最终没越过</td></tr>
+<tr><td><code>timeout</code></td><td>视频在完成前结束（4–6 s 截断），无法判断后续；不是官方 120 s 超时</td></tr>
+<tr><td><code>other:&lt;说明&gt;</code></td><td>以上都不合适</td></tr></table>
+<h2>rulecard 怎么看</h2>
+<p>每张 SVG 含：俯视几何脚印 + 路径/足端 tag + base/bar 高度曲线 + judge evidence + KEY RULE 差异点。
+不要只看足端 tag；按 KEY RULE 的判据判断"应 success/fail"，再判 judge 是否正确。</p>
+<h2>session_state</h2>
+<p>8 条是协议/账本状态表（<b>没有机器人视频</b>），判断 best score/同分最快/恢复不消耗/暂停冻结/abort/skip 等语义是否正确即可。</p>
 <table><tr><th>trial_id</th><th>kind</th><th>目标</th><th>level</th><th>policy</th><th>media</th><th>notes</th></tr>
 {''.join(rows_html)}
 </table>

@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T15:44:09+08:00",
+  "generated_at": "2026-10-23T17:34:30+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -257,11 +257,11 @@
     },
     "extra_build_calibration_bundle": {
       "path": "scripts/agent_scripts/build_calibration_bundle.py",
-      "sha256": "273e7c39bc35bf3b44e71ef8a9383f8fa7f285d6da75596e5891c010958191ae"
+      "sha256": "b4df05b39954aec4290f04b97f932731296b3741e097acd530d39f2b3c0349ca"
     },
     "extra_make_calibration_label_sheet": {
       "path": "scripts/agent_scripts/make_calibration_label_sheet.py",
-      "sha256": "146544093a16a51701ed51cce70c83a58fd0c1501a7e817250fef2f9094da71b"
+      "sha256": "b9bb2c994ceb78f376ced391bb5d93187e81db93c38f91985d3ac3bc75ebec18"
     },
     "extra_check_calibration": {
       "path": "scripts/agent_scripts/check_calibration.py",
@@ -273,11 +273,11 @@
     },
     "extra_README_C1": {
       "path": "comp/eval/_calibration/README_C1.md",
-      "sha256": "3a3d5f7043c42038f71585ef20c739069f70bc70230c960ce25fc886b012928c"
+      "sha256": "bcfb0f37b61a915cc3dd8568174f5c37044105f07522520f0140e40d755dfe71"
     },
     "extra_index": {
       "path": "comp/eval/_calibration/index.html",
-      "sha256": "57befc0e074dc771b5df340ef3f5a55de2302898c879e5376465bf03360e8011"
+      "sha256": "c7afb3be98475d44b038bc6340e31a7211291c3b97da97656812379c3adfbbc5"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",

@@ -32,6 +32,9 @@
 **标定包已生成，等待人工标注。** 详细使用说明见 [`README_C1.md`](README_C1.md)。
 
 - 记录：`records.jsonl` 92 条 = 64 条主记录（Part1 32 + Part2 24 + session-state 8）+ 28 张 rulecard（成功/失败语义卡）。
+- 2026-10-23 更新：rulecard v2 含障碍几何脚印、base/bar 高度曲线、judge 实际证据、KEY RULE 差异点；
+  `README_C1.md` 增加失败原因字典（fell/bar_drop/two_feet_ground/wrong_side/incomplete/no_crossing/timeout/other）。
+- 用户已标 56 条真实 rollout（与 judge 一致 56/56），剩余 28 rulecard + 8 session；session-state 无视频（账本语义）。
 - 视频：`../../../prep.d/videos/calibration/`（56 个 mp4 + 28 个 SVG rulecard；不入库）。
 - 盲标表：`labels_template.csv`（隐藏 judge 结论）；浏览页：`index.html`。
 - 检查器：`pixi run python @20261019_locomotion/scripts/agent_scripts/check_calibration.py`，
