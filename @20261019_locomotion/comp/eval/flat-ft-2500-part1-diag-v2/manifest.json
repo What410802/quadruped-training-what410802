@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part1-diag-v2",
-  "created_at": "2026-10-23T14:27:20+08:00",
+  "created_at": "2026-10-23T14:40:27+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "802ccaee1ce4e64aea93bc47f83e1f135abe822d",
+      "commit": "ddec27e022e2bd71a77af84928ced553544c3060",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -43,7 +43,7 @@
     }
   },
   "judge": {
-    "version": "comp_part1_judge_v2_1@7496f079ce2d",
+    "version": "comp_part1_judge_v2_1@98ee9b79ce2d",
     "files": [
       "scripts/agent_scripts/comp_part1_judge.py",
       "scripts/agent_scripts/comp_part1_geom_tags.py"
@@ -51,7 +51,7 @@
     "file_hashes": [
       {
         "path": "scripts/agent_scripts/comp_part1_judge.py",
-        "sha256": "7496f093d244358a60fd6199c233430d4cf3dbbd9f12237f12e0a5f098914c0a"
+        "sha256": "98ee9b965025246d173e40a32df3f656c3214e05bf58672f566c826b9d703929"
       },
       {
         "path": "scripts/agent_scripts/comp_part1_geom_tags.py",
@@ -77,5 +77,5 @@
     "trials": "trials.jsonl",
     "summary": "summary.json"
   },
-  "notes": "导入自 run_part1_judged_rollout.py 诊断 JSON；runner 未设种子/扰动，每障碍一次，非正式协议"
+  "notes": "导入自 run_part1_judged_rollout_v2.py 诊断 JSON（V2 judge/scene）；runner 未设种子/扰动，每障碍一次，非正式协议"
 }
