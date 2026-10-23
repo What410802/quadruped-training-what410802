@@ -277,6 +277,7 @@ def http_chat_stream(backend: dict, key: str, payload: str) -> dict:
     chunks: list[str] = []
     finish = None
     model_reported = None
+    usage = None
     try:
         with urllib.request.urlopen(req, timeout=int(backend.get("timeout_s", 3600))) as resp:
             for raw_line in resp:
@@ -291,6 +292,8 @@ def http_chat_stream(backend: dict, key: str, payload: str) -> dict:
                 except json.JSONDecodeError:
                     continue
                 model_reported = event.get("model") or model_reported
+                if event.get("usage"):
+                    usage = event.get("usage")
                 for choice in event.get("choices") or []:
                     delta = choice.get("delta") or {}
                     piece = delta.get("content")
@@ -304,8 +307,8 @@ def http_chat_stream(backend: dict, key: str, payload: str) -> dict:
     latency = round(time.time() - started, 1)
     text = "".join(chunks)
     if not text:
-        raise RuntimeError(f"流式响应为空 content（finish_reason={finish}）")
-    return {"text": text, "usage": None, "latency_s": latency,
+        raise RuntimeError(f"流式响应为空 content（finish_reason={finish}, usage={usage}）")
+    return {"text": text, "usage": usage, "latency_s": latency,
             "model_reported": model_reported, "finish_reason": finish, "raw": None}
 
 
@@ -392,6 +395,18 @@ def run_self_test() -> int:
     assert model_family("gpt-6-astra") == "openai"
     assert model_family("claude-5") == "anthropic"
     assert model_family("weird-model") == "unknown"
+    assert model_family("glm-5.3") == "glm" and model_family("glm-5.3-flash") == "glm"
+    # backend config smoke (no network): zhipu present after DeepSeek and before Codex, key not inline
+    _cfg = Path("comp/reviewer.json")
+    if _cfg.is_file():
+        import json as _json
+        _c = _json.loads(_cfg.read_text(encoding="utf-8"))
+        _b = _c.get("backends") or {}
+        assert _b.get("zhipu", {}).get("kind") == "openai-compatible", _b.keys()
+        assert _b["zhipu"]["base_url"].startswith("https://open.bigmodel.cn/"), _b["zhipu"]["base_url"]
+        assert "glm" in _b["zhipu"]["model"]
+        assert "key_file" in _b["zhipu"] and "api_key" not in _b["zhipu"]
+        assert _b["zhipu"].get("retry_max_tokens", 0) >= _b["zhipu"].get("max_tokens", 0)
     ind = independence("deepseek-v4.1-flash", "deepseek-v4-pro")
     assert ind["status"] == "same-family-provisional", ind
     ind_same = independence("deepseek-v4.1-flash", "deepseek-v4.1-flash")
@@ -554,7 +569,10 @@ def main(argv: list[str] | None = None) -> int:
         backend["model"] = reviewer_model
     # 推理型模型会把 completion 预算先花在 reasoning 上；空 content 且 finish_reason=length 时加倍重试一次。
     initial_mt = int(backend.get("max_tokens", 32000))
-    budget_tries = [initial_mt, min(initial_mt * 2, 64000)]
+    cap_mt = int(backend.get("retry_max_tokens", initial_mt))
+    budget_tries = [initial_mt]
+    if initial_mt < cap_mt:
+        budget_tries.append(min(initial_mt * 2, cap_mt))
     attempts: list[dict] = []
     res: dict | None = None
     last_exc: Exception | None = None
@@ -588,7 +606,7 @@ def main(argv: list[str] | None = None) -> int:
                 pass  # 瞬断 → 下一轮重试（相同预算）
             else:
                 break
-            print(f"reviewer 输出被 reasoning 用尽，提高到 max_tokens={min(mt * 2, 64000)} 重试…", file=sys.stderr)
+            print(f"reviewer 输出被 reasoning 用尽，提高到 max_tokens={min(mt * 2, cap_mt)} 重试…", file=sys.stderr)
     if res is None:
         meta = {**base_meta, "status": "REVIEW_UNAVAILABLE", "error": f"{type(last_exc).__name__}: {last_exc}",
                 "attempts": attempts,

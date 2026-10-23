@@ -42,16 +42,17 @@
       ],
       "key_file": "/home/bis/.config/robocon-review/zhipu_api_key",
       "temperature": 0.2,
-      "max_tokens": 64000,
+      "max_tokens": 128000,
       "timeout_s": 3600,
       "stream": true,
       "extra_body": {
         "thinking": {
           "type": "enabled"
         },
-        "reasoning_effort": "max"
+        "reasoning_effort": "high"
       },
-      "note": "BYOK 智谱旗舰 GLM-5.3（1M 上下文/128K 输出，始终思考，reasoning_effort=max）。按用户 2026-10-23 指示：排在 DeepSeek Pro 之后、Codex 之前；不同家族（glm），可作 Type-B 独立评审但 Codex 仍是最终 acquittal。key 仅本地 key_file/env，不入库。"
+      "note": "BYOK 智谱旗舰 GLM-5.3（1M 上下文/128K 输出，始终思考，reasoning_effort=high（max 会产生超长思考、易吃满输出预算；验收用 high 平衡））。按用户 2026-10-23 指示：排在 DeepSeek Pro 之后、Codex 之前；不同家族（glm），可作 Type-B 独立评审但 Codex 仍是最终 acquittal。key 仅本地 key_file/env，不入库。",
+      "retry_max_tokens": 128000
     },
     "zhipu-flash": {
       "kind": "openai-compatible",
@@ -65,7 +66,7 @@
       ],
       "key_file": "/home/bis/.config/robocon-review/zhipu_api_key",
       "temperature": 0.2,
-      "max_tokens": 32000,
+      "max_tokens": 64000,
       "timeout_s": 3600,
       "stream": true,
       "extra_body": {
@@ -74,7 +75,8 @@
         },
         "reasoning_effort": "high"
       },
-      "note": "BYOK 智谱 GLM-5.3-Flash（多模态基座，低延迟/低价）：用于 GLM 初筛或 GLM-5.3 不可用时的备选；仍排在 DeepSeek Pro 之后。"
+      "note": "BYOK 智谱 GLM-5.3-Flash（多模态基座，低延迟/低价）：用于 GLM 初筛或 GLM-5.3 不可用时的备选；仍排在 DeepSeek Pro 之后。",
+      "retry_max_tokens": 64000
     }
   },
   "budget": {
