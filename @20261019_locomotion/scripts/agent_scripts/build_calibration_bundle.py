@@ -964,7 +964,8 @@ def main() -> int:
                          else str(video),
                 "judge": info["judge"], "note": info.get("note"),
                 "start": info.get("start"), "command": info.get("command"),
-                "route": info.get("route") or None,
+                "waypoints": info.get("waypoints") or None,
+                "waypoints_reached": info.get("waypoints_reached") or None,
                 "seconds": info.get("seconds"), "frames": info.get("frames"),
                 "human": {"success": None, "failure_reason": None},
             })

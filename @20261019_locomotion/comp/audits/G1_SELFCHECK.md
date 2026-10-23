@@ -52,7 +52,7 @@ C1 CALIBRATION: PASS
 ## 2026-10-23 19:25 第 22 轮 flash CONCERN 后的自检补充
 
 - 已修：单障碍 gravel 诊断起点/路线改为合法 L 形（`SPECIAL_ROUTES`：西 1 m 短边进→左转→北 1 m 短边出），
-  `config/part1-route.json` 同步，C1 records 的 gravel rollout 带 `route` 字段。
+  `config/part1-route.json` 同步，C1 records 的 gravel rollout 带 `waypoints` / `waypoints_reached` 字段（当前策略全 false）。
 - 已修：`comp/eval/_calibration/README_C1.md` 砂砾坑 success/fail 描述与当前 L 形一致。
 - 已修：`comp/CONTRACT.md` §6 资产清单移除 V1 judge 旧条目，改为 V2.1/Part2 V2 并指向 HASHES。
 - 已修：`comp/eval/_protocol.md` §4.1 诊断表 gravel/slope 行与 v2 runner 一致。
@@ -79,3 +79,12 @@ C1 CALIBRATION: PASS
 - 已修：`G1_SELFCHECK.md` 内部 HASHES 数量统一为 76；C1 报告已纳入 HASHES objects。
 - 已重生成：四份产物、三份演练、C1 92 条记录/视频/索引；`check_calibration.py` PASS 92/92。
 - 自检结论：V34 的 CONCERN 项已关闭；未发现新的 scorer blocker。
+
+
+## 2026-10-23 20:10 第 35 轮 flash CONCERN 后的自检补充
+
+- 已修：C1 records 的 gravel rollout 现在持久化 `waypoints` / `waypoints_reached`（与视频渲染一致；当前 flat 策略全 false，故只是失败样本）。
+- 已修：`README_C1.md` / `G1_SELFCHECK.md` 不再声称真实 rollout 已执行合法 L 路径；成功侧仍明确由 rulecard 覆盖。
+- 已确认：course pause 期间物理冻结（暂停循环不推进 physics，只推进 operator 事件时钟），resume 后补完当前 policy step 的剩余 substep。
+- 已加入 G1 残余：限高杆要求 entry/exit 对边，穿越后折返同侧是否算通过仍待主办方口径；场景 slalom 终点圆显示重叠（judge 已用 last_post_cleared 防护）。
+- 自检结论：V35 的 CONCERN 项已关闭；未发现新的 scorer blocker。

@@ -59,7 +59,9 @@ C1 = 评测器标定阶段：用**人工标签**给规则 judge 做 ground truth
 所以你判 rulecard 时：**先看 KEY RULE 的判据，再看几何/高度曲线/证据是否真的满足它**，不要只看点上的 tag。
 砂砾坑 success/fail 现在一眼能区分：success 从**西侧 1 m 短边进、经 L 形坑体、从北侧 1 m 短边出**；
 fail 是旧路径——从**南侧 2 m 长边**进入直穿（judge evidence 里 `last_failure: "illegal_entry_side"`）。
-长边（南/东 2 m）进出非法；真实 rollout 的 gravel 视频已改用合法 L 形脚本路线（西短边进→左转→北短边出）。
+长边（南/东 2 m）进出非法。真实 rollout 的 gravel 视频使用**闭环 waypoint** 路线（西短边进→左转→北短边出），
+但当前 flat 策略在起点无法执行（`waypoints_reached` 全 false，judge timeout），因此这些仍是失败样本；
+成功侧仍由 rulecard 覆盖，等训练出成功策略后补真实 L 形成功视频。
 
 ## 关于"整体账本有没有视频"（明确回答）
 
