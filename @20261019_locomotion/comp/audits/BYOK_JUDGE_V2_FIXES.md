@@ -223,3 +223,12 @@
 | slope mid-fall / landing 覆盖 | 已有 landing 与 mid-fall 用例，随本轮回归 | conformance 13 组全绿后重新生成四份产物与三份演练 |
 | height_bar route 跟踪 | route 语义正确但 course diag 仍 `wrong_exit_side`（策略未稳定到达南侧起点/抖动） | 记为 G1 残余（route 对跟踪误差不鲁棒），不影响正式手动赛程；C2 基线前可复核进入方向余量 |
 | slalom 半径口径 | judge 拐角 0.30 m vs 场景显示圆 0.5 m | 记为 C1 标定集待裁决项（本轮 route 走圆心，不受影响） |
+
+
+## Flash 复验（第 27 轮）blocker 修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| B2 乱序假成功 | `Slalom._on_sample` 只接受"期望杆"，提前进入未来杆圈不记录；之后补正确顺序仍可 success | 新增 `early_posts` 记录：`idx` 之后任何未来杆的提前到访都记违规；`_check_immediate`/`_check_exit` 要求 `early_posts` 为空，否则 `post_out_of_order`；conformance 增加"提前碰未来杆 + 后续完整顺序"反例 |
+| T 台阶地面蹭级假成功 | B1 在 partial（top+一条完整臂）后关闭地面判罚；机器人可在地面用 2 足蹭 n/e 级，把 partial 升级成 100 | `TStairs._on_sample` 在 `ground_feet` 非空时直接返回，不从"地面蹭级"样本累积 level/top 证据；conformance 增加"partial 后地面蹭第二臂仍只有 50"用例 |
+| conformance | 覆盖补充 | 13 组全绿；随本轮全量重生成四份产物与三份演练、刷新 HASHES |

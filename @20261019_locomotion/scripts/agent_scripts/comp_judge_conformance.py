@@ -424,7 +424,30 @@ def test_t_stairs_full_partial_and_history():
     ]
     assert_not_success(feed(Part1JudgeV2(), skipped_level_plus_complete_other), "t_stairs",
                        "skipped level on the other arm")
-    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels and skipped-level arm fail")
+    # after a partial (s arm + top), grazing n levels from the ground with 2 feet down must
+    # NOT upgrade the partial to full.
+    j_g = Part1JudgeV2()
+    def _u(j, x, y, z=0.45, tags=(), ground=()):
+        legs = {leg: set(tags) for leg in LEGS}
+        return j.update(0.0, (x, y, z), 0.0, foot_tags=legs, ground_feet=set(ground), bar_z=None)
+    _u(j_g, 1.8, -5.4)
+    _u(j_g, 1.8, -4.9, tags=("step:s:1",))
+    _u(j_g, 1.8, -4.6, tags=("step:s:2",))
+    _u(j_g, 1.8, -4.3, tags=("step:s:3",))
+    _u(j_g, 1.8, -3.8, tags=("step:top",))
+    _u(j_g, 1.8, -4.3, tags=("step:s:3",))
+    _u(j_g, 1.8, -4.9, tags=("step:s:1",))
+    _u(j_g, 1.8, -5.6)   # exit -> partial success = 50
+    # re-enter and graze the n arm from the ground (2 feet down); the partial must stay 50
+    _u(j_g, 1.8, -4.9, ground=("FL", "FR"))
+    _u(j_g, 1.8, -3.0, tags=("step:n:1",), ground=("FL", "FR"))
+    _u(j_g, 1.8, -3.3, tags=("step:n:2",), ground=("FL", "FR"))
+    _u(j_g, 1.8, -3.6, tags=("step:n:3",), ground=("FL", "FR"))
+    _u(j_g, 1.8, -5.6, ground=("FL", "FR"))
+    rep = j_g.finalize("timeout")
+    assert st(rep, "t_stairs")["status"] == "success", st(rep, "t_stairs")
+    assert st(rep, "t_stairs")["score"] == 50.0, st(rep, "t_stairs")
+    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels and skipped-level arm fail / grounded graze cannot upgrade")
 
 
 def test_slope_projection_and_graze_reset():
@@ -613,7 +636,23 @@ def test_slalom_forward_reverse_and_spoof():
     ]
     rep = feed(Part1JudgeV2(), early_then_legal)
     assert_status(rep, "slalom", "success", "early corner sweep then legal pass")
-    print("slalom: OK forward/reverse / early-end and out-of-order rejected / early corner sweep forgiven")
+    # out-of-order: touching a FUTURE post circle early must poison the run even if the
+    # correct sequence is later completed.
+    early_future_post = [
+        {"x": 1.8, "y": -10.1},
+        {"x": 1.7, "y": -11.5},   # post 1 before post 0 -> out of order
+        {"x": 1.9, "y": -10.5},   # post 0
+        {"x": 1.7, "y": -11.5},   # post 1
+        {"x": 1.9, "y": -12.5},   # post 2
+        {"x": 1.55, "y": -12.75},  # corner
+        {"x": 2.8, "y": -12.6},   # post 3
+        {"x": 3.2, "y": -12.5},
+        {"x": 3.7, "y": -10.5},   # leave zone -> exit check
+    ]
+    rep = feed(Part1JudgeV2(), early_future_post)
+    assert_not_success(rep, "slalom", "future post touched before its turn")
+    assert any("post_out_of_order" in f for f in st(rep, "slalom")["failures"]), st(rep, "slalom")
+    print("slalom: OK forward/reverse / early-end and out-of-order rejected / early corner sweep forgiven / future-post violation rejected")
 
 
 # ---------------------------------------------------------------- ledger / timeout / scene

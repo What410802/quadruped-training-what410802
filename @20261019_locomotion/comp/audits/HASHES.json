@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T13:48:33+08:00",
+  "generated_at": "2026-10-23T14:01:38+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -17,11 +17,11 @@
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "7d6aa6d985f18502517f27b00878683bc8b049bfbdce4d375e7642e65a79d72f"
+      "sha256": "bc58e6e5ec0d2a8a4289a2bced73b48007d40d24edd8e48f58601fb1dc451e12"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "2de3e1f4750dc12043dc90512333748e65e0165712dfddc8c5e07d15b1a2fa75"
+      "sha256": "be27855acd50fca2be36eafd3abca17b869679c781f232214756b87eb574be58"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -105,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "ab51eaf516a10f053acf6f3ea417a1e60a05b451ba7d6fc14d5d92dafe41d388"
+      "sha256": "e702f0f0a571f8bfe2520b8ccebcf48c50b2ecccc3623ff8e406416542baa6df"
     },
     "level_high_platform_10cm": {
       "path": "assets/terrain/part2/levels/high_platform_10cm.xml",
@@ -185,7 +185,7 @@
     },
     "eval_flat-ft-2500-part1-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/manifest.json",
-      "sha256": "9f1d44c40f459f2f451d3c5f22079bcbbeb70d80c4003dcb877cc1840ed96212"
+      "sha256": "029793511ff6e9475c3f7545131844c34d6c51bca6572bed2918e2ce13a1ebeb"
     },
     "eval_flat-ft-2500-part1-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/trials.jsonl",
@@ -197,7 +197,7 @@
     },
     "eval_flat-ft-2500-part2-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/manifest.json",
-      "sha256": "a2b1d34dfd5b401a940d40228d66d46425c29d143623f43436461a521f2549be"
+      "sha256": "95d328c9e74547b17b4bbd99c652685e28f58281ad5d85a52dc73e8f47cc3c11"
     },
     "eval_flat-ft-2500-part2-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/trials.jsonl",
@@ -209,7 +209,7 @@
     },
     "eval_flat-ft-2500-part2-official-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
-      "sha256": "fc4921eb9097463c6b04592a7e16743738adb6b7e99994931634bc584ae8d922"
+      "sha256": "8639255c5a94ae6abd73c3e1649bc14e0d8298426b5ff97d9b7671e565c5e5ac"
     },
     "eval_flat-ft-2500-part2-official-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
@@ -221,7 +221,7 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "90445c016ffefce350755cfa2bf6fa8d94c5d0634c690a0ab2ee71c5e5ad4c4c"
+      "sha256": "462b2cf621e5391d0a8e3f1d268ca8e01cf336bd44c926393effd3c4f96013f1"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",

@@ -537,6 +537,10 @@ class TStairs(_Obstacle):
         return [t for t in tags if t.startswith("step:")]
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
+        if ground_feet:
+            # a foot on the ground means the robot is grazing the steps from the floor,
+            # not climbing them; never bank level/top evidence from such samples.
+            return
         for tag in self._step_tags(tags):
             parts = tag.split(":")
             if len(parts) == 2:  # step:top
@@ -596,7 +600,7 @@ class Slalom(_Obstacle):
     def _reset_evidence(self) -> None:
         self.evidence = {"start_area": None, "order": [], "order_expected": [],
                          "sides": [], "corner": False, "end_area": None,
-                         "corner_after": None, "corner_visits": []}
+                         "corner_after": None, "corner_visits": [], "early_posts": []}
 
     def _near(self, xy, point, radius=SLALOM_RADIUS_M) -> bool:
         return _dist(xy, point) <= radius
@@ -624,6 +628,14 @@ class Slalom(_Obstacle):
                 tx, ty = post[0] - ref[0], post[1] - ref[1]
                 nx, ny = -ty, tx
                 ev["sides"].append(_sign(nx * (xy[0] - post[0]) + ny * (xy[1] - post[1])))
+        # out-of-order post visits: entering a FUTURE post circle before its turn is a
+        # violation even if the correct sequence is later completed.
+        if ev["start_area"] is not None and ev["order_expected"]:
+            next_idx = len(ev["order"])
+            for j in range(next_idx + 1, len(ev["order_expected"])):
+                if self._near(xy, SLALOM_POSTS[ev["order_expected"][j]], SLALOM_POST_RADIUS_M):
+                    if j not in ev["early_posts"]:
+                        ev["early_posts"].append(j)
         expected_corner_after = 3 if ev["start_area"] == "A" else 2
         if (self._near(xy, SLALOM_CORNER, SLALOM_CORNER_RADIUS_M)
                 and ev["start_area"] is not None and len(ev["order"]) >= 2):
@@ -647,6 +659,7 @@ class Slalom(_Obstacle):
         ev = self.evidence
         expected_corner_after = 3 if ev["start_area"] == "A" else 2
         if (ev["start_area"] and ev["end_area"] and len(ev["order"]) == 4
+                and not ev.get("early_posts")
                 and expected_corner_after in ev["corner_visits"]
                 and all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:]))):
             return True, ""
@@ -662,6 +675,8 @@ class Slalom(_Obstacle):
             return False, "missing_corner_checkpoint"
         if not ev["end_area"]:
             return False, "no_end_area"
+        if ev.get("early_posts"):
+            return False, "post_out_of_order"
         expected_corner_after = 3 if ev["start_area"] == "A" else 2
         if expected_corner_after not in ev["corner_visits"]:
             return False, "corner_out_of_order"
