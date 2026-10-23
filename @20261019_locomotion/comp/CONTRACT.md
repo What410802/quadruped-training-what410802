@@ -75,8 +75,9 @@
 | Part1 judge zones | `assets/terrain/part1/judge_zones.yaml` | 待补 |
 | Part2 能力场 | `assets/terrain/part2/ability_field/part2_ability_field.xml` | 待补 |
 | Part2 梅花桩 | `assets/terrain/part2/part2_plum_eval_scene.xml` | 待补 |
-| judge（事件级） | `scripts/agent_scripts/part1_event_judge.py` | `546dbacd29465cb6…` |
-| judge（接触级） | `scripts/agent_scripts/part1_judge.py` | `b398a39d25a21542…` |
+| judge（V2.1 规则，当前） | `scripts/agent_scripts/comp_part1_judge.py` + `comp_part1_geom_tags.py` | 以 `comp/audits/HASHES.json` 当前值为准 |
+| judge（Part2 V2，当前） | `scripts/agent_scripts/comp_part2_judge.py` | 以 `comp/audits/HASHES.json` 当前值为准 |
+| judge V1（历史） | `scripts/agent_scripts/part1_event_judge.py`、`part1_judge.py` | 已被 V2.1 取代，sha 见 `HASHES.json.superseded` |
 
 ## 7. 变更日志
 

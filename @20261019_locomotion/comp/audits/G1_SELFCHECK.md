@@ -48,3 +48,13 @@ C1 CALIBRATION: PASS
 - 上述可执行项全部通过；无已知 scorer blocker、无未解释的失败项。
 - 已知残余（G1 必写）：砂砾坑真实坑体/碎木几何未 recut；Part2 官方能力场未逐档核对；限高杆 under-bar 检查用 base z 代理（全身离地间隙留 C1）；T 台阶/沟壑等保守边界；正式手动 3 次整场演练视频未补；真实成功 rollout 缺失（策略全失败）。
 - 因此进入第 1 步：deepseek flash 独立复验；PASS 后 pro，再 PASS 后 GLM（Codex 不调用）。
+
+## 2026-10-23 19:25 第 22 轮 flash CONCERN 后的自检补充
+
+- 已修：单障碍 gravel 诊断起点/路线改为合法 L 形（`SPECIAL_ROUTES`：西 1 m 短边进→左转→北 1 m 短边出），
+  `config/part1-route.json` 同步，C1 records 的 gravel rollout 带 `route` 字段。
+- 已修：`comp/eval/_calibration/README_C1.md` 砂砾坑 success/fail 描述与当前 L 形一致。
+- 已修：`comp/CONTRACT.md` §6 资产清单移除 V1 judge 旧条目，改为 V2.1/Part2 V2 并指向 HASHES。
+- 已修：`comp/eval/_protocol.md` §4.1 诊断表 gravel/slope 行与 v2 runner 一致。
+- 已重生成：四份产物、三份演练、C1 92 条记录/视频/索引、HASHES(75)；`check_calibration.py` 仍 PASS 92/92。
+- 自检结论：上述 CONCERN 项已关闭；未发现新的 scorer blocker。

@@ -57,8 +57,9 @@ C1 = 评测器标定阶段：用**人工标签**给规则 judge 做 ground truth
 5. 页脚提示：足端 tag 只表示"接触了哪个表面"，完成判定还看 base 轨迹/高度/时序/入口-出口方向。
 
 所以你判 rulecard 时：**先看 KEY RULE 的判据，再看几何/高度曲线/证据是否真的满足它**，不要只看点上的 tag。
-砂砾坑 success/fail 现在一眼能区分：success 从南短边进、北短边出（`aborted_exit: ymax` 不会出现）；
-fail 从西侧长边横穿（judge evidence 里 `aborted_exit: xmax`）。
+砂砾坑 success/fail 现在一眼能区分：success 从**西侧 1 m 短边进、经 L 形坑体、从北侧 1 m 短边出**；
+fail 是旧路径——从**南侧 2 m 长边**进入直穿（judge evidence 里 `last_failure: "illegal_entry_side"`）。
+长边（南/东 2 m）进出非法；真实 rollout 的 gravel 视频已改用合法 L 形脚本路线（西短边进→左转→北短边出）。
 
 ## 关于"整体账本有没有视频"（明确回答）
 

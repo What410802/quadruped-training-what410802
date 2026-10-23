@@ -44,12 +44,22 @@ TASKS = {
     "high_wall": ((1.8, -7.8, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 4.0, "cross wall along +y"),
     "bridge_blocks": ((1.8, 0.0, 0.65), 0.0, (0.3, 0.0, 0.0), 5.0, "left platform -> +x"),
     "bridge_bands": ((5.7, -3.5, 0.65), np.pi / 2, (0.3, 0.0, 0.0), 5.0, "lower platform -> +y"),
-    "gravel_pit": ((5.0, -13.4, 0.55), np.pi / 2, (0.45, 0.0, 0.0), 6.0, "short-edge approach along +y"),
+    "gravel_pit": ((3.6, -12.5, 0.55), 0.0, (0.45, 0.0, 0.0), 7.2,
+                   "legal L path: west 1m short edge in -> turn -> north 1m short edge out"),
     "t_stairs": ((1.8, -5.2, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 5.0, "main limb -> +y"),
     "slope": ((4.6, -6.5, 0.55), np.pi / 2, (0.5, 0.0, 0.0), 6.0, "slope long edge -> +y"),
     "slalom": ((1.8, -9.25, 0.55), -np.pi / 2, (0.45, 0.0, 0.0), 4.5, "first post -> -y"),
 }
 
+
+
+# Tasks that need a scripted multi-command route (the policy runner has no waypoint
+# controller).  Each segment is (body-frame command, seconds).  gravel_pit uses this to
+# enter through the legal west 1 m short edge, turn left, and leave through the north
+# 1 m short edge (long-edge entry/exit is illegal).
+SPECIAL_ROUTES = {
+    "gravel_pit": [((0.45, 0.0, 0.0), 3.0), ((0.0, 0.0, 0.75), 1.2), ((0.45, 0.0, 0.0), 3.0)],
+}
 
 
 def sha256_file(path: Path) -> str:
@@ -149,8 +159,14 @@ class V2Runner:
         self.judge = Part1JudgeV2()
         for _ in range(int(warmup_s / 0.02)):
             self._policy_step(np.zeros(3))
-        for _ in range(int(seconds / 0.02)):
-            self._policy_step(command)
+        route = SPECIAL_ROUTES.get(name)
+        if route:
+            for seg_cmd, seg_seconds in route:
+                for _ in range(int(seg_seconds / 0.02)):
+                    self._policy_step(np.asarray(seg_cmd, dtype=np.float64))
+        else:
+            for _ in range(int(seconds / 0.02)):
+                self._policy_step(command)
         report = self.judge.finalize("timeout")
         base, tilt = self.runner.base()
         return {
@@ -158,6 +174,7 @@ class V2Runner:
             "note": note,
             "start": [round(float(v), 2) for v in xyz] + [round(float(yaw), 2)],
             "command": [float(v) for v in command],
+            "route": [[[float(v) for v in c], float(s)] for c, s in (route or [])],
             "seconds": seconds,
             "base": [round(float(v), 3) for v in base],
             "tilt_deg": round(float(tilt), 2),

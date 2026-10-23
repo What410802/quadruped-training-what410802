@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T19:03:46+08:00",
+  "generated_at": "2026-10-23T19:25:21+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -9,11 +9,11 @@
     },
     "contract_md": {
       "path": "comp/CONTRACT.md",
-      "sha256": "bf65b6eb691373fc55edbc6e64fa3a31b9b8acf2f2881a8d36e39a86d7f342b1"
+      "sha256": "8b06845628a5a07ad554f7855fcd47b45ac54bba941f89a549ea595d84d998a9"
     },
     "protocol_md": {
       "path": "comp/eval/_protocol.md",
-      "sha256": "e76d41fb388336011f7fe9d041dd80374a259c5fe2cc68e3c43c6329fdd41cf5"
+      "sha256": "9948d31e1a19d32ac0df8e2908105757d0b46b4f1cd9ac23b71aaaf61f6d7494"
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
@@ -41,7 +41,7 @@
     },
     "runner_part1_v2": {
       "path": "scripts/agent_scripts/run_part1_judged_rollout_v2.py",
-      "sha256": "a3496b36294ec28ea045f8e4738553d1cca0cee432b1fd3a85f800f3c0809618"
+      "sha256": "7d4396f59b6b5faa2ffed05907829904d1200418233d3ff1cf743640acaf4aaa"
     },
     "runner_course": {
       "path": "scripts/agent_scripts/run_part1_course.py",
@@ -185,11 +185,11 @@
     },
     "eval_flat-ft-2500-part1-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/manifest.json",
-      "sha256": "df031bd073025126f8b7fe331754eeabd1d4593e693c5f955822555d1ce744d8"
+      "sha256": "2d1a1f690054ccb9935e5aec60911be58bcddca900eeaf30524c3e718287be08"
     },
     "eval_flat-ft-2500-part1-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/trials.jsonl",
-      "sha256": "1cf4ac50c44c5bd92f01eb653c8fe566570fc12ed7a4ceb606e2c526951c356d"
+      "sha256": "5ce2b923bfc6d074e637d278c7828807277a5648b5fc9ccdbad39dadaf7d6753"
     },
     "eval_flat-ft-2500-part1-diag-v2_summary": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/summary.json",
@@ -197,7 +197,7 @@
     },
     "eval_flat-ft-2500-part2-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/manifest.json",
-      "sha256": "b10ed0355c7e4a7397ae380eb3e1996e9ec24b0c789e389008cced2ccef1aed9"
+      "sha256": "97c6c3930e886fcdc53999ec6d444d3072609614d57ef8f16e000d3e42acc426"
     },
     "eval_flat-ft-2500-part2-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/trials.jsonl",
@@ -209,7 +209,7 @@
     },
     "eval_flat-ft-2500-part2-official-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
-      "sha256": "285cfd9bd825b55df1727c2718721e252bd85e705484b3597c1c2a86535e8a57"
+      "sha256": "10d381ed7cc6a3fd511ed93909bfd4713b7e08e0e25395a28efc0200fbaded4f"
     },
     "eval_flat-ft-2500-part2-official-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
@@ -221,7 +221,7 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "6f421adc40c78eaa5f238ae79201e45dca5e5f53f9d5e2f3cdd94afdc6948263"
+      "sha256": "ca86936ca3bf703fa429133638cc3788316ae05674989def5b35f1396c895420"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
@@ -257,7 +257,7 @@
     },
     "extra_build_calibration_bundle": {
       "path": "scripts/agent_scripts/build_calibration_bundle.py",
-      "sha256": "42b68f8763142f6b8fc4da1fb549a0eb3b9fde922b7930b91a512a06aa8514f2"
+      "sha256": "90521b787bd405fd627e9be7d3fcede93159f6ffc915b68610e98206fd4f8ced"
     },
     "extra_make_calibration_label_sheet": {
       "path": "scripts/agent_scripts/make_calibration_label_sheet.py",
@@ -269,15 +269,15 @@
     },
     "extra_records": {
       "path": "comp/eval/_calibration/records.jsonl",
-      "sha256": "0de027a6c0d01148d36135c0f33aac907a99f1ac7923add257ccf21d96dd2d83"
+      "sha256": "6878e4c88cb967fa4ece99a537635164ac2e63f34040efab699d7e48b2f03b4c"
     },
     "extra_README_C1": {
       "path": "comp/eval/_calibration/README_C1.md",
-      "sha256": "bcfb0f37b61a915cc3dd8568174f5c37044105f07522520f0140e40d755dfe71"
+      "sha256": "7480c086617fbc7af422b9076805ccc28217a78299ed476a8492039f73267636"
     },
     "extra_index": {
       "path": "comp/eval/_calibration/index.html",
-      "sha256": "9ab684ce0c08c0a54fe77c13af531bb6a208ba008575c4dd56ae649277d10d72"
+      "sha256": "ebb019de2cbb21d59658d2e670a6484b15c74c163490c896b7e115cd2ba2042d"
     },
     "extra_labels_template": {
       "path": "comp/eval/_calibration/labels_template.csv",
@@ -289,7 +289,7 @@
     },
     "extra_G1_SELFCHECK": {
       "path": "comp/audits/G1_SELFCHECK.md",
-      "sha256": "06ca537d3232e2ae27a1f0cb32a05527daee49559c0389350ec43339ada60ecb"
+      "sha256": "e568e3ab7831cb58b9d7de778bb7e6a902cd061ec74a63193d5ca41baf95bac3"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
