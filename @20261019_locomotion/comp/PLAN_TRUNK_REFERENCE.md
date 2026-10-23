@@ -71,3 +71,24 @@ reviewer 继续用于 judge/G1 和正式结果审计。
 - height_bar 放在 bridge_bands 与 gravel_pit 之间，从桥带北侧下来后直接到限高杆，再南下 gravel；
 - slalom 从 **L 拐角短边圆 B** 进入（短边先走）：B → post3 → post2 → corner → post1 → post0 → A，终点 A 离出发区最近；
 - `config/part1-route.json` 已按此顺序更新；slalom 参考已改为 B→A 并重渲。
+
+## 7. slalom ASCII 匹配（2026-10-23 22:45）
+
+按用户 ASCII 示意图重建 slalom 路径；映射关系（图中坐标 → MuJoCo 场景）：
+- 图中横轴 = 场地 y（三根长边杆），图中纵轴 = 场地 x（短边方向）；
+- B 圆（短边）在图中底部，A 圆（长边末端）在图中右侧。
+
+当前 waypoint 映射到同一 ASCII 网格后与目标一致（仅末尾空格差异）：
+
+```
+    #       #
+   #. # . # .##
+    #   #
+    .#
+    #
+    #
+```
+
+路径：B 短边进 → 狗右手侧绕 post3 → 绕角柱/角点 → post1 东侧 → post0 西侧 → A；
+用 Catmull-Rom 平滑，机身 yaw 由局部切线自动生成。用 Part1JudgeV2 对参考采样做离线判定：
+**slalom = success, score 100**（单障碍，静止其他障碍）。

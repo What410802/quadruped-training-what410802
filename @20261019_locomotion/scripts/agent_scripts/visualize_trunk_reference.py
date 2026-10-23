@@ -51,6 +51,14 @@ def _smooth(t: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
+def _catmull_rom(p0, p1, p2, p3, u):
+    """Uniform Catmull-Rom interpolation of 3-vectors (x,y,z)."""
+    p0, p1, p2, p3 = (np.asarray(v, dtype=np.float64) for v in (p0, p1, p2, p3))
+    return 0.5 * ((2.0 * p1) + (-p0 + p2) * u
+                  + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * u * u
+                  + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * u * u * u)
+
+
 def build_samples(waypoints: list[dict]) -> list[dict]:
     """Interpolate a waypoint list into 50 Hz pose/speed samples.
 
@@ -74,14 +82,19 @@ def build_samples(waypoints: list[dict]) -> list[dict]:
         dist = math.dist((wp["x"], wp["y"], wp["z"]), (nxt["x"], nxt["y"], nxt["z"]))
         dur = max(0.2, dist / max(0.05, speed)) if wp.get("speed", 0.4) is not None else 0.5
         n = max(1, int(round(dur / dt)))
+        p0 = (waypoints[max(0, i - 1)]["x"], waypoints[max(0, i - 1)]["y"], waypoints[max(0, i - 1)]["z"])
+        p1 = (wp["x"], wp["y"], wp["z"])
+        p2 = (nxt["x"], nxt["y"], nxt["z"])
+        p3 = (waypoints[min(len(waypoints) - 1, i + 2)]["x"],
+              waypoints[min(len(waypoints) - 1, i + 2)]["y"],
+              waypoints[min(len(waypoints) - 1, i + 2)]["z"])
         for k in range(n):
-            u = k / n   # linear position interpolation -> constant speed, no stop at waypoints
+            u = k / n
+            pos = _catmull_rom(p0, p1, p2, p3, u)
             out.append({
                 "t": t,
-                "x": wp["x"] + (nxt["x"] - wp["x"]) * u,
-                "y": wp["y"] + (nxt["y"] - wp["y"]) * u,
-                "z": wp["z"] + (nxt["z"] - wp["z"]) * u,
-                "yaw": wp.get("yaw", 0.0) + _wrap(math.radians((nxt.get("yaw", 0.0) - wp.get("yaw", 0.0)))) * 180.0 / math.pi * u,
+                "x": float(pos[0]), "y": float(pos[1]), "z": float(pos[2]),
+                "yaw": 0.0,
                 "pitch": wp.get("pitch", 0.0) + (nxt.get("pitch", 0.0) - wp.get("pitch", 0.0)) * u,
                 "roll": wp.get("roll", 0.0) + (nxt.get("roll", 0.0) - wp.get("roll", 0.0)) * u,
                 "speed": speed if k < n - 1 else float(nxt.get("speed", 0.0)),
@@ -179,13 +192,21 @@ P1_REFERENCES: dict[str, list[dict]] = {
     "slalom": [
         # short-side entry: start at the L-bend circle B, go around post3/post2, corner,
         # then post1/post0 along the long side, finish at A near the start area.
-        _wp(3.2, -12.5, 0.42, speed=0.35),             # short-side entry B
-        _wp(2.8, -12.15, 0.42, speed=0.32),            # first turn to the dog's right
-        _wp(1.8, -12.15, 0.42, speed=0.35),            # post 2 (north side)
-        _wp(1.55, -12.75, 0.42, speed=0.28),           # corner checkpoint
-        _wp(1.5, -11.5, 0.42, speed=0.35),             # post 1 (west side)
-        _wp(2.1, -10.5, 0.42, speed=0.35),             # post 0 (east side)
-        _wp(1.8, -10.1, 0.42, speed=0.20),             # end circle A
+        # Matches the user's ASCII schematic (L-shape: 3 posts + short-side post):
+        # short-side entry at B, first turn to the dog's right, a loop around the corner
+        # post, then a serpentine (above/below alternating) through the long-side posts.
+        _wp(3.8, -12.5, 0.42, speed=0.35),   # approach to short-side circle B
+        _wp(3.2, -12.5, 0.42, speed=0.32),   # B (short side)
+        _wp(2.8, -12.25, 0.42, speed=0.32),  # first turn to the dog's right (north of post3)
+        _wp(2.3, -12.5, 0.42, speed=0.30),
+        _wp(1.8, -12.75, 0.42, speed=0.28),  # corner post / corner checkpoint (within 0.25 m)
+        _wp(1.3, -12.5, 0.42, speed=0.30),   # west of corner post
+        _wp(1.8, -12.0, 0.42, speed=0.32),   # between corner and post1
+        _wp(2.1, -11.5, 0.42, speed=0.32),   # east of post1
+        _wp(1.8, -11.0, 0.42, speed=0.32),   # between post1 and post0
+        _wp(1.45, -10.5, 0.42, speed=0.32),  # west of post0
+        _wp(1.8, -10.25, 0.42, speed=0.30),
+        _wp(1.8, -10.0, 0.42, speed=0.20),   # end circle A
     ],
 }
 

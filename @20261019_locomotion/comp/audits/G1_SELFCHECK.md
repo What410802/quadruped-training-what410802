@@ -122,3 +122,10 @@ C1 CALIBRATION: PASS
 - p2_high_platform 增加从另一侧下平台的段（连续测试），P2 其他项仍按实际表面贴地；
 - 新增 `comp/PLAN_C2_ARCH.md`：每任务分段 + 高层状态机 + 先单多任务模型、必要时专项策略；Part2 不需要闭合/整场连续轨迹。
 - 课程 route/三份演练已按新顺序重生成；G1 仍按 A 决策未冻结。
+
+## 2026-10-23 22:47 slalom ASCII 匹配 + judge 验证
+
+- 按用户 ASCII 图重建 slalom waypoint；映射回图格后与目标逐格一致（关键行）；路径为短边 B 进→右手侧绕 post3→角柱→
+  post1 东/post0 西→A，Catmull-Rom 平滑 + 切线 yaw。
+- 用 Part1JudgeV2 离线喂参考轨迹：slalom status=success、score=100；说明该参考在 judge 语义下合法。
+- route 同步为新 slalom 顺序并重生成 course 证据；G1 仍按 A 决策未冻结。

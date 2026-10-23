@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part1-course-diag",
-  "created_at": "2026-10-23T22:24:05+08:00",
+  "created_at": "2026-10-23T22:41:30+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "0a147efb85652f0decaf5793216de18ff1ebac40",
+      "commit": "74bd7358ee9d2264fb8c3567a807417aa1e82340",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -78,7 +78,7 @@
     "operator": "scripted:run_part1_course.py",
     "route": {
       "file": "config/part1-route.json",
-      "sha256": "ffdcf8d7a2087c9b3a83cd4e9fd3f4e482c025e677d66ca268066d2df4f9c532"
+      "sha256": "06f9ad79abcba85cc34be49322662658404889fc7f7dc3ec19612fa655c7876b"
     },
     "seed_control": "none（脚本化 waypoint 路线，无扰动；result 里的 seed 均未执行）",
     "start_pose_policy": "route start in start_area (3.7,-9.0)"

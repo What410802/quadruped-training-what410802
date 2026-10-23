@@ -5,7 +5,7 @@
   "scene": "@20261019_locomotion/assets/terrain/part1/part1_eval_scene_v2.xml",
   "scene_sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242",
   "route": "@20261019_locomotion/config/part1-route.json",
-  "route_sha256": "ffdcf8d7a2087c9b3a83cd4e9fd3f4e482c025e677d66ca268066d2df4f9c532",
+  "route_sha256": "06f9ad79abcba85cc34be49322662658404889fc7f7dc3ec19612fa655c7876b",
   "policy": "@20261019_locomotion/assets/policies/flat-ft-2500/policy.pt",
   "policy_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
   "attempts": [
@@ -18,7 +18,7 @@
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "skipped": false,
         "reason": "route_complete",
         "events": [
@@ -59,13 +59,13 @@
                 ]
               ],
               "events": 0,
-              "ended_at": 107.39999999997481,
+              "ended_at": 111.4799999999711,
               "skipped": false,
               "reason": "route_complete",
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "duration_note": "active_time_pause_excluded"
             }
           ],
@@ -89,14 +89,14 @@
               "attempt": 1
             },
             {
-              "t": 107.39999999997481,
+              "t": 111.4799999999711,
               "event": "attempt_end",
               "attempt": 1,
               "score": 0.0
             }
           ],
           "final_score": 0.0,
-          "final_time_s": 106.89999999997481,
+          "final_time_s": 110.9799999999711,
           "skips": 0,
           "recoveries": 1,
           "rules": {
@@ -111,7 +111,7 @@
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "skipped": false,
               "reason": "route_complete",
               "events": [
@@ -241,7 +241,7 @@
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "skipped": false,
         "reason": "route_complete",
         "events": [
@@ -282,13 +282,13 @@
                 ]
               ],
               "events": 0,
-              "ended_at": 107.39999999997481,
+              "ended_at": 111.4799999999711,
               "skipped": false,
               "reason": "route_complete",
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "duration_note": "active_time_pause_excluded"
             },
             {
@@ -302,13 +302,13 @@
                 ]
               ],
               "events": 0,
-              "ended_at": 107.39999999997481,
+              "ended_at": 111.4799999999711,
               "skipped": false,
               "reason": "route_complete",
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "duration_note": "active_time_pause_excluded"
             }
           ],
@@ -332,7 +332,7 @@
               "attempt": 1
             },
             {
-              "t": 107.39999999997481,
+              "t": 111.4799999999711,
               "event": "attempt_end",
               "attempt": 1,
               "score": 0.0
@@ -356,14 +356,14 @@
               "attempt": 2
             },
             {
-              "t": 107.39999999997481,
+              "t": 111.4799999999711,
               "event": "attempt_end",
               "attempt": 2,
               "score": 0.0
             }
           ],
           "final_score": 0.0,
-          "final_time_s": 106.89999999997481,
+          "final_time_s": 110.9799999999711,
           "skips": 0,
           "recoveries": 2,
           "rules": {
@@ -378,7 +378,7 @@
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "skipped": false,
               "reason": "route_complete",
               "events": [
@@ -409,7 +409,7 @@
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "skipped": false,
               "reason": "route_complete",
               "events": [
@@ -539,7 +539,7 @@
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "skipped": false,
         "reason": "route_complete",
         "events": [
@@ -580,13 +580,13 @@
                 ]
               ],
               "events": 0,
-              "ended_at": 107.39999999997481,
+              "ended_at": 111.4799999999711,
               "skipped": false,
               "reason": "route_complete",
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "duration_note": "active_time_pause_excluded"
             },
             {
@@ -600,13 +600,13 @@
                 ]
               ],
               "events": 0,
-              "ended_at": 107.39999999997481,
+              "ended_at": 111.4799999999711,
               "skipped": false,
               "reason": "route_complete",
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "duration_note": "active_time_pause_excluded"
             },
             {
@@ -620,13 +620,13 @@
                 ]
               ],
               "events": 0,
-              "ended_at": 107.39999999997481,
+              "ended_at": 111.4799999999711,
               "skipped": false,
               "reason": "route_complete",
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "duration_note": "active_time_pause_excluded"
             }
           ],
@@ -650,7 +650,7 @@
               "attempt": 1
             },
             {
-              "t": 107.39999999997481,
+              "t": 111.4799999999711,
               "event": "attempt_end",
               "attempt": 1,
               "score": 0.0
@@ -674,7 +674,7 @@
               "attempt": 2
             },
             {
-              "t": 107.39999999997481,
+              "t": 111.4799999999711,
               "event": "attempt_end",
               "attempt": 2,
               "score": 0.0
@@ -698,14 +698,14 @@
               "attempt": 3
             },
             {
-              "t": 107.39999999997481,
+              "t": 111.4799999999711,
               "event": "attempt_end",
               "attempt": 3,
               "score": 0.0
             }
           ],
           "final_score": 0.0,
-          "final_time_s": 106.89999999997481,
+          "final_time_s": 110.9799999999711,
           "skips": 0,
           "recoveries": 3,
           "rules": {
@@ -720,7 +720,7 @@
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "skipped": false,
               "reason": "route_complete",
               "events": [
@@ -751,7 +751,7 @@
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "skipped": false,
               "reason": "route_complete",
               "events": [
@@ -782,7 +782,7 @@
               "score": 0.0,
               "obstacle_score": 0.0,
               "return_bonus": 0.0,
-              "duration_s": 106.89999999997481,
+              "duration_s": 110.9799999999711,
               "skipped": false,
               "reason": "route_complete",
               "events": [
@@ -918,13 +918,13 @@
           ]
         ],
         "events": 0,
-        "ended_at": 107.39999999997481,
+        "ended_at": 111.4799999999711,
         "skipped": false,
         "reason": "route_complete",
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "duration_note": "active_time_pause_excluded"
       },
       {
@@ -938,13 +938,13 @@
           ]
         ],
         "events": 0,
-        "ended_at": 107.39999999997481,
+        "ended_at": 111.4799999999711,
         "skipped": false,
         "reason": "route_complete",
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "duration_note": "active_time_pause_excluded"
       },
       {
@@ -958,13 +958,13 @@
           ]
         ],
         "events": 0,
-        "ended_at": 107.39999999997481,
+        "ended_at": 111.4799999999711,
         "skipped": false,
         "reason": "route_complete",
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "duration_note": "active_time_pause_excluded"
       }
     ],
@@ -988,7 +988,7 @@
         "attempt": 1
       },
       {
-        "t": 107.39999999997481,
+        "t": 111.4799999999711,
         "event": "attempt_end",
         "attempt": 1,
         "score": 0.0
@@ -1012,7 +1012,7 @@
         "attempt": 2
       },
       {
-        "t": 107.39999999997481,
+        "t": 111.4799999999711,
         "event": "attempt_end",
         "attempt": 2,
         "score": 0.0
@@ -1036,14 +1036,14 @@
         "attempt": 3
       },
       {
-        "t": 107.39999999997481,
+        "t": 111.4799999999711,
         "event": "attempt_end",
         "attempt": 3,
         "score": 0.0
       }
     ],
     "final_score": 0.0,
-    "final_time_s": 106.89999999997481,
+    "final_time_s": 110.9799999999711,
     "skips": 0,
     "recoveries": 3,
     "rules": {
@@ -1058,7 +1058,7 @@
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "skipped": false,
         "reason": "route_complete",
         "events": [
@@ -1089,7 +1089,7 @@
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "skipped": false,
         "reason": "route_complete",
         "events": [
@@ -1120,7 +1120,7 @@
         "score": 0.0,
         "obstacle_score": 0.0,
         "return_bonus": 0.0,
-        "duration_s": 106.89999999997481,
+        "duration_s": 110.9799999999711,
         "skipped": false,
         "reason": "route_complete",
         "events": [
