@@ -468,7 +468,27 @@ def test_t_stairs_full_partial_and_history():
     _ul(j_lock, 3.6, -3.5)
     rep = j_lock.finalize("timeout")
     assert st(rep, "t_stairs")["score"] == 50.0, st(rep, "t_stairs")
-    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels and skipped-level arm fail / grounded graze cannot upgrade / partial not upgradable after exit")
+    # same-zone merge: partial s (up+down), walk on ground, then climb e; must stay 50
+    j_merge = Part1JudgeV2()
+    def _um(j, x, y, z=0.45, tags=(), ground=()):
+        legs = {leg: set(tags) for leg in LEGS}
+        return j.update(0.0, (x, y, z), 0.0, foot_tags=legs, ground_feet=set(ground), bar_z=None)
+    for x, y, tags in [(1.8, -5.4, ()), (1.8, -4.9, ("step:s:1",)), (1.8, -4.6, ("step:s:2",)),
+                       (1.8, -4.3, ("step:s:3",)), (1.8, -3.8, ("step:top",)),
+                       (1.8, -4.9, ("step:s:1",)), (1.8, -5.1, ())]:
+        _um(j_merge, x, y, tags=tags)
+    # move on the ground inside the zone (partial evidence already registered)
+    _um(j_merge, 1.8, -5.1, ground=("FL", "FR"))
+    _um(j_merge, 2.2, -4.6, ground=("FL", "FR"))
+    # climb the e arm fully
+    for x, y, tags in [(3.0, -3.5, ("step:e:1",)), (2.6, -3.5, ("step:e:2",)),
+                       (2.3, -3.5, ("step:e:3",)), (1.8, -3.8, ("step:top",)),
+                       (2.3, -3.5, ("step:e:3",)), (2.8, -3.5, ("step:e:1",)),
+                       (3.5, -3.5, ())]:
+        _um(j_merge, x, y, tags=tags)
+    rep = j_merge.finalize("timeout")
+    assert st(rep, "t_stairs")["score"] == 50.0, st(rep, "t_stairs")
+    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels and skipped-level arm fail / grounded graze cannot upgrade / partial not upgradable after exit / same-zone merge capped at 50")
 
 
 def test_slope_projection_and_graze_reset():

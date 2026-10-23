@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part2-official-diag",
-  "created_at": "2026-10-23T14:14:30+08:00",
+  "created_at": "2026-10-23T14:27:22+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "be021b01c31ba1331b20b4a531b8726416a0b003",
+      "commit": "802ccaee1ce4e64aea93bc47f83e1f135abe822d",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -185,7 +185,7 @@
     }
   },
   "judge": {
-    "version": "comp_judge_v2@825e64733aa3",
+    "version": "comp_judge_v2@7496f0733aa3",
     "files": [
       "scripts/agent_scripts/comp_part1_judge.py",
       "scripts/agent_scripts/comp_part2_judge.py"
@@ -193,7 +193,7 @@
     "file_hashes": [
       {
         "path": "scripts/agent_scripts/comp_part1_judge.py",
-        "sha256": "825e6497d4af6cbb22e6f93129fc903a35dcb7a4aa9a1ac69349f4ca5c4acd62"
+        "sha256": "7496f093d244358a60fd6199c233430d4cf3dbbd9f12237f12e0a5f098914c0a"
       },
       {
         "path": "scripts/agent_scripts/comp_part2_judge.py",

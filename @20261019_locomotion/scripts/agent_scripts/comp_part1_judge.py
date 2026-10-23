@@ -538,12 +538,20 @@ class TStairs(_Obstacle):
         self.locks_partial_on_exit = True
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"arms": {}, "top": False, "entry_arm": None, "exit_arm": None}
+        self.evidence = {"arms": {}, "top": False, "entry_arm": None, "exit_arm": None,
+                         "arms_before_ground": None}
 
     def _step_tags(self, tags: set[str]) -> list[str]:
         return [t for t in tags if t.startswith("step:")]
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
+        if (len(ground_feet) >= 2 and self.evidence.get("top")
+                and len(self._complete_arms()) >= 1
+                and self.evidence.get("arms_before_ground") is None):
+            # GLM/flash 2026-10-23: ground contact after a one-arm partial ends that
+            # traversal; later arm evidence in the SAME zone cannot be merged into a full
+            # 100 (a second separate partial is only allowed after one continuous crossing).
+            self.evidence["arms_before_ground"] = {k: set(v) for k, v in self.evidence["arms"].items()}
         if len(ground_feet) >= 2:
             # 2+ feet on the ground = not climbing (rule: any instant 2+ ground feet fails);
             # one foot down while three are on the steps is a normal gait transition.
@@ -571,8 +579,12 @@ class TStairs(_Obstacle):
             return False
         return not (self.evidence.get("top") and len(self._complete_arms()) >= 1)
 
+    def _eligible_arms(self) -> dict[str, set[int]]:
+        return self.evidence.get("arms_before_ground") or self.evidence["arms"]
+
     def _score_for(self) -> float:
-        complete = self._complete_arms()
+        arms = self._eligible_arms()
+        complete = [arm for arm, levels in arms.items() if levels >= {1, 2, 3}]
         if len(complete) >= 2:
             return float(min(self.max_score, self.per_obstacle_score))
         if len(complete) == 1:
