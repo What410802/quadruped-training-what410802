@@ -34,7 +34,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from comp_part2_judge import Part2JudgeV2  # noqa: E402
-from run_part1_judged_rollout_v2 import SPECIAL_ROUTES, TASKS, V2Runner  # noqa: E402
+from run_part1_judged_rollout_v2 import SPECIAL_WAYPOINTS, TASKS, V2Runner  # noqa: E402
 from run_part2_judged_eval import LevelRunner  # noqa: E402
 
 SCENE_P1 = str(ROOT / "assets/terrain/part1/part1_eval_scene_v2.xml")
@@ -88,20 +88,19 @@ def render_part1(task: str, policy: str, out_mp4: Path) -> dict:
     n = int(0.5 / 0.02)
     for _ in range(n):
         vr._policy_step(np.zeros(3))
-    route = SPECIAL_ROUTES.get(task)
-    if route:
-        for seg_cmd, seg_seconds in route:
-            for _ in range(int(seg_seconds / 0.02)):
-                vr._policy_step(np.asarray(seg_cmd, dtype=float))
-                _track(cam, vr.data, vr.trunk)
-                renderer.update_scene(vr.data, camera=cam, scene_option=opt)
-                frames.append(renderer.render().copy())
+    def _render_frame(vr_):
+        _track(cam, vr_.data, vr_.trunk)
+        renderer.update_scene(vr_.data, camera=cam, scene_option=opt)
+        frames.append(renderer.render().copy())
+
+    waypoints = SPECIAL_WAYPOINTS.get(task)
+    reached: list[bool] = []
+    if waypoints:
+        reached = vr.run_waypoints(waypoints, on_step=_render_frame)
     else:
         for _ in range(int(seconds / 0.02)):
             vr._policy_step(np.asarray(cmd, dtype=float))
-            _track(cam, vr.data, vr.trunk)
-            renderer.update_scene(vr.data, camera=cam, scene_option=opt)
-            frames.append(renderer.render().copy())
+            _render_frame(vr)
     renderer.close()
     report = vr.judge.finalize("timeout")
     _render_frames(frames, out_mp4, fps=50)
@@ -114,8 +113,9 @@ def render_part1(task: str, policy: str, out_mp4: Path) -> dict:
         "tilt_deg": round(float(tilt), 2),
         "start": [float(v) for v in xyz] + [float(yaw)],
         "command": [float(v) for v in cmd],
-        "route": [[[float(v) for v in c], float(sec)] for c, sec in (route or [])],
-        "seconds": float(sum(sec for _, sec in route)) if route else float(seconds),
+        "waypoints": [list(w) for w in (waypoints or [])],
+        "waypoints_reached": reached,
+        "seconds": float(seconds),
         "note": note,
         "frames": len(frames),
     }

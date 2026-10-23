@@ -12,7 +12,7 @@
 | Part 2 | 越障能力测试（仅 RL） | 1300 | （同上） |
 | 答辩 | 7 分钟 | — | 30% |
 
-- Part 1：8 障碍 × 100 + **越过全部障碍并回到启动区 +100**；整场 3 次尝试（开始/重试/恢复/跳过都消耗）；可手动、可局部自动/固定动作，但自动无额外加分；同分按用时升序排序；**计时在机器人稳定停下后停止**。
+- Part 1：8 障碍 × 100 + **越过全部障碍并回到启动区 +100**；整场 3 次尝试（开始/主动重跑/跳过消耗；摔倒手动恢复不消耗，Q1 已确认）；可手动、可局部自动/固定动作，但自动无额外加分；同分按用时升序排序；**计时在机器人稳定停下后停止**。
 - Part 2：高台/楼梯/斜坡/高墙/沟壑/梅花桩，每项 4 次，取最高成功难度；不按尝试次数扣分。
 - 真值细节见 `docs/reference/team-race-2026.md` §2–§3。
 
@@ -50,7 +50,7 @@
 
 | id | 问题 | 已确认口径（2026-10-22） | 状态 |
 |---|---|---|---|
-| Q1 | Part 1 尝试次数 | 整场 3 次；开始/重试/恢复/跳过都消耗 | resolved |
+| Q1 | Part 1 尝试次数 | 整场 3 次；开始/主动重跑/跳过消耗，摔倒手动恢复不消耗 | resolved（2026-10-22 用户确认） |
 | Q2 | T 台阶表 3 的 75/50 | 按比例缩放到 100 分：两侧都过=100，仅上=75×2/3=50，仅下=50×2/3≈33（舍去）（全部按手动遥控计分） | resolved（×2/3，2026-10-22 用户确认） |
 | Q3 | 1/2 足触地的瞬时语义、限高杆碰柱/梁 | **任何瞬间** ≥2 足触地即失败；碰柱/碰梁但横杆未落**不算失败** | resolved |
 | Q4 | 砂砾坑短边进出、斜坡距离 | 坑进入和离开**两端都需合法**（1 m 短边）；斜坡两侧**合计** ≥1 m | resolved |
@@ -72,7 +72,7 @@
 | 资产 | 路径 | sha256（2026-10-22） |
 |---|---|---|
 | Part1 评测场景 | `assets/terrain/part1/part1_eval_scene_v2.xml`（V2：滑动横杆/命名几何） | 以 `comp/audits/HASHES.json` 当前值为准 |
-| Part1 judge zones | `assets/terrain/part1/judge_zones.yaml` | 待补 |
+| Part1 judge zones | 已内置于 `comp_part1_judge.py::ZONES` | — |
 | Part2 能力场 | `assets/terrain/part2/ability_field/part2_ability_field.xml` | 待补 |
 | Part2 梅花桩 | `assets/terrain/part2/part2_plum_eval_scene.xml` | 待补 |
 | judge（V2.1 规则，当前） | `scripts/agent_scripts/comp_part1_judge.py` + `comp_part1_geom_tags.py` | 以 `comp/audits/HASHES.json` 当前值为准 |

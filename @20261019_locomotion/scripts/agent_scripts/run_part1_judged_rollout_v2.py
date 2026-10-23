@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import mujoco
@@ -41,24 +42,25 @@ BAR_BODY = "height_bar_beam_body"
 # name: (start xyz, yaw, command, seconds, note)  -- same diagnostic starts as V1
 TASKS = {
     "height_bar": ((5.7, -10.4, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 4.0, "through gate along +y"),
-    "high_wall": ((1.8, -7.8, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 4.0, "cross wall along +y"),
-    "bridge_blocks": ((1.8, 0.0, 0.65), 0.0, (0.3, 0.0, 0.0), 5.0, "left platform -> +x"),
-    "bridge_bands": ((5.7, -3.5, 0.65), np.pi / 2, (0.3, 0.0, 0.0), 5.0, "lower platform -> +y"),
+    "high_wall": ((1.8, -8.0, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 4.0, "cross wall along +y (start outside zone)"),
+    "bridge_blocks": ((0.8, 0.0, 0.65), 0.0, (0.3, 0.0, 0.0), 5.0, "left platform -> +x (start outside zone)"),
+    "bridge_bands": ((5.7, -4.2, 0.65), np.pi / 2, (0.3, 0.0, 0.0), 5.0, "lower platform -> +y (start outside zone)"),
     "gravel_pit": ((3.6, -12.5, 0.55), 0.0, (0.45, 0.0, 0.0), 7.2,
                    "legal L path: west 1m short edge in -> turn -> north 1m short edge out"),
     "t_stairs": ((1.8, -5.2, 0.55), np.pi / 2, (0.4, 0.0, 0.0), 5.0, "main limb -> +y"),
-    "slope": ((4.6, -6.5, 0.55), np.pi / 2, (0.5, 0.0, 0.0), 6.0, "slope long edge -> +y"),
+    "slope": ((4.6, -6.9, 0.55), np.pi / 2, (0.5, 0.0, 0.0), 6.0, "slope long edge -> +y (start outside zone)"),
     "slalom": ((1.8, -9.25, 0.55), -np.pi / 2, (0.45, 0.0, 0.0), 4.5, "first post -> -y"),
 }
 
 
 
-# Tasks that need a scripted multi-command route (the policy runner has no waypoint
-# controller).  Each segment is (body-frame command, seconds).  gravel_pit uses this to
-# enter through the legal west 1 m short edge, turn left, and leave through the north
-# 1 m short edge (long-edge entry/exit is illegal).
-SPECIAL_ROUTES = {
-    "gravel_pit": [((0.45, 0.0, 0.0), 3.0), ((0.0, 0.0, 0.75), 1.2), ((0.45, 0.0, 0.0), 3.0)],
+# Tasks that need a closed-loop waypoint route (the policy runner only takes velocity
+# commands).  gravel_pit uses it to enter through the legal west 1 m short edge, turn
+# inside the pit, and leave through the north 1 m short edge (long-edge entry/exit is
+# illegal).  The controller never reads judge state; it only uses base pose for steering
+# (allowed by the rules for navigation/commands).
+SPECIAL_WAYPOINTS = {
+    "gravel_pit": [(4.6, -12.5), (5.8, -12.5), (5.8, -10.6)],
 }
 
 
@@ -153,17 +155,39 @@ class V2Runner:
                           _yaw_of(self.data, self.trunk), foot_tags=foot_tags,
                           ground_feet=ground_feet, bar_z=bar_z)
 
+    def run_waypoints(self, targets, speed: float = 0.4, tol: float = 0.25,
+                      max_s_per: float = 4.0, on_step=None) -> list[bool]:
+        reached_flags = []
+        for target in targets:
+            t0 = float(self.data.time)
+            reached = False
+            while float(self.data.time) - t0 < max_s_per:
+                base, _ = self.runner.base()
+                dx, dy = float(target[0]) - float(base[0]), float(target[1]) - float(base[1])
+                dist = math.hypot(dx, dy)
+                if dist < tol:
+                    reached = True
+                    break
+                desired = math.atan2(dy, dx)
+                err = (desired - _yaw_of(self.data, self.trunk) + math.pi) % (2 * math.pi) - math.pi
+                cmd = np.array([speed * max(0.0, math.cos(err)), 0.0,
+                                float(np.clip(1.5 * err, -0.8, 0.8))], dtype=np.float64)
+                self._policy_step(cmd)
+                if on_step is not None:
+                    on_step(self)
+            reached_flags.append(reached)
+        return reached_flags
+
     def run_task(self, name: str, warmup_s: float) -> dict:
         xyz, yaw, cmd, seconds, note = TASKS[name]
         command = np.asarray(cmd, dtype=np.float64)
         self.judge = Part1JudgeV2()
         for _ in range(int(warmup_s / 0.02)):
             self._policy_step(np.zeros(3))
-        route = SPECIAL_ROUTES.get(name)
-        if route:
-            for seg_cmd, seg_seconds in route:
-                for _ in range(int(seg_seconds / 0.02)):
-                    self._policy_step(np.asarray(seg_cmd, dtype=np.float64))
+        waypoints = SPECIAL_WAYPOINTS.get(name)
+        reached: list[bool] = []
+        if waypoints:
+            reached = self.run_waypoints(waypoints)
         else:
             for _ in range(int(seconds / 0.02)):
                 self._policy_step(command)
@@ -174,7 +198,8 @@ class V2Runner:
             "note": note,
             "start": [round(float(v), 2) for v in xyz] + [round(float(yaw), 2)],
             "command": [float(v) for v in command],
-            "route": [[[float(v) for v in c], float(s)] for c, s in (route or [])],
+            "waypoints": [list(w) for w in (waypoints or [])],
+            "waypoints_reached": reached,
             "seconds": seconds,
             "base": [round(float(v), 3) for v in base],
             "tilt_deg": round(float(tilt), 2),

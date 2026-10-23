@@ -64,6 +64,18 @@ C1 CALIBRATION: PASS
 
 - 已修：`run_part1_course.py` pause/resume 后继续完成当前 policy step 的剩余 physics substeps（不再跳过），保持 4 substep/policy step 时序。
 - 已修：slalom 终点圆与最后一根杆重叠的假成功风险——success 额外要求离开最后一根杆半径（`last_post_cleared`），conformance 增加"停在最后一根杆圈内"反例。
-- 已修：`labels_template.csv` gravel 备注改为 L 形合法路径；G1_SELFCHECK 的 HASHES 数量统一为 75；C1 报告纳入 HASHES objects。
+- 已修：`labels_template.csv` gravel 备注改为 L 形合法路径；G1_SELFCHECK 的 HASHES 数量统一为当前 76；C1 报告纳入 HASHES objects。
 - 已重生成：四份产物、三份演练、C1 记录/视频/索引、HASHES；`check_calibration.py` 仍 PASS 92/92。
 - 自检结论：V33 的 CONCERN 项已关闭；未发现新的 scorer blocker。
+
+## 2026-10-23 20:00 第 34 轮 flash CONCERN 后的自检补充
+
+- 已修：单障碍诊断起点全部移出 judge zone（high_wall y=−8.0、bridge_blocks x=0.8、bridge_bands y=−4.2、slope y=−6.9），
+  避免未来真实成功 rollout 被 `illegal_entry_side` 误杀；协议 §4.1 同步。
+- 已修：gravel 单障碍改为**闭环 waypoint 导航**（目标 (4.6,−12.5)→(5.8,−12.5)→(5.8,−10.6)，只用 base 位姿生成速度指令），
+  不再用开环定时转向；结果记录 `waypoints_reached`。
+- 已修：`CONTRACT.md` §1/Q1 的"恢复消耗"文案与 §4/用户确认口径统一（恢复不消耗）；§6 删除不存在的 judge_zones 文件条目。
+- 已修：`STATUS.md` 全面重写（原内容仍写 G1 FAIL/Part2 evaluator 缺失/calibration 为空，与现状矛盾）。
+- 已修：`G1_SELFCHECK.md` 内部 HASHES 数量统一为 76；C1 报告已纳入 HASHES objects。
+- 已重生成：四份产物、三份演练、C1 92 条记录/视频/索引；`check_calibration.py` PASS 92/92。
+- 自检结论：V34 的 CONCERN 项已关闭；未发现新的 scorer blocker。
