@@ -87,6 +87,13 @@ def build_samples(waypoints: list[dict]) -> list[dict]:
                 "speed": speed if k < n - 1 else float(nxt.get("speed", 0.0)),
             })
             t += dt
+    # body heading follows the local path tangent (no stale/pre-set yaw)
+    for i, smp in enumerate(out):
+        p0 = out[max(0, i - 1)]
+        p1 = out[min(len(out) - 1, i + 1)]
+        dx, dy = p1["x"] - p0["x"], p1["y"] - p0["y"]
+        if math.hypot(dx, dy) > 1e-6:
+            smp["yaw"] = round(math.degrees(math.atan2(dy, dx)), 2)
     return out
 
 
@@ -172,13 +179,13 @@ P1_REFERENCES: dict[str, list[dict]] = {
     "slalom": [
         # short-side entry: start at the L-bend circle B, go around post3/post2, corner,
         # then post1/post0 along the long side, finish at A near the start area.
-        _wp(3.2, -12.5, 0.42, yaw=180, speed=0.35),
-        _wp(2.8, -12.85, 0.42, yaw=180, speed=0.35),   # post 3 (south side)
-        _wp(1.8, -12.85, 0.42, yaw=180, speed=0.35),   # post 2 (south side)
-        _wp(1.55, -12.75, 0.42, yaw=-135, speed=0.30),  # corner checkpoint
-        _wp(1.5, -11.5, 0.42, yaw=-90, speed=0.35),    # post 1 (west side)
-        _wp(2.1, -10.5, 0.42, yaw=-70, speed=0.35),    # post 0 (east side)
-        _wp(1.8, -10.1, 0.42, yaw=-90, speed=0.20),    # end circle A
+        _wp(3.2, -12.5, 0.42, speed=0.35),             # short-side entry B
+        _wp(2.8, -12.15, 0.42, speed=0.32),            # first turn to the dog's right
+        _wp(1.8, -12.15, 0.42, speed=0.35),            # post 2 (north side)
+        _wp(1.55, -12.75, 0.42, speed=0.28),           # corner checkpoint
+        _wp(1.5, -11.5, 0.42, speed=0.35),             # post 1 (west side)
+        _wp(2.1, -10.5, 0.42, speed=0.35),             # post 0 (east side)
+        _wp(1.8, -10.1, 0.42, speed=0.20),             # end circle A
     ],
 }
 
@@ -187,7 +194,9 @@ P2_REFERENCES: dict[str, list[dict]] = {
         _wp(0.0, 0.0, 0.42, speed=0.40),
         _wp(1.9, 0.0, 0.48, speed=0.35),
         _wp(2.4, 0.0, 0.95, pitch=-12, speed=0.25),
-        _wp(2.7, 0.0, 0.95, pitch=0, speed=0.15),   # level body on the platform top
+        _wp(2.7, 0.0, 0.95, pitch=0, speed=0.18),   # on the platform top
+        _wp(3.2, 0.0, 0.65, pitch=8, speed=0.22),   # step down the far side
+        _wp(3.8, 0.0, 0.42, pitch=0, speed=0.20),   # back on the ground (continuous run)
     ],
     "stairs": [
         _wp(0.0, 0.0, 0.42, speed=0.40),

@@ -202,18 +202,20 @@
       "name": "slalom_s1",
       "target": [
         2.8,
-        -12.85
+        -12.15
       ],
       "speed": 0.5,
+      "max_s": 2.0,
       "obstacle": "slalom"
     },
     {
       "name": "slalom_s2",
       "target": [
         1.8,
-        -12.85
+        -12.15
       ],
       "speed": 0.5,
+      "max_s": 2.0,
       "obstacle": "slalom"
     },
     {
@@ -233,6 +235,7 @@
         -11.5
       ],
       "speed": 0.5,
+      "max_s": 2.0,
       "obstacle": "slalom"
     },
     {
@@ -242,6 +245,7 @@
         -10.5
       ],
       "speed": 0.5,
+      "max_s": 2.0,
       "obstacle": "slalom"
     },
     {
@@ -251,7 +255,7 @@
         -10.1
       ],
       "speed": 0.5,
-      "max_s": 4.0,
+      "max_s": 2.0,
       "obstacle": "slalom"
     },
     {

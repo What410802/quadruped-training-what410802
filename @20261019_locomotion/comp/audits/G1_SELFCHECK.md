@@ -114,3 +114,11 @@ C1 CALIBRATION: PASS
 - slalom 参考改为短边 B 进：B → post3 → post2 → corner → post1 → post0 → A；重渲 trunk_ref。
 - P2 高台/楼梯/斜坡/梅花桩改为 world-only raycast 表面跟随；沟壑平地；位置线性插值（消除 waypoint 停顿）。
 - 这些属于 C2 训练参考/诊断链路，不改变 judge 语义；G1 仍按 A 决策未冻结。
+
+## 2026-10-23 22:32 参考轨迹 v6 / 架构草图
+
+- slalom 改为短边 B 进 + 初始向狗右侧转（B→(2.8,−12.15)→(1.8,−12.15)→corner→post1→post0→A），route 同步；
+- 所有参考轨迹的 yaw 改为按轨迹切线自动生成（机身持续朝当前运动方向）；
+- p2_high_platform 增加从另一侧下平台的段（连续测试），P2 其他项仍按实际表面贴地；
+- 新增 `comp/PLAN_C2_ARCH.md`：每任务分段 + 高层状态机 + 先单多任务模型、必要时专项策略；Part2 不需要闭合/整场连续轨迹。
+- 课程 route/三份演练已按新顺序重生成；G1 仍按 A 决策未冻结。
