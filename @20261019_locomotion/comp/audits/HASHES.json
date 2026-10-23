@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T17:34:30+08:00",
+  "generated_at": "2026-10-23T18:42:16+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -17,11 +17,11 @@
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "98ee9b965025246d173e40a32df3f656c3214e05bf58672f566c826b9d703929"
+      "sha256": "af0b55b121695301cb934e1f4214bb875b06e1044d2ca562c1205f53d8f85104"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "e3be3bb5f537cc048ce595a151468b9f31e43e4c147aaac67256f6c74dc80e2b"
+      "sha256": "88ffce78814d2f13f2561974084d94012d30287d37267aabc435db5f3ec31c6c"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -77,7 +77,7 @@
     },
     "part1_route": {
       "path": "config/part1-route.json",
-      "sha256": "fb4a2584a1dac1797bce2cb69e1e4bca3fe2d7115bcfc8acb1c2621c0fc5461a"
+      "sha256": "db0640bc50b97e77878bfdc275766f8f3a1bc67199c43c39bd974602ee47dbca"
     },
     "part2_levels_json": {
       "path": "config/part2-levels.json",
@@ -93,7 +93,7 @@
     },
     "eval_course_diag": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "1ed0bc6078f5daba136142b5c71c08915e26e4689f08b454b5b4b06b5805fd80"
+      "sha256": "11ac524c0d090c74eed61571099feec82986a73a361098d658c0826e61da3c8c"
     },
     "rules_pdf_md": {
       "path": "docs/reference/team-race-2026.md",
@@ -105,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "92786324ab9a256c5cc175f7c6877833b2b77da3aef69cd78206b9f28a3c113d"
+      "sha256": "3c322dc852c48cea7562558941657e49a14ee07a462b8d38a2a90accd1c391f7"
     },
     "level_high_platform_10cm": {
       "path": "assets/terrain/part2/levels/high_platform_10cm.xml",
@@ -185,7 +185,7 @@
     },
     "eval_flat-ft-2500-part1-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/manifest.json",
-      "sha256": "b6d2b4aefe5e7a6b465f45a66e9b6356e477f7f71319ddc221de63b92bfaa490"
+      "sha256": "df031bd073025126f8b7fe331754eeabd1d4593e693c5f955822555d1ce744d8"
     },
     "eval_flat-ft-2500-part1-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/trials.jsonl",
@@ -197,7 +197,7 @@
     },
     "eval_flat-ft-2500-part2-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/manifest.json",
-      "sha256": "5c4d7937f48c71ed76ac95379cd9f49c639f902ed504fe5fedc18d87463e950b"
+      "sha256": "b10ed0355c7e4a7397ae380eb3e1996e9ec24b0c789e389008cced2ccef1aed9"
     },
     "eval_flat-ft-2500-part2-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/trials.jsonl",
@@ -209,7 +209,7 @@
     },
     "eval_flat-ft-2500-part2-official-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
-      "sha256": "1c94989d2812c1843d7291d40e78a82b4e7fafe1151c3ab8ac04451d7ee7784e"
+      "sha256": "285cfd9bd825b55df1727c2718721e252bd85e705484b3597c1c2a86535e8a57"
     },
     "eval_flat-ft-2500-part2-official-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
@@ -221,15 +221,15 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "1bd32928c18c6579477d558d36bf25485d892b7774ae0f0049a5aa03b4cb2009"
+      "sha256": "6f421adc40c78eaa5f238ae79201e45dca5e5f53f9d5e2f3cdd94afdc6948263"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
-      "sha256": "a70624cceea97e745d9545d88569f5662c08d69626651760d70a4362546d83fa"
+      "sha256": "941473280d6b310716891b632bd0d946a7073d7f8ed3660ce21797e7576a0aa8"
     },
     "eval_flat-ft-2500-part1-course-diag_summary": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "1ed0bc6078f5daba136142b5c71c08915e26e4689f08b454b5b4b06b5805fd80"
+      "sha256": "11ac524c0d090c74eed61571099feec82986a73a361098d658c0826e61da3c8c"
     },
     "extra_part2_ability_field": {
       "path": "assets/terrain/part2/ability_field/part2_ability_field.xml",
@@ -257,7 +257,7 @@
     },
     "extra_build_calibration_bundle": {
       "path": "scripts/agent_scripts/build_calibration_bundle.py",
-      "sha256": "b4df05b39954aec4290f04b97f932731296b3741e097acd530d39f2b3c0349ca"
+      "sha256": "42b68f8763142f6b8fc4da1fb549a0eb3b9fde922b7930b91a512a06aa8514f2"
     },
     "extra_make_calibration_label_sheet": {
       "path": "scripts/agent_scripts/make_calibration_label_sheet.py",
@@ -269,7 +269,7 @@
     },
     "extra_records": {
       "path": "comp/eval/_calibration/records.jsonl",
-      "sha256": "641ec006aac8c90e37f0979578f019bc0288432c13621ff99672542cb4ecad1d"
+      "sha256": "0de027a6c0d01148d36135c0f33aac907a99f1ac7923add257ccf21d96dd2d83"
     },
     "extra_README_C1": {
       "path": "comp/eval/_calibration/README_C1.md",
@@ -277,19 +277,19 @@
     },
     "extra_index": {
       "path": "comp/eval/_calibration/index.html",
-      "sha256": "c7afb3be98475d44b038bc6340e31a7211291c3b97da97656812379c3adfbbc5"
+      "sha256": "9ab684ce0c08c0a54fe77c13af531bb6a208ba008575c4dd56ae649277d10d72"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
-      "sha256": "a0a75b17b750e0df1ea4fcbea398ea6be7397dcabc82bd8fbe3eb1c6da52b36d"
+      "sha256": "10d4d617e7769f8799f6cd9d9601487c4d88ce100de4f81358c320adc511b3bf"
     },
     "evidence_part1_course_pause_resume_drill": {
       "path": "comp/audits/evidence/part1_course_pause_resume_drill.json",
-      "sha256": "b84b5523e0ae274edef3e816953fe36d523f01b941261a52a0e9bb6e2a9d8995"
+      "sha256": "5a3c28412760f51838da962931b43c5feae098041fa95e33f9c90f7f4308d06f"
     },
     "evidence_part1_course_pause_timeout_drill": {
       "path": "comp/audits/evidence/part1_course_pause_timeout_drill.json",
-      "sha256": "ccab3d5398763e09abb97c0c11b85bff313879dbf68ba1d922e2110327522acb"
+      "sha256": "3d149c048af33ff3ca018efd0b21ba44b46697aa14d16750d54cd3de6c3b6cb6"
     }
   },
   "superseded": {

@@ -333,12 +333,18 @@ def _session_records(results_dir: Path) -> list[dict]:
 RULE_P1 = {
     "height_bar": {
         "success": [
-            {"x": 5.7, "y": -10.4, "bar_z": 0.325}, {"x": 5.7, "y": -9.0, "bar_z": 0.325},
-            {"x": 5.7, "y": -8.4, "bar_z": 0.325}, {"x": 5.7, "y": -8.2, "bar_z": 0.325},
+            {"x": 5.7, "y": -10.4, "z": 0.25, "bar_z": 0.325},
+            {"x": 5.7, "y": -9.5, "z": 0.25, "bar_z": 0.325},
+            {"x": 5.7, "y": -9.0, "z": 0.25, "bar_z": 0.325},
+            {"x": 5.7, "y": -8.5, "z": 0.25, "bar_z": 0.325},
+            {"x": 5.7, "y": -8.2, "z": 0.25, "bar_z": 0.325},
         ],
         "fail": [
-            {"x": 5.7, "y": -10.4, "bar_z": 0.325}, {"x": 5.7, "y": -9.0, "bar_z": 0.20},
-            {"x": 5.7, "y": -8.4, "bar_z": 0.20}, {"x": 5.7, "y": -8.2, "bar_z": 0.20},
+            {"x": 5.7, "y": -10.4, "z": 0.45, "bar_z": 0.325},
+            {"x": 5.7, "y": -9.5, "z": 0.45, "bar_z": 0.325},
+            {"x": 5.7, "y": -9.0, "z": 0.45, "bar_z": 0.325},
+            {"x": 5.7, "y": -8.5, "z": 0.45, "bar_z": 0.325},
+            {"x": 5.7, "y": -8.2, "z": 0.45, "bar_z": 0.325},
         ],
     },
     "high_wall": {
@@ -354,10 +360,10 @@ RULE_P1 = {
     },
     "bridge_blocks": {
         "success": [
-            {"x": 0.5, "y": 0.0}, {"x": 1.35, "y": 0.0, "tags": ["platform_left"]},
-            {"x": 2.2, "y": 0.0, "tags": ["bridge"]}, {"x": 3.2, "y": 0.0, "tags": ["bridge"]},
-            {"x": 4.2, "y": 0.0, "tags": ["bridge"]}, {"x": 5.2, "y": 0.0, "tags": ["bridge"]},
-            {"x": 5.6, "y": 0.0, "tags": ["platform_right"]}, {"x": 6.5, "y": 0.0},
+            {"x": 0.5, "y": 0.0, "z": 0.45}, {"x": 1.35, "y": 0.0, "z": 0.55, "tags": ["platform_left"]},
+            {"x": 2.2, "y": 0.0, "z": 0.55, "tags": ["bridge"]}, {"x": 3.2, "y": 0.0, "z": 0.55, "tags": ["bridge"]},
+            {"x": 4.2, "y": 0.0, "z": 0.55, "tags": ["bridge"]}, {"x": 5.2, "y": 0.0, "z": 0.55, "tags": ["bridge"]},
+            {"x": 5.6, "y": 0.0, "z": 0.55, "tags": ["platform_right"]}, {"x": 6.5, "y": 0.0, "z": 0.45},
         ],
         "fail": [
             {"x": 0.5, "y": 0.0}, {"x": 1.35, "y": 0.0, "tags": ["platform_left"]},
@@ -366,10 +372,10 @@ RULE_P1 = {
     },
     "bridge_bands": {
         "success": [
-            {"x": 5.7, "y": -4.2}, {"x": 5.7, "y": -3.6, "tags": ["platform_low"]},
-            {"x": 5.7, "y": -2.8, "tags": ["bridge"]}, {"x": 5.7, "y": -2.4, "tags": ["bridge"]},
-            {"x": 5.7, "y": -2.0, "tags": ["bridge"]}, {"x": 5.7, "y": -1.3, "tags": ["platform_high"]},
-            {"x": 5.7, "y": -0.6},
+            {"x": 5.7, "y": -4.2, "z": 0.45}, {"x": 5.7, "y": -3.6, "z": 0.55, "tags": ["platform_low"]},
+            {"x": 5.7, "y": -2.8, "z": 0.55, "tags": ["bridge"]}, {"x": 5.7, "y": -2.4, "z": 0.55, "tags": ["bridge"]},
+            {"x": 5.7, "y": -2.0, "z": 0.55, "tags": ["bridge"]}, {"x": 5.7, "y": -1.3, "z": 0.55, "tags": ["platform_high"]},
+            {"x": 5.7, "y": -0.6, "z": 0.45},
         ],
         "fail": [
             {"x": 5.7, "y": -4.2}, {"x": 5.7, "y": -3.6, "tags": ["platform_low"]},
@@ -378,36 +384,48 @@ RULE_P1 = {
     },
     "gravel_pit": {
         "success": [
-            {"x": 5.0, "y": -13.4}, {"x": 5.0, "y": -12.9, "tags": ["gravel"]},
-            {"x": 5.5, "y": -12.0, "tags": ["gravel"]}, {"x": 5.8, "y": -11.5, "tags": ["gravel"]},
-            {"x": 6.0, "y": -11.0, "tags": ["gravel"]}, {"x": 6.0, "y": -10.8},
+            {"x": 3.5, "y": -12.5, "z": 0.45}, {"x": 4.1, "y": -12.5, "z": 0.45},
+            {"x": 4.5, "y": -12.5, "z": 0.57, "tags": ["gravel"]},
+            {"x": 5.0, "y": -12.5, "z": 0.57, "tags": ["gravel"]},
+            {"x": 5.6, "y": -12.5, "z": 0.57, "tags": ["gravel"]},
+            {"x": 5.8, "y": -12.0, "z": 0.57, "tags": ["gravel"]},
+            {"x": 5.8, "y": -11.5, "z": 0.57, "tags": ["gravel"]},
+            {"x": 5.8, "y": -10.8, "z": 0.45},
         ],
         "fail": [
-            {"x": 4.0, "y": -12.0}, {"x": 4.4, "y": -12.0, "tags": ["gravel"]},
-            {"x": 5.2, "y": -12.0, "tags": ["gravel"]}, {"x": 6.0, "y": -12.0, "tags": ["gravel"]},
-            {"x": 6.5, "y": -12.0},
+            {"x": 5.0, "y": -13.4, "z": 0.45}, {"x": 5.0, "y": -12.9, "z": 0.57, "tags": ["gravel"]},
+            {"x": 5.5, "y": -12.0, "z": 0.57, "tags": ["gravel"]},
+            {"x": 5.8, "y": -11.5, "z": 0.57, "tags": ["gravel"]},
+            {"x": 6.0, "y": -11.0, "z": 0.57, "tags": ["gravel"]},
+            {"x": 6.0, "y": -10.8, "z": 0.45},
         ],
     },
     "t_stairs": {
         "success": [
-            {"x": 1.8, "y": -5.4}, {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
-            {"x": 1.8, "y": -4.6, "tags": ["step:s:2"]}, {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
-            {"x": 1.8, "y": -3.8, "tags": ["step:top"]}, {"x": 2.2, "y": -3.5, "tags": ["step:e:3"]},
-            {"x": 2.6, "y": -3.5, "tags": ["step:e:2"]}, {"x": 3.05, "y": -3.5, "tags": ["step:e:1"]},
-            {"x": 3.6, "y": -3.5},
+            {"x": 1.8, "y": -5.4, "z": 0.45}, {"x": 1.8, "y": -4.9, "z": 0.55, "tags": ["step:s:1"]},
+            {"x": 1.8, "y": -4.6, "z": 0.65, "tags": ["step:s:2"]},
+            {"x": 1.8, "y": -4.3, "z": 0.75, "tags": ["step:s:3"]},
+            {"x": 1.8, "y": -3.8, "z": 0.85, "tags": ["step:top"]},
+            {"x": 2.2, "y": -3.5, "z": 0.75, "tags": ["step:e:3"]},
+            {"x": 2.6, "y": -3.5, "z": 0.65, "tags": ["step:e:2"]},
+            {"x": 3.05, "y": -3.5, "z": 0.55, "tags": ["step:e:1"]},
+            {"x": 3.6, "y": -3.5, "z": 0.45},
         ],
         "fail": [
-            {"x": 1.8, "y": -5.4}, {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
-            {"x": 1.8, "y": -4.6, "tags": ["step:s:2"]}, {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
-            {"x": 1.8, "y": -3.8, "tags": ["step:top"]}, {"x": 1.8, "y": -4.3, "tags": ["step:e:3"]},
-            {"x": 1.8, "y": -4.9, "tags": ["step:e:1"]}, {"x": 1.8, "y": -5.6},
+            {"x": 1.8, "y": -5.4, "z": 0.45}, {"x": 1.8, "y": -4.9, "z": 0.55, "tags": ["step:s:1"]},
+            {"x": 1.8, "y": -4.6, "z": 0.65, "tags": ["step:s:2"]},
+            {"x": 1.8, "y": -4.3, "z": 0.75, "tags": ["step:s:3"]},
+            {"x": 1.8, "y": -3.8, "z": 0.85, "tags": ["step:top"]},
+            {"x": 1.8, "y": -4.3, "z": 0.75, "tags": ["step:e:3"]},
+            {"x": 1.8, "y": -4.9, "z": 0.55, "tags": ["step:e:1"]},
+            {"x": 1.8, "y": -5.6, "z": 0.45},
         ],
     },
     "slope": {
         "success": [
-            {"x": 5.2, "y": -6.9}, {"x": 5.2, "y": -6.5, "tags": ["slope"]},
-            {"x": 5.2, "y": -6.1, "tags": ["slope"]}, {"x": 5.2, "y": -5.7, "tags": ["slope"]},
-            {"x": 5.2, "y": -5.3, "tags": ["slope"]}, {"x": 5.2, "y": -3.9},
+            {"x": 5.2, "y": -6.9, "z": 0.45}, {"x": 5.2, "y": -6.5, "z": 0.62, "tags": ["slope"]},
+            {"x": 5.2, "y": -6.1, "z": 0.62, "tags": ["slope"]}, {"x": 5.2, "y": -5.7, "z": 0.62, "tags": ["slope"]},
+            {"x": 5.2, "y": -5.3, "z": 0.62, "tags": ["slope"]}, {"x": 5.2, "y": -3.9, "z": 0.62},
         ],
         "fail": [
             {"x": 5.2, "y": -6.9}, {"x": 5.2, "y": -6.5, "tags": ["slope"]},
@@ -459,8 +477,9 @@ def _world_footprints(scene_path, prefixes=None, exclude=("level_floor", "floor"
                         "top": float(pos[2] + abs(R[2, 2]) * size[2] if abs(R[2, 2]) < 1 else size[2])})
         elif typ in (int(mujoco.mjtGeom.mjGEOM_CYLINDER), int(mujoco.mjtGeom.mjGEOM_CAPSULE),
                      int(mujoco.mjtGeom.mjGEOM_SPHERE)):
+            radius = float(size[0]) if typ != int(mujoco.mjtGeom.mjGEOM_CAPSULE) else float(size[0]) + float(size[1])
             out.append({"kind": "circle", "c": (float(pos[0]), float(pos[1])),
-                        "r": float(max(size[0], size[1])), "name": name, "z": float(pos[2])})
+                        "r": max(0.04, radius), "name": name, "z": float(pos[2])})
     return out
 
 
@@ -577,12 +596,13 @@ P1_GEOM_PREFIXES = {
 
 P1_KEY = {
     "height_bar": {
-        "success": ["成功：从门洞下方通过（基座穿过 y 区间），横杆保持未掉落（bar_z≈0.325）；碰杆/擦杆不算失败。",
-                    "失败例：横杆被顶落到低位（bar_z 0.20）或基座未穿过门洞。",
-                    "本卡差异：bar_z 时序 + 是否穿过门洞；不是靠足端接触判定。"],
-        "fail": ["失败例：横杆被顶落到低位（bar_z 0.20）或基座未穿过门洞。",
-                 "对照 success 卡：唯一差异是 bar_z 从 0.325 掉到 0.20。",
-                 "本卡差异：bar_z 时序 + 是否穿过门洞；不是靠足端接触判定。"],
+        "success": ["成功：低姿态从门洞下方穿过（base z < bar_z），横杆保持未掉落（bar_z≈0.325）；碰杆/擦杆但杆不掉不算失败。",
+                    "失败例 A：站立高度（base z 0.45 > bar_z 0.325）从门洞位置通过 = 没有从下方穿过。",
+                    "失败例 B：横杆掉落到低位（bar_z 掉到 0.20）。",
+                    "本卡差异：base z 与 bar_z 的高度关系 + 是否穿过门洞；不是靠足端接触判定。"],
+        "fail": ["失败例：站立高度（base z 0.45 > bar_z 0.325）从门洞位置通过 = 没有从下方穿过；或横杆掉落到 0.20。",
+                 "对照 success 卡：路径相同，但 base z 高于/等于 bar_z（未从下方通过）。",
+                 "本卡差异：base z 与 bar_z 的高度关系 + 是否穿过门洞；不是靠足端接触判定。"],
     },
     "high_wall": {
         "success": ["成功：爬墙时有墙 tag 接触、max_z_near≥max(wall_h+0.10,0.55)，越过 x≥2.30 后合法退出。",
@@ -609,12 +629,12 @@ P1_KEY = {
                  "本卡差异：窄带接触 + 无触地 + 南进北出。"],
     },
     "gravel_pit": {
-        "success": ["成功：从短边（南 -y）进入坑、坑内≥3 次 gravel 接触、从对侧短边（北 +y）离开，base 距北短边≤0.35 m；出坑后落地不判罚。",
-                    "失败例：从长边（-x/+x）进入（wrong side）——即使穿过坑也不成立。",
-                    "本卡差异：入口/出口在短边 vs 长边；坑的几何与方向见上方脚印。"],
-        "fail": ["失败例：从长边（-x/+x）进入（wrong side）——即使穿过坑也不成立。",
-                 "对照 success 卡：路径形状相近，但入口/出口边不同（长边 vs 短边）。",
-                 "本卡差异：入口/出口在短边 vs 长边；坑的几何与方向见上方脚印。"],
+        "success": ["成功：从西侧 1 m 短边进入、经 L 形坑体、从北侧 1 m 短边离开；坑内≥3 次 gravel 接触。",
+                    "长边（南侧/东侧 2 m 边）进出非法；出坑后落到地面不判罚。",
+                    "本卡差异：入口/出口必须是两条 1 m 短边（西 + 北），不能直穿长边/缺口。"],
+        "fail": ["失败例：从南侧 2 m 长边进入（wrong side），即使穿过坑体也不成立。",
+                 "对照 success 卡：路径相似，但入口是长边而不是 1 m 短边。",
+                 "本卡差异：入口/出口必须是两条 1 m 短边（西 + 北），不能直穿长边/缺口。"],
     },
     "t_stairs": {
         "success": ["成功：单次连续跨越：s 上→top→e 下（两条完整臂），无漏级、无反向乱序，任意臂无缺级。",
@@ -625,12 +645,12 @@ P1_KEY = {
                  "本卡差异：完整臂数 + 连续性；不是只看是否碰到台阶。"],
     },
     "slope": {
-        "success": ["成功：沿坡面（slope tag）两侧合计 base 投影 ≥1.0 m，并合法退出。",
-                    "失败例：坡面接触不足（投影 <1.0 m）或中途落地。",
-                    "本卡差异：沿坡方向的位移量，不是单纯接触次数。"],
-        "fail": ["失败例：坡面接触不足（投影 <1.0 m）或中途落地。",
-                 "对照 success 卡：轨迹方向/长度不同（z 上升不足）。",
-                 "本卡差异：沿坡方向的位移量，不是单纯接触次数。"],
+        "success": ["成功：在两侧坡面上沿 3 m 长边方向（本场地为 y 方向）累计行走 ≥1.0 m，并合法退出。",
+                    "沿母线方向走时 base 高度 z 近似常数（不要求爬升到坡顶）；两侧斜坡合计距离。",
+                    "失败例：坡面接触距离不足 1.0 m，或途中 ≥2 足触地。"],
+        "fail": ["失败例：坡面接触距离不足 1.0 m（沿 3 m 长边方向累计），或途中 ≥2 足触地。",
+                 "对照 success 卡：路径更长/沿长边方向位移 ≥1 m；z 不需要上升。",
+                 "本卡差异：沿 3 m 长边方向的累计位移量，不是高度上升量。"],
     },
     "slalom": {
         "success": ["成功：A/B 入口 → 4 根杆按顺序 → 指定拐角 → 出口；不提前进入未来杆圆、不提前出区。",
@@ -778,15 +798,18 @@ def _part2_rulecards(out_dir: Path) -> list[dict]:
         elif kind == "plum":
             gx = float(j["goal_x_min"]) + 0.2
             z = float(j["goal_z_min"]) + 0.1
+            y = float(j.get("lane_y", 0.4))
             seq = [{"x": 0.4, "z": 0.6, "tags": []},
                    {"x": 2.0, "z": z, "tags": ["plum"]},
                    {"x": gx, "z": z, "tags": ["plum"]},
                    {"x": gx, "z": z, "tags": ["plum"]},
                    {"x": gx, "z": z, "tags": ["plum"]}]
+            for smp in seq: smp["y"] = y
             if not success:
                 seq = [{"x": 0.4, "z": 0.6, "tags": []},
                        {"x": 2.8, "z": 0.42, "tags": ["plum"]},
                        {"x": 2.8, "z": 0.42, "tags": ["plum"]}]
+                for smp in seq: smp["y"] = y
         else:
             seq = []
         return seq
@@ -829,7 +852,7 @@ def _part2_rulecards(out_dir: Path) -> list[dict]:
             rep = None
             for i, smp in enumerate(samples):
                 legs = {leg: set(smp.get("tags") or []) for leg in LEGS}
-                rep = judge.update(i * 0.1, (smp["x"], 0.0, smp["z"]), 5.0,
+                rep = judge.update(i * 0.1, (smp["x"], smp.get("y", 0.0), smp["z"]), 5.0,
                                    foot_tags=legs, ground_feet=set())
             rep = rep or judge.finalize("timeout")
             ok = rep.get("status") == "success"

@@ -44,6 +44,24 @@ ZONES: dict[str, tuple[float, float, float, float]] = {
 # Slalom course (1 m diameter beya circles per rules; display geoms in scene v2 match).
 SLALOM_START_A = (1.8, -10.1)
 SLALOM_START_B = (3.2, -12.5)
+# Gravel pit geometry (from part1_eval_scene_v2.xml: two boxes form an L shape).
+# Union = 2 m x 2 m square minus the upper-left 1 m x 1 m notch.  The two legal
+# 1 m "short edges" are the outer west edge and the outer north edge.
+GRAVEL_X_LO, GRAVEL_X_MID, GRAVEL_X_HI = 4.3361, 5.3361, 6.3361
+GRAVEL_Y_LO, GRAVEL_Y_MID, GRAVEL_Y_HI = -13.0, -12.0, -11.0
+GRAVEL_SHORT_EDGES = {
+    "west": ((GRAVEL_X_LO, GRAVEL_Y_LO), (GRAVEL_X_LO, GRAVEL_Y_MID)),
+    "north": ((GRAVEL_X_MID, GRAVEL_Y_HI), (GRAVEL_X_HI, GRAVEL_Y_HI)),
+}
+GRAVEL_BOUNDARY = [
+    ("south_long", (GRAVEL_X_LO, GRAVEL_Y_LO), (GRAVEL_X_HI, GRAVEL_Y_LO)),
+    ("east_long", (GRAVEL_X_HI, GRAVEL_Y_LO), (GRAVEL_X_HI, GRAVEL_Y_HI)),
+    ("west_short", *GRAVEL_SHORT_EDGES["west"]),
+    ("notch_h", (GRAVEL_X_LO, GRAVEL_Y_MID), (GRAVEL_X_MID, GRAVEL_Y_MID)),
+    ("notch_v", (GRAVEL_X_MID, GRAVEL_Y_MID), (GRAVEL_X_MID, GRAVEL_Y_HI)),
+    ("north_short", *GRAVEL_SHORT_EDGES["north"]),
+]
+
 SLALOM_CORNER = (1.55, -12.75)
 SLALOM_POSTS = [(1.8, -10.5), (1.8, -11.5), (1.8, -12.5), (2.8, -12.5)]
 SLALOM_RADIUS_M = 0.5
@@ -362,7 +380,12 @@ class HeightBar(_Obstacle):
         self.name, self.zone = "height_bar", ZONES["height_bar"]
         self.bar_base_seen: float | None = None
         self.bar_dropped_seen = False
+        self._last_z = 0.0
         super().__init__()
+
+    def update(self, t, base_xyz, yaw, foot_tags, ground_feet, bar_z):
+        self._last_z = float(base_xyz[2])
+        super().update(t, base_xyz, yaw, foot_tags, ground_feet, bar_z)
 
     def _pre_sample(self, bar_z: float | None) -> None:
         if bar_z is None:
@@ -373,7 +396,8 @@ class HeightBar(_Obstacle):
             self.bar_dropped_seen = True
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"cross_valid": 0, "prev_y": None}
+        self.evidence = {"cross_valid": 0, "prev_y": None,
+                         "cross_max_z": None, "cross_bar_z": None}
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
         x, y = xy
@@ -384,6 +408,10 @@ class HeightBar(_Obstacle):
         if prev_y is not None and (prev_y - (-9.0)) * (y - (-9.0)) <= 0 and abs(prev_y - y) < 1.0:
             if BAR_OPENING_X[0] <= x <= BAR_OPENING_X[1]:
                 self.evidence["cross_valid"] += 1
+                if bar_z is not None:
+                    self.evidence["cross_max_z"] = max(
+                        self.evidence["cross_max_z"] or 0.0, float(self._last_z))
+                    self.evidence["cross_bar_z"] = float(bar_z)
         self.evidence["prev_y"] = y
 
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
@@ -398,6 +426,15 @@ class HeightBar(_Obstacle):
             return False, "bar_state_unknown"
         if self.bar_dropped_seen:
             return False, "bar_dropped"
+        cross_z = self.evidence.get("cross_max_z")
+        cross_bar = self.evidence.get("cross_bar_z")
+        if cross_z is None or cross_bar is None:
+            return False, "no_valid_gate_crossing"
+        # contract: "any posture pass UNDER the bar".  base z is a proxy for the body
+        # height in the event stream; stricter full-body clearance is a C1 calibration
+        # item (G1 residual).
+        if cross_z > cross_bar:
+            return False, "not_under_bar"
         return True, ""
 
 
@@ -448,41 +485,104 @@ class HighWall(_Obstacle):
         return True, ""
 
 
+def _seg_cross(p0, p1, a, b) -> bool:
+    """Proper segment intersection (shared endpoints excluded)."""
+    def cross(o, u, v):
+        return (u[0] - o[0]) * (v[1] - o[1]) - (u[1] - o[1]) * (v[0] - o[0])
+    c1, c2 = cross(a, b, p0), cross(a, b, p1)
+    c3, c4 = cross(p0, p1, a), cross(p0, p1, b)
+    return (c1 > 1e-12 and c2 < -1e-12 or c1 < -1e-12 and c2 > 1e-12) and \
+           (c3 > 1e-12 and c4 < -1e-12 or c3 < -1e-12 and c4 > 1e-12)
+
+
+def _gravel_inside(x: float, y: float) -> bool:
+    in_a = GRAVEL_X_LO <= x <= GRAVEL_X_MID and GRAVEL_Y_LO <= y <= GRAVEL_Y_MID
+    in_b = GRAVEL_X_MID <= x <= GRAVEL_X_HI and GRAVEL_Y_LO <= y <= GRAVEL_Y_HI
+    return bool(in_a or in_b)
+
+
 class GravelPit(_Obstacle):
+    """Gravel pit: legal short edges are the outer west edge and outer north edge.
+
+    Contract: enter via one 1 m short edge and leave via the other (both ends legal);
+    long-edge entry/exit fails.  The pit is L-shaped, so a crossing is an L path;
+    the old ymin/ymax side check wrongly accepted straight south->north walks through
+    the missing notch (C1 calibration finding, 2026-10-23).
+    """
     surface_tags = ("gravel",)
     ground_fail = True
 
     def __init__(self) -> None:
         self.name, self.zone = "gravel_pit", ZONES["gravel_pit"]
+        self._prev_track_xy: tuple[float, float] | None = None
         super().__init__()
 
     def _reset_evidence(self) -> None:
-        self.evidence = {"gravel_hits": 0}
+        self.evidence = {"gravel_hits": 0, "inside": None, "entry_edge": None,
+                         "exit_edge": None, "illegal_entry": False, "illegal_exit": False}
+        self._prev_track_xy = None
+
+    @staticmethod
+    def _crossed_edges(p0, p1) -> list[str]:
+        return [name for name, a, b in GRAVEL_BOUNDARY if _seg_cross(p0, p1, a, b)]
+
+    def update(self, t, base_xyz, yaw, foot_tags, ground_feet, bar_z):
+        self._track_footprint((float(base_xyz[0]), float(base_xyz[1])))
+        super().update(t, base_xyz, yaw, foot_tags, ground_feet, bar_z)
+
+    def _track_footprint(self, xy: tuple[float, float]) -> None:
+        ev = self.evidence
+        prev = self._prev_track_xy
+        self._prev_track_xy = xy
+        if prev is None:
+            ev["inside"] = _gravel_inside(*xy)
+            return
+        inside, prev_inside = _gravel_inside(*xy), _gravel_inside(*prev)
+        if inside == prev_inside:
+            return
+        edges = self._crossed_edges(prev, xy)
+        short = [e for e in edges if e in ("west_short", "north_short")]
+        if inside:  # entering the pit
+            if ev["entry_edge"] is not None:
+                ev["illegal_entry"] = True
+            elif len(short) == 1 and len(edges) == 1:
+                ev["entry_edge"] = "west" if short[0] == "west_short" else "north"
+            else:
+                ev["illegal_entry"] = True
+        else:  # leaving the pit
+            if ev["exit_edge"] is not None:
+                ev["illegal_exit"] = True
+            elif (len(short) == 1 and len(edges) == 1 and ev["entry_edge"] is not None
+                  and short[0] != ("west_short" if ev["entry_edge"] == "west" else "north_short")):
+                ev["exit_edge"] = "west" if short[0] == "west_short" else "north"
+            else:
+                ev["illegal_exit"] = True
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
         if "gravel" in tags:
             self.evidence["gravel_hits"] += 1
 
     def _ground_penalty_active(self, xy, tags) -> bool:
-        if not self.supported or self.evidence.get("gravel_hits", 0) < 3:
-            return bool(self.supported)
-        entry = self.evidence.get("entry_side_prev")
-        zx0, zx1, zy0, zy1 = self.zone
-        if entry == "ymin":
-            return not (xy[1] >= zy1 - EXIT_GRACE_M)
-        if entry == "ymax":
-            return not (xy[1] <= zy0 + EXIT_GRACE_M)
+        if not self.supported:
+            return False
+        if self.evidence.get("exit_edge") is not None:
+            return False  # already legally out of the pit -> landing allowed
         return True
 
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
-        entry = self.evidence.get("entry_side_prev")
-        if entry not in ("ymin", "ymax"):
+        ev = self.evidence
+        if ev.get("illegal_entry"):
+            return False, "illegal_entry_side"
+        if ev.get("illegal_exit"):
+            return False, "illegal_exit_side"
+        entry, exit_ = ev.get("entry_edge"), ev.get("exit_edge")
+        if entry is None:
             return False, "illegal_entry_side" if self.in_zone_samples >= 5 else ""
-        if side not in ("ymin", "ymax"):
+        if exit_ is None:
             return False, "illegal_exit_side" if self.in_zone_samples >= 5 else ""
-        if side == entry:
-            return False, "no_crossing"
-        if self.evidence["gravel_hits"] < 3:
+        if {entry, exit_} != {"west", "north"}:
+            return False, "wrong_exit_side"
+        if ev["gravel_hits"] < 3:
             return False, "missing_gravel_contact"
         return True, ""
 

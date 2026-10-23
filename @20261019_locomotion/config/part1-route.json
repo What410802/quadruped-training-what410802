@@ -121,21 +121,31 @@
     {
       "name": "to_gravel",
       "target": [
-        5.0,
-        -13.4
+        3.6,
+        -12.5
       ],
       "speed": 0.5,
-      "max_s": 6.0,
+      "max_s": 7.0,
       "obstacle": "gravel_pit"
     },
     {
-      "name": "cross_gravel",
+      "name": "cross_gravel_west",
       "target": [
-        5.5,
-        -10.9
+        5.8,
+        -12.5
       ],
       "speed": 0.5,
       "max_s": 5.0,
+      "obstacle": "gravel_pit"
+    },
+    {
+      "name": "cross_gravel_north",
+      "target": [
+        5.8,
+        -10.6
+      ],
+      "speed": 0.5,
+      "max_s": 4.0,
       "obstacle": "gravel_pit"
     },
     {

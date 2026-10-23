@@ -70,7 +70,7 @@
 | Pro 复验 P1–P4 | 稳定停表 dt、暂停误喂 judge、comp_score 外部证据校验、ground 分类已修；3-attempt pause 演练进行中 | `comp_part1_course.py`、`run_part1_course.py`、`comp_score.py` |
 | BYOK 预审（same-model，provisional） | 已执行：FAIL/26 条（11 blocker），已逐条修复或记录残余风险 | `audits/BYOK_JUDGE_V2_REVIEW.md`、`audits/BYOK_JUDGE_V2_FIXES.md` |
 | BYOK 最终验收 | **GLM-5.3（different-family）第 31 轮 PASS**；同轮 flash/pro 均 CONCERN（无 blocker，C1 yes / C2 有条件）。已满足"再次 PASS → 进入下一阶段"的用户条件 | `BYOK_JUDGE_V31_GLM_ACCEPT.md`（+ flash/pro） |
-| C1 标定包（64+28 rulecards，待人工标注） | 已生成：92 条记录（32 Part1 + 24 Part2 + 8 session + 28 rulecard），56 个视频 + 28 SVG；盲标表 + index.html + 一致性检查器就绪；真实策略全失败（48/48 预扫描），成功侧由 rulecard 覆盖 | `comp/eval/_calibration/` | | Codex 一周内不可用；已按用户指示用 **GLM-5.3 完成 provisional acquittal（PASS）**。Codex 恢复后补最终 acquittal（仍需用户二次确认） | 第 2 版 `JUDGE_AUDIT` |
+| C1 标定包（64+28 rulecards，人工标注进行中） | 已生成 92 条记录；用户已标 61 条（真实 rollout 56/56 与 judge 一致）；标定发现 2 个 judge 语义错误：砂砾坑短边（L 形几何）与限高杆"从下方"检查，已修复并重生成产物/演练 | `comp/eval/_calibration/`、`BYOK_JUDGE_V2_FIXES.md` | | Codex 一周内不可用；已按用户指示用 **GLM-5.3 完成 provisional acquittal（PASS）**。Codex 恢复后补最终 acquittal（仍需用户二次确认） | 第 2 版 `JUDGE_AUDIT` |
 
 **V2 评测链路（2026-10-22 晚）**：Part1 judge V2 `comp_part1_judge.py`（10 组 conformance 全过，含 G1 反例：6 条出口骗分、T 台阶跨帧历史、限高杆 touch/drop、斜坡距离、砂砾短边、高墙侧走、绕杆顺序、尝试规则）+ 场景 v2 + 逐物理步 runner + 整场协议 `comp_part1_course.py`（3 次、恢复不消耗、最快用时、返回奖励）+ Part2 六类 judge/参数化 20 档 evaluator；两条 diagnostic 产物已进 `comp/SCOREBOARD.md`（`flat-ft-2500-part1-diag-v2`/`-part2-diag-v2`，均 0 分，符合 flat 策略预期）。
 

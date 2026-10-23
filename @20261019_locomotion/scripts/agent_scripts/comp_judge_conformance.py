@@ -213,13 +213,19 @@ def test_bridge_ground_and_success():
 
 def test_height_bar_touch_drop_and_gate():
     base = [
-        {"x": 5.7, "y": -10.4, "bar_z": 0.325},
-        {"x": 5.7, "y": -9.5, "bar_z": 0.325},
-        {"x": 5.7, "y": -9.0, "bar_z": 0.325},
-        {"x": 5.7, "y": -8.5, "bar_z": 0.325},
-        {"x": 5.7, "y": -8.2, "bar_z": 0.325},
+        {"x": 5.7, "y": -10.4, "z": 0.25, "bar_z": 0.325},
+        {"x": 5.7, "y": -9.5, "z": 0.25, "bar_z": 0.325},
+        {"x": 5.7, "y": -9.0, "z": 0.25, "bar_z": 0.325},
+        {"x": 5.7, "y": -8.5, "z": 0.25, "bar_z": 0.325},
+        {"x": 5.7, "y": -8.2, "z": 0.25, "bar_z": 0.325},
     ]
-    assert_status(feed(Part1JudgeV2(), base), "height_bar", "success", "gate crossing, bar stable")
+    assert_status(feed(Part1JudgeV2(), base), "height_bar", "success", "crouched gate crossing, bar stable")
+
+    # not passing UNDER the bar must fail even if the bar did not drop
+    high = [dict(s, z=0.45) for s in base]
+    rep = feed(Part1JudgeV2(), high)
+    assert_not_success(rep, "height_bar", "walked through above the bar")
+    assert any("not_under_bar" in f for f in st(rep, "height_bar")["failures"]), st(rep, "height_bar")
 
     dropped = [dict(s, bar_z=(0.20 if i >= 2 else 0.325)) for i, s in enumerate(base)]
     assert_failed(feed(Part1JudgeV2(), dropped), "height_bar", "beam drop")
@@ -236,14 +242,14 @@ def test_height_bar_touch_drop_and_gate():
     assert_not_success(feed(Part1JudgeV2(), pre_drop), "height_bar", "pre-entry beam drop")
 
     outside = [
-        {"x": 4.6, "y": -10.4, "bar_z": 0.325},
-        {"x": 4.6, "y": -9.5, "bar_z": 0.325},
-        {"x": 5.7, "y": -9.0, "bar_z": 0.325},
-        {"x": 5.7, "y": -8.5, "bar_z": 0.325},
-        {"x": 5.7, "y": -8.2, "bar_z": 0.325},
+        {"x": 4.6, "y": -10.4, "z": 0.25, "bar_z": 0.325},
+        {"x": 4.6, "y": -9.5, "z": 0.25, "bar_z": 0.325},
+        {"x": 5.7, "y": -9.0, "z": 0.25, "bar_z": 0.325},
+        {"x": 5.7, "y": -8.5, "z": 0.25, "bar_z": 0.325},
+        {"x": 5.7, "y": -8.2, "z": 0.25, "bar_z": 0.325},
     ]
     assert_not_success(feed(Part1JudgeV2(), outside), "height_bar", "outside-then-lateral")
-    print("height_bar: OK touch!=fail / drop=fail / gate crossing required")
+    print("height_bar: OK touch!=fail / drop=fail / gate crossing required / under-bar required")
 
 
 def test_high_wall_sideways_climb_and_bypass():
@@ -558,50 +564,71 @@ def test_slope_projection_and_graze_reset():
 
 
 def test_gravel_short_edges_and_long_edge():
+    # L-shaped pit (from scene v2): legal short edges are the outer WEST and NORTH edges.
     legal = [
-        {"x": 5.0, "y": -13.4},
-        {"x": 5.0, "y": -12.9, "tags": ["gravel"]},
-        {"x": 5.5, "y": -12.0, "tags": ["gravel"]},
+        {"x": 3.5, "y": -12.5},
+        {"x": 4.1, "y": -12.5},
+        {"x": 4.5, "y": -12.5, "tags": ["gravel"]},
+        {"x": 5.0, "y": -12.5, "tags": ["gravel"]},
+        {"x": 5.6, "y": -12.5, "tags": ["gravel"]},
+        {"x": 5.8, "y": -12.0, "tags": ["gravel"]},
         {"x": 5.8, "y": -11.5, "tags": ["gravel"]},
-        {"x": 6.0, "y": -11.0, "tags": ["gravel"]},
-        {"x": 6.0, "y": -10.8},
+        {"x": 5.8, "y": -10.8},
     ]
-    assert_status(feed(Part1JudgeV2(), legal), "gravel_pit", "success", "short-edge entry+exit")
+    assert_status(feed(Part1JudgeV2(), legal), "gravel_pit", "success", "west short edge in, north short edge out")
 
-    # GLM B1: landing on the ground at the far short edge after gravel contact is legal
-    landing = [
-        {"x": 5.0, "y": -13.4},
-        {"x": 5.0, "y": -12.9, "tags": ["gravel"]},
-        {"x": 5.5, "y": -12.0, "tags": ["gravel"]},
-        {"x": 5.8, "y": -11.5, "tags": ["gravel"]},
-        {"x": 6.0, "y": -11.0, "tags": ["gravel"]},
-        {"x": 6.0, "y": -10.95, "ground": ["FL", "FR"]},
-        {"x": 6.0, "y": -10.8},
-    ]
-    assert_status(feed(Part1JudgeV2(), landing), "gravel_pit", "success", "landing at far short edge")
+    # landing on the ground after the legal exit is allowed
+    landing = [dict(s) for s in legal]
+    landing.insert(-1, {"x": 5.8, "y": -10.95, "ground": ["FL", "FR"]})
+    assert_status(feed(Part1JudgeV2(), landing), "gravel_pit", "success", "landing after legal exit")
 
-    # ... but stepping onto the ground in the middle of the pit is still a failure
+    # stepping on the ground inside the pit is still a failure
     mid_pit = [
-        {"x": 5.0, "y": -13.4},
-        {"x": 5.0, "y": -12.9, "tags": ["gravel"]},
-        {"x": 5.5, "y": -12.0, "tags": ["gravel"], "ground": ["FL", "FR"]},
+        {"x": 3.5, "y": -12.5},
+        {"x": 4.5, "y": -12.5, "tags": ["gravel"]},
+        {"x": 5.0, "y": -12.5, "tags": ["gravel"], "ground": ["FL", "FR"]},
         {"x": 5.8, "y": -11.5},
     ]
     assert_failed(feed(Part1JudgeV2(), mid_pit), "gravel_pit", "mid-pit ground contact")
 
-    long_side = [
-        {"x": 4.0, "y": -12.0},
-        {"x": 4.4, "y": -12.0, "tags": ["gravel"]},
-        {"x": 4.8, "y": -12.0, "tags": ["gravel"]},
-        {"x": 5.2, "y": -12.0, "tags": ["gravel"]},
-        {"x": 5.6, "y": -12.0, "tags": ["gravel"]},
-        {"x": 6.0, "y": -12.0, "tags": ["gravel"]},
-        {"x": 6.5, "y": -12.0},
+    # the old accepted path: south long edge in, through the missing notch, north out
+    old_fake = [
+        {"x": 5.0, "y": -13.4},
+        {"x": 5.0, "y": -12.9, "tags": ["gravel"]},
+        {"x": 5.5, "y": -12.0, "tags": ["gravel"]},
+        {"x": 5.8, "y": -11.5, "tags": ["gravel"]},
+        {"x": 6.0, "y": -11.0, "tags": ["gravel"]},
+        {"x": 6.0, "y": -10.8},
     ]
-    rep = feed(Part1JudgeV2(), long_side)
-    assert_not_success(rep, "gravel_pit", "long-edge entry")
-    assert_failed(rep, "gravel_pit", "genuine long-edge attempt")
-    print("gravel_pit: OK short edges / long edge rejected")
+    rep = feed(Part1JudgeV2(), old_fake)
+    assert_not_success(rep, "gravel_pit", "long-edge (south) entry")
+    assert any("illegal_entry" in f for f in st(rep, "gravel_pit")["failures"]), st(rep, "gravel_pit")
+
+    # legal west entry but east long-edge exit
+    long_exit = [
+        {"x": 3.5, "y": -12.5},
+        {"x": 4.5, "y": -12.5, "tags": ["gravel"]},
+        {"x": 5.0, "y": -12.5, "tags": ["gravel"]},
+        {"x": 5.8, "y": -12.5, "tags": ["gravel"]},
+        {"x": 6.2, "y": -12.5, "tags": ["gravel"]},
+        {"x": 6.5, "y": -12.5},
+    ]
+    rep = feed(Part1JudgeV2(), long_exit)
+    assert_not_success(rep, "gravel_pit", "long-edge (east) exit")
+    assert any("illegal_exit" in f for f in st(rep, "gravel_pit")["failures"]), st(rep, "gravel_pit")
+
+    # east long-edge entry must fail too
+    long_entry = [
+        {"x": 6.8, "y": -12.0},
+        {"x": 6.2, "y": -12.0, "tags": ["gravel"]},
+        {"x": 5.5, "y": -12.0, "tags": ["gravel"]},
+        {"x": 4.5, "y": -12.0, "tags": ["gravel"]},
+        {"x": 4.0, "y": -12.0},
+    ]
+    rep = feed(Part1JudgeV2(), long_entry)
+    assert_not_success(rep, "gravel_pit", "long-edge (east) entry")
+    assert any("illegal_entry" in f for f in st(rep, "gravel_pit")["failures"]), st(rep, "gravel_pit")
+    print("gravel_pit: OK legal L path (west->north) / landing allowed / mid-pit ground fails / all long-edge paths rejected")
 
 
 def test_slalom_forward_reverse_and_spoof():

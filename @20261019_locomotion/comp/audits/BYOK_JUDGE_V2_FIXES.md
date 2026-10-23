@@ -240,3 +240,20 @@
 |---|---|---|
 | T 台阶同 zone partial 合并 | 退出 zone 的 partial 已锁定，但同一 zone 内先 s 上/下、再地面移动、再 e 上/下可合并成 100 | `TStairs` 新增 `arms_before_ground`：在 top+≥1 完整臂后首次出现 ≥2 足触地时快照当时的臂证据；`_score_for` 只用快照（无快照则用实时），故"地面重置后的第二臂"不参与满分；conformance 增加"同 zone 地面重置后再爬第二臂仍 50"反例 |
 | 已有连续路径 | s 上 → top → e 下（单次连续）在首次地面接触时两臂均已完整，快照含两臂 → 仍 100 | conformance 的 continuous s-up/e-down 用例保持 PASS |
+
+
+## C1 人工标定发现的 judge 语义修复（2026-10-23 晚）
+
+用户标注 rulecard 时发现两处真实 scorer 语义错误（C1 标定的直接产出）：
+
+1. **砂砾碎木坑短边语义错误（fake success）**：场景 `gravel_pit_a/b` 组成了 L 形（2 m×2 m 正方形挖掉 1 m×1 m 角）。
+   旧 judge 以 zone 的 ymin/ymax 作为"短边"，会接受从南侧 2 m 长边直穿坑体+缺口、从北侧短边离开的路径；
+   契约要求"从 1 m 短边进入且从 1 m 短边离开"，两条合法短边是**外西边**（x=4.336, y∈[-13,-12]）
+   与**外北边**（y=-11, x∈[5.336,6.336]），穿越应是 L 形路径。已改为按实际线段检测进出（含长边/缺口拒绝），
+   conformance 增加 legal L path / landing / mid-pit / long-edge entry/exit 反例。
+2. **限高杆只查杆掉落、未查"从下方穿过"（fake success）**：旧 judge 只要求穿过门洞且杆未掉落，
+   基座高度 0.45 > 杆高 0.325 的"从杆上方通过"也被判 success。已改为穿越时记录 base z，
+   要求 `cross_z <= bar_z`，否则 `not_under_bar`；conformance 增加高姿态穿门反例。
+   注：当前场景杆高 0.325、站立 trunk z≈0.42，合法通过需要低姿态（crawl），这是后续策略/C1 的标定项。
+3. 随之更新：Part1 course route 的 gravel 段改为合法 L 路径（西短边进→北短边出）；
+   四份产物/三份演练重生成；rulecard 砂砾/限高/斜坡/T 台阶/梅花桩同步修正并通过 conformance。
