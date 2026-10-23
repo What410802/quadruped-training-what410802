@@ -92,7 +92,7 @@
       "name": "cross_bridge_bands",
       "target": [
         5.7,
-        -1.0
+        -0.5
       ],
       "speed": 0.5,
       "max_s": 4.0,
@@ -161,11 +161,31 @@
     {
       "name": "to_slalom",
       "target": [
-        1.8,
-        -10.1
+        1.9,
+        -10.5
       ],
       "speed": 0.5,
       "max_s": 6.0,
+      "obstacle": "slalom"
+    },
+    {
+      "name": "slalom_p1",
+      "target": [
+        1.7,
+        -11.5
+      ],
+      "speed": 0.4,
+      "max_s": 3.0,
+      "obstacle": "slalom"
+    },
+    {
+      "name": "slalom_p2",
+      "target": [
+        1.9,
+        -12.5
+      ],
+      "speed": 0.4,
+      "max_s": 3.0,
       "obstacle": "slalom"
     },
     {

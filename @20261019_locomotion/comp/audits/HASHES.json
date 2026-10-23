@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T13:10:51+08:00",
+  "generated_at": "2026-10-23T13:22:59+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -17,11 +17,11 @@
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "bec8ff07ac01eeab801560a01907ad2e90e684f2239a906abe59dfe812fbd653"
+      "sha256": "127ddfcdb947924f370e6348100417214fd60e0d4378f8254f10886640c550ba"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "4007d97ae487753f99337925ca4da6575529c425c69a91093ff90bc56f8311bd"
+      "sha256": "2d988e3a884bd8887de980ae61321772c740ae43fef9ba9ab2a3e019c0ecb18d"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -77,7 +77,7 @@
     },
     "part1_route": {
       "path": "config/part1-route.json",
-      "sha256": "218ceeca56e65293bd82716d54dcd5ad8fcba9602ebe9d84def9aeae032be809"
+      "sha256": "8f19efc3772f0c0b792ccfdfdd8e732575c70ec6e7ce2739790c285d2c4e30f2"
     },
     "part2_levels_json": {
       "path": "config/part2-levels.json",
@@ -93,7 +93,7 @@
     },
     "eval_course_diag": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "c8c43f9c288856d955a8f8ac0b0266619f7a8fab78d00019c0c55c8018674039"
+      "sha256": "8d71125f75371548a25c64e5279a10fc78329fb8d7ddd80f306dbaea93178adc"
     },
     "rules_pdf_md": {
       "path": "docs/reference/team-race-2026.md",
@@ -105,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "87ca2c5de97311250db36f6b125dc4e851982040dea81d5a6654d6f422509dc2"
+      "sha256": "cfc159a5e03b40ae14d9d05d781dd2603d7938631835434a8bcf6d458556c46b"
     },
     "level_high_platform_10cm": {
       "path": "assets/terrain/part2/levels/high_platform_10cm.xml",
@@ -221,15 +221,15 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "ce8d23f98ed9d2709caa8e6190ec1b0b5f28cff9c120dcd0b027f2d3bd97e023"
+      "sha256": "4f81659217a0f85aba42f894e5d8a150bf3552e8071c01e13cf161e635b3c030"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
-      "sha256": "7032e111cccdf56613936b3f451dd7b07f8cd89cc30578c8bdced9ebf3ead706"
+      "sha256": "cc4abbef89e3ea41b69916ddb5a6b0711d1c8f0b8e1596361af349e5ea4d64d3"
     },
     "eval_flat-ft-2500-part1-course-diag_summary": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "c8c43f9c288856d955a8f8ac0b0266619f7a8fab78d00019c0c55c8018674039"
+      "sha256": "8d71125f75371548a25c64e5279a10fc78329fb8d7ddd80f306dbaea93178adc"
     },
     "extra_part2_ability_field": {
       "path": "assets/terrain/part2/ability_field/part2_ability_field.xml",
@@ -257,15 +257,15 @@
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
-      "sha256": "32d3fd7293762194c57a14bd50839ce4d1697bf77f719aa3363a002b99d61d4b"
+      "sha256": "fe1dd3735aff3ab9b3619c3e7cb2f62eda5950757e25e064b2be207d4fb6a1be"
     },
     "evidence_part1_course_pause_resume_drill": {
       "path": "comp/audits/evidence/part1_course_pause_resume_drill.json",
-      "sha256": "bbcbb0cfa2070846c712fef10b270f41bee53c4c73688cca36753fb5186580ae"
+      "sha256": "c7013c797a6544cd55cccf0fb4f382603f866a5d1d89283501549679adad4100"
     },
     "evidence_part1_course_pause_timeout_drill": {
       "path": "comp/audits/evidence/part1_course_pause_timeout_drill.json",
-      "sha256": "fd577c98c1c0851311ecca4d1a732e2ff8b3ff57a3486883e5e687d85151cb10"
+      "sha256": "d616ba7fd02e1c44da00ab1bfb07748a4db28f75d3f2c85adc310fe3178a5195"
     }
   },
   "superseded": {

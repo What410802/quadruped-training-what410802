@@ -193,3 +193,12 @@
 | route 入口 | `to_bridge_blocks` 从斜上方进入 zone，先穿 ymin 再出 xmin，落盘 entry_side 与最终 xmin→xmax 出口不一致 | route 的 `to_bridge_blocks` 目标改为 `[0.8, 0.0]`（从西侧 zone 外再进入），保证 entry=xmin、exit=xmax |
 | B1 证据 | bridge_bands 无独立 landing/mid-fall 用例；t_stairs landing 采样落在 zone 外未测到 | conformance 补 bridge_bands "双平台+3 次桥面→落地允许 / 桥中段双足触地失败"；t_stairs landing 采样改为 zone 内 y=-4.9 |
 | B3 证据 | T 台阶缺级+另一臂完整用例已存在，但需与 landing 修复一起回归 | conformance 13 组全绿；随本轮重新生成产物 |
+
+
+## Flash 复验（第 24 轮）blocker 修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| B1 非 supported 假成功 | 2 足触地判罚只在 `supported=True` 后生效；从未全足支撑时，在 zone 内地面行走、用单足蹭障碍标签累积证据可从对侧"成功"；各 `_check_exit` 未要求 supported | `_Obstacle.update` 的退出成功分支增加门控：`ground_fail` 障碍若 `not self.supported`，成功改为 `_fail("insufficient_obstacle_support")`；conformance 新增"单足蹭 tag + 地面行走"反例 |
+| route bridge_bands | `cross_bridge_bands` target (5.7,-1.0) 仍在 zone 内（ymax=-0.8），下一段从 ymin 离开触发 wrong_exit_side | 出口改为 (5.7,-0.5)（越过 ymax） |
+| route slalom | 路线从 start 直下 x=1.8，侧向判据出现 0，且 S 形不明确 | route 增加 slalom waypoints (1.9,-10.5)/(1.7,-11.5)/(1.9,-12.5)，再接拐角与终点 |

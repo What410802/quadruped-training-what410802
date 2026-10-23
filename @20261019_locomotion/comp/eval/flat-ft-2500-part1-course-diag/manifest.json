@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part1-course-diag",
-  "created_at": "2026-10-23T13:10:50+08:00",
+  "created_at": "2026-10-23T13:22:58+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "883eeb704e4c572e2bf9682697853f9419f83429",
+      "commit": "401b86fc6a1451b575f657e57c6e67c221fd0c61",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -43,7 +43,7 @@
     }
   },
   "judge": {
-    "version": "comp_judge_v2@bec8ff79ce2d9adf6d",
+    "version": "comp_judge_v2@127ddf79ce2d9adf6d",
     "files": [
       "scripts/agent_scripts/comp_part1_judge.py",
       "scripts/agent_scripts/comp_part1_geom_tags.py",
@@ -52,7 +52,7 @@
     "file_hashes": [
       {
         "path": "scripts/agent_scripts/comp_part1_judge.py",
-        "sha256": "bec8ff07ac01eeab801560a01907ad2e90e684f2239a906abe59dfe812fbd653"
+        "sha256": "127ddfcdb947924f370e6348100417214fd60e0d4378f8254f10886640c550ba"
       },
       {
         "path": "scripts/agent_scripts/comp_part1_geom_tags.py",
@@ -78,7 +78,7 @@
     "operator": "scripted:run_part1_course.py",
     "route": {
       "file": "config/part1-route.json",
-      "sha256": "218ceeca56e65293bd82716d54dcd5ad8fcba9602ebe9d84def9aeae032be809"
+      "sha256": "8f19efc3772f0c0b792ccfdfdd8e732575c70ec6e7ce2739790c285d2c4e30f2"
     },
     "seed_control": "none（脚本化 waypoint 路线，无扰动；result 里的 seed 均未执行）",
     "start_pose_policy": "route start in start_area (3.7,-9.0)"

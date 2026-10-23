@@ -41,6 +41,17 @@ def feed(judge: Part1JudgeV2, samples, *, dt: float = 0.02) -> dict:
     return report
 
 
+def feed_legs(judge: Part1JudgeV2, samples, *, dt: float = 0.02) -> dict:
+    """Feed samples with explicit per-leg tags: sample = {x,y,z?,yaw?,legs?:{leg:[tags]},ground?:[legs]}"""
+    report = None
+    for i, s in enumerate(samples):
+        per_leg = {leg: set((s.get("legs") or {}).get(leg) or []) for leg in LEGS}
+        report = judge.update(i * dt, (s["x"], s["y"], s.get("z", 0.45)), s.get("yaw", 0.0),
+                              foot_tags=per_leg, ground_feet=set(s.get("ground") or []),
+                              bar_z=s.get("bar_z"))
+    return report
+
+
 def st(report: dict, name: str) -> dict:
     return report["states"][name]
 
@@ -182,7 +193,21 @@ def test_bridge_ground_and_success():
         {"x": 5.7, "y": -1.6},
     ]
     assert_failed(feed(Part1JudgeV2(), bands_mid_fall), "bridge_bands", "mid-band fall")
-    print("bridge_blocks/bridge_bands: OK legal traversal / landing allowed / mid-span fall fails")
+    # anti-graze: walking on the ground inside the zone while ONE foot grazes the obstacle
+    # tags (never fully supported) must not be accepted as a traversal.
+    graze = [
+        {"x": 1.35, "y": 0.0, "legs": {"FL": ["platform_left"]}, "ground": ["FR", "RL", "RR"]},
+        {"x": 2.2, "y": 0.0, "legs": {"FL": ["bridge"]}, "ground": ["FR", "RL", "RR"]},
+        {"x": 3.2, "y": 0.0, "legs": {"FL": ["bridge"]}, "ground": ["FR", "RL", "RR"]},
+        {"x": 4.2, "y": 0.0, "legs": {"FL": ["bridge"]}, "ground": ["FR", "RL", "RR"]},
+        {"x": 5.2, "y": 0.0, "legs": {"FL": ["bridge"]}, "ground": ["FR", "RL", "RR"]},
+        {"x": 5.6, "y": 0.0, "legs": {"FL": ["platform_right"]}, "ground": ["FR", "RL", "RR"]},
+        {"x": 6.4, "y": 0.0},
+    ]
+    rep = feed_legs(Part1JudgeV2(), graze)
+    assert_not_success(rep, "bridge_blocks", "one-foot graze while walking on the ground")
+    assert_failed(rep, "bridge_blocks", "graze path must fail")
+    print("bridge_blocks/bridge_bands: OK legal traversal / landing allowed / mid-span fall fails / graze rejected")
 
 
 def test_height_bar_touch_drop_and_gate():

@@ -262,7 +262,12 @@ class _Obstacle:
                 imm = self._check_immediate()
                 if imm is not None:
                     ok, reason = imm
-                    if ok:
+                    if ok and self.ground_fail and not self.supported:
+                        # GLM/flash 2026-10-23: never fully supported on the obstacle means
+                        # the robot merely grazed a surface tag while walking on the ground;
+                        # such a run must not be accepted as a traversal success.
+                        self._fail("insufficient_obstacle_support")
+                    elif ok:
                         self.result.status = "success"
                         self.result.reason = ""
                         self.result.score = self._score_for()
