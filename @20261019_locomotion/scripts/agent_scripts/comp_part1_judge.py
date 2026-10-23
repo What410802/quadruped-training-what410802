@@ -155,6 +155,9 @@ class _Obstacle:
     # surface tag prefixes/names proving the robot is actually on the obstacle
     surface_tags: tuple[str, ...] = ()
     per_obstacle_score = 100.0
+    # once a partial success has been registered on leaving the zone, it must not be
+    # upgraded by a separate later entry (contract: one continuous traversal per attempt)
+    locks_partial_on_exit = False
 
     def __init__(self) -> None:
         self.result = ObstacleResult(self.name)
@@ -288,6 +291,9 @@ class _Obstacle:
                     self.result.reason = ""
                     self.result.score = self._score_for()
                     self._mark_partial()
+                    if (self.locks_partial_on_exit
+                            and self.result.score < self.per_obstacle_score):
+                        self.result.detail["upgrade_unavailable"] = True
                 elif reason:
                     self._fail(reason)
                 elif self.result.detail.get("partial"):
@@ -529,6 +535,7 @@ class TStairs(_Obstacle):
         self.name, self.zone = "t_stairs", ZONES["t_stairs"]
         self.partial_up, self.partial_down, self.max_score = partial_up, partial_down, max_score
         super().__init__()
+        self.locks_partial_on_exit = True
 
     def _reset_evidence(self) -> None:
         self.evidence = {"arms": {}, "top": False, "entry_arm": None, "exit_arm": None}
@@ -537,9 +544,9 @@ class TStairs(_Obstacle):
         return [t for t in tags if t.startswith("step:")]
 
     def _on_sample(self, xy, tags, ground_feet, bar_z, yaw) -> None:
-        if ground_feet:
-            # a foot on the ground means the robot is grazing the steps from the floor,
-            # not climbing them; never bank level/top evidence from such samples.
+        if len(ground_feet) >= 2:
+            # 2+ feet on the ground = not climbing (rule: any instant 2+ ground feet fails);
+            # one foot down while three are on the steps is a normal gait transition.
             return
         for tag in self._step_tags(tags):
             parts = tag.split(":")

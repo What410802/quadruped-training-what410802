@@ -336,19 +336,21 @@ def test_t_stairs_full_partial_and_history():
     rep = feed(Part1JudgeV2(), missing_level)
     assert_not_success(rep, "t_stairs", "missing step levels must not score")
 
-    # a partial result can be upgraded to full if the second arm is completed later
-    # in the same attempt (partial success must not be permanently locked)
-    j2 = Part1JudgeV2()
-    feed(j2, partial)
-    upgrade = [
+    # a continuous single traversal that climbs s and descends e must be full 100;
+    # (two separate entries are NOT merged: see the partial-lock case below)
+    continuous_full = [
+        {"x": 1.8, "y": -5.4},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -4.6, "tags": ["step:s:2"]},
+        {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
         {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
         {"x": 2.2, "y": -3.5, "tags": ["step:e:3"]},
         {"x": 2.6, "y": -3.5, "tags": ["step:e:2"]},
-        {"x": 3.3, "y": -3.5, "tags": ["step:e:1"]},
-        {"x": 3.5, "y": -3.5},
+        {"x": 3.05, "y": -3.5, "tags": ["step:e:1"]},
+        {"x": 3.6, "y": -3.5},
     ]
-    rep = feed(j2, upgrade)
-    assert_status(rep, "t_stairs", "success", "partial upgraded to full")
+    rep = feed(Part1JudgeV2(), continuous_full)
+    assert_status(rep, "t_stairs", "success", "continuous s-up/e-down traversal")
     assert st(rep, "t_stairs")["score"] == 100.0, st(rep, "t_stairs")
     # north arm only (downward direction) = 33 (Q2 x2/3); east arm only = 33 as well
     # note: the non-target arm intentionally only touches an incomplete level subset (e.g. the
@@ -447,7 +449,26 @@ def test_t_stairs_full_partial_and_history():
     rep = j_g.finalize("timeout")
     assert st(rep, "t_stairs")["status"] == "success", st(rep, "t_stairs")
     assert st(rep, "t_stairs")["score"] == 50.0, st(rep, "t_stairs")
-    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels and skipped-level arm fail / grounded graze cannot upgrade")
+    # partial (s up+down) on exit locks the score; re-entering and climbing a full second
+    # arm must not upgrade it to 100 (two separate partials cannot be merged).
+    j_lock = Part1JudgeV2()
+    def _ul(j, x, y, z=0.45, tags=(), ground=()):
+        legs = {leg: set(tags) for leg in LEGS}
+        return j.update(0.0, (x, y, z), 0.0, foot_tags=legs, ground_feet=set(ground), bar_z=None)
+    for x, y, tags in [(1.8, -5.4, ()), (1.8, -4.9, ("step:s:1",)), (1.8, -4.6, ("step:s:2",)),
+                       (1.8, -4.3, ("step:s:3",)), (1.8, -3.8, ("step:top",)),
+                       (1.8, -4.9, ("step:s:1",))]:
+        _ul(j_lock, x, y, tags=tags)
+    _ul(j_lock, 1.8, -5.6)   # exit with partial = 50 -> locked
+    # re-enter and complete a full second arm (n up + e down)
+    for y, tags in [(-2.6, ("step:n:1",)), (-3.3, ("step:n:2",)), (-3.6, ("step:n:3",)),
+                    (-3.8, ("step:top",)), (-3.6, ("step:e:3",)), (-3.5, ("step:e:2",)),
+                    (-3.5, ("step:e:1",))]:
+        _ul(j_lock, 1.8 if "step:e" not in (tags[0] if tags else "") else 3.0, y, tags=tags)
+    _ul(j_lock, 3.6, -3.5)
+    rep = j_lock.finalize("timeout")
+    assert st(rep, "t_stairs")["score"] == 50.0, st(rep, "t_stairs")
+    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels and skipped-level arm fail / grounded graze cannot upgrade / partial not upgradable after exit")
 
 
 def test_slope_projection_and_graze_reset():

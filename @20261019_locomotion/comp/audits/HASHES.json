@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T14:01:38+08:00",
+  "generated_at": "2026-10-23T14:14:32+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -17,11 +17,11 @@
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "bc58e6e5ec0d2a8a4289a2bced73b48007d40d24edd8e48f58601fb1dc451e12"
+      "sha256": "825e6497d4af6cbb22e6f93129fc903a35dcb7a4aa9a1ac69349f4ca5c4acd62"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "be27855acd50fca2be36eafd3abca17b869679c781f232214756b87eb574be58"
+      "sha256": "1978f802391fb12f7fc6a51208c6d059f1a514c9ffa575f915834e3a2652d509"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -185,7 +185,7 @@
     },
     "eval_flat-ft-2500-part1-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/manifest.json",
-      "sha256": "029793511ff6e9475c3f7545131844c34d6c51bca6572bed2918e2ce13a1ebeb"
+      "sha256": "cedaad16b7ea0c9b3defa4ea0ba7a188dabc1de2e5ca2a200b3bb9d794d295a1"
     },
     "eval_flat-ft-2500-part1-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/trials.jsonl",
@@ -197,7 +197,7 @@
     },
     "eval_flat-ft-2500-part2-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/manifest.json",
-      "sha256": "95d328c9e74547b17b4bbd99c652685e28f58281ad5d85a52dc73e8f47cc3c11"
+      "sha256": "1eaf090d0f351356ef625055c11e3e3d33f4feaebd6bf190c28b1de298e09e9f"
     },
     "eval_flat-ft-2500-part2-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/trials.jsonl",
@@ -209,7 +209,7 @@
     },
     "eval_flat-ft-2500-part2-official-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
-      "sha256": "8639255c5a94ae6abd73c3e1649bc14e0d8298426b5ff97d9b7671e565c5e5ac"
+      "sha256": "9aaecee9f9467cbce65adaba131c02794e415b670e28a26de8c8e0ba3f52d0e9"
     },
     "eval_flat-ft-2500-part2-official-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
@@ -221,7 +221,7 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "462b2cf621e5391d0a8e3f1d268ca8e01cf336bd44c926393effd3c4f96013f1"
+      "sha256": "80d0a6dba0c890ff4bba8c2bde0e228223123b0a66db17cbeffc4f17203aadf1"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
