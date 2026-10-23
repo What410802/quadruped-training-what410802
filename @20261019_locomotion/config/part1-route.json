@@ -61,12 +61,22 @@
     {
       "name": "cross_bridge_blocks",
       "target": [
-        6.0,
+        6.5,
         0.0
       ],
       "speed": 0.5,
       "max_s": 8.0,
       "obstacle": "bridge_blocks"
+    },
+    {
+      "name": "leave_bridge_blocks_east",
+      "target": [
+        6.6,
+        -1.1
+      ],
+      "speed": 0.5,
+      "max_s": 2.0,
+      "obstacle": null
     },
     {
       "name": "to_bridge_bands",

@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T12:56:50+08:00",
+  "generated_at": "2026-10-23T13:10:51+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -77,7 +77,7 @@
     },
     "part1_route": {
       "path": "config/part1-route.json",
-      "sha256": "976bae804fadb916825174d5b5f3b985c36346e632dcf74828bc0d04c835080c"
+      "sha256": "218ceeca56e65293bd82716d54dcd5ad8fcba9602ebe9d84def9aeae032be809"
     },
     "part2_levels_json": {
       "path": "config/part2-levels.json",
@@ -93,7 +93,7 @@
     },
     "eval_course_diag": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "e83661e8805aa099e99c06336b6ce947c0130b1f0a09a271c1f3fb66c6c6d0ed"
+      "sha256": "c8c43f9c288856d955a8f8ac0b0266619f7a8fab78d00019c0c55c8018674039"
     },
     "rules_pdf_md": {
       "path": "docs/reference/team-race-2026.md",
@@ -221,15 +221,15 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "75d8a9ace63a9d5860533232099d0929ab273c70b76b89203d91947653d539a5"
+      "sha256": "ce8d23f98ed9d2709caa8e6190ec1b0b5f28cff9c120dcd0b027f2d3bd97e023"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
-      "sha256": "85eadf8ae7f7370379f163b9a175e55ef25ff04eea0bc385f8b8458d6b2860e9"
+      "sha256": "7032e111cccdf56613936b3f451dd7b07f8cd89cc30578c8bdced9ebf3ead706"
     },
     "eval_flat-ft-2500-part1-course-diag_summary": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "e83661e8805aa099e99c06336b6ce947c0130b1f0a09a271c1f3fb66c6c6d0ed"
+      "sha256": "c8c43f9c288856d955a8f8ac0b0266619f7a8fab78d00019c0c55c8018674039"
     },
     "extra_part2_ability_field": {
       "path": "assets/terrain/part2/ability_field/part2_ability_field.xml",
@@ -257,15 +257,15 @@
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
-      "sha256": "8bbb3bb1642300ff2476843dd15959113e67540c9d76d3bd084eecd686ba33f0"
+      "sha256": "32d3fd7293762194c57a14bd50839ce4d1697bf77f719aa3363a002b99d61d4b"
     },
     "evidence_part1_course_pause_resume_drill": {
       "path": "comp/audits/evidence/part1_course_pause_resume_drill.json",
-      "sha256": "c23dbd4c521b62f5efddae1011574d53d7eaa4ccf6ffb09fc7f1ea7af62f0b8e"
+      "sha256": "bbcbb0cfa2070846c712fef10b270f41bee53c4c73688cca36753fb5186580ae"
     },
     "evidence_part1_course_pause_timeout_drill": {
       "path": "comp/audits/evidence/part1_course_pause_timeout_drill.json",
-      "sha256": "72cfdacd7a38c9d37233b240c102a3abd835a79b9cd2582e1b252725fd27d703"
+      "sha256": "fd577c98c1c0851311ecca4d1a732e2ff8b3ff57a3486883e5e687d85151cb10"
     }
   },
   "superseded": {
