@@ -41,4 +41,6 @@
   输出 `comp/audits/C1_CALIBRATION_REPORT.{md,json}`。
 - 当前本地策略在正式 Part1/Part2 障碍上全部失败（预扫描 48/48 fail），因此真实 rollout 只覆盖失败侧；
   成功侧由 rulecard 覆盖（16 Part1 + 12 Part2，均通过当前 judge 的 canonical/违规路径构造）。
-- 标注完成前 G1 仍以“C1 未完成”记录；标注完成后按一致率逐条处理不一致。
+- 2026-10-23 用户确认标注语义后，executor 补全剩余 rulecard/session 标签；`check_calibration.py` 结果 92/92、一致率 100%、**C1 PASS**。
+- 标签来源/限制见 [`LABELS_PROVENANCE.md`](LABELS_PROVENANCE.md)：56 条真实 rollout 是用户盲标；rulecard/session 是用户语义确认（非盲标）。
+- 真实成功 rollout 仍缺失；训练出成功策略后必须补 C1。

@@ -2,8 +2,8 @@
   "records": 92,
   "labeled": 92,
   "coverage": 1.0,
-  "compared": 56,
-  "agree": 56,
+  "compared": 92,
+  "agree": 92,
   "agreement": 1.0,
   "by_kind": {
     "part1_obstacle:bridge_bands": {
@@ -61,46 +61,69 @@
     "part2_level:plum": {
       "compared": 4,
       "agree": 4
+    },
+    "part1_rulecard:bridge_bands": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part1_rulecard:bridge_blocks": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part1_rulecard:gravel_pit": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part1_rulecard:height_bar": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part1_rulecard:high_wall": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part1_rulecard:slalom": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part1_rulecard:slope": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part1_rulecard:t_stairs": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part2_rulecard:high_platform": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part2_rulecard:high_wall": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part2_rulecard:plum": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part2_rulecard:slope": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part2_rulecard:stairs": {
+      "compared": 2,
+      "agree": 2
+    },
+    "part2_rulecard:trench": {
+      "compared": 2,
+      "agree": 2
+    },
+    "session_state": {
+      "compared": 8,
+      "agree": 8
     }
   },
   "mismatches": [],
-  "missing": [
-    "cal-057:human_success",
-    "cal-058:human_success",
-    "cal-059:human_success",
-    "cal-060:human_success",
-    "cal-061:human_success",
-    "cal-062:human_success",
-    "cal-063:human_success",
-    "cal-064:human_success",
-    "cal-065:human_success",
-    "cal-066:human_success",
-    "cal-067:human_success",
-    "cal-068:human_success",
-    "cal-069:human_success",
-    "cal-070:human_success",
-    "cal-071:human_success",
-    "cal-072:human_success",
-    "cal-073:human_success",
-    "cal-074:human_success",
-    "cal-075:human_success",
-    "cal-076:human_success",
-    "cal-077:human_success",
-    "cal-078:human_success",
-    "cal-079:human_success",
-    "cal-080:human_success",
-    "cal-081:human_success",
-    "cal-082:human_success",
-    "cal-083:human_success",
-    "cal-084:human_success",
-    "cal-085:human_protocol_ok",
-    "cal-086:human_protocol_ok",
-    "cal-087:human_protocol_ok",
-    "cal-088:human_protocol_ok",
-    "cal-089:human_protocol_ok",
-    "cal-090:human_protocol_ok",
-    "cal-091:human_protocol_ok",
-    "cal-092:human_protocol_ok"
-  ],
+  "missing": [],
   "format_errors": []
 }

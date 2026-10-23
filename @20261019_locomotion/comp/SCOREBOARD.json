@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-23 18:38",
+  "generated_at": "2026-10-23 19:03",
   "contract_version": "robocon-2026-internal-v1",
   "rows": [
     {
-      "policy_dir": "comp/eval/flat-ft-2500-part1-course-diag",
+      "policy_dir": "@20261019_locomotion/comp/eval/flat-ft-2500-part1-course-diag",
       "errors": [],
       "warnings": [],
       "policy_id": "flat-ft-2500-part1-course-diag",
@@ -12,11 +12,11 @@
       "part1_total": 0,
       "part2_total": 0,
       "grand_total": 0,
-      "summary_path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
+      "summary_path": "@20261019_locomotion/comp/eval/flat-ft-2500-part1-course-diag/summary.json",
       "status": "diagnostic"
     },
     {
-      "policy_dir": "comp/eval/flat-ft-2500-part1-diag-v1",
+      "policy_dir": "@20261019_locomotion/comp/eval/flat-ft-2500-part1-diag-v1",
       "errors": [],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
@@ -27,11 +27,11 @@
       "part1_total": 0,
       "part2_total": 0,
       "grand_total": 0,
-      "summary_path": "comp/eval/flat-ft-2500-part1-diag-v1/summary.json",
+      "summary_path": "@20261019_locomotion/comp/eval/flat-ft-2500-part1-diag-v1/summary.json",
       "status": "diagnostic"
     },
     {
-      "policy_dir": "comp/eval/flat-ft-2500-part1-diag-v2",
+      "policy_dir": "@20261019_locomotion/comp/eval/flat-ft-2500-part1-diag-v2",
       "errors": [],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
@@ -42,11 +42,11 @@
       "part1_total": 0,
       "part2_total": 0,
       "grand_total": 0,
-      "summary_path": "comp/eval/flat-ft-2500-part1-diag-v2/summary.json",
+      "summary_path": "@20261019_locomotion/comp/eval/flat-ft-2500-part1-diag-v2/summary.json",
       "status": "diagnostic"
     },
     {
-      "policy_dir": "comp/eval/flat-ft-2500-part2-diag-v2",
+      "policy_dir": "@20261019_locomotion/comp/eval/flat-ft-2500-part2-diag-v2",
       "errors": [],
       "warnings": [],
       "policy_id": "flat-ft-2500-part2-diag-v2",
@@ -55,11 +55,11 @@
       "part1_total": 0,
       "part2_total": 0,
       "grand_total": 0,
-      "summary_path": "comp/eval/flat-ft-2500-part2-diag-v2/summary.json",
+      "summary_path": "@20261019_locomotion/comp/eval/flat-ft-2500-part2-diag-v2/summary.json",
       "status": "diagnostic"
     },
     {
-      "policy_dir": "comp/eval/flat-ft-2500-part2-official-diag",
+      "policy_dir": "@20261019_locomotion/comp/eval/flat-ft-2500-part2-official-diag",
       "errors": [],
       "warnings": [],
       "policy_id": "flat-ft-2500-part2-official-diag",
@@ -68,11 +68,11 @@
       "part1_total": 0,
       "part2_total": 0,
       "grand_total": 0,
-      "summary_path": "comp/eval/flat-ft-2500-part2-official-diag/summary.json",
+      "summary_path": "@20261019_locomotion/comp/eval/flat-ft-2500-part2-official-diag/summary.json",
       "status": "diagnostic"
     },
     {
-      "policy_dir": "comp/eval/p1-basic-obstacle-part1-diag-v1",
+      "policy_dir": "@20261019_locomotion/comp/eval/p1-basic-obstacle-part1-diag-v1",
       "errors": [],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
@@ -83,11 +83,11 @@
       "part1_total": 0,
       "part2_total": 0,
       "grand_total": 0,
-      "summary_path": "comp/eval/p1-basic-obstacle-part1-diag-v1/summary.json",
+      "summary_path": "@20261019_locomotion/comp/eval/p1-basic-obstacle-part1-diag-v1/summary.json",
       "status": "diagnostic"
     },
     {
-      "policy_dir": "comp/eval/p1-cont-part1-diag-v1",
+      "policy_dir": "@20261019_locomotion/comp/eval/p1-cont-part1-diag-v1",
       "errors": [],
       "warnings": [
         "part1.attempts_used=8 超预算 3（diagnostic 行不据此判 invalid）"
@@ -98,7 +98,7 @@
       "part1_total": 0,
       "part2_total": 0,
       "grand_total": 0,
-      "summary_path": "comp/eval/p1-cont-part1-diag-v1/summary.json",
+      "summary_path": "@20261019_locomotion/comp/eval/p1-cont-part1-diag-v1/summary.json",
       "status": "diagnostic"
     }
   ]

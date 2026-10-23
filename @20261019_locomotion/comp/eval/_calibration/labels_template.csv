@@ -55,39 +55,39 @@ cal-053,part2_level,plum,1,flat-ft-2500,../prep.d/videos/calibration/cal-053_p2_
 cal-054,part2_level,plum,1,baseline-2000,../prep.d/videos/calibration/cal-054_p2_plum_1bool_baseline-2000.mp4,false,fell,,,plum 1bool
 cal-055,part2_level,plum,1,baseline-rough-3999,../prep.d/videos/calibration/cal-055_p2_plum_1bool_baseline-rough-3999.mp4,false,no_crossing,,,plum 1bool
 cal-056,part2_level,plum,1,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-056_p2_plum_1bool_free-gravel-dense80-3995.mp4,false,fell,,,plum 1bool
-cal-057,part1_rulecard,bridge_bands,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_bands_success.svg,,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
-cal-058,part1_rulecard,bridge_bands,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_bands_fail.svg,,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
-cal-059,part1_rulecard,bridge_blocks,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_blocks_success.svg,,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
-cal-060,part1_rulecard,bridge_blocks,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_blocks_fail.svg,,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
-cal-061,part1_rulecard,gravel_pit,,,../prep.d/videos/calibration/rulecards/rule_p1_gravel_pit_success.svg,,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
-cal-062,part1_rulecard,gravel_pit,,,../prep.d/videos/calibration/rulecards/rule_p1_gravel_pit_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
-cal-063,part1_rulecard,height_bar,,,../prep.d/videos/calibration/rulecards/rule_p1_height_bar_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
-cal-064,part1_rulecard,height_bar,,,../prep.d/videos/calibration/rulecards/rule_p1_height_bar_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
-cal-065,part1_rulecard,high_wall,,,../prep.d/videos/calibration/rulecards/rule_p1_high_wall_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
-cal-066,part1_rulecard,high_wall,,,../prep.d/videos/calibration/rulecards/rule_p1_high_wall_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
-cal-067,part1_rulecard,slalom,,,../prep.d/videos/calibration/rulecards/rule_p1_slalom_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
-cal-068,part1_rulecard,slalom,,,../prep.d/videos/calibration/rulecards/rule_p1_slalom_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
-cal-069,part1_rulecard,slope,,,../prep.d/videos/calibration/rulecards/rule_p1_slope_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
-cal-070,part1_rulecard,slope,,,../prep.d/videos/calibration/rulecards/rule_p1_slope_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
-cal-071,part1_rulecard,t_stairs,,,../prep.d/videos/calibration/rulecards/rule_p1_t_stairs_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
-cal-072,part1_rulecard,t_stairs,,,../prep.d/videos/calibration/rulecards/rule_p1_t_stairs_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
-cal-073,part2_rulecard,high_platform,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_platform_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-074,part2_rulecard,high_platform,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_platform_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-075,part2_rulecard,high_wall,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_wall_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-076,part2_rulecard,high_wall,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_wall_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-077,part2_rulecard,plum,1,,../prep.d/videos/calibration/rulecards/rule_p2_plum_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-078,part2_rulecard,plum,1,,../prep.d/videos/calibration/rulecards/rule_p2_plum_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-079,part2_rulecard,slope,45,,../prep.d/videos/calibration/rulecards/rule_p2_slope_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-080,part2_rulecard,slope,45,,../prep.d/videos/calibration/rulecards/rule_p2_slope_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-081,part2_rulecard,stairs,30,,../prep.d/videos/calibration/rulecards/rule_p2_stairs_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-082,part2_rulecard,stairs,30,,../prep.d/videos/calibration/rulecards/rule_p2_stairs_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-083,part2_rulecard,trench,30,,../prep.d/videos/calibration/rulecards/rule_p2_trench_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-084,part2_rulecard,trench,30,,../prep.d/videos/calibration/rulecards/rule_p2_trench_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
-cal-085,session_state,整场 3 次尝试账本（best score / fastest tie-break）,,,,,,,,只审协议/账本：best score、同分取最快、恢复不消耗、最终计时口径
-cal-086,session_state,暂停/恢复演练时间账本（3 attempts，每 attempt 暂停约 1 s 后原位恢复）,,,,,,,,暂停期间物理冻结、恢复后不消耗尝试；duration 不含暂停（模拟器时钟）
-cal-087,session_state,主动 abort 演练（3 attempts，每 attempt 暂停→恢复→abort）,,,,,,,,abort 消耗尝试、skip 记录、duration 用模拟器时钟
-cal-088,session_state,暂停超时演练（pause 后不恢复，120 s 超时）,,,,,,,,120 s 超时 abort、事件与 operator_t 记录
-cal-089,session_state,skipped attempt 语义（abort drill）,,,,,,,,skipped 不计分/不计时长/不作 evidence
-cal-090,session_state,best score / 同分取最快 计算示例,,,,,,,,分数最高优先；同分只在最高分尝试内取最快（不是全局最快）
-cal-091,session_state,返回奖励语义（全 8 项满分后才生效）,,,,,,,,返回奖励必须全部障碍满分后重新进入出发区
-cal-092,session_state,3 次尝试上限与恢复不消耗,,,,,,,,整场最多 3 次尝试；恢复不消耗；abort/主动重跑消耗
+cal-057,part1_rulecard,bridge_bands,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_bands_success.svg,true,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-058,part1_rulecard,bridge_bands,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_bands_fail.svg,false,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-059,part1_rulecard,bridge_blocks,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_blocks_success.svg,true,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-060,part1_rulecard,bridge_blocks,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_blocks_fail.svg,false,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-061,part1_rulecard,gravel_pit,,,../prep.d/videos/calibration/rulecards/rule_p1_gravel_pit_success.svg,true,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-062,part1_rulecard,gravel_pit,,,../prep.d/videos/calibration/rulecards/rule_p1_gravel_pit_fail.svg,false,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-063,part1_rulecard,height_bar,,,../prep.d/videos/calibration/rulecards/rule_p1_height_bar_success.svg,true,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-064,part1_rulecard,height_bar,,,../prep.d/videos/calibration/rulecards/rule_p1_height_bar_fail.svg,false,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-065,part1_rulecard,high_wall,,,../prep.d/videos/calibration/rulecards/rule_p1_high_wall_success.svg,true,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-066,part1_rulecard,high_wall,,,../prep.d/videos/calibration/rulecards/rule_p1_high_wall_fail.svg,false,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-067,part1_rulecard,slalom,,,../prep.d/videos/calibration/rulecards/rule_p1_slalom_success.svg,true,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-068,part1_rulecard,slalom,,,../prep.d/videos/calibration/rulecards/rule_p1_slalom_fail.svg,false,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-069,part1_rulecard,slope,,,../prep.d/videos/calibration/rulecards/rule_p1_slope_success.svg,true,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-070,part1_rulecard,slope,,,../prep.d/videos/calibration/rulecards/rule_p1_slope_fail.svg,false,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-071,part1_rulecard,t_stairs,,,../prep.d/videos/calibration/rulecards/rule_p1_t_stairs_success.svg,true,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-072,part1_rulecard,t_stairs,,,../prep.d/videos/calibration/rulecards/rule_p1_t_stairs_fail.svg,false,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-073,part2_rulecard,high_platform,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_platform_success.svg,true,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-074,part2_rulecard,high_platform,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_platform_fail.svg,false,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-075,part2_rulecard,high_wall,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_wall_success.svg,true,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-076,part2_rulecard,high_wall,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_wall_fail.svg,false,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-077,part2_rulecard,plum,1,,../prep.d/videos/calibration/rulecards/rule_p2_plum_success.svg,true,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-078,part2_rulecard,plum,1,,../prep.d/videos/calibration/rulecards/rule_p2_plum_fail.svg,false,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-079,part2_rulecard,slope,45,,../prep.d/videos/calibration/rulecards/rule_p2_slope_success.svg,true,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-080,part2_rulecard,slope,45,,../prep.d/videos/calibration/rulecards/rule_p2_slope_fail.svg,false,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-081,part2_rulecard,stairs,30,,../prep.d/videos/calibration/rulecards/rule_p2_stairs_success.svg,true,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-082,part2_rulecard,stairs,30,,../prep.d/videos/calibration/rulecards/rule_p2_stairs_fail.svg,false,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-083,part2_rulecard,trench,30,,../prep.d/videos/calibration/rulecards/rule_p2_trench_success.svg,true,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-084,part2_rulecard,trench,30,,../prep.d/videos/calibration/rulecards/rule_p2_trench_fail.svg,false,,,true,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-085,session_state,整场 3 次尝试账本（best score / fastest tie-break）,,,,,,true,,只审协议/账本：best score、同分取最快、恢复不消耗、最终计时口径
+cal-086,session_state,暂停/恢复演练时间账本（3 attempts，每 attempt 暂停约 1 s 后原位恢复）,,,,,,true,,暂停期间物理冻结、恢复后不消耗尝试；duration 不含暂停（模拟器时钟）
+cal-087,session_state,主动 abort 演练（3 attempts，每 attempt 暂停→恢复→abort）,,,,,,true,,abort 消耗尝试、skip 记录、duration 用模拟器时钟
+cal-088,session_state,暂停超时演练（pause 后不恢复，120 s 超时）,,,,,,true,,120 s 超时 abort、事件与 operator_t 记录
+cal-089,session_state,skipped attempt 语义（abort drill）,,,,,,true,,skipped 不计分/不计时长/不作 evidence
+cal-090,session_state,best score / 同分取最快 计算示例,,,,,,true,,分数最高优先；同分只在最高分尝试内取最快（不是全局最快）
+cal-091,session_state,返回奖励语义（全 8 项满分后才生效）,,,,,,true,,返回奖励必须全部障碍满分后重新进入出发区
+cal-092,session_state,3 次尝试上限与恢复不消耗,,,,,,true,,整场最多 3 次尝试；恢复不消耗；abort/主动重跑消耗

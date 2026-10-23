@@ -1,0 +1,93 @@
+trial_id,kind,obstacle_or_category,level,policy_or_title,video_or_svg,human_success,human_failure_reason,human_protocol_ok,human_judge_verdict_correct,notes
+cal-001,part1_obstacle,bridge_bands,,flat-ft-2500,../prep.d/videos/calibration/cal-001_p1_bridge_bands_flat-ft-2500.mp4,false,no_crossing,,,lower platform -> +y
+cal-002,part1_obstacle,bridge_blocks,,flat-ft-2500,../prep.d/videos/calibration/cal-002_p1_bridge_blocks_flat-ft-2500.mp4,false,two_feet_ground,,,left platform -> +x
+cal-003,part1_obstacle,gravel_pit,,flat-ft-2500,../prep.d/videos/calibration/cal-003_p1_gravel_pit_flat-ft-2500.mp4,false,no_crossing,,,short-edge approach along +y
+cal-004,part1_obstacle,height_bar,,flat-ft-2500,../prep.d/videos/calibration/cal-004_p1_height_bar_flat-ft-2500.mp4,false,no_crossing,,,through gate along +y
+cal-005,part1_obstacle,high_wall,,flat-ft-2500,../prep.d/videos/calibration/cal-005_p1_high_wall_flat-ft-2500.mp4,false,no_crossing,,,cross wall along +y
+cal-006,part1_obstacle,slalom,,flat-ft-2500,../prep.d/videos/calibration/cal-006_p1_slalom_flat-ft-2500.mp4,false,no_crossing,,,first post -> -y
+cal-007,part1_obstacle,slope,,flat-ft-2500,../prep.d/videos/calibration/cal-007_p1_slope_flat-ft-2500.mp4,false,fell,,,slope long edge -> +y
+cal-008,part1_obstacle,t_stairs,,flat-ft-2500,../prep.d/videos/calibration/cal-008_p1_t_stairs_flat-ft-2500.mp4,false,no_crossing,,,main limb -> +y
+cal-009,part1_obstacle,bridge_bands,,baseline-2000,../prep.d/videos/calibration/cal-009_p1_bridge_bands_baseline-2000.mp4,false,no_crossing,,,lower platform -> +y
+cal-010,part1_obstacle,bridge_blocks,,baseline-2000,../prep.d/videos/calibration/cal-010_p1_bridge_blocks_baseline-2000.mp4,false,no_crossing,,,left platform -> +x
+cal-011,part1_obstacle,gravel_pit,,baseline-2000,../prep.d/videos/calibration/cal-011_p1_gravel_pit_baseline-2000.mp4,false,no_crossing,,,short-edge approach along +y
+cal-012,part1_obstacle,height_bar,,baseline-2000,../prep.d/videos/calibration/cal-012_p1_height_bar_baseline-2000.mp4,false,no_crossing,,,through gate along +y
+cal-013,part1_obstacle,high_wall,,baseline-2000,../prep.d/videos/calibration/cal-013_p1_high_wall_baseline-2000.mp4,false,no_crossing,,,cross wall along +y
+cal-014,part1_obstacle,slalom,,baseline-2000,../prep.d/videos/calibration/cal-014_p1_slalom_baseline-2000.mp4,false,no_crossing,,,first post -> -y
+cal-015,part1_obstacle,slope,,baseline-2000,../prep.d/videos/calibration/cal-015_p1_slope_baseline-2000.mp4,false,no_crossing,,,slope long edge -> +y
+cal-016,part1_obstacle,t_stairs,,baseline-2000,../prep.d/videos/calibration/cal-016_p1_t_stairs_baseline-2000.mp4,false,no_crossing,,,main limb -> +y
+cal-017,part1_obstacle,bridge_bands,,baseline-rough-3999,../prep.d/videos/calibration/cal-017_p1_bridge_bands_baseline-rough-3999.mp4,false,timeout,,,lower platform -> +y
+cal-018,part1_obstacle,bridge_blocks,,baseline-rough-3999,../prep.d/videos/calibration/cal-018_p1_bridge_blocks_baseline-rough-3999.mp4,false,timeout,,,left platform -> +x
+cal-019,part1_obstacle,gravel_pit,,baseline-rough-3999,../prep.d/videos/calibration/cal-019_p1_gravel_pit_baseline-rough-3999.mp4,false,no_crossing,,,short-edge approach along +y
+cal-020,part1_obstacle,height_bar,,baseline-rough-3999,../prep.d/videos/calibration/cal-020_p1_height_bar_baseline-rough-3999.mp4,false,timeout,,,through gate along +y
+cal-021,part1_obstacle,high_wall,,baseline-rough-3999,../prep.d/videos/calibration/cal-021_p1_high_wall_baseline-rough-3999.mp4,false,no_crossing,,,cross wall along +y
+cal-022,part1_obstacle,slalom,,baseline-rough-3999,../prep.d/videos/calibration/cal-022_p1_slalom_baseline-rough-3999.mp4,false,timeout,,,first post -> -y
+cal-023,part1_obstacle,slope,,baseline-rough-3999,../prep.d/videos/calibration/cal-023_p1_slope_baseline-rough-3999.mp4,false,timeout,,,slope long edge -> +y
+cal-024,part1_obstacle,t_stairs,,baseline-rough-3999,../prep.d/videos/calibration/cal-024_p1_t_stairs_baseline-rough-3999.mp4,false,no_crossing,,,main limb -> +y
+cal-025,part1_obstacle,bridge_bands,,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-025_p1_bridge_bands_free-gravel-dense80-3995.mp4,false,no_crossing,,,lower platform -> +y
+cal-026,part1_obstacle,bridge_blocks,,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-026_p1_bridge_blocks_free-gravel-dense80-3995.mp4,false,no_crossing,,,left platform -> +x
+cal-027,part1_obstacle,gravel_pit,,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-027_p1_gravel_pit_free-gravel-dense80-3995.mp4,false,no_crossing,,,short-edge approach along +y
+cal-028,part1_obstacle,height_bar,,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-028_p1_height_bar_free-gravel-dense80-3995.mp4,false,no_crossing,,,through gate along +y
+cal-029,part1_obstacle,high_wall,,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-029_p1_high_wall_free-gravel-dense80-3995.mp4,false,no_crossing,,,cross wall along +y
+cal-030,part1_obstacle,slalom,,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-030_p1_slalom_free-gravel-dense80-3995.mp4,false,no_crossing,,,first post -> -y
+cal-031,part1_obstacle,slope,,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-031_p1_slope_free-gravel-dense80-3995.mp4,false,fell,,,slope long edge -> +y
+cal-032,part1_obstacle,t_stairs,,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-032_p1_t_stairs_free-gravel-dense80-3995.mp4,false,no_crossing,,,main limb -> +y
+cal-033,part2_level,high_platform,10,flat-ft-2500,../prep.d/videos/calibration/cal-033_p2_high_platform_10cm_flat-ft-2500.mp4,false,no_crossing,,,high_platform 10cm
+cal-034,part2_level,high_platform,20,baseline-2000,../prep.d/videos/calibration/cal-034_p2_high_platform_20cm_baseline-2000.mp4,false,timeout,,,high_platform 20cm
+cal-035,part2_level,high_platform,30,baseline-rough-3999,../prep.d/videos/calibration/cal-035_p2_high_platform_30cm_baseline-rough-3999.mp4,false,no_crossing,,,high_platform 30cm
+cal-036,part2_level,high_platform,40,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-036_p2_high_platform_40cm_free-gravel-dense80-3995.mp4,false,no_crossing,,,high_platform 40cm
+cal-037,part2_level,stairs,10,flat-ft-2500,../prep.d/videos/calibration/cal-037_p2_stairs_10cm_flat-ft-2500.mp4,false,no_crossing,,,stairs 10cm
+cal-038,part2_level,stairs,15,baseline-2000,../prep.d/videos/calibration/cal-038_p2_stairs_15cm_baseline-2000.mp4,false,timeout,,,stairs 15cm
+cal-039,part2_level,stairs,20,baseline-rough-3999,../prep.d/videos/calibration/cal-039_p2_stairs_20cm_baseline-rough-3999.mp4,false,timeout,,,stairs 20cm
+cal-040,part2_level,stairs,30,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-040_p2_stairs_30cm_free-gravel-dense80-3995.mp4,false,timeout,,,stairs 30cm
+cal-041,part2_level,slope,20,flat-ft-2500,../prep.d/videos/calibration/cal-041_p2_slope_20deg_flat-ft-2500.mp4,false,timeout,,,slope 20deg
+cal-042,part2_level,slope,30,baseline-2000,../prep.d/videos/calibration/cal-042_p2_slope_30deg_baseline-2000.mp4,false,timeout,,,slope 30deg
+cal-043,part2_level,slope,35,baseline-rough-3999,../prep.d/videos/calibration/cal-043_p2_slope_35deg_baseline-rough-3999.mp4,false,no_crossing,,,slope 35deg
+cal-044,part2_level,slope,45,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-044_p2_slope_45deg_free-gravel-dense80-3995.mp4,false,no_crossing,,,slope 45deg
+cal-045,part2_level,high_wall,10,flat-ft-2500,../prep.d/videos/calibration/cal-045_p2_high_wall_10cm_flat-ft-2500.mp4,false,no_crossing,,,high_wall 10cm
+cal-046,part2_level,high_wall,20,baseline-2000,../prep.d/videos/calibration/cal-046_p2_high_wall_20cm_baseline-2000.mp4,false,no_crossing,,,high_wall 20cm
+cal-047,part2_level,high_wall,30,baseline-rough-3999,../prep.d/videos/calibration/cal-047_p2_high_wall_30cm_baseline-rough-3999.mp4,false,no_crossing,,,high_wall 30cm
+cal-048,part2_level,high_wall,40,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-048_p2_high_wall_40cm_free-gravel-dense80-3995.mp4,false,timeout,,,high_wall 40cm
+cal-049,part2_level,trench,10,flat-ft-2500,../prep.d/videos/calibration/cal-049_p2_trench_10cm_flat-ft-2500.mp4,false,timeout,,,trench 10cm
+cal-050,part2_level,trench,20,baseline-2000,../prep.d/videos/calibration/cal-050_p2_trench_20cm_baseline-2000.mp4,false,timeout,,,trench 20cm
+cal-051,part2_level,trench,30,baseline-rough-3999,../prep.d/videos/calibration/cal-051_p2_trench_30cm_baseline-rough-3999.mp4,false,timeout,,,trench 30cm
+cal-052,part2_level,trench,30,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-052_p2_trench_30cm_free-gravel-dense80-3995.mp4,false,timeout,,,trench 30cm
+cal-053,part2_level,plum,1,flat-ft-2500,../prep.d/videos/calibration/cal-053_p2_plum_1bool_flat-ft-2500.mp4,false,no_crossing,,,plum 1bool
+cal-054,part2_level,plum,1,baseline-2000,../prep.d/videos/calibration/cal-054_p2_plum_1bool_baseline-2000.mp4,false,fell,,,plum 1bool
+cal-055,part2_level,plum,1,baseline-rough-3999,../prep.d/videos/calibration/cal-055_p2_plum_1bool_baseline-rough-3999.mp4,false,no_crossing,,,plum 1bool
+cal-056,part2_level,plum,1,free-gravel-dense80-3995,../prep.d/videos/calibration/cal-056_p2_plum_1bool_free-gravel-dense80-3995.mp4,false,fell,,,plum 1bool
+cal-057,part1_rulecard,bridge_bands,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_bands_success.svg,,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-058,part1_rulecard,bridge_bands,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_bands_fail.svg,,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-059,part1_rulecard,bridge_blocks,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_blocks_success.svg,,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-060,part1_rulecard,bridge_blocks,,,../prep.d/videos/calibration/rulecards/rule_p1_bridge_blocks_fail.svg,,,,true,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-061,part1_rulecard,gravel_pit,,,../prep.d/videos/calibration/rulecards/rule_p1_gravel_pit_success.svg,,,,true,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-062,part1_rulecard,gravel_pit,,,../prep.d/videos/calibration/rulecards/rule_p1_gravel_pit_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-063,part1_rulecard,height_bar,,,../prep.d/videos/calibration/rulecards/rule_p1_height_bar_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-064,part1_rulecard,height_bar,,,../prep.d/videos/calibration/rulecards/rule_p1_height_bar_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-065,part1_rulecard,high_wall,,,../prep.d/videos/calibration/rulecards/rule_p1_high_wall_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-066,part1_rulecard,high_wall,,,../prep.d/videos/calibration/rulecards/rule_p1_high_wall_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-067,part1_rulecard,slalom,,,../prep.d/videos/calibration/rulecards/rule_p1_slalom_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-068,part1_rulecard,slalom,,,../prep.d/videos/calibration/rulecards/rule_p1_slalom_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-069,part1_rulecard,slope,,,../prep.d/videos/calibration/rulecards/rule_p1_slope_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-070,part1_rulecard,slope,,,../prep.d/videos/calibration/rulecards/rule_p1_slope_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-071,part1_rulecard,t_stairs,,,../prep.d/videos/calibration/rulecards/rule_p1_t_stairs_success.svg,,,,,rulecard: canonical success path；请按规则标注 success/fail 与 judge 是否正确
+cal-072,part1_rulecard,t_stairs,,,../prep.d/videos/calibration/rulecards/rule_p1_t_stairs_fail.svg,,,,,rulecard: rule-violating path；请按规则标注 success/fail 与 judge 是否正确
+cal-073,part2_rulecard,high_platform,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_platform_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-074,part2_rulecard,high_platform,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_platform_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-075,part2_rulecard,high_wall,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_wall_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-076,part2_rulecard,high_wall,40,,../prep.d/videos/calibration/rulecards/rule_p2_high_wall_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-077,part2_rulecard,plum,1,,../prep.d/videos/calibration/rulecards/rule_p2_plum_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-078,part2_rulecard,plum,1,,../prep.d/videos/calibration/rulecards/rule_p2_plum_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-079,part2_rulecard,slope,45,,../prep.d/videos/calibration/rulecards/rule_p2_slope_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-080,part2_rulecard,slope,45,,../prep.d/videos/calibration/rulecards/rule_p2_slope_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-081,part2_rulecard,stairs,30,,../prep.d/videos/calibration/rulecards/rule_p2_stairs_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-082,part2_rulecard,stairs,30,,../prep.d/videos/calibration/rulecards/rule_p2_stairs_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-083,part2_rulecard,trench,30,,../prep.d/videos/calibration/rulecards/rule_p2_trench_success.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-084,part2_rulecard,trench,30,,../prep.d/videos/calibration/rulecards/rule_p2_trench_fail.svg,,,,,rulecard：请按规则标注 success/fail 与 judge 是否正确
+cal-085,session_state,整场 3 次尝试账本（best score / fastest tie-break）,,,,,,,,只审协议/账本：best score、同分取最快、恢复不消耗、最终计时口径
+cal-086,session_state,暂停/恢复演练时间账本（3 attempts，每 attempt 暂停约 1 s 后原位恢复）,,,,,,,,暂停期间物理冻结、恢复后不消耗尝试；duration 不含暂停（模拟器时钟）
+cal-087,session_state,主动 abort 演练（3 attempts，每 attempt 暂停→恢复→abort）,,,,,,,,abort 消耗尝试、skip 记录、duration 用模拟器时钟
+cal-088,session_state,暂停超时演练（pause 后不恢复，120 s 超时）,,,,,,,,120 s 超时 abort、事件与 operator_t 记录
+cal-089,session_state,skipped attempt 语义（abort drill）,,,,,,,,skipped 不计分/不计时长/不作 evidence
+cal-090,session_state,best score / 同分取最快 计算示例,,,,,,,,分数最高优先；同分只在最高分尝试内取最快（不是全局最快）
+cal-091,session_state,返回奖励语义（全 8 项满分后才生效）,,,,,,,,返回奖励必须全部障碍满分后重新进入出发区
+cal-092,session_state,3 次尝试上限与恢复不消耗,,,,,,,,整场最多 3 次尝试；恢复不消耗；abort/主动重跑消耗

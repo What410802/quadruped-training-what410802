@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T18:42:16+08:00",
+  "generated_at": "2026-10-23T19:03:46+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -278,6 +278,18 @@
     "extra_index": {
       "path": "comp/eval/_calibration/index.html",
       "sha256": "9ab684ce0c08c0a54fe77c13af531bb6a208ba008575c4dd56ae649277d10d72"
+    },
+    "extra_labels_template": {
+      "path": "comp/eval/_calibration/labels_template.csv",
+      "sha256": "b7f5b3b8ba7160314e3c2bfa63c6660fa6b1e43cb3d6ff91dbeec48672f73bee"
+    },
+    "extra_LABELS_PROVENANCE": {
+      "path": "comp/eval/_calibration/LABELS_PROVENANCE.md",
+      "sha256": "9174b2f0ca01cacb250625cfc357b7c6301b836a3cc79254b9701582c5b38f02"
+    },
+    "extra_G1_SELFCHECK": {
+      "path": "comp/audits/G1_SELFCHECK.md",
+      "sha256": "06ca537d3232e2ae27a1f0cb32a05527daee49559c0389350ec43339ada60ecb"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
