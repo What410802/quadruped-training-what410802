@@ -103,7 +103,8 @@ def main() -> int:
                   "comp/eval/_calibration/index.html",
                   "comp/eval/_calibration/labels_template.csv",
                   "comp/eval/_calibration/LABELS_PROVENANCE.md",
-                  "comp/audits/G1_SELFCHECK.md"):
+                  "comp/audits/G1_SELFCHECK.md",
+                  "comp/audits/C1_CALIBRATION_REPORT.md"):
         if not (ROOT / extra).is_file():
             continue
         out["objects"]["extra_" + (ROOT / extra).stem] = {"path": extra, "sha256": sha256(ROOT / extra)}

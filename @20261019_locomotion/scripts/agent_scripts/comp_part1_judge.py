@@ -719,7 +719,8 @@ class Slalom(_Obstacle):
     def _reset_evidence(self) -> None:
         self.evidence = {"start_area": None, "order": [], "order_expected": [],
                          "sides": [], "corner": False, "end_area": None,
-                         "corner_after": None, "corner_visits": [], "early_posts": []}
+                         "corner_after": None, "corner_visits": [], "early_posts": [],
+                         "last_post_cleared": False}
 
     def _near(self, xy, point, radius=SLALOM_RADIUS_M) -> bool:
         return _dist(xy, point) <= radius
@@ -741,6 +742,8 @@ class Slalom(_Obstacle):
             post = SLALOM_POSTS[target]
             if self._near(xy, post, SLALOM_POST_RADIUS_M):
                 ev["order"].append(target)
+                if len(ev["order"]) == 4:
+                    ev["last_post_cleared"] = False
                 ref = SLALOM_START_A if ev["start_area"] == "A" else SLALOM_START_B
                 if idx >= 1:
                     ref = SLALOM_POSTS[expected[idx - 1]]
@@ -765,6 +768,10 @@ class Slalom(_Obstacle):
             ev["corner"] = True
             if len(ev["order"]) == expected_corner_after:
                 ev["corner_after"] = len(ev["order"])
+        if (len(ev["order"]) == 4 and ev.get("order_expected")
+                and not self._near(xy, SLALOM_POSTS[ev["order_expected"][-1]],
+                                  SLALOM_POST_RADIUS_M)):
+            ev["last_post_cleared"] = True
         # the end circle is only a valid finish if all four posts were already
         # registered before this sample (not in the same sample as the last post,
         # which can be geometrically inside the end circle)
@@ -778,7 +785,7 @@ class Slalom(_Obstacle):
         ev = self.evidence
         expected_corner_after = 3 if ev["start_area"] == "A" else 2
         if (ev["start_area"] and ev["end_area"] and len(ev["order"]) == 4
-                and not ev.get("early_posts")
+                and not ev.get("early_posts") and ev.get("last_post_cleared")
                 and expected_corner_after in ev["corner_visits"]
                 and all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:]))):
             return True, ""
@@ -796,6 +803,8 @@ class Slalom(_Obstacle):
             return False, "no_end_area"
         if ev.get("early_posts"):
             return False, "post_out_of_order"
+        if len(ev["order"]) == 4 and not ev.get("last_post_cleared"):
+            return False, "last_post_not_cleared"
         expected_corner_after = 3 if ev["start_area"] == "A" else 2
         if expected_corner_after not in ev["corner_visits"]:
             return False, "corner_out_of_order"

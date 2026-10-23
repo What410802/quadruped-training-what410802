@@ -720,7 +720,17 @@ def test_slalom_forward_reverse_and_spoof():
     rep = feed(Part1JudgeV2(), early_future_post)
     assert_not_success(rep, "slalom", "future post touched before its turn")
     assert any("post_out_of_order" in f for f in st(rep, "slalom")["failures"]), st(rep, "slalom")
-    print("slalom: OK forward/reverse / early-end and out-of-order rejected / early corner sweep forgiven / future-post violation rejected")
+    # end circle overlaps the last post (distance 0.4 < 0.5): stopping at the last post
+    # after registering all four posts must NOT be accepted as reaching the end area.
+    at_last_post = [
+        {"x": 1.8, "y": -10.1},
+        {"x": 1.9, "y": -10.5}, {"x": 1.7, "y": -11.5}, {"x": 1.9, "y": -12.5},
+        {"x": 1.55, "y": -12.75}, {"x": 2.8, "y": -12.5},
+        {"x": 2.8, "y": -12.5}, {"x": 2.8, "y": -12.5},
+    ]
+    rep = feed(Part1JudgeV2(), at_last_post)
+    assert_not_success(rep, "slalom", "stopped at last post inside overlapping end circle")
+    print("slalom: OK forward/reverse / early-end and out-of-order rejected / early corner sweep forgiven / future-post violation rejected / end circle must not overlap last post")
 
 
 # ---------------------------------------------------------------- ledger / timeout / scene

@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T19:25:21+08:00",
+  "generated_at": "2026-10-23T19:42:23+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -17,11 +17,11 @@
     },
     "judge_part1_v2_1": {
       "path": "scripts/agent_scripts/comp_part1_judge.py",
-      "sha256": "af0b55b121695301cb934e1f4214bb875b06e1044d2ca562c1205f53d8f85104"
+      "sha256": "e1fe98498d1fe5288fd19b7e224125520a5113b231c3511e906f4bd42c179165"
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "88ffce78814d2f13f2561974084d94012d30287d37267aabc435db5f3ec31c6c"
+      "sha256": "a6b0c06d3faf32aa36867e85cbe8af9f56291642d5b450e8f8c6b321a47c191a"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -45,7 +45,7 @@
     },
     "runner_course": {
       "path": "scripts/agent_scripts/run_part1_course.py",
-      "sha256": "fd1d0f9ef52bcefb7980f5d418cc8a107d5b19d5cf20b715fc44fbf2199b8cce"
+      "sha256": "5185902deedba5f120a30f31e7b573273ff58d167def246cdb217d7680cb5ed7"
     },
     "runner_part2_v2": {
       "path": "scripts/agent_scripts/run_part2_judged_eval.py",
@@ -185,7 +185,7 @@
     },
     "eval_flat-ft-2500-part1-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/manifest.json",
-      "sha256": "2d1a1f690054ccb9935e5aec60911be58bcddca900eeaf30524c3e718287be08"
+      "sha256": "c46455daba1581042b2d9456daf515580ec3e1a6c1f80deb839d0e6c1376dfc3"
     },
     "eval_flat-ft-2500-part1-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part1-diag-v2/trials.jsonl",
@@ -197,7 +197,7 @@
     },
     "eval_flat-ft-2500-part2-diag-v2_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/manifest.json",
-      "sha256": "97c6c3930e886fcdc53999ec6d444d3072609614d57ef8f16e000d3e42acc426"
+      "sha256": "67c02e0e75a9f1a529f1f10cf17a8987d19c225b60889e3d9edae804575767b4"
     },
     "eval_flat-ft-2500-part2-diag-v2_trials": {
       "path": "comp/eval/flat-ft-2500-part2-diag-v2/trials.jsonl",
@@ -209,7 +209,7 @@
     },
     "eval_flat-ft-2500-part2-official-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
-      "sha256": "10d381ed7cc6a3fd511ed93909bfd4713b7e08e0e25395a28efc0200fbaded4f"
+      "sha256": "a811fefe98975a29e32dbab991c4c6baa949fe5b06484f8513c862dd529e3264"
     },
     "eval_flat-ft-2500-part2-official-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
@@ -221,7 +221,7 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "ca86936ca3bf703fa429133638cc3788316ae05674989def5b35f1396c895420"
+      "sha256": "9df4f4c32b4dc02cbf2471902ad44280722d7be748441addcd123291393cb818"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
@@ -269,7 +269,7 @@
     },
     "extra_records": {
       "path": "comp/eval/_calibration/records.jsonl",
-      "sha256": "6878e4c88cb967fa4ece99a537635164ac2e63f34040efab699d7e48b2f03b4c"
+      "sha256": "a0f856ebdd7de67be2112fab971596006f8d95acebb858c3de8b307acf1fcb39"
     },
     "extra_README_C1": {
       "path": "comp/eval/_calibration/README_C1.md",
@@ -277,11 +277,11 @@
     },
     "extra_index": {
       "path": "comp/eval/_calibration/index.html",
-      "sha256": "ebb019de2cbb21d59658d2e670a6484b15c74c163490c896b7e115cd2ba2042d"
+      "sha256": "553ede135cce128d0c87acf403114c1b6e309a1db87d3da4c06c21c86122cd27"
     },
     "extra_labels_template": {
       "path": "comp/eval/_calibration/labels_template.csv",
-      "sha256": "b7f5b3b8ba7160314e3c2bfa63c6660fa6b1e43cb3d6ff91dbeec48672f73bee"
+      "sha256": "33c263bf5627551c0c3ff9c1c275fb60a008aafd1e239966cc6a60f14b86104b"
     },
     "extra_LABELS_PROVENANCE": {
       "path": "comp/eval/_calibration/LABELS_PROVENANCE.md",
@@ -289,7 +289,11 @@
     },
     "extra_G1_SELFCHECK": {
       "path": "comp/audits/G1_SELFCHECK.md",
-      "sha256": "e568e3ab7831cb58b9d7de778bb7e6a902cd061ec74a63193d5ca41baf95bac3"
+      "sha256": "f760d2aa2e096d70a0bd4af45a238c775ca6047f2e64356173f6297a6128da01"
+    },
+    "extra_C1_CALIBRATION_REPORT": {
+      "path": "comp/audits/C1_CALIBRATION_REPORT.md",
+      "sha256": "ae583f703604db531c5903d621e2a04cc6865c7c165a1ff29ad9746618ca33c1"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",

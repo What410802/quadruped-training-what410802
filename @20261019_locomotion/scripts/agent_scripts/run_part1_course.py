@@ -205,13 +205,13 @@ def run_attempt(cpr: CoursePolicyRunner, route: dict, events: list[dict],
                                                        "operator_t": fake})
                         course.abort_attempt(fake, "pause_timeout")
                         return False
-                    # paused: only operator events/timeouts advance; the judge must not see
-                    # repeated frozen poses (that could change obstacle state or duration)
                     ev_idx = apply_events(course, events, ev_idx, fake,
                                           pose_xy=sample["base_xyz"], pose_yaw=sample["yaw"])
                     if not course.active:
                         return False
-                return bool(course.active)
+                # resume: continue this policy step's remaining physics substeps; do not skip
+                # them (judge/control cadence must stay 4 substeps per policy step)
+                continue
         return True
 
     for seg in route["segments"]:
