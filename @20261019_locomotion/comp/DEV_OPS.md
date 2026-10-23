@@ -76,4 +76,5 @@
 - `extra_body` 会注入 `thinking.type=enabled` 与 `reasoning_effort`（GLM-5.3 不支持关闭思考；默认 max）。
 - key 只保存在 `~/.config/robocon-review/zhipu_api_key`（0600）或环境变量；**不得**提交到仓库或写进任何文档。
 - 预算：GLM 按 token 计费（用户 key）；每轮照常记录 usage 与 latency 到 `.audit.json`。
+- 使用约定（用户 2026-10-23）：GLM 排在 DeepSeek Pro 之后、Codex 之前；GLM 同属不同家族，可给 Type-B 草拟判定；Codex 恢复后补正式 acquittal。GLM-5.3 适合"多角度静态推演"，第 20 轮它发现了 flash/pro 19 轮都没抓到的 zone/落地几何矛盾——GLM 轮不能省。
 - 实测：`glm-5.3` + `reasoning_effort=max` 在 ~500KB 工件上会先烧满输出预算后 content 为空（`finish_reason=length`，第 20 轮首次尝试 `REVIEW_UNAVAILABLE`）；已改为 `reasoning_effort=high`、`max_tokens=128000`、`retry_max_tokens=128000`。若仍空，退回 `zhipu-flash` 或等 Codex。

@@ -90,7 +90,15 @@ def main() -> int:
             if p.is_file():
                 out["objects"][f"eval_{pid}_{fname.split('.')[0]}"] = {"path": rel, "sha256": sha256(p)}
     for extra in ("assets/terrain/part2/ability_field/part2_ability_field.xml",
-                  "assets/terrain/part2/part2_plum_eval_scene.xml"):
+                  "assets/terrain/part2/part2_plum_eval_scene.xml",
+                  "scripts/agent_scripts/comp_import_selftest.py",
+                  "config/part1-course-events-pause.json",
+                  "config/part1-course-events-abort.json",
+                  "config/part1-course-events-pause-timeout.json"):
+        if not (ROOT / extra).is_file():
+            continue
+        out["objects"]["extra_" + (ROOT / extra).stem] = {"path": extra, "sha256": sha256(ROOT / extra)}
+    for extra in ():
         p = ROOT / extra
         if p.is_file():
             out["objects"]["scene_" + p.stem] = {"path": extra, "sha256": sha256(p)}

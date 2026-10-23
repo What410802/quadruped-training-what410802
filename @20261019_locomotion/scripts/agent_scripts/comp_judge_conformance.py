@@ -136,7 +136,32 @@ def test_bridge_ground_and_success():
     ])
     assert_status(rep, "bridge_blocks", "success", "legal traversal")
     assert st(rep, "bridge_blocks")["score"] == 100
-    print("bridge_blocks: OK legal traversal")
+
+    # GLM B1: after the far platform is reached, stepping down onto the ground inside the
+    # zone (2 feet on ground) is landing, not a two-feet-ground failure.
+    landing = [
+        {"x": 0.5, "y": 0.0},
+        {"x": 1.35, "y": 0.0, "tags": ["platform_left"]},
+        {"x": 2.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 3.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 4.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 5.2, "y": 0.0, "tags": ["bridge"]},
+        {"x": 5.6, "y": 0.0, "tags": ["platform_right"]},
+        {"x": 6.25, "y": 0.0, "tags": ["platform_right"], "ground": ["FL", "FR"]},
+        {"x": 6.45, "y": 0.0},
+    ]
+    rep = feed(Part1JudgeV2(), landing)
+    assert_status(rep, "bridge_blocks", "success", "landing after far platform")
+
+    # genuine mid-gap fall (2 feet on ground before the far platform) must still fail
+    mid_gap = [
+        {"x": 0.5, "y": 0.0},
+        {"x": 1.35, "y": 0.0, "tags": ["platform_left"]},
+        {"x": 3.2, "y": 0.0, "tags": ["bridge"], "ground": ["FL", "FR"]},
+        {"x": 4.0, "y": 0.0},
+    ]
+    assert_failed(feed(Part1JudgeV2(), mid_gap), "bridge_blocks", "mid-gap fall")
+    print("bridge_blocks: OK legal traversal / landing allowed / mid-gap fall fails")
 
 
 def test_height_bar_touch_drop_and_gate():
@@ -283,27 +308,30 @@ def test_t_stairs_full_partial_and_history():
     # s:1 sample at y=-5.3 also lies outside ZONES["t_stairs"]), so exactly one arm is complete.
     for arm, y0 in (("n", -1.9), ("e", None)):
         if arm == "n":
+            # enter from the north ground, climb the n arm, top, then come back down the
+            # same arm (partial = one complete arm up+down); no s/e tags are touched.
             seq = [
-                {"x": 1.8, "y": -2.9},
-                {"x": 1.8, "y": -3.3, "tags": ["step:n:1"]},
-                {"x": 1.8, "y": -3.6, "tags": ["step:n:2"]},
-                {"x": 1.8, "y": -3.9, "tags": ["step:n:3"]},
-                {"x": 1.8, "y": -4.3, "tags": ["step:top"]},
-                {"x": 1.8, "y": -4.6, "tags": ["step:s:3"]},
-                {"x": 1.8, "y": -4.9, "tags": ["step:s:2"]},
-                {"x": 1.8, "y": -5.3, "tags": ["step:s:1"]},
-                {"x": 1.8, "y": -5.8},
+                {"x": 1.8, "y": -1.9},
+                {"x": 1.8, "y": -2.25, "tags": ["step:n:1"]},
+                {"x": 1.8, "y": -2.55, "tags": ["step:n:2"]},
+                {"x": 1.8, "y": -2.85, "tags": ["step:n:3"]},
+                {"x": 1.8, "y": -3.5, "tags": ["step:top"]},
+                {"x": 1.8, "y": -2.85, "tags": ["step:n:3"]},
+                {"x": 1.8, "y": -2.55, "tags": ["step:n:2"]},
+                {"x": 1.8, "y": -2.25, "tags": ["step:n:1"]},
+                {"x": 1.8, "y": -1.9},
             ]
         else:
             seq = [
-                {"x": 3.4, "y": -3.5},
-                {"x": 3.0, "y": -3.5, "tags": ["step:e:1"]},
-                {"x": 2.6, "y": -3.5, "tags": ["step:e:2"]},
-                {"x": 2.2, "y": -3.5, "tags": ["step:e:3"]},
-                {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
-                {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
-                {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
-                {"x": 1.8, "y": -5.6},
+                {"x": 3.7, "y": -3.5},
+                {"x": 3.05, "y": -3.5, "tags": ["step:e:1"]},
+                {"x": 2.75, "y": -3.5, "tags": ["step:e:2"]},
+                {"x": 2.45, "y": -3.5, "tags": ["step:e:3"]},
+                {"x": 1.8, "y": -3.5, "tags": ["step:top"]},
+                {"x": 2.45, "y": -3.5, "tags": ["step:e:3"]},
+                {"x": 2.75, "y": -3.5, "tags": ["step:e:2"]},
+                {"x": 3.05, "y": -3.5, "tags": ["step:e:1"]},
+                {"x": 3.7, "y": -3.5},
             ]
         rep = feed(Part1JudgeV2(), seq)
         assert_status(rep, "t_stairs", "success", f"one-arm {arm} partial")
@@ -312,7 +340,44 @@ def test_t_stairs_full_partial_and_history():
         complete = [k for k, v in arms.items() if set(v) >= {1, 2, 3}]
         assert complete == [arm], (arm, arms)   # exactly one complete arm
         assert st(rep, "t_stairs")["score"] == 33.0, (arm, st(rep, "t_stairs"))
-    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels fail")
+    # GLM B1: ground contact while descending before the arm/top evidence is complete is a
+    # real fall; after a complete partial (arm+top) the final landing is legal.
+    early_ground = [
+        {"x": 1.8, "y": -5.4},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -4.7, "ground": ["FL", "FR"]},
+        {"x": 1.8, "y": -4.3},
+    ]
+    assert_failed(feed(Part1JudgeV2(), early_ground), "t_stairs", "ground contact before arm complete")
+    partial_landing = [
+        {"x": 1.8, "y": -5.4},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -4.6, "tags": ["step:s:2"]},
+        {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
+        {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
+        {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -5.15, "ground": ["FL", "FR"]},
+        {"x": 1.8, "y": -5.6},
+    ]
+    rep = feed(Part1JudgeV2(), partial_landing)
+    assert_status(rep, "t_stairs", "success", "partial landing")
+    assert st(rep, "t_stairs")["score"] == 50.0, st(rep, "t_stairs")
+
+    # GLM B3: a skipped level on the *other* arm must not still score 33
+    skipped_level_plus_complete_other = [
+        {"x": 1.8, "y": -2.9},
+        {"x": 1.8, "y": -2.25, "tags": ["step:n:1"]},
+        {"x": 1.8, "y": -2.85, "tags": ["step:n:3"]},   # n:2 missing on the way up
+        {"x": 1.8, "y": -3.5, "tags": ["step:top"]},
+        {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
+        {"x": 1.8, "y": -4.9, "tags": ["step:s:2"]},
+        {"x": 1.8, "y": -5.3, "tags": ["step:s:1"]},
+        {"x": 1.8, "y": -5.9},
+    ]
+    assert_not_success(feed(Part1JudgeV2(), skipped_level_plus_complete_other), "t_stairs",
+                       "skipped level on the other arm")
+    print("t_stairs: OK two-arm full / s=50 / n,e=33 / missing levels and skipped-level arm fail")
 
 
 def test_slope_projection_and_graze_reset():
@@ -338,7 +403,19 @@ def test_slope_projection_and_graze_reset():
         lateral.append({"x": 5.0 + (0.1 if i % 2 else -0.1), "y": -6.6, "tags": ["slope"]})
     lateral.append({"x": 5.0, "y": -3.8})
     assert_not_success(feed(Part1JudgeV2(), lateral), "slope", "lateral wiggle must not count")
-    print("slope: OK projection, graze reset, lateral wiggle rejected")
+    # GLM B1: once the 1 m projection is accumulated, the exit/landing ground contact is legal
+    landing = [
+        {"x": 5.2, "y": -6.6},
+        {"x": 5.2, "y": -6.5, "tags": ["slope"]},
+        {"x": 5.2, "y": -6.1, "tags": ["slope"]},
+        {"x": 5.2, "y": -5.7, "tags": ["slope"]},
+        {"x": 5.2, "y": -5.3, "tags": ["slope"]},
+        {"x": 5.2, "y": -5.15, "ground": ["FL", "FR"]},
+        {"x": 5.2, "y": -4.5},
+        {"x": 5.2, "y": -3.9},
+    ]
+    assert_status(feed(Part1JudgeV2(), landing), "slope", "success", "landing after 1 m projection")
+    print("slope: OK projection, graze reset, lateral wiggle rejected, landing allowed")
 
 
 def test_gravel_short_edges_and_long_edge():
@@ -351,6 +428,27 @@ def test_gravel_short_edges_and_long_edge():
         {"x": 6.0, "y": -10.8},
     ]
     assert_status(feed(Part1JudgeV2(), legal), "gravel_pit", "success", "short-edge entry+exit")
+
+    # GLM B1: landing on the ground at the far short edge after gravel contact is legal
+    landing = [
+        {"x": 5.0, "y": -13.4},
+        {"x": 5.0, "y": -12.9, "tags": ["gravel"]},
+        {"x": 5.5, "y": -12.0, "tags": ["gravel"]},
+        {"x": 5.8, "y": -11.5, "tags": ["gravel"]},
+        {"x": 6.0, "y": -11.0, "tags": ["gravel"]},
+        {"x": 6.0, "y": -10.95, "ground": ["FL", "FR"]},
+        {"x": 6.0, "y": -10.8},
+    ]
+    assert_status(feed(Part1JudgeV2(), landing), "gravel_pit", "success", "landing at far short edge")
+
+    # ... but stepping onto the ground in the middle of the pit is still a failure
+    mid_pit = [
+        {"x": 5.0, "y": -13.4},
+        {"x": 5.0, "y": -12.9, "tags": ["gravel"]},
+        {"x": 5.5, "y": -12.0, "tags": ["gravel"], "ground": ["FL", "FR"]},
+        {"x": 5.8, "y": -11.5},
+    ]
+    assert_failed(feed(Part1JudgeV2(), mid_pit), "gravel_pit", "mid-pit ground contact")
 
     long_side = [
         {"x": 4.0, "y": -12.0},
@@ -427,7 +525,20 @@ def test_slalom_forward_reverse_and_spoof():
         {"x": 3.2, "y": -12.5},   # end
     ]
     assert_not_success(feed(Part1JudgeV2(), early_corner), "slalom", "corner too early")
-    print("slalom: OK forward/reverse / early-end and out-of-order rejected")
+    # GLM B2: an early sweep through the corner does not invalidate a later legal pass
+    early_then_legal = [
+        {"x": 1.8, "y": -10.1},
+        {"x": 1.9, "y": -10.5},   # post 0
+        {"x": 1.7, "y": -11.5},   # post 1
+        {"x": 1.55, "y": -12.75},  # early corner sweep (count=2, not the required 3)
+        {"x": 1.9, "y": -12.5},   # post 2
+        {"x": 1.55, "y": -12.75},  # legal corner pass (count=3)
+        {"x": 2.8, "y": -12.6},   # post 3
+        {"x": 3.2, "y": -12.5},
+    ]
+    rep = feed(Part1JudgeV2(), early_then_legal)
+    assert_status(rep, "slalom", "success", "early corner sweep then legal pass")
+    print("slalom: OK forward/reverse / early-end and out-of-order rejected / early corner sweep forgiven")
 
 
 # ---------------------------------------------------------------- ledger / timeout / scene

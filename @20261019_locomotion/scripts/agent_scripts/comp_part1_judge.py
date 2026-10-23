@@ -48,6 +48,7 @@ SLALOM_CORNER = (1.55, -12.75)
 SLALOM_POSTS = [(1.8, -10.5), (1.8, -11.5), (1.8, -12.5), (2.8, -12.5)]
 SLALOM_RADIUS_M = 0.5
 SLALOM_POST_RADIUS_M = 0.35
+SLALOM_CORNER_RADIUS_M = 0.30   # keep the corner checkpoint distinct from post 2 (0.43 m away)
 
 BAR_DROP_THRESHOLD_M = 0.05
 BAR_OPENING_X = (5.2, 6.2)
@@ -58,6 +59,9 @@ WALL_X_MIN = 1.30
 WALL_X_MAX = 2.30
 # climb evidence: base raised this high above standing height during the wall crossing
 WALL_CLIMB_Z = 0.60   # minimum base height at the wall crossing sample
+# Exit/landing grace: once an obstacle traversal's evidence is complete (or the base is
+# within this distance of the exit boundary), ground contact is landing, not failure.
+EXIT_GRACE_M = 0.35
 
 PART1_OBSTACLES = ("height_bar", "high_wall", "bridge_blocks", "bridge_bands",
                    "gravel_pit", "t_stairs", "slope", "slalom")
@@ -187,6 +191,15 @@ class _Obstacle:
     def _score_for(self) -> float:
         return float(self.per_obstacle_score)
 
+    def _ground_penalty_active(self, xy: tuple[float, float], tags: set[str]) -> bool:
+        """Whether 2+ ground feet at this sample count as a traversal failure.
+
+        Default: active after the robot has been fully supported on the obstacle until the
+        subclass reports its traversal evidence complete. Landing on the ground after a
+        completed/partial traversal must NOT be penalised (GLM review 2026-10-23, B1).
+        """
+        return self.supported
+
     def _mark_partial(self) -> None:
         partial = self.result.score < self.per_obstacle_score
         self.result.detail["partial"] = bool(partial)
@@ -238,7 +251,8 @@ class _Obstacle:
                 if touched and not ground_feet:
                     self.supported = True
                 self.result.detail["touched"] = touched
-                if self.ground_fail and self.supported and len(ground_feet) >= 2:
+                if (self.ground_fail and self._ground_penalty_active(xy, tags)
+                        and len(ground_feet) >= 2):
                     self._fail("two_feet_ground:" + ",".join(sorted(ground_feet)))
                     self.prev_in_zone = inside
                     self.prev_xy = xy
@@ -302,6 +316,14 @@ class TraversalBridge(_Obstacle):
         for plat in self.platform_tags:
             if plat in tags:
                 self.evidence["platforms"].add(plat)
+
+    def _ground_penalty_active(self, xy, tags) -> bool:
+        # reaching the far platform with bridge contact completes the traversal evidence;
+        # stepping down onto the ground afterwards is landing, not a failure.
+        if not self.supported:
+            return False
+        return not (self.evidence.get("bridge_hits", 0) >= 3
+                    and len(self.evidence.get("platforms", ())) >= 2)
 
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
@@ -422,6 +444,17 @@ class GravelPit(_Obstacle):
         if "gravel" in tags:
             self.evidence["gravel_hits"] += 1
 
+    def _ground_penalty_active(self, xy, tags) -> bool:
+        if not self.supported or self.evidence.get("gravel_hits", 0) < 3:
+            return bool(self.supported)
+        entry = self.evidence.get("entry_side_prev")
+        zx0, zx1, zy0, zy1 = self.zone
+        if entry == "ymin":
+            return not (xy[1] >= zy1 - EXIT_GRACE_M)
+        if entry == "ymax":
+            return not (xy[1] <= zy0 + EXIT_GRACE_M)
+        return True
+
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         entry = self.evidence.get("entry_side_prev")
         if entry not in ("ymin", "ymax"):
@@ -455,6 +488,11 @@ class Slope(_Obstacle):
             self.evidence["last_y"] = y
         else:
             self.evidence["last_y"] = None
+
+    def _ground_penalty_active(self, xy, tags) -> bool:
+        if not self.supported:
+            return False
+        return self.evidence.get("distance", 0.0) < 1.0
 
     def _check_exit(self, side: str, tags: set[str], ground_feet: set[str]) -> tuple[bool, str]:
         if self.evidence["distance"] < 1.0:
@@ -501,6 +539,14 @@ class TStairs(_Obstacle):
     def _complete_arms(self) -> list[str]:
         return [arm for arm, levels in self.evidence["arms"].items() if levels >= {1, 2, 3}]
 
+    def _has_incomplete_arm(self) -> bool:
+        return any(levels and levels < {1, 2, 3} for levels in self.evidence["arms"].values())
+
+    def _ground_penalty_active(self, xy, tags) -> bool:
+        if not self.supported:
+            return False
+        return not (self.evidence.get("top") and len(self._complete_arms()) >= 1)
+
     def _score_for(self) -> float:
         complete = self._complete_arms()
         if len(complete) >= 2:
@@ -516,6 +562,9 @@ class TStairs(_Obstacle):
         if not ev["top"]:
             return False, "" if self.in_zone_samples < 5 else "missing_top_platform"
         if not self._complete_arms():
+            return False, "incomplete_step_history"
+        if self._has_incomplete_arm():
+            # a skipped level on any arm is not a legal partial/full traversal
             return False, "incomplete_step_history"
         return True, ""
 
@@ -534,7 +583,7 @@ class Slalom(_Obstacle):
     def _reset_evidence(self) -> None:
         self.evidence = {"start_area": None, "order": [], "order_expected": [],
                          "sides": [], "corner": False, "end_area": None,
-                         "corner_after": None}
+                         "corner_after": None, "corner_visits": []}
 
     def _near(self, xy, point, radius=SLALOM_RADIUS_M) -> bool:
         return _dist(xy, point) <= radius
@@ -563,11 +612,15 @@ class Slalom(_Obstacle):
                 nx, ny = -ty, tx
                 ev["sides"].append(_sign(nx * (xy[0] - post[0]) + ny * (xy[1] - post[1])))
         expected_corner_after = 3 if ev["start_area"] == "A" else 2
-        if (self._near(xy, SLALOM_CORNER) and not ev["corner"]
+        if (self._near(xy, SLALOM_CORNER, SLALOM_CORNER_RADIUS_M)
                 and ev["start_area"] is not None and len(ev["order"]) >= 2):
+            # the rules only require passing the corner checkpoint, not a single fixed
+            # moment; keep every visit so an early sweep cannot lock out the legal pass.
+            if len(ev["order"]) not in ev["corner_visits"]:
+                ev["corner_visits"].append(len(ev["order"]))
             ev["corner"] = True
-            ev["corner_after"] = len(ev["order"])
-            ev["corner_expected_after"] = expected_corner_after
+            if len(ev["order"]) == expected_corner_after:
+                ev["corner_after"] = len(ev["order"])
         # the end circle is only a valid finish if all four posts were already
         # registered before this sample (not in the same sample as the last post,
         # which can be geometrically inside the end circle)
@@ -579,8 +632,9 @@ class Slalom(_Obstacle):
 
     def _check_immediate(self):
         ev = self.evidence
+        expected_corner_after = 3 if ev["start_area"] == "A" else 2
         if (ev["start_area"] and ev["end_area"] and len(ev["order"]) == 4
-                and ev["corner"] and ev["corner_after"] == ev.get("corner_expected_after")
+                and expected_corner_after in ev["corner_visits"]
                 and all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:]))):
             return True, ""
         return None
@@ -595,7 +649,8 @@ class Slalom(_Obstacle):
             return False, "missing_corner_checkpoint"
         if not ev["end_area"]:
             return False, "no_end_area"
-        if ev["corner_after"] != ev.get("corner_expected_after"):
+        expected_corner_after = 3 if ev["start_area"] == "A" else 2
+        if expected_corner_after not in ev["corner_visits"]:
             return False, "corner_out_of_order"
         if not all(a * b < 0 for a, b in zip(ev["sides"], ev["sides"][1:])):
             return False, "not_s_shaped_sides"

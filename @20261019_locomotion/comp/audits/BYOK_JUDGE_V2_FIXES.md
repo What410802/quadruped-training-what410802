@@ -171,3 +171,15 @@
 | importer 一致性 | skipped attempt 的 trial 仍可能带 success 状态 | course importer 对 skipped attempt 强制 `judge.status="skipped"`、`score=0`，best evidence 只取非 skipped |
 | self-test | 缺 skipped 正分场景 | 新增 skipped 正分 + 后续低分完成 attempt 用例（best/final_time 取完成 attempt；skipped 正分不得计入） |
 | 非阻塞清理 | `WALL_CLIMB_Z` 未使用；conformance n 臂测试依赖 zone 几何无注释 | `WALL_CLIMB_Z=0.60` 并被使用；n 臂用例补几何注释 |
+
+
+## GLM 最终验收（第 20 轮）发现的问题与修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| B1（blocker，误判失败） | 离障落地阶段：`_Obstacle.update` 在 `supported` 后任意 ≥2 足触地即失败，包括已完成跨越后走下障碍落到地面；gravel/t_stairs/两桥在 zone 边界与表面边缘重合处结构性不可通过（Part1 上限 ≈300/900，返回奖励不可得） | 新增 `_ground_penalty_active(xy,tags)` 门控：默认 `supported`，各障碍覆盖——bridge 在"双平台+桥面命中≥3"后关闭判罚、T 台阶在"top+≥1 完整臂"后关闭、gravel 在 gravel_hits≥3 且 base 距出口边 ≤0.35 m 时关闭、slope 在累计 ≥1 m 后关闭；中途真坠落仍失败。conformance 新增"落地允许/中途坠落仍失败"用例（bridge/gravel/t_stairs/slope） |
+| B2（major，误判失败） | 绕杆拐角首次进入即锁存；提前扫过拐角后再按正确时序通过会因 `corner_after` 过期而失败 | 拐角改为记录所有访问时的杆数 `corner_visits`，成功条件为期望时序（A=3/B=2）出现在访问集合中；同时把拐角半径从 0.5 收窄到 0.30（与 post2 的 0.35 m 距离区分），避免 post2 采样自动触发拐角；conformance 新增"提前扫过拐角后仍可合法通过"用例 |
+| B3（minor，假成功） | T 台阶"另一臂缺级 + 本臂完整"仍得 33 | `_check_exit` 增加 `_has_incomplete_arm()`：任一臂有部分级（非空且非完整）即 `incomplete_step_history` 失败；conformance 增加反例 |
+| B5（minor–moderate，假成功） | Part2 `held` 只累加不清零，断续满足条件也成功 | `cond` 为假时 `held=0`；self-test 增加"中断清零、连续成功"用例 |
+| route 错配 | `cross_slope` 沿 x 翻屋脊，而 judge 按 y 向投影累计；slalom 路线不经过拐角必达区 | route 的 slope 段改为沿 y 走 2 m；slalom 增加拐角 waypoint；bridge 方向在 B1 修复后不再被封 |
+| B4/B6/B7/B8 | 限高杆未校验"从下方"、高墙必须墙接触、沟壑 lane ±0.7 偏保守、official 固定梯子 | 记入 C1 标定集待裁决 + G1 报告残余（非当前 blocker） |

@@ -180,6 +180,8 @@ class Part2JudgeV2:
             if self.held >= hold_s:
                 self.result.status = "success"
                 self.result.reason = ""
+        else:
+            self.held = 0.0   # "hold" means continuous; an interruption resets the timer
         return self.result.to_dict()
 
     def finalize(self, reason: str = "timeout") -> dict:
@@ -214,6 +216,18 @@ def run_self_test() -> None:
     assert ok["status"] == "success", ok
     low = _feed(Part2JudgeV2(e), [((0, 0, 0.5), 5), ((1.5, 0, 0.45), 5), ((2.0, 0, 0.45), 5)])
     assert low["status"] == "fail", low
+
+    # B5: "hold" must be continuous; an interruption resets the timer
+    e_hold = _entry("high_platform", 20, {"kind": "platform", "top_z": 0.2,
+                                          "goal_x": [1.9, 3.1], "hold_s": 0.2})
+    interrupted = _feed(Part2JudgeV2(e_hold), [((2.5, 0, 0.65), 5),
+                                                ((1.0, 0, 0.45), 5),
+                                                ((2.5, 0, 0.65), 5)], tags=("platform",))
+    assert interrupted["status"] == "fail", interrupted
+    continuous = _feed(Part2JudgeV2(e_hold), [((2.5, 0, 0.65), 5),
+                                               ((2.5, 0, 0.65), 5),
+                                               ((2.5, 0, 0.65), 5)], tags=("platform",))
+    assert continuous["status"] == "success", continuous
 
     # stairs
     e = _entry("stairs", 20, {"kind": "stairs", "top_z": 0.2, "goal_x_min": 3.3, "hold_s": 0.05})

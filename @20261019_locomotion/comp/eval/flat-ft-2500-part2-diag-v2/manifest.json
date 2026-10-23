@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "policy_id": "flat-ft-2500-part2-diag-v2",
-  "created_at": "2026-10-23T02:38:12+08:00",
+  "created_at": "2026-10-23T12:35:20+08:00",
   "repos": {
     "task": {
       "path": ".",
-      "commit": "2c01b2d0c3d94ad9375a8f69df18e183570fcf1a",
+      "commit": "849d08d2b3057e26c5b6b7687670ebfd51e1ae0f",
       "dirty": true,
       "note": "dirty=true：HEAD 为导入时值，不是运行时的真实状态"
     },
@@ -185,7 +185,7 @@
     }
   },
   "judge": {
-    "version": "comp_judge_v2@e2d92fbb43b1",
+    "version": "comp_judge_v2@bec8ff733aa3",
     "files": [
       "scripts/agent_scripts/comp_part1_judge.py",
       "scripts/agent_scripts/comp_part2_judge.py"
@@ -193,11 +193,11 @@
     "file_hashes": [
       {
         "path": "scripts/agent_scripts/comp_part1_judge.py",
-        "sha256": "e2d92f0033f9a173918e87e9df79e70018f8ca989d6fb2e4801ae98088b6de83"
+        "sha256": "bec8ff07ac01eeab801560a01907ad2e90e684f2239a906abe59dfe812fbd653"
       },
       {
         "path": "scripts/agent_scripts/comp_part2_judge.py",
-        "sha256": "bb43b16de2fce17f363273a5b36b492d17891e2bb8b86103ac1c8f8c6f3ef1ab"
+        "sha256": "733aa34f6f3cb0da886b8afbdb7d6b523881b30cf93d419a66116d9ac0449283"
       }
     ]
   },
