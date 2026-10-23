@@ -704,9 +704,9 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.42,
+          "z": 0.933,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": 13.4,
           "roll": 0.0,
           "speed": 0.54,
           "hold": 0.0
@@ -716,7 +716,7 @@
           "y": 0.0,
           "z": 0.48,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": -15.6,
           "roll": 0.0,
           "speed": 0.472,
           "hold": 0.0
@@ -724,9 +724,9 @@
         {
           "x": 2.4,
           "y": 0.0,
-          "z": 0.95,
+          "z": 0.62,
           "yaw": 0.0,
-          "pitch": -12,
+          "pitch": -0.0,
           "roll": 0.0,
           "speed": 0.338,
           "hold": 0.0
@@ -736,15 +736,15 @@
           "y": 0.0,
           "z": 0.62,
           "yaw": 0.0,
-          "pitch": 0,
+          "pitch": 0.0,
           "roll": 0.0,
           "speed": 0.203,
           "hold": 0.0
         }
       ],
       "title": "Part2 high_platform",
-      "frames": 315,
-      "duration_s": 6.28,
+      "frames": 280,
+      "duration_s": 5.58,
       "video": "../prep.d/videos/trunk_ref/p2_high_platform.mp4"
     },
     "stairs": {
@@ -755,9 +755,9 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.42,
+          "z": 0.933,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": 13.7,
           "roll": 0.0,
           "speed": 0.54,
           "hold": 0.0
@@ -767,7 +767,7 @@
           "y": 0.0,
           "z": 0.52,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": 2.9,
           "roll": 0.0,
           "speed": 0.405,
           "hold": 0.0
@@ -775,9 +775,9 @@
         {
           "x": 2.2,
           "y": 0.0,
-          "z": 0.65,
+          "z": 0.495,
           "yaw": 0.0,
-          "pitch": -12,
+          "pitch": -3.6,
           "roll": 0.0,
           "speed": 0.338,
           "hold": 0.0
@@ -785,9 +785,9 @@
         {
           "x": 2.6,
           "y": 0.0,
-          "z": 0.78,
+          "z": 0.52,
           "yaw": 0.0,
-          "pitch": -8,
+          "pitch": -2.2,
           "roll": 0.0,
           "speed": 0.297,
           "hold": 0.0
@@ -797,15 +797,15 @@
           "y": 0.0,
           "z": 0.57,
           "yaw": 0.0,
-          "pitch": 0,
+          "pitch": 0.0,
           "roll": 0.0,
           "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part2 stairs",
-      "frames": 506,
-      "duration_s": 10.1,
+      "frames": 502,
+      "duration_s": 10.02,
       "video": "../prep.d/videos/trunk_ref/p2_stairs.mp4"
     },
     "slope": {
@@ -816,9 +816,9 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.42,
+          "z": 0.933,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": 15.1,
           "roll": 0.0,
           "speed": 0.54,
           "hold": 0.0
@@ -826,9 +826,9 @@
         {
           "x": 1.6,
           "y": 0.0,
-          "z": 0.52,
+          "z": 0.501,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": -25.0,
           "roll": 0.0,
           "speed": 0.472,
           "hold": 0.0
@@ -836,9 +836,9 @@
         {
           "x": 2.2,
           "y": 0.0,
-          "z": 1.05,
+          "z": 0.847,
           "yaw": 0.0,
-          "pitch": -18,
+          "pitch": -25.0,
           "roll": 0.0,
           "speed": 0.338,
           "hold": 0.0
@@ -846,9 +846,9 @@
         {
           "x": 2.9,
           "y": 0.0,
-          "z": 1.35,
+          "z": 1.251,
           "yaw": 0.0,
-          "pitch": -10,
+          "pitch": -1.7,
           "roll": 0.0,
           "speed": 0.297,
           "hold": 0.0
@@ -858,7 +858,7 @@
           "y": 0.0,
           "z": 1.286,
           "yaw": 0.0,
-          "pitch": 0,
+          "pitch": 0.0,
           "roll": 0.0,
           "speed": 0.203,
           "hold": 0.0
@@ -948,7 +948,7 @@
         {
           "x": 2.1,
           "y": 0.0,
-          "z": 0.5,
+          "z": 0.42,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
@@ -958,9 +958,9 @@
         {
           "x": 2.5,
           "y": 0.0,
-          "z": 0.62,
+          "z": 0.42,
           "yaw": 0.0,
-          "pitch": -8,
+          "pitch": 0.0,
           "roll": 0.0,
           "speed": 0.743,
           "hold": 0.0
@@ -968,9 +968,9 @@
         {
           "x": 2.9,
           "y": 0.0,
-          "z": 0.5,
+          "z": 0.42,
           "yaw": 0.0,
-          "pitch": 0,
+          "pitch": 0.0,
           "roll": 0.0,
           "speed": 0.608,
           "hold": 0.0
@@ -987,8 +987,8 @@
         }
       ],
       "title": "Part2 trench",
-      "frames": 266,
-      "duration_s": 5.3,
+      "frames": 263,
+      "duration_s": 5.24,
       "video": "../prep.d/videos/trunk_ref/p2_trench.mp4"
     },
     "plum": {
@@ -999,9 +999,9 @@
         {
           "x": 0.4,
           "y": 0.4,
-          "z": 0.42,
+          "z": 0.62,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": 1.9,
           "roll": 0.0,
           "speed": 0.472,
           "hold": 0.0
@@ -1011,7 +1011,7 @@
           "y": 0.4,
           "z": 0.6,
           "yaw": 0.0,
-          "pitch": -6,
+          "pitch": -4.8,
           "roll": 0.0,
           "speed": 0.338,
           "hold": 0.0
@@ -1021,7 +1021,7 @@
           "y": 0.4,
           "z": 0.65,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": -0.0,
           "roll": 0.0,
           "speed": 0.338,
           "hold": 0.0
@@ -1031,7 +1031,7 @@
           "y": 0.4,
           "z": 0.65,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": 2.9,
           "roll": 0.0,
           "speed": 0.338,
           "hold": 0.0
@@ -1048,8 +1048,8 @@
         }
       ],
       "title": "Part2 plum",
-      "frames": 333,
-      "duration_s": 6.64,
+      "frames": 331,
+      "duration_s": 6.6,
       "video": "../prep.d/videos/trunk_ref/p2_plum.mp4"
     }
   },

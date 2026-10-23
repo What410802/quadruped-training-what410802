@@ -241,15 +241,37 @@ def _scene_top_z(scene_path: Path, x: float, y: float) -> float | None:
 
 
 def _adjust_p2_reference(cat: str, entry: dict, wps: list[dict]) -> list[dict]:
-    """Put the final waypoint on the top plane/goal surface of the selected level."""
+    """Follow the level surface with the trunk (no artificial triangular bumps).
+
+    - high_platform / stairs / slope / plum: raycast the level scene at each waypoint and
+      set the trunk base to surface_top + 0.42 m; pitch is derived from the local slope.
+    - trench: keep flat (ground level) across the gap; no hop.
+    - high_wall: keep the hand-designed climb profile (raycast top would be the wall top).
+    """
     scene = ROOT / entry["scene"]
-    goal = wps[-1]
-    top = _scene_top_z(scene, goal["x"], goal["y"])
-    if top is not None and top > 0.05:
-        base = top + 0.42
-        goal["z"] = round(base, 3)
-        if len(wps) >= 2:
-            wps[-2]["z"] = round(max(wps[-2]["z"], base - 0.10), 3)
+    if cat == "trench":
+        for w in wps:
+            w["z"] = 0.42
+            w["pitch"] = 0.0
+        return wps
+    if cat == "high_wall":
+        return wps
+    for w in wps:
+        top = _scene_top_z(scene, w["x"], w["y"])
+        if top is not None and top > 0.03:
+            w["z"] = round(top + 0.42, 3)
+    # smooth orientation from local height gradient along the path
+    for i, w in enumerate(wps):
+        if i + 1 >= len(wps):
+            w["pitch"] = 0.0
+            continue
+        nxt = wps[i + 1]
+        dh = math.hypot(nxt["x"] - w["x"], nxt["y"] - w["y"])
+        if dh > 1e-6:
+            w["pitch"] = round(max(-25.0, min(25.0,
+                              -math.degrees(math.atan2(nxt["z"] - w["z"], dh)))), 1)
+        else:
+            w["pitch"] = 0.0
     return wps
 
 
