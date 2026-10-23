@@ -106,3 +106,11 @@ C1 CALIBRATION: PASS
 - 已生成 trunk-only 参考轨迹可视化：Part1 8 + Part2 6 = 14 个 mp4（`RoboCon/prep.d/videos/trunk_ref/`，不入库），
   plan 在 `comp/eval/trunk_ref_plan.json`，说明 `comp/PLAN_TRUNK_REFERENCE.md`；等用户检查后再定 reward/开训。
 - 复验记录：flash V32–V36 均 CONCERN、无 scorer/judge 语义 blocker；pro/GLM 在最终 A 决策下暂缓，待真实成功证据齐备后一并复跑。
+
+## 2026-10-23 22:12 参考轨迹 v5 / 全场顺序调整
+
+- 按用户确认调整 Part1 课程环序：出发区 → high_wall → T 台阶 → slope → bridge_blocks → bridge_bands → height_bar → gravel_pit → slalom(B 短边进) → 出发区；
+  `config/part1-route.json` 已更新，course diag/三份演练重生成并重新导入。
+- slalom 参考改为短边 B 进：B → post3 → post2 → corner → post1 → post0 → A；重渲 trunk_ref。
+- P2 高台/楼梯/斜坡/梅花桩改为 world-only raycast 表面跟随；沟壑平地；位置线性插值（消除 waypoint 停顿）。
+- 这些属于 C2 训练参考/诊断链路，不改变 judge 语义；G1 仍按 A 决策未冻结。

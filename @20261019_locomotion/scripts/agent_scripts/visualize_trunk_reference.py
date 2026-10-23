@@ -170,14 +170,15 @@ P1_REFERENCES: dict[str, list[dict]] = {
         _wp(4.7, -3.8, 0.56, yaw=90, speed=0.20),
     ],
     "slalom": [
-        _wp(1.8, -10.0, 0.42, yaw=-75, speed=0.35),
-        _wp(2.25, -10.5, 0.42, yaw=-100, speed=0.35),  # right of post 0
-        _wp(1.35, -11.5, 0.42, yaw=-110, speed=0.35),  # left of post 1
-        _wp(2.25, -12.5, 0.42, yaw=-60, speed=0.35),   # right of post 2
-        _wp(1.55, -12.75, 0.42, yaw=-160, speed=0.30),  # corner checkpoint
-        _wp(2.25, -12.95, 0.42, yaw=-10, speed=0.30),  # around the south side of post 3
-        _wp(2.95, -12.85, 0.42, yaw=15, speed=0.30),
-        _wp(3.2, -12.5, 0.42, yaw=50, speed=0.20),     # end circle
+        # short-side entry: start at the L-bend circle B, go around post3/post2, corner,
+        # then post1/post0 along the long side, finish at A near the start area.
+        _wp(3.2, -12.5, 0.42, yaw=180, speed=0.35),
+        _wp(2.8, -12.85, 0.42, yaw=180, speed=0.35),   # post 3 (south side)
+        _wp(1.8, -12.85, 0.42, yaw=180, speed=0.35),   # post 2 (south side)
+        _wp(1.55, -12.75, 0.42, yaw=-135, speed=0.30),  # corner checkpoint
+        _wp(1.5, -11.5, 0.42, yaw=-90, speed=0.35),    # post 1 (west side)
+        _wp(2.1, -10.5, 0.42, yaw=-70, speed=0.35),    # post 0 (east side)
+        _wp(1.8, -10.1, 0.42, yaw=-90, speed=0.20),    # end circle A
     ],
 }
 

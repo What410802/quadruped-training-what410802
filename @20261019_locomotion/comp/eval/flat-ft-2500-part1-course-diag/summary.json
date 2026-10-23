@@ -19,13 +19,13 @@
       "high_wall": {
         "success": false,
         "score": 0,
-        "failure_reason": "route_complete",
+        "failure_reason": "illegal_entry_side",
         "evidence": []
       },
       "height_bar": {
         "success": false,
         "score": 0,
-        "failure_reason": "wrong_exit_side",
+        "failure_reason": "route_complete",
         "evidence": []
       },
       "t_stairs": {
@@ -57,7 +57,7 @@
     "return_score": 0,
     "return_evidence": null,
     "final_score": 0.0,
-    "final_time_s": 113.55999999996875,
+    "final_time_s": 116.89999999996571,
     "total": 0
   },
   "part2": {

@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T21:48:03+08:00",
+  "generated_at": "2026-10-23T22:08:05+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -77,7 +77,7 @@
     },
     "part1_route": {
       "path": "config/part1-route.json",
-      "sha256": "c880486284c47d5808a93762c4afb0ef97e5f27806a78da55c887e2635475db5"
+      "sha256": "cd7ab95db44d32af3f2ca23badb9443606a4ff6775a1c75d646e40a97c83d016"
     },
     "part2_levels_json": {
       "path": "config/part2-levels.json",
@@ -93,7 +93,7 @@
     },
     "eval_course_diag": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "11ac524c0d090c74eed61571099feec82986a73a361098d658c0826e61da3c8c"
+      "sha256": "908f782c5ff8aaf6cf261a8c6492eca227fcbc08645e646ad09f21bf18a47076"
     },
     "rules_pdf_md": {
       "path": "docs/reference/team-race-2026.md",
@@ -221,15 +221,15 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "463d92a8345a6a9daaf407758d242b739bb50339d45744e7a3b7cd861f4eedfb"
+      "sha256": "d9284f5ed47f585884733b974f9b9a16b4caeafd2afc6193fa9549a3fbf78383"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
-      "sha256": "941473280d6b310716891b632bd0d946a7073d7f8ed3660ce21797e7576a0aa8"
+      "sha256": "81089e9e2d6b4734804a463ff105ead14276d9c2d57a708694c39462f8ef2aca"
     },
     "eval_flat-ft-2500-part1-course-diag_summary": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/summary.json",
-      "sha256": "11ac524c0d090c74eed61571099feec82986a73a361098d658c0826e61da3c8c"
+      "sha256": "908f782c5ff8aaf6cf261a8c6492eca227fcbc08645e646ad09f21bf18a47076"
     },
     "extra_part2_ability_field": {
       "path": "assets/terrain/part2/ability_field/part2_ability_field.xml",
@@ -293,7 +293,7 @@
     },
     "extra_G1_SELFCHECK": {
       "path": "comp/audits/G1_SELFCHECK.md",
-      "sha256": "f014d8a904a80ad91336c6462ca33918b5d37ffb161aa9136e40822ede1bb9e8"
+      "sha256": "0e67c9950bed4c5dc4abb4279054be977c80ae6d8231b44e80a7360cc1d15dc8"
     },
     "extra_C1_CALIBRATION_REPORT": {
       "path": "comp/audits/C1_CALIBRATION_REPORT.md",
@@ -301,27 +301,27 @@
     },
     "extra_visualize_trunk_reference": {
       "path": "scripts/agent_scripts/visualize_trunk_reference.py",
-      "sha256": "311014eb8fc91c8e3a5b8d46e090e02c0104d64cfaa7f2489be7d130a772ffac"
+      "sha256": "18fd4060fe87af1b90cd2ff9c7dd864dbfcfd0563e68044cb5b0075038c29b94"
     },
     "extra_trunk_ref_plan": {
       "path": "comp/eval/trunk_ref_plan.json",
-      "sha256": "8cd157f912d346214c71f6811618c7be8f35b8043d8a0930285fbf89335b9615"
+      "sha256": "656fb8de897d508f091140c6895032a24552f61a873bde1ccdbec5e419cc115e"
     },
     "extra_PLAN_TRUNK_REFERENCE": {
       "path": "comp/PLAN_TRUNK_REFERENCE.md",
-      "sha256": "36e45fa92700f5216182d7ce661fa8421391db2e5ee5e110d4f44caf343562d4"
+      "sha256": "a317fb1e8e5bd43f3122f95db0deaed8dca2f62fd042474edd76355cfa2cc616"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
-      "sha256": "10d4d617e7769f8799f6cd9d9601487c4d88ce100de4f81358c320adc511b3bf"
+      "sha256": "233ec52d9a84d5cb4c5a45b44c2f50946fc9f91b23a23ad55e697258c0f86a61"
     },
     "evidence_part1_course_pause_resume_drill": {
       "path": "comp/audits/evidence/part1_course_pause_resume_drill.json",
-      "sha256": "5a3c28412760f51838da962931b43c5feae098041fa95e33f9c90f7f4308d06f"
+      "sha256": "54615f99acfa9df218375d2642edf7bf6149f5956a50ee0fe13f6030d85b4cce"
     },
     "evidence_part1_course_pause_timeout_drill": {
       "path": "comp/audits/evidence/part1_course_pause_timeout_drill.json",
-      "sha256": "3d149c048af33ff3ca018efd0b21ba44b46697aa14d16750d54cd3de6c3b6cb6"
+      "sha256": "da52b8fabe7ed68ccbe8d62ad89a8dbc4885c9065c4a881b9ac34c447a4a68d0"
     }
   },
   "superseded": {

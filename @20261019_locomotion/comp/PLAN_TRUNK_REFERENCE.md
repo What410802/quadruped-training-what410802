@@ -60,3 +60,14 @@ Part2：high_platform、stairs、slope、high_wall、trench、plum（各取一�
 说明：这些仍是**手工引导轨迹**，不是优化/物理验证后的可行轨迹；设计目标是给 RL 一个合理起点，细节（足端落点、姿态、速度）由训练自适应。
 **评审机制**：对"参考轨迹是否合理"不值得启用 reviewer（reviewer 不是 motion planner）；用本可视化 + 简单运动学检查 + 训练 smoke 更有效。
 reviewer 继续用于 judge/G1 和正式结果审计。
+
+
+## 6. 全场路线顺序（2026-10-23 用户确认调整）
+
+为缩短总路程并形成环形，Part1 参考/课程顺序改为：
+
+> 出发区 → high_wall → T 台阶 → slope → bridge_blocks → bridge_bands → **height_bar** → gravel_pit → slalom（**短边 B 进**）→ 返回出发区
+
+- height_bar 放在 bridge_bands 与 gravel_pit 之间，从桥带北侧下来后直接到限高杆，再南下 gravel；
+- slalom 从 **L 拐角短边圆 B** 进入（短边先走）：B → post3 → post2 → corner → post1 → post0 → A，终点 A 离出发区最近；
+- `config/part1-route.json` 已按此顺序更新；slalom 参考已改为 B→A 并重渲。

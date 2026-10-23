@@ -9,26 +9,6 @@
   ],
   "segments": [
     {
-      "name": "to_height_bar",
-      "target": [
-        5.7,
-        -10.2
-      ],
-      "speed": 0.5,
-      "max_s": 4.0,
-      "obstacle": "height_bar"
-    },
-    {
-      "name": "cross_height_bar",
-      "target": [
-        5.7,
-        -8.2
-      ],
-      "speed": 0.5,
-      "max_s": 4.0,
-      "obstacle": "height_bar"
-    },
-    {
       "name": "to_high_wall",
       "target": [
         1.8,
@@ -47,6 +27,46 @@
       "speed": 0.5,
       "max_s": 4.0,
       "obstacle": "high_wall"
+    },
+    {
+      "name": "to_t_stairs",
+      "target": [
+        1.8,
+        -5.6
+      ],
+      "speed": 0.5,
+      "max_s": 6.0,
+      "obstacle": "t_stairs"
+    },
+    {
+      "name": "cross_t_stairs",
+      "target": [
+        1.8,
+        -2.0
+      ],
+      "speed": 0.5,
+      "max_s": 5.0,
+      "obstacle": "t_stairs"
+    },
+    {
+      "name": "to_slope",
+      "target": [
+        4.6,
+        -6.9
+      ],
+      "speed": 0.5,
+      "max_s": 4.0,
+      "obstacle": "slope"
+    },
+    {
+      "name": "cross_slope",
+      "target": [
+        4.7,
+        -3.8
+      ],
+      "speed": 0.5,
+      "max_s": 5.0,
+      "obstacle": "slope"
     },
     {
       "name": "to_bridge_blocks",
@@ -119,6 +139,26 @@
       "obstacle": "bridge_bands"
     },
     {
+      "name": "to_height_bar",
+      "target": [
+        5.7,
+        -10.2
+      ],
+      "speed": 0.5,
+      "max_s": 4.0,
+      "obstacle": "height_bar"
+    },
+    {
+      "name": "cross_height_bar",
+      "target": [
+        5.7,
+        -8.2
+      ],
+      "speed": 0.5,
+      "max_s": 4.0,
+      "obstacle": "height_bar"
+    },
+    {
       "name": "to_gravel",
       "target": [
         3.6,
@@ -149,83 +189,31 @@
       "obstacle": "gravel_pit"
     },
     {
-      "name": "to_t_stairs",
-      "target": [
-        1.8,
-        -5.6
-      ],
-      "speed": 0.5,
-      "max_s": 6.0,
-      "obstacle": "t_stairs"
-    },
-    {
-      "name": "cross_t_stairs",
-      "target": [
-        1.8,
-        -2.0
-      ],
-      "speed": 0.5,
-      "max_s": 5.0,
-      "obstacle": "t_stairs"
-    },
-    {
-      "name": "to_slope",
-      "target": [
-        5.2,
-        -6.3
-      ],
-      "speed": 0.5,
-      "max_s": 4.0,
-      "obstacle": "slope"
-    },
-    {
-      "name": "cross_slope",
-      "target": [
-        5.2,
-        -3.8
-      ],
-      "speed": 0.5,
-      "max_s": 5.0,
-      "obstacle": "slope"
-    },
-    {
       "name": "to_slalom",
       "target": [
-        1.9,
-        -10.5
+        3.2,
+        -12.5
       ],
       "speed": 0.5,
       "max_s": 6.0,
       "obstacle": "slalom"
     },
     {
-      "name": "slalom_p1",
+      "name": "slalom_s1",
       "target": [
-        1.7,
-        -11.5
+        2.8,
+        -12.85
       ],
-      "speed": 0.4,
-      "max_s": 3.0,
+      "speed": 0.5,
       "obstacle": "slalom"
     },
     {
-      "name": "slalom_p2",
-      "target": [
-        1.9,
-        -12.5
-      ],
-      "speed": 0.4,
-      "max_s": 3.0,
-      "obstacle": "slalom"
-    },
-    {
-      "name": "slalom_posts",
+      "name": "slalom_s2",
       "target": [
         1.8,
-        -12.6
+        -12.85
       ],
-      "speed": 0.4,
-      "max_s": 5.0,
+      "speed": 0.5,
       "obstacle": "slalom"
     },
     {
@@ -234,17 +222,35 @@
         1.55,
         -12.75
       ],
-      "speed": 0.3,
+      "speed": 0.5,
       "max_s": 2.0,
+      "obstacle": "slalom"
+    },
+    {
+      "name": "slalom_n1",
+      "target": [
+        1.5,
+        -11.5
+      ],
+      "speed": 0.5,
+      "obstacle": "slalom"
+    },
+    {
+      "name": "slalom_n2",
+      "target": [
+        2.1,
+        -10.5
+      ],
+      "speed": 0.5,
       "obstacle": "slalom"
     },
     {
       "name": "slalom_exit",
       "target": [
-        3.2,
-        -12.5
+        1.8,
+        -10.1
       ],
-      "speed": 0.4,
+      "speed": 0.5,
       "max_s": 4.0,
       "obstacle": "slalom"
     },
