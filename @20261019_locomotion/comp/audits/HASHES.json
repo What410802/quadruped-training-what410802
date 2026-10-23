@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T20:02:13+08:00",
+  "generated_at": "2026-10-23T20:09:50+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -77,7 +77,7 @@
     },
     "part1_route": {
       "path": "config/part1-route.json",
-      "sha256": "db0640bc50b97e77878bfdc275766f8f3a1bc67199c43c39bd974602ee47dbca"
+      "sha256": "c880486284c47d5808a93762c4afb0ef97e5f27806a78da55c887e2635475db5"
     },
     "part2_levels_json": {
       "path": "config/part2-levels.json",
@@ -265,7 +265,7 @@
     },
     "extra_check_calibration": {
       "path": "scripts/agent_scripts/check_calibration.py",
-      "sha256": "cf898e3c5c701d7085ce6f6ecdcaeb6d3d7141799fe4f0f1c48f5dce3caa5725"
+      "sha256": "e229bf2981830af25be58f332aa64521d89479b3648e858d84a9f78c13391336"
     },
     "extra_records": {
       "path": "comp/eval/_calibration/records.jsonl",
@@ -283,13 +283,17 @@
       "path": "comp/eval/_calibration/labels_template.csv",
       "sha256": "33c263bf5627551c0c3ff9c1c275fb60a008aafd1e239966cc6a60f14b86104b"
     },
+    "extra_labels_user_partial_20261023": {
+      "path": "comp/eval/_calibration/labels_user_partial_20261023.csv",
+      "sha256": "04a85a33856b5394cf337ec62e17d56a4bf326d37d9e38da32851c10c6250060"
+    },
     "extra_LABELS_PROVENANCE": {
       "path": "comp/eval/_calibration/LABELS_PROVENANCE.md",
       "sha256": "9174b2f0ca01cacb250625cfc357b7c6301b836a3cc79254b9701582c5b38f02"
     },
     "extra_G1_SELFCHECK": {
       "path": "comp/audits/G1_SELFCHECK.md",
-      "sha256": "3e71ac5d7611241b81adbde9bcba7052ee353689a6f1da8d473b109b97ab3ecc"
+      "sha256": "9df0cf368cb03e90df9ce0f63178d2fb967ab7f1be300bdef4428936c0cb00e2"
     },
     "extra_C1_CALIBRATION_REPORT": {
       "path": "comp/audits/C1_CALIBRATION_REPORT.md",

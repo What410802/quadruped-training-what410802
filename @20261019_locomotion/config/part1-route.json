@@ -182,7 +182,7 @@
       "name": "cross_slope",
       "target": [
         5.2,
-        -4.2
+        -3.8
       ],
       "speed": 0.5,
       "max_s": 5.0,

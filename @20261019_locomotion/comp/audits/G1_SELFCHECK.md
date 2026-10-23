@@ -27,7 +27,7 @@ $ python3 @20261019_locomotion/scripts/agent_scripts/comp_part2_judge.py
 comp_part2_judge self-test: OK
 
 $ python3 @20261019_locomotion/scripts/agent_scripts/comp_audit_hashes.py --verdict pending
-wrote comp/audits/HASHES.json (76 objects)
+wrote comp/audits/HASHES.json (77 objects)
 
 $ pixi run python @20261019_locomotion/scripts/agent_scripts/comp_score.py --contract @20261019_locomotion/comp/CONTRACT.json --eval @20261019_locomotion/comp/eval --task-root @20261019_locomotion --out @20261019_locomotion/comp/SCOREBOARD.md --json-out @20261019_locomotion/comp/SCOREBOARD.json
 scoreboard written: @20261019_locomotion/comp/SCOREBOARD.md (+ @20261019_locomotion/comp/SCOREBOARD.json)
@@ -56,7 +56,7 @@ C1 CALIBRATION: PASS
 - 已修：`comp/eval/_calibration/README_C1.md` 砂砾坑 success/fail 描述与当前 L 形一致。
 - 已修：`comp/CONTRACT.md` §6 资产清单移除 V1 judge 旧条目，改为 V2.1/Part2 V2 并指向 HASHES。
 - 已修：`comp/eval/_protocol.md` §4.1 诊断表 gravel/slope 行与 v2 runner 一致。
-- 已重生成：四份产物、三份演练、C1 92 条记录/视频/索引、HASHES(76)；`check_calibration.py` 仍 PASS 92/92。
+- 已重生成：四份产物、三份演练、C1 92 条记录/视频/索引、HASHES(77)；`check_calibration.py` 仍 PASS 92/92。
 - 自检结论：上述 CONCERN 项已关闭；未发现新的 scorer blocker。
 
 
@@ -64,7 +64,7 @@ C1 CALIBRATION: PASS
 
 - 已修：`run_part1_course.py` pause/resume 后继续完成当前 policy step 的剩余 physics substeps（不再跳过），保持 4 substep/policy step 时序。
 - 已修：slalom 终点圆与最后一根杆重叠的假成功风险——success 额外要求离开最后一根杆半径（`last_post_cleared`），conformance 增加"停在最后一根杆圈内"反例。
-- 已修：`labels_template.csv` gravel 备注改为 L 形合法路径；G1_SELFCHECK 的 HASHES 数量统一为当前 76；C1 报告纳入 HASHES objects。
+- 已修：`labels_template.csv` gravel 备注改为 L 形合法路径；G1_SELFCHECK 的 HASHES 数量统一为当前 77；C1 报告纳入 HASHES objects。
 - 已重生成：四份产物、三份演练、C1 记录/视频/索引、HASHES；`check_calibration.py` 仍 PASS 92/92。
 - 自检结论：V33 的 CONCERN 项已关闭；未发现新的 scorer blocker。
 
@@ -88,3 +88,13 @@ C1 CALIBRATION: PASS
 - 已确认：course pause 期间物理冻结（暂停循环不推进 physics，只推进 operator 事件时钟），resume 后补完当前 policy step 的剩余 substep。
 - 已加入 G1 残余：限高杆要求 entry/exit 对边，穿越后折返同侧是否算通过仍待主办方口径；场景 slalom 终点圆显示重叠（judge 已用 last_post_cleared 防护）。
 - 自检结论：V35 的 CONCERN 项已关闭；未发现新的 scorer blocker。
+
+## 2026-10-23 20:15 第 36 轮 flash CONCERN 后的自检补充
+
+- 已修：`check_calibration.py` 现在校验 `human_judge_verdict_correct`（rulecard）与 failure_reason 词表；
+  C1 报告会显式列出 judge-verdict 错标/未知 reason。
+- 已修：原始盲标 `labels_user_partial_20261023.csv` 与 `check_calibration.py` 纳入 HASHES（77 objects）。
+- 已修：course route `cross_slope` 终点移到 zone 外（5.2,−3.8），避免"未真正出 slope zone"。
+- V36 reviewer 结论：无 scorer/judge 语义 blocker；剩余 CONCERN 均为已知 G1 残余（真实成功 rollout、正式手动整场、
+  base-footprint/base-z 代理、场景显示重叠等），其中"真实成功 rollout"必须先有可用策略。
+- 自检结论：无 blocker；继续追 PASS 需要先训练/补正式链路，因此向用户提出下一步选择。

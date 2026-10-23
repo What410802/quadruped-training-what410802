@@ -102,6 +102,8 @@ def main() -> int:
                   "comp/eval/_calibration/README_C1.md",
                   "comp/eval/_calibration/index.html",
                   "comp/eval/_calibration/labels_template.csv",
+                  "comp/eval/_calibration/labels_user_partial_20261023.csv",
+                  "scripts/agent_scripts/check_calibration.py",
                   "comp/eval/_calibration/LABELS_PROVENANCE.md",
                   "comp/audits/G1_SELFCHECK.md",
                   "comp/audits/C1_CALIBRATION_REPORT.md"):

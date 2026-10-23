@@ -80,6 +80,23 @@ def main() -> int:
             if human is None:
                 missing.append(f"{tid}:human_success")
                 continue
+            if kind in ("part1_rulecard", "part2_rulecard"):
+                verdict_ok = _bool(row.get("human_judge_verdict_correct", ""))
+                if verdict_ok is None:
+                    missing.append(f"{tid}:human_judge_verdict_correct")
+                    continue
+                if not verdict_ok:
+                    mismatches.append({"trial_id": tid, "kind": kind,
+                                       "target": rec.get("obstacle") or rec.get("category"),
+                                       "human_judge_verdict_correct": False,
+                                       "judge_status": judge.get("status"),
+                                       "judge_reason": judge.get("reason"),
+                                       "video": rec.get("video")})
+            reason = (row.get("human_failure_reason") or "").strip()
+            allowed = {"fell", "bar_drop", "two_feet_ground", "wrong_side", "incomplete",
+                       "no_crossing", "timeout"}
+            if reason and not human and not (reason in allowed or reason.startswith("other:")):
+                errors.append(f"{tid}: unknown failure_reason {reason!r}")
             key = rec.get("obstacle") or rec.get("category") or "unknown"
             key = f"{kind}:{key}"
             stats[key]["compared"] += 1
@@ -146,6 +163,7 @@ def main() -> int:
         lines.extend(f"- {e}" for e in errors)
 
     report = {"records": len(records), "labeled": labeled, "coverage": coverage,
+              "rulecard_verdict_checked": sum(1 for r in records if r["kind"] in ("part1_rulecard", "part2_rulecard")),
               "compared": compared, "agree": agree,
               "agreement": (agree / compared if compared else None),
               "by_kind": stats, "mismatches": mismatches,
