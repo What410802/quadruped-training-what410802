@@ -79,6 +79,26 @@
       "obstacle": null
     },
     {
+      "name": "stage_bridge_bands_east",
+      "target": [
+        6.6,
+        -4.6
+      ],
+      "speed": 0.5,
+      "max_s": 3.0,
+      "obstacle": null
+    },
+    {
+      "name": "stage_bridge_bands_south",
+      "target": [
+        5.7,
+        -4.5
+      ],
+      "speed": 0.5,
+      "max_s": 2.0,
+      "obstacle": null
+    },
+    {
       "name": "to_bridge_bands",
       "target": [
         5.7,

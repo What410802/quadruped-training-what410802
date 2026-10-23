@@ -25,7 +25,7 @@
       "height_bar": {
         "success": false,
         "score": 0,
-        "failure_reason": "route_complete",
+        "failure_reason": "wrong_exit_side",
         "evidence": []
       },
       "t_stairs": {
@@ -57,7 +57,7 @@
     "return_score": 0,
     "return_evidence": null,
     "final_score": 0.0,
-    "final_time_s": 104.23999999997723,
+    "final_time_s": 109.25999999997266,
     "total": 0
   },
   "part2": {

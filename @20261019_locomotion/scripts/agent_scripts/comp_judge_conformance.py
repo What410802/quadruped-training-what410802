@@ -196,6 +196,7 @@ def test_bridge_ground_and_success():
     # anti-graze: walking on the ground inside the zone while ONE foot grazes the obstacle
     # tags (never fully supported) must not be accepted as a traversal.
     graze = [
+        {"x": 0.5, "y": 0.0},   # legal west-side approach sample (entry=xmin)
         {"x": 1.35, "y": 0.0, "legs": {"FL": ["platform_left"]}, "ground": ["FR", "RL", "RR"]},
         {"x": 2.2, "y": 0.0, "legs": {"FL": ["bridge"]}, "ground": ["FR", "RL", "RR"]},
         {"x": 3.2, "y": 0.0, "legs": {"FL": ["bridge"]}, "ground": ["FR", "RL", "RR"]},
@@ -461,7 +462,16 @@ def test_slope_projection_and_graze_reset():
         {"x": 5.2, "y": -3.9},
     ]
     assert_status(feed(Part1JudgeV2(), landing), "slope", "success", "landing after 1 m projection")
-    print("slope: OK projection, graze reset, lateral wiggle rejected, landing allowed")
+    # mid-slope ground contact before the 1 m projection is complete must still fail
+    mid_fall = [
+        {"x": 5.2, "y": -6.6},
+        {"x": 5.2, "y": -6.2, "tags": ["slope"]},
+        {"x": 5.2, "y": -5.8, "tags": ["slope"], "ground": ["FL", "FR"]},
+        {"x": 5.2, "y": -5.4, "tags": ["slope"]},
+        {"x": 5.2, "y": -3.9},
+    ]
+    assert_failed(feed(Part1JudgeV2(), mid_fall), "slope", "mid-slope ground contact")
+    print("slope: OK projection, graze reset, lateral wiggle rejected, landing allowed, mid-slope fall fails")
 
 
 def test_gravel_short_edges_and_long_edge():

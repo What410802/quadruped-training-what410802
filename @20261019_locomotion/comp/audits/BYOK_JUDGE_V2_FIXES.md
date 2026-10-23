@@ -202,3 +202,14 @@
 | B1 非 supported 假成功 | 2 足触地判罚只在 `supported=True` 后生效；从未全足支撑时，在 zone 内地面行走、用单足蹭障碍标签累积证据可从对侧"成功"；各 `_check_exit` 未要求 supported | `_Obstacle.update` 的退出成功分支增加门控：`ground_fail` 障碍若 `not self.supported`，成功改为 `_fail("insufficient_obstacle_support")`；conformance 新增"单足蹭 tag + 地面行走"反例 |
 | route bridge_bands | `cross_bridge_bands` target (5.7,-1.0) 仍在 zone 内（ymax=-0.8），下一段从 ymin 离开触发 wrong_exit_side | 出口改为 (5.7,-0.5)（越过 ymax） |
 | route slalom | 路线从 start 直下 x=1.8，侧向判据出现 0，且 S 形不明确 | route 增加 slalom waypoints (1.9,-10.5)/(1.7,-11.5)/(1.9,-12.5)，再接拐角与终点 |
+
+
+## Flash 复验（第 25 轮）blocker 修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| B1 退出分支无 supported 门控 | V24 只给 `_check_immediate` 成功分支加了门控；`_check_exit` 成功分支（绝大多数 ground_fail 障碍）仍可直接 success，非 supported 地面蹭 tag 假成功仍在 | `update()` 的 `elif self.prev_in_zone` 退出成功分支同样加 `if ok and ground_fail and not supported: _fail("insufficient_obstacle_support")` |
+| conformance graze 用例无效 | graze 用例未先给 zone 外样本，`entry_side_prev=None` 以 illegal_entry 失败，未打到目标路径 | 用例前补 `(0.5,0)` 合法西侧接近样本；断言 anti-graze 路径 `failed` |
+| slope mid-fall 缺失 | 无"supported 后、距离<1 m 双足触地"反例 | 新增 slope mid-fall conformance 用例（桥/台阶/砂砾原有 landing 用例保留） |
+| route bridge_bands 入口 | 从 `leave_bridge_blocks_east (6.6,-1.1)` 直接去 `(5.7,-3.6)` 时从 xmax 进入，与 ymax 出口不 opposite | 增加 `stage_bridge_bands_east (6.6,-4.6)` → `stage_bridge_bands_south (5.7,-4.5)`，从南侧 ymin 进入 |
+| 三份 manifest judge hash 过期 | 产物由旧 judge 生成，manifest judge hash 与当前代码不一致 | 全量重生成四份产物与三份演练，重新导入并刷新 HASHES |

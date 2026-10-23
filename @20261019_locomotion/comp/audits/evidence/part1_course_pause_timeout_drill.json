@@ -5,7 +5,7 @@
   "scene": "@20261019_locomotion/assets/terrain/part1/part1_eval_scene_v2.xml",
   "scene_sha256": "c03cd34a187dfa411396a583f2864e6fbe871bf703723d7a62ef314d44114242",
   "route": "@20261019_locomotion/config/part1-route.json",
-  "route_sha256": "8f19efc3772f0c0b792ccfdfdd8e732575c70ec6e7ce2739790c285d2c4e30f2",
+  "route_sha256": "fb4a2584a1dac1797bce2cb69e1e4bca3fe2d7115bcfc8acb1c2621c0fc5461a",
   "policy": "@20261019_locomotion/assets/policies/flat-ft-2500/policy.pt",
   "policy_sha256": "332737933d750815ed5f7bde9863f6f282b29aadc7babe5c698aaed5b41b564b",
   "attempts": [

@@ -281,7 +281,9 @@ class _Obstacle:
             side = _crossing_side(self.zone, self.prev_xy, xy) if self.prev_xy else _side_of(self.zone, xy)
             if self.armed:
                 ok, reason = self._check_exit(side or "unknown", tags, ground_feet)
-                if ok:
+                if ok and self.ground_fail and not self.supported:
+                    self._fail("insufficient_obstacle_support")
+                elif ok:
                     self.result.status = "success"
                     self.result.reason = ""
                     self.result.score = self._score_for()
