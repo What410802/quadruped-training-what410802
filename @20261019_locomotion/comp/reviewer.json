@@ -24,7 +24,8 @@
       "max_tokens": 32000,
       "timeout_s": 3600,
       "note": "BYOK：与 DSH 同一 relay；默认 deepseek-v4.1-flash（用户 2026-10-22：最新 flash 接口强于 pro，优先 ai-sourcing API）。推理型模型会用 completion 预算做 reasoning；comp_review 在空 content+finish=length 时加倍 max_tokens 重试，默认 SSE 流式。注意：executor 也是 deepseek-v4.1-flash → **同模型自审**，independence 标 same-model-provisional，只能驱动改进。",
-      "stream": true
+      "stream": true,
+      "retry_max_tokens": 128000
     },
     "manual": {
       "kind": "manual",

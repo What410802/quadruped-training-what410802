@@ -571,8 +571,10 @@ def main(argv: list[str] | None = None) -> int:
     initial_mt = int(backend.get("max_tokens", 32000))
     cap_mt = int(backend.get("retry_max_tokens", initial_mt))
     budget_tries = [initial_mt]
-    if initial_mt < cap_mt:
-        budget_tries.append(min(initial_mt * 2, cap_mt))
+    mt = initial_mt
+    while mt < cap_mt and len(budget_tries) < 4:
+        mt = min(mt * 2, cap_mt)
+        budget_tries.append(mt)
     attempts: list[dict] = []
     res: dict | None = None
     last_exc: Exception | None = None
@@ -583,6 +585,10 @@ def main(argv: list[str] | None = None) -> int:
                 res = http_chat_stream(backend, key, payload)
             else:
                 res = http_chat(backend, key, payload)
+            if res.get("finish_reason") == "length":
+                # content exists but the review was cut off mid-sentence: never accept a
+                # truncated verdict; retry with the next (larger) budget.
+                raise RuntimeError("review 输出被截断（finish_reason=length）")
             attempts.append({"max_tokens": mt, "status": "ok", "latency_s": res["latency_s"],
                              "usage": res["usage"], "finish_reason": res["finish_reason"]})
             break

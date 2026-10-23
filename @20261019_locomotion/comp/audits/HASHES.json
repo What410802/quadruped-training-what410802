@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T12:35:23+08:00",
+  "generated_at": "2026-10-23T12:56:50+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -21,7 +21,7 @@
     },
     "judge_conformance": {
       "path": "scripts/agent_scripts/comp_judge_conformance.py",
-      "sha256": "cfcda5444e60982fc094aeca03f611e63baf69caaee215961b0116a57ef19a70"
+      "sha256": "4007d97ae487753f99337925ca4da6575529c425c69a91093ff90bc56f8311bd"
     },
     "judge_course_protocol": {
       "path": "scripts/agent_scripts/comp_part1_course.py",
@@ -77,7 +77,7 @@
     },
     "part1_route": {
       "path": "config/part1-route.json",
-      "sha256": "4b69745498a6444ab1b33f2153e2350b62d7a32870aec69b3e6e00b6081ccd3d"
+      "sha256": "976bae804fadb916825174d5b5f3b985c36346e632dcf74828bc0d04c835080c"
     },
     "part2_levels_json": {
       "path": "config/part2-levels.json",
@@ -105,7 +105,7 @@
     },
     "byok_fix_map": {
       "path": "comp/audits/BYOK_JUDGE_V2_FIXES.md",
-      "sha256": "5be062bf2921c65b73cf61f01c9cb44487daae79d89108624ad3d46908ad4f3f"
+      "sha256": "87ca2c5de97311250db36f6b125dc4e851982040dea81d5a6654d6f422509dc2"
     },
     "level_high_platform_10cm": {
       "path": "assets/terrain/part2/levels/high_platform_10cm.xml",
@@ -221,7 +221,7 @@
     },
     "eval_flat-ft-2500-part1-course-diag_manifest": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/manifest.json",
-      "sha256": "35fdff5ce8da98a93107840b33b638b212b93ddfb08247398862f3c12096ef42"
+      "sha256": "75d8a9ace63a9d5860533232099d0929ab273c70b76b89203d91947653d539a5"
     },
     "eval_flat-ft-2500-part1-course-diag_trials": {
       "path": "comp/eval/flat-ft-2500-part1-course-diag/trials.jsonl",
@@ -257,15 +257,15 @@
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
-      "sha256": "6b5ab75cce3804866a497a13f3b3c1b0a65d46a173433f76674dc49bc9cdc407"
+      "sha256": "8bbb3bb1642300ff2476843dd15959113e67540c9d76d3bd084eecd686ba33f0"
     },
     "evidence_part1_course_pause_resume_drill": {
       "path": "comp/audits/evidence/part1_course_pause_resume_drill.json",
-      "sha256": "a458899de261a59b4f47f669bb8e95ce222ef752c287c4593b6faeacb46294d0"
+      "sha256": "c23dbd4c521b62f5efddae1011574d53d7eaa4ccf6ffb09fc7f1ea7af62f0b8e"
     },
     "evidence_part1_course_pause_timeout_drill": {
       "path": "comp/audits/evidence/part1_course_pause_timeout_drill.json",
-      "sha256": "5048ea43477b6995c1bb7fd639ede8b840c1e13dc087c7fa272363f9a8dcf0f7"
+      "sha256": "72cfdacd7a38c9d37233b240c102a3abd835a79b9cd2582e1b252725fd27d703"
     }
   },
   "superseded": {

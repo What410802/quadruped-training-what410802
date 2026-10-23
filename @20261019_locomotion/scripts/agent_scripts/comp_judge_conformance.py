@@ -161,7 +161,28 @@ def test_bridge_ground_and_success():
         {"x": 4.0, "y": 0.0},
     ]
     assert_failed(feed(Part1JudgeV2(), mid_gap), "bridge_blocks", "mid-gap fall")
-    print("bridge_blocks: OK legal traversal / landing allowed / mid-gap fall fails")
+    # bridge_bands: legal traversal south->north, landing after far platform allowed,
+    # mid-band ground contact still fails
+    bands_landing = [
+        {"x": 5.7, "y": -4.2},
+        {"x": 5.7, "y": -3.6, "tags": ["platform_low"]},
+        {"x": 5.7, "y": -2.8, "tags": ["bridge"]},
+        {"x": 5.7, "y": -2.4, "tags": ["bridge"]},
+        {"x": 5.7, "y": -2.0, "tags": ["bridge"]},
+        {"x": 5.7, "y": -1.3, "tags": ["platform_high"]},
+        {"x": 5.7, "y": -0.95, "tags": ["platform_high"], "ground": ["FL", "FR"]},
+        {"x": 5.7, "y": -0.7},
+    ]
+    rep = feed(Part1JudgeV2(), bands_landing)
+    assert_status(rep, "bridge_bands", "success", "landing after far platform")
+    bands_mid_fall = [
+        {"x": 5.7, "y": -4.2},
+        {"x": 5.7, "y": -3.6, "tags": ["platform_low"]},
+        {"x": 5.7, "y": -2.25, "tags": ["bridge"], "ground": ["FL", "FR"]},
+        {"x": 5.7, "y": -1.6},
+    ]
+    assert_failed(feed(Part1JudgeV2(), bands_mid_fall), "bridge_bands", "mid-band fall")
+    print("bridge_blocks/bridge_bands: OK legal traversal / landing allowed / mid-span fall fails")
 
 
 def test_height_bar_touch_drop_and_gate():
@@ -357,7 +378,7 @@ def test_t_stairs_full_partial_and_history():
         {"x": 1.8, "y": -3.8, "tags": ["step:top"]},
         {"x": 1.8, "y": -4.3, "tags": ["step:s:3"]},
         {"x": 1.8, "y": -4.9, "tags": ["step:s:1"]},
-        {"x": 1.8, "y": -5.15, "ground": ["FL", "FR"]},
+        {"x": 1.8, "y": -4.9, "ground": ["FL", "FR"]},
         {"x": 1.8, "y": -5.6},
     ]
     rep = feed(Part1JudgeV2(), partial_landing)

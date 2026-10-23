@@ -183,3 +183,13 @@
 | B5（minor–moderate，假成功） | Part2 `held` 只累加不清零，断续满足条件也成功 | `cond` 为假时 `held=0`；self-test 增加"中断清零、连续成功"用例 |
 | route 错配 | `cross_slope` 沿 x 翻屋脊，而 judge 按 y 向投影累计；slalom 路线不经过拐角必达区 | route 的 slope 段改为沿 y 走 2 m；slalom 增加拐角 waypoint；bridge 方向在 B1 修复后不再被封 |
 | B4/B6/B7/B8 | 限高杆未校验"从下方"、高墙必须墙接触、沟壑 lane ±0.7 偏保守、official 固定梯子 | 记入 C1 标定集待裁决 + G1 报告残余（非当前 blocker） |
+
+
+## Flash 复验（第 22 轮）CONCERN 修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| 评审截断 | 第 21/22 轮 flash 输出 `finish_reason=length` 但 content 非空，被当正常结果落盘（第 22 轮 verdict 只写到一半） | `comp_review` 现在把 `finish_reason=length` 一律视为截断并走更大 max_tokens 重试（http 后端 32k→64k→128k），全部耗尽才 `REVIEW_UNAVAILABLE`，不再接受半截 verdict |
+| route 入口 | `to_bridge_blocks` 从斜上方进入 zone，先穿 ymin 再出 xmin，落盘 entry_side 与最终 xmin→xmax 出口不一致 | route 的 `to_bridge_blocks` 目标改为 `[0.8, 0.0]`（从西侧 zone 外再进入），保证 entry=xmin、exit=xmax |
+| B1 证据 | bridge_bands 无独立 landing/mid-fall 用例；t_stairs landing 采样落在 zone 外未测到 | conformance 补 bridge_bands "双平台+3 次桥面→落地允许 / 桥中段双足触地失败"；t_stairs landing 采样改为 zone 内 y=-4.9 |
+| B3 证据 | T 台阶缺级+另一臂完整用例已存在，但需与 landing 修复一起回归 | conformance 13 组全绿；随本轮重新生成产物 |
