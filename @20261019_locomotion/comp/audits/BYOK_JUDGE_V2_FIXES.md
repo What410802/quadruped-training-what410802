@@ -213,3 +213,13 @@
 | slope mid-fall 缺失 | 无"supported 后、距离<1 m 双足触地"反例 | 新增 slope mid-fall conformance 用例（桥/台阶/砂砾原有 landing 用例保留） |
 | route bridge_bands 入口 | 从 `leave_bridge_blocks_east (6.6,-1.1)` 直接去 `(5.7,-3.6)` 时从 xmax 进入，与 ymax 出口不 opposite | 增加 `stage_bridge_bands_east (6.6,-4.6)` → `stage_bridge_bands_south (5.7,-4.5)`，从南侧 ymin 进入 |
 | 三份 manifest judge hash 过期 | 产物由旧 judge 生成，manifest judge hash 与当前代码不一致 | 全量重生成四份产物与三份演练，重新导入并刷新 HASHES |
+
+
+## Flash 复验（第 26 轮）CONCERN 修复（2026-10-23）
+
+| 项 | 问题 | 修复 |
+|---|---|---|
+| soft-reset 状态残留 | 障碍 soft-reset（如 slope 未累计 1 m 离场）只 `_reset_evidence()`/`armed=True`，未清 `supported`/`prev_touched`；再次进入 zone 时仍按 grounded 状态判 `two_feet_ground`，可条件性误判失败 | soft-reset 分支同时 `supported=False`、`prev_touched=False` 并清 `detail["touched"]`；conformance 新增 "slope 未完成离场 soft-reset → 再次进入干净通过" 用例 |
+| slope mid-fall / landing 覆盖 | 已有 landing 与 mid-fall 用例，随本轮回归 | conformance 13 组全绿后重新生成四份产物与三份演练 |
+| height_bar route 跟踪 | route 语义正确但 course diag 仍 `wrong_exit_side`（策略未稳定到达南侧起点/抖动） | 记为 G1 残余（route 对跟踪误差不鲁棒），不影响正式手动赛程；C2 基线前可复核进入方向余量 |
+| slalom 半径口径 | judge 拐角 0.30 m vs 场景显示圆 0.5 m | 记为 C1 标定集待裁决项（本轮 route 走圆心，不受影响） |

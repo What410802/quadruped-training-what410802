@@ -293,9 +293,15 @@ class _Obstacle:
                 elif self.result.detail.get("partial"):
                     self.result.status = "success"   # keep the partial score
                 else:
+                    # soft reset (e.g. slope exited before accumulating 1 m): clear ALL
+                    # traversal state, otherwise the next entry would inherit supported=True
+                    # and wrongly fail on ground contact before touching the obstacle.
                     self.result.status = "pending"
                     self.result.detail["aborted_exit"] = side
                     self._reset_evidence()
+                    self.supported = False
+                    self.prev_touched = False
+                    self.result.detail.pop("touched", None)
                     self.armed = True
         self.prev_in_zone = inside
         self.prev_xy = xy

@@ -471,7 +471,26 @@ def test_slope_projection_and_graze_reset():
         {"x": 5.2, "y": -3.9},
     ]
     assert_failed(feed(Part1JudgeV2(), mid_fall), "slope", "mid-slope ground contact")
-    print("slope: OK projection, graze reset, lateral wiggle rejected, landing allowed, mid-slope fall fails")
+    # soft reset (exit with <1 m) must clear supported/touched so a later clean re-entry does
+    # not fail on ground contact before touching the slope again.
+    j_soft = Part1JudgeV2()
+    feed(j_soft, [
+        {"x": 5.2, "y": -6.9},
+        {"x": 5.2, "y": -6.5, "tags": ["slope"]},
+        {"x": 5.2, "y": -3.9},   # exit before 1 m -> soft reset
+    ])
+    rep = feed(j_soft, [
+        {"x": 5.2, "y": -6.9},
+        {"x": 5.2, "y": -6.6, "ground": ["FL", "FR"]},
+        {"x": 5.2, "y": -6.2, "tags": ["slope"]},
+        {"x": 5.2, "y": -5.8, "tags": ["slope"]},
+        {"x": 5.2, "y": -5.4, "tags": ["slope"]},
+        {"x": 5.2, "y": -5.0, "tags": ["slope"]},
+        {"x": 5.2, "y": -4.5, "tags": ["slope"], "ground": ["FL", "FR"]},
+        {"x": 5.2, "y": -3.9},
+    ])
+    assert_status(rep, "slope", "success", "clean re-entry after soft reset")
+    print("slope: OK projection, graze reset, lateral wiggle rejected, landing allowed, mid-slope fall fails, soft-reset re-entry clean")
 
 
 def test_gravel_short_edges_and_long_edge():
