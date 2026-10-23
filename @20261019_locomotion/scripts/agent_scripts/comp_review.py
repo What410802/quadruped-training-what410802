@@ -185,6 +185,11 @@ def resolve_key(cfg: dict, backend: dict, args) -> tuple[str | None, str | None]
     key, src = _key_from_env(names)
     if key:
         return key, src
+    kf = backend.get("key_file") or cfg.get("key_file")
+    if kf:
+        key, src = _key_from_file(Path(kf))
+        if key:
+            return key, src
     if getattr(args, "key_file", None):
         key, src = _key_from_file(Path(args.key_file))
         if key:
@@ -261,6 +266,8 @@ def http_chat_stream(backend: dict, key: str, payload: str) -> dict:
     }
     if backend.get("temperature") is not None:
         body["temperature"] = backend["temperature"]
+    if isinstance(backend.get("extra_body"), dict):
+        body.update(backend["extra_body"])
     req = urllib.request.Request(
         base + "/chat/completions", data=json.dumps(body).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
@@ -313,6 +320,8 @@ def http_chat(backend: dict, key: str, payload: str) -> dict:
     }
     if backend.get("temperature") is not None:
         body["temperature"] = backend["temperature"]
+    if isinstance(backend.get("extra_body"), dict):
+        body.update(backend["extra_body"])
     req = urllib.request.Request(
         base + "/chat/completions", data=json.dumps(body).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
@@ -442,7 +451,7 @@ def run_smoke(cfg_path: Path | None, args) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="BYOK 独立评审执行器")
     ap.add_argument("--config", type=Path)
-    ap.add_argument("--backend", choices=["http", "manual", "codex"])
+    ap.add_argument("--backend", help="配置中的 backend 名（http/manual/codex/zhipu/zhipu-flash）；缺省 http")
     ap.add_argument("--prompt-file", type=Path)
     ap.add_argument("--prompt")
     ap.add_argument("--file", action="append", default=[], type=Path, help="要内联的原始工件，可重复")

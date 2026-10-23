@@ -29,17 +29,63 @@
     "manual": {
       "kind": "manual",
       "note": "用户作为协调者在 DSH 另开会话（评价者）写响应文件，训练会话用 --manual-response 导入；需 --reviewer-model 记录实际模型。"
+    },
+    "zhipu": {
+      "kind": "openai-compatible",
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "model": "glm-5.3",
+      "api_key_env": [
+        "ZHIPU_API_KEY",
+        "GLM_API_KEY",
+        "BIGMODEL_API_KEY",
+        "ZHIPUAI_API_KEY"
+      ],
+      "key_file": "/home/bis/.config/robocon-review/zhipu_api_key",
+      "temperature": 0.2,
+      "max_tokens": 64000,
+      "timeout_s": 3600,
+      "stream": true,
+      "extra_body": {
+        "thinking": {
+          "type": "enabled"
+        },
+        "reasoning_effort": "max"
+      },
+      "note": "BYOK 智谱旗舰 GLM-5.3（1M 上下文/128K 输出，始终思考，reasoning_effort=max）。按用户 2026-10-23 指示：排在 DeepSeek Pro 之后、Codex 之前；不同家族（glm），可作 Type-B 独立评审但 Codex 仍是最终 acquittal。key 仅本地 key_file/env，不入库。"
+    },
+    "zhipu-flash": {
+      "kind": "openai-compatible",
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "model": "glm-5.3-flash",
+      "api_key_env": [
+        "ZHIPU_API_KEY",
+        "GLM_API_KEY",
+        "BIGMODEL_API_KEY",
+        "ZHIPUAI_API_KEY"
+      ],
+      "key_file": "/home/bis/.config/robocon-review/zhipu_api_key",
+      "temperature": 0.2,
+      "max_tokens": 32000,
+      "timeout_s": 3600,
+      "stream": true,
+      "extra_body": {
+        "thinking": {
+          "type": "enabled"
+        },
+        "reasoning_effort": "high"
+      },
+      "note": "BYOK 智谱 GLM-5.3-Flash（多模态基座，低延迟/低价）：用于 GLM 初筛或 GLM-5.3 不可用时的备选；仍排在 DeepSeek Pro 之后。"
     }
   },
   "budget": {
     "codex_calls_max": 4,
     "window_days": 14,
     "plan": [
-      "1 次：G1 judge 重审（不同家族，必须）",
+      "1 次：G1 judge 重审（不同家族，必须；Codex 若一周内不可用，可先用 GLM-5.3 做 provisional acquittal，Codex 恢复后补正式）",
       "1 次：冻结前红队",
       "1 次：最终分数/答辩数字审计",
       "1 次：预算外备用（异常/争议）"
     ],
-    "routine": "日常训练系统审计、失败诊断、里程碑初筛用 BYOK（默认 deepseek-v4.1-flash）；同模型/同家族 verdict 标 provisional，G4 的正式 acquittal 仍留给 Codex。"
+    "routine": "日常训练系统审计、失败诊断、里程碑初筛用 BYOK（默认 deepseek-v4.1-flash→pro）。用户 2026-10-23 指定升级顺序：deepseek flash → deepseek pro → 智谱 GLM（glm-5.3 / glm-5.3-flash）→ Codex（需用户二次确认）。GLM 是不同家族，可提供 Type-B 草拟 verdict；Codex 恢复后仍以 Codex 为最终 acquittal。"
   }
 }

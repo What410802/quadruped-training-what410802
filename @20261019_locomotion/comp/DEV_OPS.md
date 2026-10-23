@@ -54,7 +54,25 @@
   - 2026-10-22 23:30 曾尝试 1 次 Codex G1（`gpt-6.1-sol`/xhigh，见 `audits/CODEX_G1_REAUDIT_STOPPED_20261023.md`），
     会话被中止、无 verdict；另有一次 `gpt-6-astra` 因 token 无权限返回 403。
   - 2026-10-23 起执行本审批规则；下一次 Codex G1 需用户明确批准。
-- 当前评审升级顺序（用户 2026-10-22/23 指定）：**deepseek flash → deepseek pro → Codex（需批准）**。
-  **用户 2026-10-23 追加硬约束**：不得私自调用 Codex；至少要求 **deepseek-v4.1-flash 与 deepseek-v4-pro 两轮复验均无问题（无 blocker）**
-  之后，再向用户报告进度并取得二次确认，才可调用 Codex。任一轮 FAIL 都必须先修复并重新通过两轮。
+- 当前评审升级顺序（用户 2026-10-22/23 指定）：**deepseek flash → deepseek pro → 智谱 GLM（glm-5.3 / glm-5.3-flash）→ Codex（需批准）**。
+  **2026-10-23 变更**：Codex 额度一周内预计不可用；用户提供智谱 API key，GLM 排在 DeepSeek Pro 之后、Codex 之前。
+  GLM 属不同家族（glm），可作 Type-B 初步判定/草拟 acquittal；Codex 恢复后仍以 Codex 为最终 acquittal。GLM 调用走 BYOK，费用由用户 key 承担。
+  **用户 2026-10-23 追加硬约束**：不得私自调用 Codex；至少要求 **deepseek-v4.1-flash、deepseek-v4-pro（以及 Codex 不可用时的 GLM）**
+  复验均无问题之后，再向用户报告进度并取得二次确认，才可调用 Codex。任一轮 FAIL 都必须先修复并重新通过相应轮次。
   用户同时确认：当前 flash 比 pro 更便宜且效果更好，优先用 flash 做验收；pro 仅在需要升级时使用。
+
+
+## 4.1 BYOK reviewer backends（2026-10-23）
+
+| backend | 模型 | 端点 | key 来源 | 顺序/用途 |
+|---|---|---|---|---|
+| `http`（默认） | `deepseek-v4.1-flash` / 可覆盖为 `deepseek-v4-pro` | 用户 relay `/v1` | env `MY_CHAT_API_KEY` 等 | 第一轮 flash、第二轮 pro |
+| `zhipu` | `glm-5.3`（1M 上下文/128K 输出，始终思考，effort=max） | `https://open.bigmodel.cn/api/paas/v4` | `~/.config/robocon-review/zhipu_api_key`（0600，不入库）或 env `ZHIPU_API_KEY`/`GLM_API_KEY`/`BIGMODEL_API_KEY` | 第三轮：DeepSeek Pro 之后、Codex 之前；不同家族（glm） |
+| `zhipu-flash` | `glm-5.3-flash`（多模态基座，低延迟） | 同上 | 同上 | GLM 初筛/备选 |
+| `codex` | `gpt-6.1-sol`(xhigh) / `gpt-6-astra`(403 无权限) | 宿主 MCP | aHIL codex bridge | 最终 acquittal，需用户二次确认 |
+
+- 使用示例（GLM 验收轮）：
+  `pixi run python scripts/agent_scripts/comp_review.py --config comp/reviewer.json --backend zhipu --prompt-file <prompt> --file ... --out ... --executor-model deepseek-v4.1-flash --reviewer-model glm-5.3`
+- `extra_body` 会注入 `thinking.type=enabled` 与 `reasoning_effort`（GLM-5.3 不支持关闭思考；默认 max）。
+- key 只保存在 `~/.config/robocon-review/zhipu_api_key`（0600）或环境变量；**不得**提交到仓库或写进任何文档。
+- 预算：GLM 按 token 计费（用户 key）；每轮照常记录 usage 与 latency 到 `.audit.json`。
