@@ -69,8 +69,8 @@
 | GPT/Codex 调用规则 | 任何 GPT 系调用须先报进度并二次确认；DeepSeek 调用无需告知；已写入 `comp/DEV_OPS.md` §4 | `comp/DEV_OPS.md` |
 | Pro 复验 P1–P4 | 稳定停表 dt、暂停误喂 judge、comp_score 外部证据校验、ground 分类已修；3-attempt pause 演练进行中 | `comp_part1_course.py`、`run_part1_course.py`、`comp_score.py` |
 | BYOK 预审（same-model，provisional） | 已执行：FAIL/26 条（11 blocker），已逐条修复或记录残余风险 | `audits/BYOK_JUDGE_V2_REVIEW.md`、`audits/BYOK_JUDGE_V2_FIXES.md` |
-| BYOK 最终验收 | **flash 第 19 轮 PASS + pro 第 19 轮 PASS**（HighWall x 段 blocker、T 台阶 n/e、skipped 语义、HASHES 覆盖均闭环；两轮均判无 blocker） | `BYOK_JUDGE_V19_FLASH_ACCEPT.md`、`BYOK_JUDGE_V19_PRO_ACCEPT.md` |
-| G1 重审（Codex，不同家族） | **flash+pro 均 PASS，现等用户二次确认后才调用 Codex**（不得私自调用）。建议 gpt-6.1-sol / xhigh / read-only / 1 call；gpt-6-astra 403 无权限 | 第 2 版 `JUDGE_AUDIT` |
+| BYOK 最终验收 | **GLM-5.3（different-family）第 31 轮 PASS**；同轮 flash/pro 均 CONCERN（无 blocker，C1 yes / C2 有条件）。已满足"再次 PASS → 进入下一阶段"的用户条件 | `BYOK_JUDGE_V31_GLM_ACCEPT.md`（+ flash/pro） |
+| G1 重审（Codex，不同家族） | Codex 一周内不可用；已按用户指示用 **GLM-5.3 完成 provisional acquittal（PASS）**。Codex 恢复后补最终 acquittal（仍需用户二次确认） | 第 2 版 `JUDGE_AUDIT` |
 
 **V2 评测链路（2026-10-22 晚）**：Part1 judge V2 `comp_part1_judge.py`（10 组 conformance 全过，含 G1 反例：6 条出口骗分、T 台阶跨帧历史、限高杆 touch/drop、斜坡距离、砂砾短边、高墙侧走、绕杆顺序、尝试规则）+ 场景 v2 + 逐物理步 runner + 整场协议 `comp_part1_course.py`（3 次、恢复不消耗、最快用时、返回奖励）+ Part2 六类 judge/参数化 20 档 evaluator；两条 diagnostic 产物已进 `comp/SCOREBOARD.md`（`flat-ft-2500-part1-diag-v2`/`-part2-diag-v2`，均 0 分，符合 flat 策略预期）。
 

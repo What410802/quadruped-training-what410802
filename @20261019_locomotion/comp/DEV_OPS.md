@@ -78,3 +78,11 @@
 - 预算：GLM 按 token 计费（用户 key）；每轮照常记录 usage 与 latency 到 `.audit.json`。
 - 使用约定（用户 2026-10-23）：GLM 排在 DeepSeek Pro 之后、Codex 之前；GLM 同属不同家族，可给 Type-B 草拟判定；Codex 恢复后补正式 acquittal。GLM-5.3 适合"多角度静态推演"，第 20 轮它发现了 flash/pro 19 轮都没抓到的 zone/落地几何矛盾——GLM 轮不能省。
 - 实测：`glm-5.3` + `reasoning_effort=max` 在 ~500KB 工件上会先烧满输出预算后 content 为空（`finish_reason=length`，第 20 轮首次尝试 `REVIEW_UNAVAILABLE`）；已改为 `reasoning_effort=high`、`max_tokens=128000`、`retry_max_tokens=128000`。若仍空，退回 `zhipu-flash` 或等 Codex。
+
+
+### GLM 验收记录（2026-10-23）
+
+- 第 20 轮 GLM-5.3 首次验收：FAIL，抓到 scorer blocker B1（离障落地 1/2 足误判失败，`_Obstacle` 仅按 supported 门控、zone 边缘与障碍表面重合导致结构性不可通过）。
+- 修复 B1/B2/B3/B5/route 及后续 flash 发现的 anti-graze、soft-reset、T 台阶同 zone 合并等边界后，第 31 轮 GLM-5.3 复核：**PASS（无 scorer blocker）**，建议进入 C1 人工标定（C2 基线有条件：脚本 route 的 height_bar 跟踪鲁棒性需处理或声明非计分）。
+- 用法：`comp_review.py --backend zhipu --reviewer-model glm-5.3`；成功轮 usage 约 18 万 prompt tokens + 2.9 万 completion tokens（thinking 2.5 万），延迟约 2–20 分钟；失败/截断轮记录在 `.audit.json` 的 attempts 中。
+- 结论：GLM 轮值得保留——它发现了 19 轮 flash/pro 都没抓到的 zone/落地几何矛盾；后续 C1 标定集可继续用 glm-5.3 做独立复核。
