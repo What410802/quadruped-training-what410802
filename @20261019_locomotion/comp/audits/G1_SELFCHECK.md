@@ -27,7 +27,7 @@ $ python3 @20261019_locomotion/scripts/agent_scripts/comp_part2_judge.py
 comp_part2_judge self-test: OK
 
 $ python3 @20261019_locomotion/scripts/agent_scripts/comp_audit_hashes.py --verdict pending
-wrote comp/audits/HASHES.json (77 objects)
+wrote comp/audits/HASHES.json (80 objects)
 
 $ pixi run python @20261019_locomotion/scripts/agent_scripts/comp_score.py --contract @20261019_locomotion/comp/CONTRACT.json --eval @20261019_locomotion/comp/eval --task-root @20261019_locomotion --out @20261019_locomotion/comp/SCOREBOARD.md --json-out @20261019_locomotion/comp/SCOREBOARD.json
 scoreboard written: @20261019_locomotion/comp/SCOREBOARD.md (+ @20261019_locomotion/comp/SCOREBOARD.json)
@@ -56,7 +56,7 @@ C1 CALIBRATION: PASS
 - 已修：`comp/eval/_calibration/README_C1.md` 砂砾坑 success/fail 描述与当前 L 形一致。
 - 已修：`comp/CONTRACT.md` §6 资产清单移除 V1 judge 旧条目，改为 V2.1/Part2 V2 并指向 HASHES。
 - 已修：`comp/eval/_protocol.md` §4.1 诊断表 gravel/slope 行与 v2 runner 一致。
-- 已重生成：四份产物、三份演练、C1 92 条记录/视频/索引、HASHES(77)；`check_calibration.py` 仍 PASS 92/92。
+- 已重生成：四份产物、三份演练、C1 92 条记录/视频/索引、HASHES(80)；`check_calibration.py` 仍 PASS 92/92。
 - 自检结论：上述 CONCERN 项已关闭；未发现新的 scorer blocker。
 
 
@@ -64,7 +64,7 @@ C1 CALIBRATION: PASS
 
 - 已修：`run_part1_course.py` pause/resume 后继续完成当前 policy step 的剩余 physics substeps（不再跳过），保持 4 substep/policy step 时序。
 - 已修：slalom 终点圆与最后一根杆重叠的假成功风险——success 额外要求离开最后一根杆半径（`last_post_cleared`），conformance 增加"停在最后一根杆圈内"反例。
-- 已修：`labels_template.csv` gravel 备注改为 L 形合法路径；G1_SELFCHECK 的 HASHES 数量统一为当前 77；C1 报告纳入 HASHES objects。
+- 已修：`labels_template.csv` gravel 备注改为 L 形合法路径；G1_SELFCHECK 的 HASHES 数量统一为当前 80；C1 报告纳入 HASHES objects。
 - 已重生成：四份产物、三份演练、C1 记录/视频/索引、HASHES；`check_calibration.py` 仍 PASS 92/92。
 - 自检结论：V33 的 CONCERN 项已关闭；未发现新的 scorer blocker。
 
@@ -98,3 +98,11 @@ C1 CALIBRATION: PASS
 - V36 reviewer 结论：无 scorer/judge 语义 blocker；剩余 CONCERN 均为已知 G1 残余（真实成功 rollout、正式手动整场、
   base-footprint/base-z 代理、场景显示重叠等），其中"真实成功 rollout"必须先有可用策略。
 - 自检结论：无 blocker；继续追 PASS 需要先训练/补正式链路，因此向用户提出下一步选择。
+
+## 2026-10-23 20:25 用户决策 A + 轨迹可视化
+
+- 用户选择 **A**：接受"无 scorer blocker 的 CONCERN"进入轨迹训练；**G1 保持未冻结**（HASHES `audited=false/pending`），
+  等训练出真实成功 rollout 后补 C1 真实成功视频、再跑 flash→pro→GLM 拿 PASS/冻结。
+- 已生成 trunk-only 参考轨迹可视化：Part1 8 + Part2 6 = 14 个 mp4（`RoboCon/prep.d/videos/trunk_ref/`，不入库），
+  plan 在 `comp/eval/trunk_ref_plan.json`，说明 `comp/PLAN_TRUNK_REFERENCE.md`；等用户检查后再定 reward/开训。
+- 复验记录：flash V32–V36 均 CONCERN、无 scorer/judge 语义 blocker；pro/GLM 在最终 A 决策下暂缓，待真实成功证据齐备后一并复跑。

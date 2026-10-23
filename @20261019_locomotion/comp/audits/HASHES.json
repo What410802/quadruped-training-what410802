@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T20:22:24+08:00",
+  "generated_at": "2026-10-23T20:22:31+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -293,7 +293,7 @@
     },
     "extra_G1_SELFCHECK": {
       "path": "comp/audits/G1_SELFCHECK.md",
-      "sha256": "9df0cf368cb03e90df9ce0f63178d2fb967ab7f1be300bdef4428936c0cb00e2"
+      "sha256": "f014d8a904a80ad91336c6462ca33918b5d37ffb161aa9136e40822ede1bb9e8"
     },
     "extra_C1_CALIBRATION_REPORT": {
       "path": "comp/audits/C1_CALIBRATION_REPORT.md",
