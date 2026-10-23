@@ -5,67 +5,67 @@
         {
           "x": 5.7,
           "y": -10.6,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
           "x": 5.7,
           "y": -9.7,
-          "z": 0.42,
+          "z": 0.3,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
           "x": 5.7,
-          "y": -9.3,
-          "z": 0.27,
+          "y": -9.2,
+          "z": 0.24,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
           "x": 5.7,
-          "y": -8.7,
-          "z": 0.27,
+          "y": -8.8,
+          "z": 0.24,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
           "x": 5.7,
           "y": -8.2,
-          "z": 0.4,
+          "z": 0.32,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
           "x": 5.7,
           "y": -7.9,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part1 height_bar",
-      "frames": 466,
-      "duration_s": 9.3,
+      "frames": 334,
+      "duration_s": 6.66,
       "video": "../prep.d/videos/trunk_ref/p1_height_bar.mp4"
     },
     "high_wall": {
@@ -73,203 +73,263 @@
         {
           "x": 1.8,
           "y": -8.0,
+          "z": 0.42,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.54,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -7.55,
           "z": 0.45,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
           "x": 1.8,
-          "y": -7.5,
-          "z": 0.48,
-          "yaw": 90,
-          "pitch": 0.0,
-          "roll": 0.0,
-          "speed": 0.35,
-          "hold": 0.0
-        },
-        {
-          "x": 1.8,
-          "y": -7.15,
-          "z": 0.7,
-          "yaw": 90,
-          "pitch": -18,
-          "roll": 0.0,
-          "speed": 0.3,
-          "hold": 0.0
-        },
-        {
-          "x": 1.8,
-          "y": -6.85,
-          "z": 0.72,
+          "y": -7.2,
+          "z": 0.6,
           "yaw": 90,
           "pitch": -10,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.405,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -7.0,
+          "z": 0.66,
+          "yaw": 90,
+          "pitch": 0,
+          "roll": 0.0,
+          "speed": 0.338,
+          "hold": 0.0
+        },
+        {
+          "x": 1.8,
+          "y": -6.8,
+          "z": 0.66,
+          "yaw": 90,
+          "pitch": 0,
+          "roll": 0.0,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
           "x": 1.8,
           "y": -6.55,
-          "z": 0.5,
+          "z": 0.55,
           "yaw": 90,
-          "pitch": 8,
+          "pitch": 6,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
           "x": 1.8,
           "y": -6.0,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part1 high_wall",
-      "frames": 338,
-      "duration_s": 6.74,
+      "frames": 248,
+      "duration_s": 4.94,
       "video": "../prep.d/videos/trunk_ref/p1_high_wall.mp4"
     },
     "bridge_blocks": {
       "waypoints": [
         {
-          "x": 0.8,
-          "y": 0.0,
-          "z": 0.45,
-          "yaw": 0.0,
+          "x": 1.8,
+          "y": -1.5,
+          "z": 0.42,
+          "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
-          "x": 1.4,
-          "y": 0.0,
-          "z": 0.55,
-          "yaw": 0.0,
+          "x": 1.8,
+          "y": -1.0,
+          "z": 0.48,
+          "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
-          "x": 2.3,
-          "y": 0.0,
-          "z": 0.55,
-          "yaw": 0.0,
+          "x": 1.8,
+          "y": -0.4,
+          "z": 0.58,
+          "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
-          "x": 4.0,
+          "x": 1.8,
           "y": 0.0,
-          "z": 0.55,
-          "yaw": 0.0,
+          "z": 0.6,
+          "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.27,
           "hold": 0.0
         },
         {
-          "x": 5.5,
+          "x": 2.05,
           "y": 0.0,
-          "z": 0.55,
-          "yaw": 0.0,
+          "z": 0.6,
+          "yaw": 45,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.27,
           "hold": 0.0
         },
         {
-          "x": 6.4,
+          "x": 2.4,
           "y": 0.0,
-          "z": 0.45,
-          "yaw": 0.0,
+          "z": 0.6,
+          "yaw": 0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.338,
+          "hold": 0.0
+        },
+        {
+          "x": 3.3,
+          "y": 0.0,
+          "z": 0.6,
+          "yaw": 0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.405,
+          "hold": 0.0
+        },
+        {
+          "x": 4.5,
+          "y": 0.0,
+          "z": 0.6,
+          "yaw": 0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.405,
+          "hold": 0.0
+        },
+        {
+          "x": 5.4,
+          "y": -0.4,
+          "z": 0.6,
+          "yaw": -20,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.338,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -0.5,
+          "z": 0.6,
+          "yaw": 0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.203,
           "hold": 0.0
         }
       ],
       "title": "Part1 bridge_blocks",
-      "frames": 860,
-      "duration_s": 17.18,
+      "frames": 748,
+      "duration_s": 14.94,
       "video": "../prep.d/videos/trunk_ref/p1_bridge_blocks.mp4"
     },
     "bridge_bands": {
       "waypoints": [
         {
           "x": 5.7,
-          "y": -4.4,
-          "z": 0.45,
+          "y": -4.2,
+          "z": 0.42,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
           "x": 5.7,
-          "y": -3.8,
-          "z": 0.55,
+          "y": -3.75,
+          "z": 0.52,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
           "x": 5.7,
-          "y": -3.0,
-          "z": 0.55,
+          "y": -3.5,
+          "z": 0.6,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.297,
           "hold": 0.0
         },
         {
           "x": 5.7,
-          "y": -2.0,
-          "z": 0.55,
+          "y": -2.9,
+          "z": 0.6,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
           "x": 5.7,
-          "y": -1.2,
-          "z": 0.55,
+          "y": -2.25,
+          "z": 0.6,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
           "x": 5.7,
-          "y": -0.6,
-          "z": 0.45,
+          "y": -1.6,
+          "z": 0.6,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.405,
+          "hold": 0.0
+        },
+        {
+          "x": 5.7,
+          "y": -1.0,
+          "z": 0.6,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part1 bridge_bands",
-      "frames": 621,
-      "duration_s": 12.4,
+      "frames": 416,
+      "duration_s": 8.3,
       "video": "../prep.d/videos/trunk_ref/p1_bridge_bands.mp4"
     },
     "gravel_pit": {
@@ -277,57 +337,87 @@
         {
           "x": 3.6,
           "y": -12.5,
-          "z": 0.45,
-          "yaw": 0.0,
+          "z": 0.42,
+          "yaw": 0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
-          "x": 4.6,
+          "x": 4.3,
           "y": -12.5,
-          "z": 0.57,
-          "yaw": 0.0,
+          "z": 0.55,
+          "yaw": 0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
-          "x": 5.8,
+          "x": 4.8,
           "y": -12.5,
-          "z": 0.57,
-          "yaw": 90,
+          "z": 0.55,
+          "yaw": 0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
+          "hold": 0.0
+        },
+        {
+          "x": 5.25,
+          "y": -12.5,
+          "z": 0.55,
+          "yaw": 0,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.297,
+          "hold": 0.0
+        },
+        {
+          "x": 5.6,
+          "y": -12.4,
+          "z": 0.55,
+          "yaw": 45,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.27,
           "hold": 0.0
         },
         {
           "x": 5.8,
-          "y": -11.5,
-          "z": 0.57,
+          "y": -12.1,
+          "z": 0.55,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.297,
           "hold": 0.0
         },
         {
           "x": 5.8,
-          "y": -10.6,
-          "z": 0.45,
+          "y": -11.4,
+          "z": 0.55,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.405,
+          "hold": 0.0
+        },
+        {
+          "x": 5.8,
+          "y": -10.7,
+          "z": 0.42,
+          "yaw": 90,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part1 gravel_pit",
-      "frames": 695,
-      "duration_s": 13.88,
+      "frames": 538,
+      "duration_s": 10.74,
       "video": "../prep.d/videos/trunk_ref/p1_gravel_pit.mp4"
     },
     "t_stairs": {
@@ -335,71 +425,91 @@
         {
           "x": 1.8,
           "y": -5.4,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
           "x": 1.8,
           "y": -4.95,
-          "z": 0.55,
+          "z": 0.52,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
           "x": 1.8,
           "y": -4.6,
-          "z": 0.65,
+          "z": 0.62,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.22,
+          "speed": 0.297,
           "hold": 0.0
         },
         {
           "x": 1.8,
           "y": -4.2,
-          "z": 0.78,
+          "z": 0.76,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.297,
           "hold": 0.0
         },
         {
           "x": 1.8,
           "y": -3.85,
-          "z": 0.85,
+          "z": 0.84,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.18,
+          "speed": 0.243,
           "hold": 0.0
         },
         {
           "x": 1.8,
           "y": -3.5,
-          "z": 0.85,
+          "z": 0.84,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.15,
+          "speed": 0.203,
           "hold": 0.0
         },
         {
-          "x": 2.3,
+          "x": 1.9,
+          "y": -3.25,
+          "z": 0.84,
+          "yaw": 60,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.203,
+          "hold": 0.0
+        },
+        {
+          "x": 2.1,
+          "y": -3.3,
+          "z": 0.82,
+          "yaw": 30,
+          "pitch": 0.0,
+          "roll": 0.0,
+          "speed": 0.203,
+          "hold": 0.0
+        },
+        {
+          "x": 2.35,
           "y": -3.5,
-          "z": 0.8,
+          "z": 0.76,
           "yaw": 0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.243,
           "hold": 0.0
         },
         {
@@ -409,179 +519,179 @@
           "yaw": 0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
           "x": 3.3,
           "y": -3.5,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part1 t_stairs",
-      "frames": 838,
-      "duration_s": 16.74,
+      "frames": 688,
+      "duration_s": 13.74,
       "video": "../prep.d/videos/trunk_ref/p1_t_stairs.mp4"
     },
     "slope": {
       "waypoints": [
         {
-          "x": 5.2,
+          "x": 4.7,
           "y": -6.9,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
-          "x": 5.2,
+          "x": 4.7,
           "y": -6.5,
-          "z": 0.62,
+          "z": 0.56,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
-          "x": 5.2,
+          "x": 4.7,
           "y": -5.7,
-          "z": 0.62,
+          "z": 0.56,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
-          "x": 5.2,
+          "x": 4.7,
           "y": -4.9,
-          "z": 0.62,
+          "z": 0.56,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
-          "x": 5.2,
+          "x": 4.7,
           "y": -4.2,
-          "z": 0.62,
+          "z": 0.56,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
-          "x": 5.2,
+          "x": 4.7,
           "y": -3.8,
-          "z": 0.62,
+          "z": 0.56,
           "yaw": 90,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part1 slope",
-      "frames": 399,
-      "duration_s": 7.96,
+      "frames": 294,
+      "duration_s": 5.86,
       "video": "../prep.d/videos/trunk_ref/p1_slope.mp4"
     },
     "slalom": {
       "waypoints": [
         {
           "x": 1.8,
-          "y": -10.1,
-          "z": 0.45,
-          "yaw": 180,
+          "y": -10.0,
+          "z": 0.42,
+          "yaw": -75,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
-          "x": 1.7,
+          "x": 2.25,
           "y": -10.5,
-          "z": 0.45,
-          "yaw": 180,
+          "z": 0.42,
+          "yaw": -100,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
-          "x": 1.9,
+          "x": 1.35,
           "y": -11.5,
-          "z": 0.45,
-          "yaw": 180,
+          "z": 0.42,
+          "yaw": -110,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
-          "x": 1.7,
+          "x": 2.25,
           "y": -12.5,
-          "z": 0.45,
-          "yaw": 180,
+          "z": 0.42,
+          "yaw": -60,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
           "x": 1.55,
           "y": -12.75,
-          "z": 0.45,
-          "yaw": 135,
+          "z": 0.42,
+          "yaw": -160,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
-          "x": 2.2,
-          "y": -12.6,
-          "z": 0.45,
-          "yaw": 90,
+          "x": 2.25,
+          "y": -12.95,
+          "z": 0.42,
+          "yaw": -10,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
-          "x": 2.8,
-          "y": -12.5,
-          "z": 0.45,
-          "yaw": 90,
+          "x": 2.95,
+          "y": -12.85,
+          "z": 0.42,
+          "yaw": 15,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
           "x": 3.2,
           "y": -12.5,
-          "z": 0.45,
-          "yaw": 90,
+          "z": 0.42,
+          "yaw": 50,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part1 slalom",
-      "frames": 694,
-      "duration_s": 13.86,
+      "frames": 666,
+      "duration_s": 13.3,
       "video": "../prep.d/videos/trunk_ref/p1_slalom.mp4"
     }
   },
@@ -594,47 +704,47 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
           "x": 1.9,
           "y": 0.0,
-          "z": 0.5,
+          "z": 0.48,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
           "x": 2.4,
           "y": 0.0,
-          "z": 0.85,
+          "z": 0.95,
           "yaw": 0.0,
-          "pitch": -15,
+          "pitch": -12,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
-          "x": 2.8,
+          "x": 2.7,
           "y": 0.0,
-          "z": 0.85,
+          "z": 0.62,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": 0,
           "roll": 0.0,
-          "speed": 0.15,
-          "hold": 0.5
+          "speed": 0.203,
+          "hold": 0.0
         }
       ],
       "title": "Part2 high_platform",
-      "frames": 430,
-      "duration_s": 8.58,
+      "frames": 315,
+      "duration_s": 6.28,
       "video": "../prep.d/videos/trunk_ref/p2_high_platform.mp4"
     },
     "stairs": {
@@ -645,21 +755,21 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
           "x": 1.7,
           "y": 0.0,
-          "z": 0.55,
+          "z": 0.52,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.3,
+          "speed": 0.405,
           "hold": 0.0
         },
         {
@@ -669,33 +779,33 @@
           "yaw": 0.0,
           "pitch": -12,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
           "x": 2.6,
           "y": 0.0,
-          "z": 0.75,
+          "z": 0.78,
           "yaw": 0.0,
-          "pitch": -12,
+          "pitch": -8,
           "roll": 0.0,
-          "speed": 0.22,
+          "speed": 0.297,
           "hold": 0.0
         },
         {
-          "x": 3.2,
+          "x": 3.9,
           "y": 0.0,
-          "z": 0.78,
+          "z": 0.57,
           "yaw": 0.0,
-          "pitch": 0.0,
+          "pitch": 0,
           "roll": 0.0,
-          "speed": 0.2,
-          "hold": 0.3
+          "speed": 0.27,
+          "hold": 0.0
         }
       ],
       "title": "Part2 stairs",
-      "frames": 532,
-      "duration_s": 10.62,
+      "frames": 506,
+      "duration_s": 10.1,
       "video": "../prep.d/videos/trunk_ref/p2_stairs.mp4"
     },
     "slope": {
@@ -706,57 +816,57 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
           "x": 1.6,
           "y": 0.0,
-          "z": 0.55,
+          "z": 0.52,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
           "x": 2.2,
           "y": 0.0,
-          "z": 0.9,
+          "z": 1.05,
           "yaw": 0.0,
-          "pitch": -20,
+          "pitch": -18,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
-          "x": 2.8,
+          "x": 2.9,
           "y": 0.0,
-          "z": 1.15,
+          "z": 1.35,
           "yaw": 0.0,
-          "pitch": -20,
+          "pitch": -10,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.297,
           "hold": 0.0
         },
         {
-          "x": 3.1,
+          "x": 4.1,
           "y": 0.0,
-          "z": 1.2,
+          "z": 1.286,
           "yaw": 0.0,
           "pitch": 0,
           "roll": 0.0,
-          "speed": 0.15,
-          "hold": 0.3
+          "speed": 0.203,
+          "hold": 0.0
         }
       ],
       "title": "Part2 slope",
-      "frames": 520,
-      "duration_s": 10.38,
+      "frames": 548,
+      "duration_s": 10.94,
       "video": "../prep.d/videos/trunk_ref/p2_slope.mp4"
     },
     "high_wall": {
@@ -767,57 +877,57 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.4,
+          "speed": 0.54,
           "hold": 0.0
         },
         {
           "x": 2.0,
           "y": 0.0,
-          "z": 0.5,
+          "z": 0.48,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
           "x": 2.5,
           "y": 0.0,
-          "z": 0.72,
+          "z": 0.68,
           "yaw": 0.0,
-          "pitch": -22,
+          "pitch": -15,
           "roll": 0.0,
-          "speed": 0.28,
+          "speed": 0.378,
           "hold": 0.0
         },
         {
           "x": 2.9,
           "y": 0.0,
-          "z": 0.72,
+          "z": 0.68,
           "yaw": 0.0,
           "pitch": 0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
           "x": 3.3,
           "y": 0.0,
-          "z": 0.5,
+          "z": 0.48,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part2 high_wall",
-      "frames": 490,
-      "duration_s": 9.78,
+      "frames": 361,
+      "duration_s": 7.2,
       "video": "../prep.d/videos/trunk_ref/p2_high_wall.mp4"
     },
     "trench": {
@@ -828,11 +938,11 @@
         {
           "x": 0.0,
           "y": 0.0,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.45,
+          "speed": 0.608,
           "hold": 0.0
         },
         {
@@ -842,18 +952,18 @@
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.5,
+          "speed": 0.675,
           "hold": 0.0
         },
         {
           "x": 2.5,
           "y": 0.0,
-          "z": 0.6,
+          "z": 0.62,
           "yaw": 0.0,
           "pitch": -8,
           "roll": 0.0,
-          "speed": 0.55,
-          "hold": 0.1
+          "speed": 0.743,
+          "hold": 0.0
         },
         {
           "x": 2.9,
@@ -862,23 +972,23 @@
           "yaw": 0.0,
           "pitch": 0,
           "roll": 0.0,
-          "speed": 0.45,
+          "speed": 0.608,
           "hold": 0.0
         },
         {
           "x": 3.3,
           "y": 0.0,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.2,
+          "speed": 0.27,
           "hold": 0.0
         }
       ],
       "title": "Part2 trench",
-      "frames": 361,
-      "duration_s": 7.2,
+      "frames": 266,
+      "duration_s": 5.3,
       "video": "../prep.d/videos/trunk_ref/p2_trench.mp4"
     },
     "plum": {
@@ -889,11 +999,11 @@
         {
           "x": 0.4,
           "y": 0.4,
-          "z": 0.45,
+          "z": 0.42,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.35,
+          "speed": 0.472,
           "hold": 0.0
         },
         {
@@ -901,9 +1011,9 @@
           "y": 0.4,
           "z": 0.6,
           "yaw": 0.0,
-          "pitch": -8,
+          "pitch": -6,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
@@ -913,7 +1023,7 @@
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
@@ -923,24 +1033,25 @@
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.25,
+          "speed": 0.338,
           "hold": 0.0
         },
         {
           "x": 2.8,
           "y": 0.4,
-          "z": 0.65,
+          "z": 0.62,
           "yaw": 0.0,
           "pitch": 0.0,
           "roll": 0.0,
-          "speed": 0.15,
-          "hold": 0.3
+          "speed": 0.203,
+          "hold": 0.0
         }
       ],
       "title": "Part2 plum",
-      "frames": 463,
-      "duration_s": 9.24,
+      "frames": 333,
+      "duration_s": 6.64,
       "video": "../prep.d/videos/trunk_ref/p2_plum.mp4"
     }
-  }
+  },
+  "speed_scale": 1.35
 }

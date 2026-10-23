@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T20:22:31+08:00",
+  "generated_at": "2026-10-23T20:55:56+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -301,15 +301,15 @@
     },
     "extra_visualize_trunk_reference": {
       "path": "scripts/agent_scripts/visualize_trunk_reference.py",
-      "sha256": "1a25515912bbafb82d661c81b1d4b3abb61ffdd20a10ecd12aa056eb130b6298"
+      "sha256": "a071695c4bf6f7ccd82f7f99197655e5e9fd4e8161873c3f30755d2befc02217"
     },
     "extra_trunk_ref_plan": {
       "path": "comp/eval/trunk_ref_plan.json",
-      "sha256": "402b65b0ea4e78093c2b5dde0f6dcd8984799b29050417fe15b8be1846dfdaf8"
+      "sha256": "356a6167e80ec689fc1548f0ac90adaecb55b63531cd9136bb96733978360699"
     },
     "extra_PLAN_TRUNK_REFERENCE": {
       "path": "comp/PLAN_TRUNK_REFERENCE.md",
-      "sha256": "500934d5342765021a6cc45b8be50f4f3a08ceaa5d9d8cb240474e1f881d727b"
+      "sha256": "36e45fa92700f5216182d7ce661fa8421391db2e5ee5e110d4f44caf343562d4"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",
