@@ -94,7 +94,13 @@ def main() -> int:
                   "scripts/agent_scripts/comp_import_selftest.py",
                   "config/part1-course-events-pause.json",
                   "config/part1-course-events-abort.json",
-                  "config/part1-course-events-pause-timeout.json"):
+                  "config/part1-course-events-pause-timeout.json",
+                  "scripts/agent_scripts/build_calibration_bundle.py",
+                  "scripts/agent_scripts/make_calibration_label_sheet.py",
+                  "scripts/agent_scripts/check_calibration.py",
+                  "comp/eval/_calibration/records.jsonl",
+                  "comp/eval/_calibration/README_C1.md",
+                  "comp/eval/_calibration/index.html"):
         if not (ROOT / extra).is_file():
             continue
         out["objects"]["extra_" + (ROOT / extra).stem] = {"path": extra, "sha256": sha256(ROOT / extra)}

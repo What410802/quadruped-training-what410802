@@ -86,3 +86,21 @@
 - 修复 B1/B2/B3/B5/route 及后续 flash 发现的 anti-graze、soft-reset、T 台阶同 zone 合并等边界后，第 31 轮 GLM-5.3 复核：**PASS（无 scorer blocker）**，建议进入 C1 人工标定（C2 基线有条件：脚本 route 的 height_bar 跟踪鲁棒性需处理或声明非计分）。
 - 用法：`comp_review.py --backend zhipu --reviewer-model glm-5.3`；成功轮 usage 约 18 万 prompt tokens + 2.9 万 completion tokens（thinking 2.5 万），延迟约 2–20 分钟；失败/截断轮记录在 `.audit.json` 的 attempts 中。
 - 结论：GLM 轮值得保留——它发现了 19 轮 flash/pro 都没抓到的 zone/落地几何矛盾；后续 C1 标定集可继续用 glm-5.3 做独立复核。
+
+
+### C1 标定包（2026-10-23）
+
+生成（MyMonoRepo.d 下）：
+
+```bash
+pixi run python @20261019_locomotion/scripts/agent_scripts/build_calibration_bundle.py \
+  --out-dir ../prep.d/videos/calibration \
+  --records @20261019_locomotion/comp/eval/_calibration/records.jsonl
+pixi run python @20261019_locomotion/scripts/agent_scripts/make_calibration_label_sheet.py   # 盲标表 + index.html
+# 用户标注后：
+pixi run python @20261019_locomotion/scripts/agent_scripts/check_calibration.py
+```
+
+- 92 条记录 = 64 主记录（Part1 32 / Part2 24 / session 8）+ 28 rulecard；视频/图在 `RoboCon/prep.d/videos/calibration/`（不入库）。
+- 真实策略预扫描 48/48 fail（本地无障碍策略），成功侧靠 rulecard；C2 训练出成功策略后补真实成功视频。
+- `labels_template.csv` 是盲标表（不含 judge 结论）；`records.jsonl` 含 judge 结论，标注时不要先看。

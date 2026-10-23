@@ -1,7 +1,7 @@
 {
   "audited": false,
   "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
-  "generated_at": "2026-10-23T14:40:31+08:00",
+  "generated_at": "2026-10-23T15:44:09+08:00",
   "objects": {
     "contract_json": {
       "path": "comp/CONTRACT.json",
@@ -254,6 +254,30 @@
     "extra_part1-course-events-pause-timeout": {
       "path": "config/part1-course-events-pause-timeout.json",
       "sha256": "d01ee692fbea8fdd7b0ca7eb8947378af1b35b7109c0d7349d68a66bd20042d7"
+    },
+    "extra_build_calibration_bundle": {
+      "path": "scripts/agent_scripts/build_calibration_bundle.py",
+      "sha256": "273e7c39bc35bf3b44e71ef8a9383f8fa7f285d6da75596e5891c010958191ae"
+    },
+    "extra_make_calibration_label_sheet": {
+      "path": "scripts/agent_scripts/make_calibration_label_sheet.py",
+      "sha256": "146544093a16a51701ed51cce70c83a58fd0c1501a7e817250fef2f9094da71b"
+    },
+    "extra_check_calibration": {
+      "path": "scripts/agent_scripts/check_calibration.py",
+      "sha256": "cf898e3c5c701d7085ce6f6ecdcaeb6d3d7141799fe4f0f1c48f5dce3caa5725"
+    },
+    "extra_records": {
+      "path": "comp/eval/_calibration/records.jsonl",
+      "sha256": "641ec006aac8c90e37f0979578f019bc0288432c13621ff99672542cb4ecad1d"
+    },
+    "extra_README_C1": {
+      "path": "comp/eval/_calibration/README_C1.md",
+      "sha256": "3a3d5f7043c42038f71585ef20c739069f70bc70230c960ce25fc886b012928c"
+    },
+    "extra_index": {
+      "path": "comp/eval/_calibration/index.html",
+      "sha256": "57befc0e074dc771b5df340ef3f5a55de2302898c879e5376465bf03360e8011"
     },
     "evidence_part1_course_abort_drill": {
       "path": "comp/audits/evidence/part1_course_abort_drill.json",

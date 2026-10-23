@@ -1,0 +1,105 @@
+# C1 人工标定报告
+
+- records: 92，已加载标签: 92，覆盖率: 100.0%
+- 参与一致性比较: 0，一致: 0，一致率: 0.0%
+- 缺失标签: 92，标注错误: 0，judge-human 不一致: 0
+
+## 分项一致率
+
+| 项 | compared | agree | 一致率 |
+|---|---|---|---|
+
+## 缺失标签（trial_id 或字段）
+
+- cal-001:human_success
+- cal-002:human_success
+- cal-003:human_success
+- cal-004:human_success
+- cal-005:human_success
+- cal-006:human_success
+- cal-007:human_success
+- cal-008:human_success
+- cal-009:human_success
+- cal-010:human_success
+- cal-011:human_success
+- cal-012:human_success
+- cal-013:human_success
+- cal-014:human_success
+- cal-015:human_success
+- cal-016:human_success
+- cal-017:human_success
+- cal-018:human_success
+- cal-019:human_success
+- cal-020:human_success
+- cal-021:human_success
+- cal-022:human_success
+- cal-023:human_success
+- cal-024:human_success
+- cal-025:human_success
+- cal-026:human_success
+- cal-027:human_success
+- cal-028:human_success
+- cal-029:human_success
+- cal-030:human_success
+- cal-031:human_success
+- cal-032:human_success
+- cal-033:human_success
+- cal-034:human_success
+- cal-035:human_success
+- cal-036:human_success
+- cal-037:human_success
+- cal-038:human_success
+- cal-039:human_success
+- cal-040:human_success
+- cal-041:human_success
+- cal-042:human_success
+- cal-043:human_success
+- cal-044:human_success
+- cal-045:human_success
+- cal-046:human_success
+- cal-047:human_success
+- cal-048:human_success
+- cal-049:human_success
+- cal-050:human_success
+- cal-051:human_success
+- cal-052:human_success
+- cal-053:human_success
+- cal-054:human_success
+- cal-055:human_success
+- cal-056:human_success
+- cal-057:human_success
+- cal-058:human_success
+- cal-059:human_success
+- cal-060:human_success
+- cal-061:human_success
+- cal-062:human_success
+- cal-063:human_success
+- cal-064:human_success
+- cal-065:human_success
+- cal-066:human_success
+- cal-067:human_success
+- cal-068:human_success
+- cal-069:human_success
+- cal-070:human_success
+- cal-071:human_success
+- cal-072:human_success
+- cal-073:human_success
+- cal-074:human_success
+- cal-075:human_success
+- cal-076:human_success
+- cal-077:human_success
+- cal-078:human_success
+- cal-079:human_success
+- cal-080:human_success
+- cal-081:human_success
+- cal-082:human_success
+- cal-083:human_success
+- cal-084:human_success
+- cal-085:human_protocol_ok
+- cal-086:human_protocol_ok
+- cal-087:human_protocol_ok
+- cal-088:human_protocol_ok
+- cal-089:human_protocol_ok
+- cal-090:human_protocol_ok
+- cal-091:human_protocol_ok
+- cal-092:human_protocol_ok
