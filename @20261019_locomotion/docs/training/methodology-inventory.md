@@ -86,7 +86,7 @@
 | **HIM 完整版（estimator/对比学习）** | **是，第三优先（history 之后）** | 训练仓已实现但没训过；若 history 单独不够再上；成本中等、调参风险中 |
 | **教师蒸馏（height scan 特权教师 → depth 学生）** | **是，depth 线第四优先** | 对 depth 最有价值的方法学升级；需要先训教师（带 height scan 的 actor）再蒸馏；总成本约 3–4 h GPU + 半天工程 |
 | **深度 aux loss（从 CNN latent 预测 height scan/教师特征）** | **是，可与蒸馏并行或更早** | 训练-time 辅助头，部署不增加输入；实现约半天；文献支持（视觉 locomotion 系列） |
-| **depth warm-start（blind→depth）** | **是，已有** | 最终 depth 候选的标准起点；机制已验证；比从零省时间 |
+| **depth warm-start（blind→depth）** | **是，但要和 from-scratch 对照** | 机制已验证；但简单地形筛选里 warm-start@3000等效（12.83）≈ blind@3000（13.15）< depth-from-scratch（14.86）——不能预设 warm-start 更好；竞争地形批次两臂都跑 |
 | **深度分辨率 64×48 vs 32×32、latent 结构 A/B** | **做小 A/B（预算内）** | 成本 ×1.7，先 300–500 iter 筛选再决定 |
 | **mirror data augmentation** | **暂不** | mirror loss 0.1 先做；DA 需给 critic height scan 补镜像，收益不确定 |
 | **RNN/GRU 策略** | **不做** | 部署要维护 hidden state，收益与 history 重叠，优先级低于 history |

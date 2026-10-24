@@ -225,3 +225,20 @@ MuJoCo 深度相机 (64x48 fovy70 下俯15°, 0.1-3.0 m, 只看 geom group 0 的
 5. **为什么仍建议保留"从头训"的结论**：从头训是干净的基线；warm-start/蒸馏是"加速/更强的初始化"，必须用同预算对照证明其增益（单开关协议），不能只看最终分数。
 
 **推荐执行顺序**：3000 基线（进行中）→ warm-start 臂（1500 iter，从 blind 1500 checkpoint 初始化，CNN 零列）→ 分辨率 64×48 A/B → teacher-student 蒸馏（若前述仍不够）→ DR fine-tune（最后）。
+
+### 11.1 简单地形筛选结果（3000 iter + warm-start，2026-10-24 完成；只作筛选）
+
+两臂从 1500 checkpoint 各再 +1500 iter（blind 14:37:53→15:07:08、depth 13:51:45→14:37:53；均 exit=0、无 CUDA/NaN），随后排队 warm-start 臂（从 blind@1500 初始化、+1500 iter，15:07:44→15:54:08）。最终同口径（1024 envs、32×32、同 seed）下的末次指标：
+
+| run | Mean reward | episode 长度 | terrain level | illegal_contact | error_vel_xy | track_lin_vel | iter 成本 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| blind@1500 | 11.18 | 801.0 | 1.343 | 0.622 | 0.492 | 0.586 | 1.20 s |
+| depth@1500 | 12.31 | 826.4 | 1.460 | 0.522 | 0.449 | 0.622 | 1.88 s |
+| blind@3000 | 13.15 | 851.3 | 1.431 | 0.480 | 0.460 | 0.655 | 1.15 s |
+| depth@3000 | 14.86 | 910.3 | 1.546 | 0.314 | 0.437 | 0.735 | 1.82 s |
+| depth-warm@3000等效 | 12.83 | 846.3 | 1.520 | 0.543 | 0.459 | 0.601 | 1.83 s |
+
+- depth 对 blind 的领先在 3000 iter 仍在（reward +1.71、episode +7%、terrain +8%、illegal −35%），幅度不大；成本 ×1.59。
+- **warm-start（blind@1500→depth）只到 blind@3000 水平、低于 depth-from-scratch**：在简单地形上"从 blind 初始化"没有带来额外收益（可能是盲走局部最优 + CNN 列从零学习慢）；正式竞争地形批次里 warm-start 与 from-scratch 都要做对照，不能预设 warm-start 更好。
+- 这些结果**只作简单地形筛选/成本曲线**，不作最终裁决；决策口径见 [`competition-terrain-and-symmetry-plan.md`](competition-terrain-and-symmetry-plan.md)。
+- 视频：`prep.d/videos/cmp/cmp_{blind,depth}_3000.mp4`、`cmp_depth_warm_1500.mp4`；表格 JSON `prep.d/results/screening_simple_terrain_3000.json`；复核页 `prep.d/videos/review_20261024.html` §2.3。
