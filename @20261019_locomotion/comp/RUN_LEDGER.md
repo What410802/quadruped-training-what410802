@@ -25,6 +25,9 @@
 | `cmp_depth_500_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | 从零 | 1024 | 500 | 16:17（1.96 s/iter） | 训练仓 + depth task 改动 | — | — | — | TRAIN DONE（对照 depth 32×32；rollout 视频见 `prep.d/videos/cmp/`） |
 | `cmp_blind_1500_cont_20261024` | 2026-10-24 | `black-basic-obstacle` | resume `cmp_blind_500 model_499` | 1024 | +1000 | 19:47（1.20 s/iter） | 训练仓 + depth/safety 改动 | — | — | — | TRAIN DONE（总 1500 iter；reward 11.18/ep 801/terrain 1.34/illegal 0.62） |
 | `cmp_depth_1500_cont_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | resume `cmp_depth_500 model_499` | 1024 | +1000 | 30:59（1.88 s/iter） | 训练仓 + depth task 改动 | — | — | — | TRAIN DONE（总 1500 iter；reward 12.31/ep 826/terrain 1.46/illegal 0.52；500→1500 的领先缩小） |
+| `cmp_depth_3000_cont_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | resume `cmp_depth_1500_cont model_1498` | 1024 | +1500 | ~47 min 预计 | 训练仓 + depth task 改动 | — | — | — | RUNNING（总 3000 iter 长训；13:51:45 启动） |
+| `cmp_blind_3000_cont_20261024` | 2026-10-24 | `black-basic-obstacle` | resume `cmp_blind_1500_cont model_1498` | 1024 | +1500 | ~30 min 预计 | 同上 | — | — | — | RUNNING（同上预算对照） |
+| `cmp_depth_warm_1500_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | warm start from `cmp_blind_1500_cont model_1498`（CNN latent 列置零） | 1024 | 1500 | ~47 min 预计 | 训练仓 + `depth_warm_start.py` + runner env-var 入口 | — | — | — | QUEUED（3000 基线结束后自动跑；smoke 2/2 通过） |
 
 ## 单开关说明
 

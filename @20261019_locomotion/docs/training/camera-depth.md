@@ -182,3 +182,45 @@ MuJoCo 深度相机 (64x48 fovy70 下俯15°, 0.1-3.0 m, 只看 geom group 0 的
 3. **标准顺序**：nominal 任务学会 → 从强 checkpoint 续训做 DR fine-tune（降低学习率/单开关）来换泛化与实机鲁棒；DR 不是"从零学走路"的加速手段。
 4. **上 DR 的判据**：episode 长度接近上限（1000 步）、非平凡地形下不频繁终止、Part1/Part2 迁移评测有可见进展；然后按单开关顺序加：深度渲染噪声/量化 → 丢帧/延迟 1–2 帧 → 外参扰动（±2–3°、±1–2 cm）→ 分辨率/FOV 变化 → 遮挡；每项单独对照并记录（延续 `comp` 的单开关协议）。
 5. **并行对照**：blind 侧继续用同样预算跑，作为"深度到底贡献多少"的参照；等两边都进入稳定期，再决定是否值得把 DR 同时加到两条线，或只对 depth 线做。
+
+## 11. 3000-iter depth 长训：包含什么（2026-10-24 启动）
+
+目的：1500 iter 时 depth 相对 blind 的优势缩小到几个百分点（§7.1），需要更长预算判断这是"收敛到同一水平"还是"临时波动"。**只加训练预算、不加任何新机制**（单变量）。
+
+| 项 | 内容 |
+|---|---|
+| 训练臂 | `cmp_depth_3000_cont`：`black-basic-obstacle-depth`，从 `cmp_depth_1500_cont/model_1498.pt` resume **+1500 iter**（总 3000）<br>`cmp_blind_3000_cont`：`black-basic-obstacle`，从 `cmp_blind_1500_cont/model_1498.pt` resume **+1500 iter**（总 3000，同预算对照） |
+| 固定不变 | 同 seed=42、同 terrain generator（flat / smooth slope / stairs）、同奖励/终止/command curriculum、1024 envs、32×32 深度、obs 噪声 ±0.02、save-interval 100 |
+| 唯一变量 | actor 观测：45 维本体（blind） vs 45 + 64 维深度 CNN latent（depth） |
+| 预计成本 | depth ≈1500×1.88 s ≈47 min；blind ≈1500×1.20 s ≈30 min；合计约 80 min + 2 段 rollout 渲染（远程 5060 Ti） |
+| 产物 | 两臂末次指标（reward / episode 长度 / terrain level / illegal_contact / error_vel_xy / track_lin_vel）、0→3000 iter 曲线、10 s ×2 段 rollout 视频（`prep.d/videos/cmp/cmp_{blind,depth}_3000.mp4`）、`prep.d/results/cmp_blind_depth_3000.json`、review 页面更新、`comp/RUN_LEDGER.md` 两行 |
+| 判据 | 若 depth 在地形等级/非法接触等指标上把领先重新拉大（比如 ≥15% 且曲线持续分开）→ depth 值得继续投（warm-start/分辨率/DR）；若收敛到同水平或差距继续缩小 → **blind 作为比赛主线的默认**，depth 转向 warm-start/蒸馏/鲁棒性小实验而非堆预算 |
+| 不包含（下一步） | warm-start 臂（§12）、64×48 vs 32×32 分辨率、latent/结构消融、相机 DR（§9）、Part1/Part2 judge 迁移评测（需先做控制栈深度推理）、多 seed |
+
+注意：rsl_rl 的 resume 不恢复 RNG 状态（迭代计数与权重恢复），两个臂同语义，不影响单变量比较；仍是单 seed，结论按"信号"看，不当最终选型。
+
+**2026-10-24 启动状态**：两臂已于 13:51:45 启动（depth 先跑、blind 后跑），预计约 80 min 训练 + 视频渲染；结束后自动复位 GPU flag。之后排队跑 §12 的 warm-start 臂（`cmp_depth_warm_1500`：同一 blind 1500 checkpoint 初始化、+1500 iter、单开关）。
+
+## 12. depth 策略要不要用预训练/已有权重？（可行性，2026-10-24 评估）
+
+**现状：当前 depth 策略是从头训的**（随机初始化，没有加载任何预训练权重）：500 iter 从零 → resume 到 1500 → 正在 resume 到 3000。这是为保证 blind vs depth 的单变量对照（唯一差异是 actor 观测），也是文献里的标准做法（egocentric depth + proprio 端到端 RL 从零训练即可，见 Agarwal et al., CoRL 2022；Zhuang et al., Robot Parkour Learning, CoRL 2023）。
+
+**可行路线（按性价比排序）**：
+
+1. **✅ 推荐：从本仓的 blind PPO checkpoint warm-start（成本最低、最可控）**。已核对 checkpoint 结构（2026-10-24，`cmp_blind_1500_cont/model_1498.pt` vs `cmp_depth_1500_cont/model_1498.pt`）：
+   - blind actor：`mlp.0.weight (512, 45)`、`mlp.2 (256,512)`、`mlp.4 (128,256)`、`mlp.6 (12,128)`、`distribution.std_param (12)`；
+   - depth actor：`mlp.0.weight (512, 109)`，其余 MLP 层 shape 完全一致，多出 `cnns.camera.{0,2,4}` 三组卷积权重（16/32/64 通道）。
+   - 做法与仓库里**已有的 PPO→HIM warm start**（`alldog_mjlab/algorithms/him/warm_start.py`，注释明确写 "first Linear: W_him[:, :current_frame_dim] = W_ppo；W_him[:, current_frame_dim:] = 0；b_him = b_ppo；后续 Linear 逐 shape 严格复制"）完全同构：depth actor 第一层**前 45 列 = blind 权重、后 64 列（CNN latent）= 0**，bias/其余层/std 复制，CNN 保持随机初始化。由于 CNN 输出的列为 0，**初始策略严格等于 blind 策略**；随后 PPO 微调让 CNN 那 64 列从零长起来——即"先会走，再学会看"。
+   - **已实现并 smoke 通过（2026-10-24）**：训练仓新增 `src/alldog_mjlab/algorithms/depth_warm_start.py`，`BlackVelocityOnPolicyRunner` 增加环境变量入口 `BLACK_DEPTH_WARM_START=<blind checkpoint 绝对路径>`（初始化语义，不允许与 `--agent.resume` 同时使用；同时把 checkpoint 的 command-curriculum `vx range` 按 range 模式恢复，避免 warm-start 跑从初始 ±1 开始而 blind@3000 已到 ±2 的不公平）。
+   - smoke（32 envs、32×32、2 iter）实测日志：`actor_input 45->109 (copied 45 columns, zeroed 64 CNN-latent columns), actor keys copied 9, critic keys copied 12, CNN keys kept at init 6. optimizer / iteration / env state are NOT inherited.` → 2/2 iter 无报错，warm start 生效。
+   - 排队臂：3000 基线结束后自动跑 `cmp_depth_warm_1500`（从 blind 1500 checkpoint +1500 iter、1024 envs、32×32），并渲染 10 s 深度面板视频；对照口径 = blind@3000 / depth-scratch@3000 / depth-warm@3000（同样 +1500 追加预算）。
+2. **best.pt（HIMLoco，270 维 6 帧）**：不能直接加载——不同算法/框架（legged_gym → rsl_rl PPO）、不同观测契约（270 历史 vs 109 单帧；best.pt 本身就是 blind，看不到地形）；要用只能做**行为克隆/蒸馏**（先用 270 历史观测 teacher 生成动作标签，再训 depth student），中等工作量，而 best.pt 的 zero-shot 能力有限（Part1 0/8、平地 0.36 m/s），收益不确定。优先级低。
+3. **其他开放权重四足策略**：基本都是不同机器人/关节/观测/动作契约（Unitree/MIT 等），只能蒸馏或 retarget，工作量大、无直接可复用性；本仓真正"契约兼容"的预训练池就是 mjlab black PPO actors（flat_ft、p1、以及本次 blind 两臂）——所以 warm-start 首选它们，而不是外部权重。
+4. **论文方法论（可行、仓库已具备大半条件）**：
+   - **teacher-student / 特权信息蒸馏**：本仓 critic 已经有 259 维特权观测（72 本体 + 187 height scan）、terrain/command curriculum 也齐；可以训一个"带 height scan 的 sighted teacher actor"，再蒸馏成 depth student（DAgger/KL 或动作 MSE + PPO 微调）。参考 Miki et al., *Science Robotics* 2022（perceptive locomotion 的 teacher-student 路线）。
+   - **辅助自监督/跨模态目标**：用 depth 预测局部高度图/teacher latent（或 terrain 类别），作为 aux loss 帮 CNN 更快学到地形特征；或用 contrastive/自编码预训练 depth encoder 再冻结/微调。
+   - **感知课程 + DR**：先平地/简单地形、再难地形，后期加深度噪声/丢帧/延迟/外参（§9 的 DR 顺序）——文献里视感知鲁棒性为 second stage（Miki 2022、Agarwal 2022 均用课程化感知设置）。
+   - 这些方法都**不需要改机器人/控制栈**，只动训练仓；优先级在 warm-start 之后、按需引入，避免一次引入多个变量。
+5. **为什么仍建议保留"从头训"的结论**：从头训是干净的基线；warm-start/蒸馏是"加速/更强的初始化"，必须用同预算对照证明其增益（单开关协议），不能只看最终分数。
+
+**推荐执行顺序**：3000 基线（进行中）→ warm-start 臂（1500 iter，从 blind 1500 checkpoint 初始化，CNN 零列）→ 分辨率 64×48 A/B → teacher-student 蒸馏（若前述仍不够）→ DR fine-tune（最后）。
