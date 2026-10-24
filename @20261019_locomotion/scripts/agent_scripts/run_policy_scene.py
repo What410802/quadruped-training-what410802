@@ -54,8 +54,11 @@ class ScenePolicyRunner:
         policy_path: str,
         start: tuple[float, float, float, float],
         depth_config: dict | None = None,
+        history_length: int = 1,
     ) -> None:
         self.depth_config = depth_config
+        self.history_length = int(history_length)
+        self.history_frames: list[np.ndarray] = []
         self.depth_width = int(depth_config["width"]) if depth_config else 0
         self.depth_height = int(depth_config["height"]) if depth_config else 0
         spec = mujoco.MjSpec.from_file(scene)
@@ -147,7 +150,7 @@ class ScenePolicyRunner:
         gravity = R.T @ np.array([0.0, 0.0, -1.0])
         qpos = np.array(self.data.qpos[self.qpos_adr]) - self.q_default
         qvel = np.array(self.data.qvel[self.qvel_adr]) * 0.05
-        return np.concatenate([
+        frame = np.concatenate([
             command * np.array([2.0, 2.0, 0.25]),
             gyro * 0.25,
             gravity,
@@ -155,6 +158,15 @@ class ScenePolicyRunner:
             qvel,
             self.last_action,
         ]).astype(np.float32)
+        if self.history_length <= 1:
+            return frame
+        self.history_frames.append(frame)
+        if len(self.history_frames) > self.history_length:
+            self.history_frames = self.history_frames[-self.history_length :]
+        while len(self.history_frames) < self.history_length:
+            self.history_frames.insert(0, frame)
+        # Deployment convention: 6 x 45, newest frame first.
+        return np.concatenate(list(reversed(self.history_frames))).astype(np.float32)
 
     def step(self, command: np.ndarray) -> None:
         obs = torch.from_numpy(self.obs(command)).unsqueeze(0)

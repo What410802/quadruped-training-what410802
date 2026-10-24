@@ -49,8 +49,9 @@ class LevelRunner:
     """Policy + judge loop for one attempt at one Part 2 level."""
 
     def __init__(self, scene: str, policy: str, start: tuple[float, float, float, float],
-                 depth_config: dict | None = None) -> None:
-        self.runner = ScenePolicyRunner(scene, policy, start, depth_config=depth_config)
+                 depth_config: dict | None = None, history_length: int = 1) -> None:
+        self.runner = ScenePolicyRunner(scene, policy, start, depth_config=depth_config,
+                                        history_length=history_length)
         self.depth_config = depth_config
         self.model = self.runner.model
         self.data = self.runner.data
@@ -146,6 +147,7 @@ def main() -> None:
                     help="policy is a depth CNN actor: input (45, [1,1,H,W])")
     ap.add_argument("--depth-width", type=int, default=64)
     ap.add_argument("--depth-height", type=int, default=48)
+    ap.add_argument("--history-length", type=int, default=1)
     ap.add_argument("--levels", type=Path, default=LEVELS_JSON)
     ap.add_argument("--contract", type=Path, default=CONTRACT)
     ap.add_argument("--only", action="append", default=[], help="category or category_level e.g. trench_10cm")
@@ -194,7 +196,8 @@ def main() -> None:
         for _ in range(n_attempts):
             depth_config = ({"width": args.depth_width, "height": args.depth_height}
                             if args.depth else None)
-            lr = LevelRunner(scene, str(args.policy), start, depth_config=depth_config)
+            lr = LevelRunner(scene, str(args.policy), start, depth_config=depth_config,
+                            history_length=args.history_length)
             attempts.append(lr.run_attempt(entry, args.seconds))
         successes = sum(1 for a in attempts if a["judge"]["status"] == "success")
         cat = entry["category"]

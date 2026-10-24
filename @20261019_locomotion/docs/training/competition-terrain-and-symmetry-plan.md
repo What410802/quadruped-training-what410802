@@ -106,3 +106,19 @@
 备注：地形代理与官方场景仍有几何/材质/接触差异，最终裁决仍以 Part1/Part2 真实场景 judge 为准；接下来的实现顺序是 "历史帧结论 → blind-final 长训 → depth-final（warm-start/from-scratch）→ judge 对比"。
 
 **部署/评测注意（270 维历史策略）**：mjlab native history 的 270 维布局是 term-major、oldest→newest（`[command×6, ang_vel×6, gravity×6, joint_pos×6, joint_vel×6, actions×6]`，每个 term 内部按时间旧→新），与 `rl_sar`/`best.pt` 的 HIM 270 维约定（frame-major、newest→oldest）不同。若历史帧 A/B 胜出，导出 TorchScript 时需要把第一层 Linear 的列置换为部署约定（离线重排权重即可，不需要重训），本地 judge 的 `ScenePolicyRunner` 也需要按部署/评测约定做历史栈；否则只能用于训练侧评测。此工作在 A/B 结论后按需执行。
+
+### 8.1 历史帧 A/B 结果（800 iter，2026-10-24）
+
+两臂同地形/同奖励/同预算（1024 envs、800 iter、mirror 0.1、goal 奖励、从零；单 seed）：
+
+| arm | Mean reward | episode | terrain level | illegal_contact | goal_reached | vx_max | iter 成本 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| single-frame 45-D (`cmp_comp_blind_800`) | **9.72** | **730.2** | 0.310 | **0.761** | **8.7%** | 1.0 | 1.39 s |
+| 6-frame 270-D (`cmp_comp_hist_800`) | 8.08 | 639.5 | **0.347** | 0.954 | 4.7% | 1.2 | 1.44 s |
+
+结论：**单帧 45-D 在 800 iter 内明显更好**（reward +20%、episode +14%、非法接触低 20%、goal 成功率高 87%），历史帧臂只在地形等级/命令范围略高，但摔倒/触地多、任务成功少。考虑：
+- 历史帧需要额外部署/评测转换（native term-major → HIM frame-major 第一层列重排；已实现 `export_history_policy.py` 与本地 history runner，但增加链路风险）；
+- 单帧与已有 Part1/Part2 judge 链路、导出、rl_sar/quadruped_control 契约完全兼容；
+- 800 iter 不是历史帧的"完全体"（可能更长训练/更多历史帧会改善），但当前比赛窗口下不优先赌它。
+
+→ **blind-final / depth-final 都采用单帧 45-D actor**；历史帧保留为研究记录（`-hist` 任务与导出脚本仍在仓库），不进入最终选型。

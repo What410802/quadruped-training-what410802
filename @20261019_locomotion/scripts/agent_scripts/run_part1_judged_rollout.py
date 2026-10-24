@@ -73,10 +73,11 @@ def _render_final(runner: ScenePolicyRunner, name: str, status: str, out_dir: Pa
 
 
 def run_task(name: str, policy_path: str, scene_path: str, render_dir: Path | None = None,
-             depth_config: dict | None = None) -> dict:
+             depth_config: dict | None = None,
+             history_length: int = 1) -> dict:
     (xyz, yaw, command, seconds, note) = TASKS[name]
     runner = ScenePolicyRunner(scene_path, policy_path, (xyz[0], xyz[1], xyz[2], yaw),
-                               depth_config=depth_config)
+                               depth_config=depth_config, history_length=history_length)
     judge = Part1Judge(scene_path)
     _bind_judge(judge, runner)
     events = Part1EventJudge()
@@ -121,6 +122,8 @@ def main() -> None:
                         help="policy is a depth CNN actor: input (45, [1,1,H,W])")
     parser.add_argument("--depth-width", type=int, default=64)
     parser.add_argument("--depth-height", type=int, default=48)
+    parser.add_argument("--history-length", type=int, default=1,
+                        help="actor history frames (deployment layout: newest first)")
     args = parser.parse_args()
     names = args.task or sorted(TASKS)
     depth_config = ({"width": args.depth_width, "height": args.depth_height}
@@ -128,7 +131,8 @@ def main() -> None:
     results = []
     for name in names:
         render_dir = Path(args.render_dir) if args.render_dir else None
-        result = run_task(name, args.policy, args.scene, render_dir, depth_config=depth_config)
+        result = run_task(name, args.policy, args.scene, render_dir, depth_config=depth_config,
+                          history_length=args.history_length)
         results.append(result)
         st = result["judge"]["states"][name]
         print(f"{name:14s} status={st['status']:8s} score={st['score']:3d} "
@@ -141,6 +145,7 @@ def main() -> None:
         "scene": args.scene,
         "policy": args.policy,
         "depth": bool(args.depth),
+        "history_length": int(args.history_length),
         "total_score": total,
         "success_count": success,
         "attempts": results,
