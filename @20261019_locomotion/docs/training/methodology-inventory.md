@@ -11,7 +11,7 @@
 | **非对称 actor-critic（特权 critic）** | actor 45 维本体（depth 为 45+64 latent）；critic 259 维 = 72 本体 + 187 维 terrain height scan | 所有 PPO 任务默认；blind/depth 对照都跑在这套上 → 已证明可用 |
 | **地形课程（procedural terrain curriculum）** | `TerrainGeneratorCfg(curriculum=True, num_rows=6, difficulty_range=(0,0.6))`，flat/smooth slope/stairs | 1500 iter 里 terrain level mean 从 0 爬到 ~1.46（depth）/1.34（blind）→ 已证明在推进；覆盖不足的缺陷见竞争地形计划 |
 | **命令课程（command curriculum）** | `Curriculum/command`：vx 范围从 ±1 扩到 ±2 m/s、high/low buffer 自适应 | 1500 iter 时 `vx_max=2.0`；tracking reward 随命令范围上升 → 已证明 |
-| **domain randomization** | `DomainRandomizationParams`：摩擦 0.2–1.25、payload −1~+2 kg、COM ±5 cm、kp/kd ×0.9–1.1、encoder bias ±0.015、每 16 s push ±1 m/s；train 生效、play 移除 | 已在所有训练 run 生效（baseline 级）；未做"是否该加/减"的单独 A/B |
+| **domain randomization** | `DomainRandomizationParams`：摩擦 0.2–1.25、payload −1~+2 kg、COM ±5 cm、kp/kd ×0.9–1.1、encoder bias ±0.015、push ±1 m/s；train 生效、play 移除。**2026-10-24 小修：push 间隔从固定 16 s 改为 per-env 随机 6–20 s**（原固定 16 s 在 20 s episode 里恰好每回合同相位一次，策略可能学到"日程"且大部分时间没有扰动；随机后部分 env 无 push、部分 1–2 次） | 已在所有训练 run 生效（baseline 级）；push 随机化后的 run 从竞争地形批次开始；未做"是否该加/减"的单独 A/B |
 | **奖励塑形（当前 11 项）** | tracking_linear 1.0、tracking_angular 0.5、lin_vel_z −2、ang_vel_xy −0.05、orientation −0.2、base_height −1、foot_clearance −0.01、dof_acc −2.5e-7、joint_power −2e-5、action_rate −0.01、smoothness −0.01 | 已使用；foot_clearance 有 A/B 证据（§3.9） |
 | **mirror loss 对称约束 + foot_clearance** | `symmetry.py` + `BLACK_MIRROR_LOSS_COEFF`；旧 A/B：mirror 0.1 把 RL−RR 前后差 0.255→0.047 m，mirror+clearance 到 0.006 m 且不拖腿 | **flat 上已验证**；当前 P1/depth 运行未开（默认 0）→ 竞争地形训练默认开 0.1 |
 | **安全网（数值稳定性）** | reward clamp ±50、return clamp、actor obs clip ±100、action clip ±100、`bad_sim_state` 终止 | 修复 Warp CUDA 710 的 200-iter 验证（training-health §7）→ 已证明 |
@@ -75,3 +75,30 @@
 6. 最后做深度 DR/分辨率 A/B；多 seed 只用于最终 winner 复验。
 
 > 结论：我们已用的方法（特权 critic、课程、DR、奖励塑形、foot clearance、mirror、安全网、depth CNN、warm-start）覆盖了基线和视觉主线；**还没用的高价值弹药是"历史帧/HIM""任务成功奖励""教师蒸馏/深度辅助监督""竞争地形"**。在最终裁决前应至少把前四项进入实验，否则 blind/depth 的比较仍是在"弱方法论"上做。
+
+## 6. 现在是否值得引入（2026-10-24 逐项结论）
+
+| 弹药 | 现在引入？ | 理由/成本 |
+|---|---|---|
+| **竞争地形代理 + 任务成功奖励** | **是，第一优先** | 决定训练分布和奖励与比赛得分对齐；不做的话后面所有比较都建立在错误环境上；地形约 1–1.5 天，任务奖励与地形一起做 |
+| **历史帧（blind 45→270；depth 45×6+64）** | **是，第二优先** | 纯配置改动（MjLab native `history_length`），部署契约 270 维已被 rl_sar/quadruped_control 支持；预计对 rough/障碍稳定性提升；A/B 成本 2×~1–2 h |
+| **mirror loss 0.1 + foot_clearance** | **是，与历史帧同批** | 已有 flat A/B 证据，改动只是环境变量；回归四个对称性指标即可；几乎零代码 |
+| **HIM 完整版（estimator/对比学习）** | **是，第三优先（history 之后）** | 训练仓已实现但没训过；若 history 单独不够再上；成本中等、调参风险中 |
+| **教师蒸馏（height scan 特权教师 → depth 学生）** | **是，depth 线第四优先** | 对 depth 最有价值的方法学升级；需要先训教师（带 height scan 的 actor）再蒸馏；总成本约 3–4 h GPU + 半天工程 |
+| **深度 aux loss（从 CNN latent 预测 height scan/教师特征）** | **是，可与蒸馏并行或更早** | 训练-time 辅助头，部署不增加输入；实现约半天；文献支持（视觉 locomotion 系列） |
+| **depth warm-start（blind→depth）** | **是，已有** | 最终 depth 候选的标准起点；机制已验证；比从零省时间 |
+| **深度分辨率 64×48 vs 32×32、latent 结构 A/B** | **做小 A/B（预算内）** | 成本 ×1.7，先 300–500 iter 筛选再决定 |
+| **mirror data augmentation** | **暂不** | mirror loss 0.1 先做；DA 需给 critic height scan 补镜像，收益不确定 |
+| **RNN/GRU 策略** | **不做** | 部署要维护 hidden state，收益与 history 重叠，优先级低于 history |
+| **渲染级深度 DR（噪声/丢帧/延迟/外参）** | **最后做** | sim-only 比赛优先级低于"能不能过障碍"；等地形/课程稳定后再 fine-tune |
+| **AMP/运动先验、gait 参数化、ViT** | **不做** | 得分收益低、工期高；答辩可作背景 |
+| **多 seed** | **只在最终 winner 复验** | 用于降低偶然性，不作为提分手段 |
+
+## 7. 术语澄清（对应本轮提问）
+
+- **warm-start 臂**：指"用 blind PPO 的 actor 权重初始化 depth actor"的对照 run（首层前 45 列复制、CNN latent 64 列置零、critic/action std 复制、command curriculum range 恢复）。当前排队的 `cmp_depth_warm_1500` 只是**简单地形上的机制验证 + 筛选数据**；最终 depth 候选会是"blind-final（竞争地形/全方法论）→ depth warm-start → 竞争地形续训"，因此**排队的 warm-start 臂会被全方法论长跑取代**，只保留其机制验证价值（若 GPU 冲突可取消）。
+- **竞争地形代理**：不是直接拿 Part1/Part2 的 MJCF 场景训练，而是用 mjlab terrain generator 程序化生成大量"障碍类型/尺寸与比赛一致、但随机布局"的地形 patch（绕柱/桥/限高杆/高墙/砂砾/T 台阶/梅花桩/沟壑），以便有随机化与课程；真实 Part1/Part2 场景只用于最终 judge 评测。
+- **任务成功奖励**：当前训练任务是"速度跟踪"基线——没有起点/终点/障碍成功定义；对比赛级任务，"过桥/穿限高杆/到终点"这类稀疏成功奖励是**基本要求但当前缺失**，所以列入第一优先级与竞争地形一起做（不是我们忘了一个开关，而是任务定义还没升级）。
+- **teacher-student 蒸馏**：有意义的做法不是"从 blind 蒸馏"（blind 没有视觉信息，学生只会模仿盲走），而是**特权教师**——给 actor 加 height scan（或 heightmap 等训练期特权量）训一个"看得见地形"的教师，再蒸馏到 depth 学生（DAgger/KL/动作 MSE + PPO 微调）。和"从零学"比：蒸馏提供稠密监督、通常更省样本；和"续训已有 depth"比：如果已有 depth 是在别的分布上训的，不如从 blind-final warm-start 或从特权教师蒸馏。
+- **aux loss（辅助损失）**：训练期额外加在深度 CNN 上的监督项，例如让 CNN latent 预测局部高度图/height scan、预测教师 latent、或做重建/对比学习；只用于训练，部署时去掉辅助头，不改变 actor 输入。它能让 CNN 更快学到"地形相关特征"，尤其当 depth 线落后 blind 时值得加。
+- **push 随机化**：mjlab interval event 会在 reset/每次触发后按 `interval_range_s` 逐 env 采样，原先 `(16,16)` 等于固定日程；已改为 `(6,20)`，当前正在跑的 run 不受影响（配置在进程启动时读取），从竞争地形批次起生效。
