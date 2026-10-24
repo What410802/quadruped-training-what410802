@@ -21,10 +21,10 @@
 ## 1. 当前定位
 
 - **主目标**：2026-11-04 队内赛（障碍赛 900 + 能力测试 1300，占 70%；7 分钟答辩 30%）。真值见 [`reference/team-race-2026.md`](reference/team-race-2026.md)。
-- **路线位置**：**P0 已完成（2026-10-22）**；**P1 进行中**：两轮训练完成、当前没有训练进程；下一步先评估/调课程，等用户指示再开下一轮。
+- **路线位置**：**P0 已完成（2026-10-22）**；**P1 数值稳定性已修（2026-10-24，见 training-health §7），P1 质量 gate 仍未过**；**C2 视觉主线已开工**：深度相机 task 已进训练仓、obs/CNN 管线与成本/100-iter 稳定性 smoke 见 [`training/camera-depth.md`](training/camera-depth.md)。当前没有训练进程。
 - **P0 范围**：场地/判定/手动状态机/评测/审计/演示链路闭环；P0 不包含训练。训练机已恢复（RTX 5060 Ti 16 GB），P1 开始使用。
 - **控制仓库独立**：`quadruped_control` 是独立 C++/ROS 仓库；个人 fork [`What410802/quadruped_control`](https://github.com/What410802/quadruped_control) 已推送 `f2b37dc`；本地 `origin`=个人 fork、`upstream`=`N-W-wolf/quadruped_control`、`local_readonly`=原只读副本。**暂不切 coverMoon**：它比团队 fork 超前 17 个提交/190 文件，但 P1 训练不依赖控制仓库；P1 baseline 稳定后再在独立分支 rebase 到 `coverMoon/quadruped_control` 并重跑 Pixi 构建/测试。
-- **当前策略**：`flat-ft-2500` 是唯一 baseline；足端 clearance 约 0.022 m，几乎拖地；不能把 zero-shot 障碍结果当验收。
+- **当前策略**：本地训练 baseline 仍是 `flat-ft-2500`（足端 clearance 约 0.022 m，几乎拖地）；新增外部 blind baseline `best.pt`（HIMLoco，平地 cmd 0.5 实测 vx=0.36 m/s、稳定不摔；Part2 低/中档在时间放宽后 8/20 档成功，见 [`training/him-best-zero-shot.md`](training/him-best-zero-shot.md)）。两者都**不能**把 zero-shot 障碍结果当验收。
 
 
 ## 2. P0 完成摘要（只列验收范围）
@@ -38,12 +38,13 @@
 ## 3. P1 当前阶段
 
 - **已完成**：训练仓 `black-basic-obstacle` task（flat + smooth slopes + stairs）；两轮 4096-env 训练（resume from flat-ft），各约 1 h 11 min；P1 policy 导出并做 Part 1 迁移诊断。**当前没有训练进程**。
+- **2026-10-24 数值稳定性修复**：从 `model_5496` resume 的 4 次 run 在 100 iter 内崩 Warp CUDA 710；插桩定位为“坠落状态 -> 动作经 last-action 观测自激 -> 超大动作 -> NaN”，已装三项安全网（actor obs clip ±100 与部署一致、`clip_actions=±100` 与部署一致、`bad_sim_state` 极端状态终止），200-iter resume smoke 无 CUDA/NaN；详见 [`training/training-health.md`](training/training-health.md) §7。**P1 质量 gate 仍为未通过**（训练 reward 不等于通过率）。
 - **当前结论**：第一轮桥/限高杆有改善，第二轮训练地形 level 略升但 Part 1 迁移退化；不能只靠续训，也不能把训练 reward 当通过率。详见 [`training/p1-basic-obstacle.md`](training/p1-basic-obstacle.md)。
 - **下一步（等用户指示）**：先做训练环境评估和课程/奖励调整；再决定 P1 第三轮训练或转向 Part 1 专项。
 - **后续顺序**：slope/stairs 稳定 → T 台阶/高台 10–20 cm → Part 1 limit_bar/bridge/high_wall 专项 → history/camera。
 - **P1 gate**：不在本文件展开，见 [`training/eval-protocol.md`](training/eval-protocol.md) 与 [`training/training-plan.md`](training/training-plan.md)。
 
-## 4. 最近验证（2026-10-22）
+## 4. 最近验证（2026-10-22 ~ 2026-10-24）
 
 - P0 自检：`check_plum_geometry` / `check_state_machine` / `check_part2_ability_tasks` / `part1_event_judge` / `audit_deployment` / docs checker 全部通过。
 - **比赛迭代工作流落地（comp/）**：`comp/` 契约（CONTRACT.json，8+6 障碍）、评测协议草稿、诊断评测导入（3 个 `diagnostic` 行、均 0 分）、记分板 dry-run（`comp/SCOREBOARD.md`）、合规检查 PASS（45 维 actor / ±20 N·m 在 25/60 内）、审计哈希登记（`comp/audits/HASHES.json`）。**G1 judge 独立审计已完成：FAIL**（见下条）；工具在 `scripts/agent_scripts/comp_*.py`（`--self-test` 通过）。见 [`comp/STATUS.md`](../comp/STATUS.md)。
@@ -54,6 +55,9 @@
 - **P1 第一轮训练完成**：`black-basic-obstacle`（flat + smooth slopes + stairs，4096 envs × 1500 iter，resume from flat-ft）耗时 **1 h 11 min**，checkpoint `model_3997.pt`；terrain level 有推进但非法接触率仍高。导出 P1 policy 在 Part 1 迁移诊断：桥/限高杆改善，slope/T stairs 仍未通过，**P1 未完成**。详见 [`training/p1-basic-obstacle.md`](training/p1-basic-obstacle.md) 与 `prep.d/videos/part1_p1_basic_obstacle_contact.png`。
 - **P1 第二轮续训完成**：`model_5496.pt`，1 h 11 min；训练地形 level 略升（mean≈1.62）但非法接触仍高；本地 Part 1 迁移变差（bands tilt≈38.7°、height 碰杆、T fail）。P1 **未完成**；不再盲目续训，下一步先做训练环境评估与课程/奖励调整。两轮训练共约 2 h 22 min；P1 总估 3–4 h。contact sheet：`prep.d/videos/part1_p1_cont_contact.png`。
 - rl_sar 后备自检：`check_rl_sar_fallback.sh` 的 input_map/command_limit 两项均 `all checks passed`；完整 `check_walk` 未重跑（需 GUI）。
+- **2026-10-24 Warp 710 根因 + 修复**：对照实验（E1 resume `model_3997`、E5 resume `model_5400` 各 100 iter 干净；probe 在 resume `model_5496` 的第一个 rollout 抓到动作在单 env 内 13→135 几何增长而 `|qvel|` 仍正常）→ 判定为动作反馈自激而非物理先爆；三项安全网后 200 iter 无 CUDA/NaN。见 [`training/training-health.md`](training/training-health.md) §7。
+- **2026-10-24 `best.pt` zero-shot 评测**：契约自检通过；平地可用；Part1 0/8（诊断口径）、Part2 时间放宽后 8/20 档成功（diag 300/1300）。→ 可作 blind fallback / teacher / 对照，不可直接 fine-tune。见 [`training/him-best-zero-shot.md`](training/him-best-zero-shot.md)。
+- **2026-10-24 深度相机 task**：`black-basic-obstacle-depth`（64x48 depth、forward 15° down、obs group `camera`、actor = 45 proprio + CNN latent 64、critic 不变 259）已在训练仓注册并跑通 PPO plumbing；成本 smoke 数字见 [`training/camera-depth.md`](training/camera-depth.md)。blind task 未改动，保留 fallback。
 - 控制仓库 fork：`https://github.com/What410802/quadruped_control`，P0 分支 `main@f2b37dc` 已推送，未合并 upstream；部署栈取舍（rl_sar vs quadruped_control）见 [`reference/deployment-stack-comparison.md`](reference/deployment-stack-comparison.md)。
 
 ## 5. 待决 / 风险
@@ -65,6 +69,8 @@
 - **部署栈**：主栈 `quadruped_control`；`rl_sar` 保留为 P2 前保底/参考，不在 P1 并行维护；后备 runbook 见 [`reference/rl-sar-fallback.md`](reference/rl-sar-fallback.md)。
 - **模型/窗口对齐**：理想 MIT 公式一致，但 control 无死区/延迟/噪声且 Black 模型默认参数/限幅不同；P2 前做 legacy-black 对齐 profile。旧自建窗口 `viewer.hpp` 可复用但需适配，P1 暂用官方 Simulate。详见 [`reference/motor-model-and-viewer.md`](reference/motor-model-and-viewer.md)。
 - **控制仓库升级**：`coverMoon/quadruped_control` 是团队 fork 的上游，领先 17 commits，含 target-expiry 修复、RL 布局、测试、地图/实机计划；当前 P0 fork 可用，P1 期间不切，P2/部署前做一次受控 rebase。
+- **2026-10-24 决策/风险**：C2 视觉主线先按「原始深度 -> CNN（方案 B）」做最小可用管线（直接用 mjlab 1.6 原生 2-D obs group + rsl_rl CNNModel，不引入地面平面假设；局部高度图方案 A 留作成本/学习不稳定时的备选）；相机 DR（噪声/丢帧/延迟/外参）、blind vs depth A/B、部署侧 depth 推理 wrapper 都未做，见 [`training/camera-depth.md`](training/camera-depth.md) §6。
+- **数值稳定性是“已修症状”不是“已根治”**：安全网没有改 reward/课程设计，长跑前仍需 run card + 中程检查（training-health §7.6）。
 - **没有阻塞 P1 启动的决策**；若出现奖励/课程取舍或资源冲突再停下。
 
 ## 6. 关键指针

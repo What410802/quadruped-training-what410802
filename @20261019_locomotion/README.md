@@ -18,6 +18,7 @@
 | C++ 视窗：复用 `@20260927_motor` 里自写的 GLFW + mjv/mjr 窗口，本任务先用它看场景，后续接策略推理 | 已拷贝源码并加最小可运行程序 | [`cpp/`](cpp) |
 | TensorBoard：训练仓库已支持 `--agent.logger tensorboard`；记录方式与查看方式已写 | 已定 | [`docs/environment.md`](docs/environment.md) |
 | 文献与开源实现索引：论文清单 + 可复用仓库/许可 | 已整理初版 | [`docs/reference/literature.md`](docs/reference/literature.md)、[`docs/reference/open-source.md`](docs/reference/open-source.md) |
+| C2 视觉主线：深度相机 task（mjlab 1.6 + mujoco_warp RenderContext）、`best.pt` zero-shot 评测、Warp 710 数值稳定性修复 | 管线 + 成本/100-iter 稳定性 smoke；对照训练未开 | [`docs/training/camera-depth.md`](docs/training/camera-depth.md)、[`docs/training/him-best-zero-shot.md`](docs/training/him-best-zero-shot.md)、[`docs/training/training-health.md`](docs/training/training-health.md) §7 |
 
 ## 怎么跑
 
@@ -124,6 +125,8 @@ cd ~/rc_work/nwwolf_mjlab_training_release
 - 现有课程/奖励基线：[`docs/training/training-baseline.md`](docs/training/training-baseline.md)
 - 实验记录（run 表、评测、gate、步态/yaw）：[`docs/training/experiments.md`](docs/training/experiments.md)
 - 评测协议与 G1–G5：[`docs/training/eval-protocol.md`](docs/training/eval-protocol.md)
+- 外部 HIMLoco `best.pt` zero-shot 评测：[`docs/training/him-best-zero-shot.md`](docs/training/him-best-zero-shot.md)
+- 深度相机接入（C2 视觉主线）：[`docs/training/camera-depth.md`](docs/training/camera-depth.md)
 - 训练健康检查（数值不稳定、地形课程）：[`docs/training/training-health.md`](docs/training/training-health.md)
 - 每轮训练记录清单：[`docs/training/training-record-checklist.md`](docs/training/training-record-checklist.md)
 - 视频可视化（场景/节点、图例、代码分布）：[`docs/training/visualization.md`](docs/training/visualization.md)

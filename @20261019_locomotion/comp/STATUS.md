@@ -1,17 +1,16 @@
 # 比赛工作流状态
 
 > 只记：当前阶段、下一步、阻塞、最近一次审计结论。进展事实在 `../docs/status.md`，本文件只服务工作流门禁。
-> 更新时机：阶段切换、门禁结论变化、出现阻塞。最后更新：2026-10-23。
+> 更新时机：阶段切换、门禁结论变化、出现阻塞。最后更新：2026-10-24。
 
 ## 0. 当前
 
-- **stage**：**C1 完成（PASS）**；G1 评测器复验进行中（BYOK flash→pro→GLM；Codex 未调用）。
+- **stage**：**C1 完成（PASS）**；G1 评测器仍**未冻结**（用户决策 A）；**C2 训练线重开（2026-10-24）**：Warp 710 已修（见 `../docs/training/training-health.md` §7），视觉主线的 depth task 已进训练仓，blind baseline `best.pt` 已 zero-shot 评测。
 - **deadline**：2026-11-04 晚。
-- **next**：用户 2026-10-23 选 **A**：G1 保持未冻结（`audited=false/pending`），先做参考轨迹训练；
-  trunk-only 可视化已生成（`prep.d/videos/trunk_ref/`），等用户检查；确认后定 reward 并开训。G1 待训练出真实成功 rollout 后补 PASS/冻结。
-- **blockers**：无已确认 scorer blocker。G1 残余：砂砾坑真实坑体/碎木未 recut；Part2 官方能力场未逐档核对；
-  限高杆 under-bar 用 base z 代理；真实成功 rollout 缺失（本地策略全失败）；正式手动 3 次整场演练视频未补；
-  course runner 为脚本化诊断链路；slalom 终点圆与最后一根杆在场景显示上重叠（judge 已要求离开最后一杆半径后才算终点）。
+- **next**：① 视觉主线下一步是 blind vs depth 的 100–500 iter 课程对照（depth task 的 100-iter 稳定性 smoke 见 `../docs/training/camera-depth.md` §5）；② P1 数字虽已稳，但质量 gate 未过，需要课程/奖励评估而不是盲目续训；③ G1 待训练出真实成功 rollout 后补 PASS/冻结。
+  当前没有训练进程、远程机 flag=0、可关机。
+- **blockers**：无已确认 scorer blocker。G1 残余同前（砂砾坑真实坑体/碎木未 recut；Part2 官方能力场未逐档核对；限高杆 under-bar 用 base z 代理；真实成功 rollout 缺失；正式手动 3 次整场演练视频未补；course runner 为脚本化诊断链路；slalom 终点与最后一杆显示重叠）。
+  **新增观察（不阻塞）**：Part2 `high_wall` 的 `max_z ≥ max(wall_h+0.1, 0.55)` 对“跨过而非爬上墙”的通过方式偏保守（`best.pt` 10 cm 档实测越墙仍判失败）；是否改判属 G1/协议范围，需审计后再动。
 
 ## 1. 门禁状态
 
@@ -38,6 +37,7 @@
 
 ## 3. 最近审计
 
+- 2026-10-24：**训练数值稳定性插桩审计（executor 侧，非 Type-B）**：Warp 710 根因定位为动作反馈自激（`training-health.md` §7）；修复后 200 iter smoke 无 CUDA/NaN。**这不是 G1 审计**，judge/评测器未变。
 - 2026-10-23：**C1 人工标定 PASS**（92/92 标签、一致率 100%；56 条真实 rollout 为用户盲标，rulecard/session 为语义确认，见 `eval/_calibration/LABELS_PROVENANCE.md`）。
 - C1 发现并修复 2 个 judge 语义错误：砂砾坑 L 形短边（原 ymin/ymax 假成功）、限高杆未校验"从下方通过"；
   另修复 slalom 终点与最后一杆重叠的潜在假成功、course pause/resume 跳 substep、诊断起点在 zone 内等。
@@ -55,7 +55,10 @@
 | Part 2 evaluator（六类、参数化 level、4 attempts official） | 已实现 | `comp_part2_judge.py`、`run_part2_judged_eval.py` |
 | 评测产物导入/计分/证据链校验 | 已实现 | `comp_import_*.py`、`comp_score.py` |
 | C1 人工标定包 | **PASS** | `eval/_calibration/`（92 条记录 + 56 视频 + 28 rulecards） |
-| G1 BYOK 复验 | 进行中 | `audits/BYOK_JUDGE_V3*_ACCEPT.*`、`G1_SELFCHECK.md` |
+| G1 BYOK 复验 | 暂停（用户决策 A，G1 暂不冻结） | `audits/BYOK_JUDGE_V3*_ACCEPT.*`、`G1_SELFCHECK.md` |
+| C2 blind baseline（`best.pt` zero-shot） | 诊断完成 | `prep.d/results/him_best_part{1,2}_v2[_extended].json`；结论见 `../docs/training/him-best-zero-shot.md` |
+| C2 训练数值稳定性（Warp 710） | **已修（200 iter smoke）** | 远程训练仓 `utils/anomaly_probe.py`、`terminations.bad_sim_state`；`../docs/training/training-health.md` §7 |
+| C2 深度相机 task + 成本 smoke | 管线跑通；成本 smoke（25 iter × 4 配置）与 100-iter 稳定性 smoke 见 `../docs/training/camera-depth.md` §5 | 远程训练仓 `camera_depth.py`、`black-basic-obstacle-depth`；`../docs/training/camera-depth.md` |
 
 ## 5. 下一步
 

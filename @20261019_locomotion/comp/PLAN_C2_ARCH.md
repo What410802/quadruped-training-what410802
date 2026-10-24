@@ -37,3 +37,12 @@ Part1 是 8 障碍整场（手动遥控计分），Part2 是 6 类能力项（�
 - 训练 reward 用仿真物理量 + 参考跟踪/进度/约束，**不依赖 judge**；
 - judge 只用于 C2 评测/诊断和最终分数；C1 已完成，G1 暂不冻结（用户决策 A）。
 - 统一模型/专项模型的选择由 smoke 结果决定，不改变 judge 协议。
+
+## 2026-10-24 更新：视觉主线落地方式
+
+用户决策：视觉提前到 Part2 主线（当前地形盲走效率/成功率预计差），保留 blind fallback；规则允许相机/雷达，本队 CONTRACT 选**深度相机、不用雷达**。
+
+- **方案选择**：先做「原始深度 -> CNN encoder -> actor = 45 proprio + CNN latent」，用 mjlab 1.6 原生 2-D observation group + rsl_rl `CNNModel`；不做地面平面假设、不手写 heightmap 投影。局部高度图（方案 A）留作"CNN 成本太高 / 学习不稳"时的备选。
+- **任务**：训练仓新增独立 task `black-basic-obstacle-depth`（P1 地形 + 64x48 前向深度、15° 下俯、0.1–3.0 m），`black-basic-obstacle` 原封不动作为 blind fallback；两者 checkpoint 不通用（actor 输入 45 vs 109），需要时用 blind 权重做 teacher/初始化对齐。
+- **观测契约（视觉版）**：actor = 45 proprio + 深度 CNN latent（64D）；critic 仍是 259 特权（height_scan 187），只作 teacher/critic。部署侧 actor 输入会从 45 变 109，`rl_sar` 推理 wrapper 需要新增深度预处理；在 cost smoke + blind/depth 对照通过前不冻结。
+- 详见 [`../docs/training/camera-depth.md`](../docs/training/camera-depth.md)。
