@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -64,6 +65,93 @@ def file_hashes(path: Path) -> dict[str, str]:
 
 def load_cfg() -> dict:
     return yaml.safe_load(POLICY_CFG.read_text())["black/himloco"]
+
+
+class VideoSink:
+    """Render one policy run to an mp4 (CPU MuJoCo renderer + ffmpeg, no display)."""
+
+    def __init__(self, path: Path, fps: int, width: int, height: int, every: int,
+                 azimuth: float = 135.0) -> None:
+        self.path = path
+        self.fps = fps
+        self.every = max(1, every)
+        self.width = width
+        self.height = height
+        self.azimuth = azimuth
+        self.frames_dir = path.parent / "frames" / path.stem
+        self.frames_dir.mkdir(parents=True, exist_ok=True)
+        self._renderer = None
+        self._camera = None
+        self._option = None
+        self._counter = 0
+        self._n = 0
+
+    def _ensure(self, model) -> None:
+        if self._renderer is not None:
+            return
+        self._renderer = mujoco.Renderer(model, height=self.height, width=self.width)
+        self._camera = mujoco.MjvCamera()
+        self._camera.distance = 2.4
+        self._camera.elevation = -20.0
+        self._camera.azimuth = self.azimuth
+        self._option = mujoco.MjvOption()
+        self._option.geomgroup[:] = 1
+
+    def maybe_capture(self, model, data, base_x: float, base_y: float, base_z: float) -> None:
+        self._counter += 1
+        if (self._counter - 1) % self.every != 0:
+            return
+        self._ensure(model)
+        self._camera.lookat[:] = (base_x, base_y, max(0.15, base_z - 0.15))
+        self._renderer.update_scene(data, camera=self._camera, scene_option=self._option)
+        frame = self._renderer.render()
+        tmp = self.frames_dir / f"f{self._n:05d}.ppm"
+        with tmp.open("wb") as fh:
+            fh.write(f"P6\n{frame.shape[1]} {frame.shape[0]}\n255\n".encode())
+            fh.write(frame.tobytes())
+        self._n += 1
+
+    def close(self) -> None:
+        if self._renderer is None:
+            return
+        self._renderer.close()
+        if self._n == 0:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+             "-framerate", str(self.fps), "-i", str(self.frames_dir / "f%05d.ppm"),
+             "-pix_fmt", "yuv420p", str(self.path)],
+            check=True,
+        )
+        for p in self.frames_dir.glob("*.ppm"):
+            p.unlink()
+        self.frames_dir.rmdir()
+        try:
+            self.frames_dir.parent.rmdir()
+        except OSError:
+            pass
+
+
+class VideoConfig:
+    """Process-wide video output settings (CLI-driven)."""
+
+    def __init__(self, root: Path, fps: int, width: int, height: int, every: int) -> None:
+        self.enabled = False
+        self.root = root
+        self.fps = fps
+        self.width = width
+        self.height = height
+        self.every = every
+
+    def sink(self, group: str, name: str) -> VideoSink | None:
+        if not self.enabled:
+            return None
+        return VideoSink(self.root / group / f"{name}.mp4", self.fps, self.width,
+                         self.height, self.every)
+
+
+VIDEO = VideoConfig(Path("../prep.d/videos/him_best"), 25, 512, 384, 2)
 
 
 class HimBestRunner(ScenePolicyRunner):
@@ -138,20 +226,50 @@ class HimBestRunner(ScenePolicyRunner):
 class HimBestPart1Runner(p1mod.V2Runner):
     """V2 judge runner driven by the HIMLoco policy step."""
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._video: VideoSink | None = None
+
+    def run_task(self, name: str, warmup_s: float) -> dict:
+        self._video = VIDEO.sink("part1", name)
+        try:
+            return super().run_task(name, warmup_s)
+        finally:
+            if self._video is not None:
+                self._video.close()
+                self._video = None
+
     def _policy_step(self, command: np.ndarray) -> None:
         action = self.runner.policy_action(command)
         self.runner.drive(action)
         for _ in range(4):
             mujoco.mj_step(self.model, self.data)
             self._sample_judge()
+        if self._video is not None:
+            base = np.asarray(self.data.xpos[self.runner.trunk], dtype=float)
+            self._video.maybe_capture(self.model, self.data, base[0], base[1], base[2])
 
 
 class HimBestLevelRunner(p2mod.LevelRunner):
     """Part 2 level runner driven by the HIMLoco policy step."""
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._video: VideoSink | None = None
+
     def warmup(self, seconds: float = 0.5) -> None:
         for _ in range(int(WARMUP_S / 0.02)):
             self._policy_step(np.zeros(3), judge=None)
+
+    def run_attempt(self, entry: dict, seconds: float | None = None) -> dict:
+        key = f"{entry['category']}_{entry['level']}{entry['unit']}"
+        self._video = VIDEO.sink("part2", key)
+        try:
+            return super().run_attempt(entry, seconds)
+        finally:
+            if self._video is not None:
+                self._video.close()
+                self._video = None
 
     def _policy_step(self, command: np.ndarray, judge) -> None:
         action = self.runner.policy_action(command)
@@ -160,6 +278,9 @@ class HimBestLevelRunner(p2mod.LevelRunner):
             mujoco.mj_step(self.model, self.data)
             if judge is not None:
                 self._sample(judge)
+        if self._video is not None:
+            base = np.asarray(self.data.xpos[self.runner.trunk], dtype=float)
+            self._video.maybe_capture(self.model, self.data, base[0], base[1], base[2])
 
 
 def contract_test(policy_path: Path) -> dict:
@@ -239,6 +360,50 @@ def write_summary(out_dir: Path, contract: dict, hashes: dict, part1: dict | Non
     return path
 
 
+def write_video_index(root: Path, part1: dict | None, part2: dict | None,
+                      hashes: dict, extra: dict) -> Path:
+    """Minimal index.html linking the rendered mp4s to the judge results."""
+    rows_p1 = []
+    if part1 is not None:
+        per_task = {a["task"]: a for a in part1["attempts"]}
+        for name in sorted(per_task):
+            a = per_task[name]
+            st = a["judge"]["states"][name]
+            rows_p1.append(
+                f'<tr><td>{name}</td><td>{st["status"]}</td><td>{st["reason"]}</td>'
+                f'<td><a href="part1/{name}.mp4">part1/{name}.mp4</a></td></tr>'
+            )
+    rows_p2 = []
+    if part2 is not None:
+        for rec in part2["attempts"]:
+            a = rec["attempts"][-1]
+            j = a["judge"]
+            key = f"{rec['category']}_{rec['level']}{rec['unit']}"
+            rows_p2.append(
+                f'<tr><td>{rec["category"]}</td><td>{rec["level"]}{rec["unit"]}</td>'
+                f'<td>{"SUCCESS" if rec["best_success"] else "fail"}</td>'
+                f'<td>{j.get("reason", "")}</td>'
+                f'<td><a href="part2/{key}.mp4">part2/{key}.mp4</a></td></tr>'
+            )
+    html = f"""<!doctype html><html><head><meta charset="utf-8">
+<title>HIMLoco best.pt zero-shot videos</title>
+<style>body{{font-family:sans-serif;margin:24px}}table{{border-collapse:collapse;margin:12px 0}}
+td,th{{border:1px solid #999;padding:4px 8px;font-size:13px}}th{{background:#eee}}</style></head><body>
+<h2>HIMLoco best.pt zero-shot evaluation videos</h2>
+<p>policy md5 <code>{hashes['md5']}</code>, sha256 <code>{hashes['sha256']}</code>,
+variant <b>{extra['diagnostic_variant']}</b>; diagnostic only (G1 not frozen).</p>
+<h3>Part 1 (V2 judge)</h3><table><tr><th>task</th><th>status</th><th>reason</th><th>video</th></tr>
+{''.join(rows_p1)}</table>
+<h3>Part 2 (V2 evaluator)</h3><table><tr><th>category</th><th>level</th><th>success</th><th>reason</th><th>video</th></tr>
+{''.join(rows_p2)}</table>
+<p>Rendered with the CPU MuJoCo renderer (512x384, 25 fps); camera follows the trunk.</p>
+</body></html>
+"""
+    path = root / "index.html"
+    path.write_text(html, encoding="utf-8")
+    return path
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--policy", type=Path, default=BEST_PT)
@@ -252,12 +417,29 @@ def main() -> int:
     ap.add_argument("--p2-seconds", type=float, default=None,
                     help="Part 2 duration override [s] (for time-extended diagnostics only)")
     ap.add_argument("--tag", default="", help="suffix for output file names, e.g. _extended")
+    ap.add_argument("--video", action="store_true", help="render one mp4 per task/level (CPU renderer)")
+    ap.add_argument("--video-dir", type=Path, default=Path("../prep.d/videos/him_best"))
+    ap.add_argument("--video-fps", type=int, default=25)
+    ap.add_argument("--video-width", type=int, default=512)
+    ap.add_argument("--video-height", type=int, default=384)
+    ap.add_argument("--video-every", type=int, default=2,
+                    help="render one frame every N policy steps (2 -> 25 fps at 50 Hz)")
     args = ap.parse_args()
 
     policy = args.policy
     if not policy.is_absolute():
         policy = (Path.cwd() / policy).resolve()
     args.out_dir.mkdir(parents=True, exist_ok=True)
+
+    VIDEO.enabled = args.video
+    VIDEO.root = args.video_dir
+    VIDEO.fps = args.video_fps
+    VIDEO.width = args.video_width
+    VIDEO.height = args.video_height
+    VIDEO.every = args.video_every
+    if args.video:
+        VIDEO.root.mkdir(parents=True, exist_ok=True)
+        print(f"[video] rendering to {VIDEO.root} ({VIDEO.width}x{VIDEO.height} @ 25 fps)")
 
     hashes = file_hashes(policy)
     contract = contract_test(policy)
@@ -333,6 +515,9 @@ def main() -> int:
                             "" if not args.tag else f" — {extra['diagnostic_variant']}",
                             tag=args.tag)
     print("summary:", summary)
+    if args.video:
+        index = write_video_index(VIDEO.root, part1, part2, hashes, extra)
+        print("video index:", index)
     return 0
 
 
