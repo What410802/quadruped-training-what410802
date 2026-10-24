@@ -123,6 +123,32 @@ MUJOCO_GL=egl .venv/bin/train <task> --agent.max-iterations 25 --agent.save-inte
 - 解读（谨慎）：**500 iter 的早期阶段深度侧各项质量指标全面更好**（reward/episode 长度/地形课程推进/非法接触/速度跟踪），代价是每 iter 1.5×（显存见 §5：1024 envs depth32 约 4.3 GB，仍可 2048 envs）。这支持"继续深度相机线"，但 500 iter 远未到质量 gate：均值 episode 843 步（上限 1000）说明还会摔，训练 reward 也不能当通过率；结论需更长训练 + Part1/Part2 judge 才能下。
 - 单 seed、只跑一次：若要把这作为选型依据，按协议至少要 3 seed 或更长预算；本轮只作为"是否继续"的信号。
 
+### 7.1 续训到 1500 iter（2026-10-24，500 的 checkpoint 各续 1000 iter）
+
+两 run 从各自的 `model_499.pt` 续训 +1000 iter（同 seed/地形/奖励/1024 envs；depth 30:59、blind 19:47），结果：
+
+| run（总 1500 iter） | Mean reward | episode 长度 | terrain level mean | illegal_contact | error_vel_xy | track_lin_vel | iter 成本 | 总时长 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| blind | 11.18 | 801.0 | 1.343 | 0.622 | 0.492 | 0.586 | 1.198 s | 30.0 min |
+| depth | 12.31 | 826.4 | 1.460 | 0.522 | 0.449 | 0.622 | 1.875 s | 46.9 min |
+| depth − blind | +1.13 | +25.3 | +0.117 | −0.101 | −0.043 | +0.036 | ×1.56 | +56% |
+
+- 两 run 均 1000/1000 干净（exit=0、`Warp CUDA error` 0、`bad_sim_state` 0）。
+- **关键观察：depth 在 500 iter 时的明显优势到 1500 iter 大幅缩小**。500 iter 时 depth 领先 reward +2.75、episode +134、terrain +0.27、illegal −0.44；续训后 blind 追赶很快（reward 7.02→11.18、terrain 0.74→1.34、illegal 0.98→0.62），1500 iter 时差距只剩 reward +1.13（+10%）、episode +25（+3%）、terrain +0.117（+9%）、illegal −0.10（−16%），而 depth 成本是 ×1.56。中途 750–1100 iter 段 depth 因地形等级升得更快出现过 episode 长度回撤（地形变难），两条曲线都还在爬升、噪声大。
+- 轨迹表（总 iter: blind/depth 的 episode 长度）：500: 709/843；600: 858/909；750: 858/717；900: 800/749；1000: 774/800；1250: 748/849；1400: 797/847；1500: 801/826。
+- rollout 视频：`prep.d/videos/cmp/cmp_blind_1500.mp4`、`cmp_depth_1500.mp4`（10 s 常速，均跑满 500 步未摔）；曲线/表格在 `prep.d/videos/review_20261024.html`。
+
+## 10. 从对照得到的 depth 改进启示（2026-10-24）
+
+1. **depth 的价值目前集中在"早期学得快 + 更少非法接触/地形推进更快"**，而不是速度跟踪（error_vel_xy 两边都 ~0.45–0.49）；到 1500 iter 差距缩小到几个百分点——**在 16 GB / 按时限算的预算下，blind 的算力效率明显更高**。比赛如果只选一条线，blind 目前是更稳的默认。
+2. **要证明 depth 值得 ×1.56 成本，需要更长预算或消融**：先把 depth 跑到 3000–5000 iter 看差距是否重新拉大（若收敛到同一水平，说明 depth 只是加速早期课程）；同时用同一预算跑 blind 对照。3k+ iter depth 约 1.5 h/次（32×32、1024 envs），可接受。
+3. **优先做的 depth 改进实验（按性价比）**：
+   - **分辨率 64×48 vs 32×32**：对照用的是 32×32（省成本）；64×48 每 iter 约 ×1.7（成本 smoke 3.53 vs 2.12 s），先小预算 A/B（如各 300–500 iter + 同一 checkpoint 续训对比）判断细节是否值回成本。
+   - **latent/结构**：当前全局 avg pool 把空间压成 64 维，楼梯/窄障碍的"位置/高度"信息可能丢失；可试更大 latent（128）或保留 2D 特征（flatten 前几层）的小改动，单独开关对照。
+   - **训练信号**：depth 侧目前 critic 仍是 259 特权（height_scan），actor 只有深度；若 actor 学得慢，可试 depth + 少量本体历史（已有 45 维）之外的辅助任务/蒸馏，而非加特权量。
+   - **DR**：放在"地形课程稳定后"（见 §9），作为 fine-tune 阶段单开关加。
+4. **不要现在把 depth 推到部署**：控制栈深度推理（`sim_node` 深度发布 + `rl_sim` CNN）还没做；先把训练侧跑到能明确回答"是否比 blind 强、强多少"，再投入部署工作量。
+
 ## 8. 相机观测怎么进网络：降维、是否冻结、为什么不直接输入图像
 
 当前（`black-basic-obstacle-depth`，2026-10-24 快照）的完整链路，全部在训练仓里可查：

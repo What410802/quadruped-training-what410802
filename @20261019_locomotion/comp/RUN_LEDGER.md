@@ -23,6 +23,8 @@
 | `depth_100iter_smoke_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | 从零 | 1024 | 100 | 3:19 | 训练仓 + depth task 改动 | — | — | — | SMOKE PASS（100/100、无 CUDA/NaN、mean 2.11 s/iter、32×32） |
 | `cmp_blind_500_20261024` | 2026-10-24 | `black-basic-obstacle` | 从零 | 1024 | 500 | 10:35（1.27 s/iter） | 训练仓 + depth/safety 改动 | — | — | — | TRAIN DONE（对照 blind，同 seed/地形/奖励；rollout 视频见 `prep.d/videos/cmp/`） |
 | `cmp_depth_500_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | 从零 | 1024 | 500 | 16:17（1.96 s/iter） | 训练仓 + depth task 改动 | — | — | — | TRAIN DONE（对照 depth 32×32；rollout 视频见 `prep.d/videos/cmp/`） |
+| `cmp_blind_1500_cont_20261024` | 2026-10-24 | `black-basic-obstacle` | resume `cmp_blind_500 model_499` | 1024 | +1000 | 19:47（1.20 s/iter） | 训练仓 + depth/safety 改动 | — | — | — | TRAIN DONE（总 1500 iter；reward 11.18/ep 801/terrain 1.34/illegal 0.62） |
+| `cmp_depth_1500_cont_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | resume `cmp_depth_500 model_499` | 1024 | +1000 | 30:59（1.88 s/iter） | 训练仓 + depth task 改动 | — | — | — | TRAIN DONE（总 1500 iter；reward 12.31/ep 826/terrain 1.46/illegal 0.52；500→1500 的领先缩小） |
 
 ## 单开关说明
 
@@ -32,7 +34,8 @@
 | `p1_basic_obstacle` | 混合 terrain generator（flat+smooth slope+stairs，无 rough/discrete） | 坡度/台阶通过 | 部分改善，未过 gate |
 | `eval-only:part1-v2` / `part2-v2` / `course-v2` | 只替换评测器（judge V2 + 参数化 Part2 档位 + 整场协议），策略未变 | 得到可审计的 0 分诊断，验证评测链路 | 与 v1 一致（flat 策略 0 分），链路跑通 |
 | `fixed2_5496_200_20261024` | 相对 `probe2` 只加三项安全网（obs clip / action clip / bad_sim_state 终止） | 同一崩点不再 NaN/CUDA 710 | 见 training-health §7.5 |
-| `cmp_blind_500` / `cmp_depth_500` | 唯一差异是 actor 观测（45 维本体 vs 45 本体 + 32×32 深度 CNN latent）；同 seed/地形/奖励/envs/iters，从零 | 量化深度相机在短训练预算下的代价/收益 | 见 camera-depth §7 |
+| `cmp_blind_500` / `cmp_depth_500` | 唯一差异是 actor 观测（45 维本体 vs 45 本体 + 32×32 深度 CNN latent）；同 seed/地形/奖励/envs/iters，从零 | 量化深度相机在短训练预算下的代价/收益 | 500 iter：depth 全面更好但 1500 iter 后领先缩小（见 camera-depth §7/§7.1） |
+| `cmp_*_1500_cont` | 从各自 500 checkpoint 各 +1000 iter（不换地形/奖励/seed） | 看 depth 优势是否随训练保持 | 领先缩小到 +3%~+16%，成本 ×1.56；blind 算力效率更高（§7.1/§10） |
 | `eval-only:him-best-videos` | 只加录像（不改评测口径/起点/时间尺度） | 让用户能二次检查 zero-shot 评测过程 | 28 段视频 + `index.html`；分数与无录像时一致（Part1 0/8、Part2 ext 300/1300） |
 | `deploy-him-best` | 控制仓库只加 1 个策略循环配置 + 窗口 geom group 可见性 | 能在演示 GUI 手动试操作 best.pt | 契约核对通过、GUI GetUp→Running→行走验证，见 `docs/training/deploy-him-best.md` |
 
