@@ -29,6 +29,9 @@
 | `cmp_blind_3000_cont_20261024` | 2026-10-24 | `black-basic-obstacle` | resume `cmp_blind_1500_cont model_1498` | 1024 | +1500 | 29:15（1.17 s/iter） | 同上 | — | — | — | TRAIN DONE（总 3000 iter；reward 13.15/ep 851/terrain 1.43/illegal 0.48；简单地形筛选） |
 | `cmp_comp_blind_800_20261024` | 2026-10-24 | `black-competition` | 从零（竞争地形 + goal 奖励 + mirror 0.1） | 1024 | 800 | 19:01（1.39 s/iter） | 训练仓 competition_terrain/competition_rewards + env 注册 | — | — | — | TRAIN DONE：reward 9.72/ep 730/terrain 0.310/illegal 0.761/goal 8.7%；**A/B 胜出，作为 final actor 配置** |
 | `cmp_comp_hist_800_20261024` | 2026-10-24 | `black-competition-hist` | 从零（竞争地形 + goal 奖励 + mirror 0.1 + 6 帧历史） | 1024 | 800 | 18:41（1.44 s/iter） | 训练仓 competition_terrain/competition_rewards/history task | — | — | — | TRAIN DONE：reward 8.08/ep 640/terrain 0.347/illegal 0.954/goal 4.7%；A/B 落败，不进入最终选型 |
+| `cmp_comp_blind_final_20261024` | 2026-10-24 | `black-competition` | resume `cmp_comp_blind_800 model_799` +1700 | 1024 | +1700 | 25:05 后崩（iter 1129） | 竞争地形/奖励/termination 首版 | — | — | — | CRASH：critic obs NaN（~总 1930 iter）；已加位置检查+obs guard |
+| `cmp_comp_blind_final2_20261024` | 2026-10-24 | `black-competition` | resume `cmp_comp_blind_final model_1900` +600 | 1024 | +600 | 13:56（1.39 s/iter） | 同上 + NaN guard | — | — | — | DONE：总 2500 iter；reward 10.45/goal 12.2%/illegal 0.65；NaN 警告 0；本地 judge Part1 0/8、Part2 0/27（动作裁剪修正后） |
+| `cmp_comp_blind_stage3_20261024` | 2026-10-24 | `black-competition`（新任务定义） | resume `cmp_comp_blind_final2 model_2499` +2500 | 1024 | +2500 | ~58 min 预计 | 新：固定前进命令+progress/goal 奖励+去 illegal/stuck 终止+init level 2 | — | — | — | RUNNING（17:35 起） |
 | `cmp_depth_warm_1500_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | warm start from `cmp_blind_1500_cont model_1498`（CNN latent 列置零） | 1024 | 1500 | 46:24（1.83 s/iter） | 训练仓 + `depth_warm_start.py` + runner env-var 入口 | — | — | — | TRAIN DONE（3000等效 reward 12.83/ep 846；≈blind@3000、< depth-from-scratch；简单地形筛选） |
 
 ## 单开关说明
