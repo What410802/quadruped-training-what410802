@@ -81,6 +81,27 @@ LD_PRELOAD=$P/lib/libstdc++.so.6 LD_LIBRARY_PATH=$P/lib \
 - 相机默认取景约 1.9 m，走起来容易出画面：先用滚轮拉远，`Ctrl`+右键双击可切 tracking camera；
 - 契约、验证证据与深度策略暂不部署的原因见 [`../training/deploy-him-best.md`](../training/deploy-him-best.md)。
 
+### 2.2c rl_sar 主栈试操作（2026-10-24 决策后的推荐路径）
+
+> 决策与评估见 [`../reference/rl-sar-migration-plan.md`](../reference/rl-sar-migration-plan.md)。控制层复用作业 `@20261007_assignment` 的 rl_sar 包 + `@20261005_ros2` 的 `sim_node`；只需先生成本任务场景的转换副本（执行器顺序/可视化 group）。
+
+```bash
+cd RoboCon/MyMonoRepo.d
+# ① 生成 rl_sar 场景副本（一次性，改场景后重跑）
+pixi run python @20261019_locomotion/scripts/agent_scripts/make_rlsar_scene.py \
+  --scene @20261019_locomotion/assets/terrain/part1/part1_eval_scene.xml \
+  --out ../prep.d/scenes/part1_rlsar.xml
+# ② 终端 A：仿真窗口（rl_sim 不启动，留给终端 B 键盘）
+pixi run ros2 launch rl_sar rl_sim.launch.py \
+  scene:=$PWD/../prep.d/scenes/part1_rlsar.xml start:=raw rl:=false joy:=false
+# ③ 终端 B：键盘控制
+pixi run ros2 run rl_sar rl_sim
+```
+
+- 按键：`0` 起身 → `1` 进 RL → `W/S/A/D/Q/E` 加减速度 → `Space` 清零 → `9` 趴下 → `P` 阻尼 → `R` 复位 → `N` 切换导航模式（`/cmd_vel`）。
+- 手柄路径（真实/`pixi run python @20261005_ros2/sim_joy/xbox_sim_joy.py` 虚拟手柄）：②③ 合并成 `pixi run ros2 launch rl_sar rl_sim.launch.py scene:=... start:=raw`（A 起身、RB+十字键上进 RL、左摇杆走/右摇杆转、B 趴下）。
+- 说明：`quadruped_control` 路径保留为备选（见 2.2/2.2b）；转换后的场景在 `prep.d/scenes/`，任务仓库原始场景不改。
+
 ### 2.3 Part 1 judge + zero-shot 诊断（2 分钟）
 
 ```bash
