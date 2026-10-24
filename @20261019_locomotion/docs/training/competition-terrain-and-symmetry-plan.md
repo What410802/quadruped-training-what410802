@@ -185,3 +185,12 @@ depth-final warm start（从 stage3b blind checkpoint、64×48、1024 envs）启
 - **C（保守）**：Part1 维持 blind（人工遥控可用），Part2 用现有 best-effort 策略/回退（大概率 0–低分），把剩余时间投入 Part1 人工演示、答辩与部署稳定性。风险：Part2 1300 分基本放弃。
 
 **建议**：选 A，并把 Part2 作为 RL 主战场；Part1 用现有 blind 基础策略（flat_ft/p1）做人工遥控，不追求自动 judge 分。请用户确认路线（A/B/C）以及是否接受"A 需要 1–2 天额外工程 + GPU 时间"。
+
+### 12.4 抗退化修复后的复查（2026-10-24 19:45，stage4）
+
+针对 stage3b 的"趴地/蹲行"退化（base z≈0.24 m、tilt≈22°）做了修复：限高杆净空提高到 0.55–0.60 m（不再需要爬行）、`base_height` 权重 −1→−4、`foot_clearance` −0.01→−0.03、训练难度分布 rows 0–3；从健康走姿 checkpoint（model_2499）resume 1800 iter。结果：
+
+- 平地步态恢复：本地 flat 场景 5 s 前进 1.24 m、base z=0.421 m、tilt=6.1°（stage3b 为 z=0.235、tilt=21.6°）；
+- 竞争地形训练指标：reward 14.33（历次最高）、base_height 惩罚 −0.009、goal_reached 51%、NaN 0；
+- **真实场景 judge 仍为 0**：Part1 0/8；Part2 6 s 0/27、12 s 0/27（机器人会动、会碰撞，但没有通过任何成功档）。
+- 结论：抗退化修复解决了"趴地"问题，但**代理地形训练仍不足以让策略通过真实 Part1/Part2 的成功判据**；路线 A（直接用真实场景几何训练）仍是推荐路径，需要用户确认后执行。
