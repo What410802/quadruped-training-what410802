@@ -42,6 +42,7 @@
 - **2026-10-24 数值稳定性修复**：从 `model_5496` resume 的 4 次 run 在 100 iter 内崩 Warp CUDA 710；插桩定位为“坠落状态 -> 动作经 last-action 观测自激 -> 超大动作 -> NaN”，已装三项安全网（actor obs clip ±100 与部署一致、`clip_actions=±100` 与部署一致、`bad_sim_state` 极端状态终止），200-iter resume smoke 无 CUDA/NaN；详见 [`training/training-health.md`](training/training-health.md) §7。**P1 质量 gate 仍为未通过**（训练 reward 不等于通过率）。
 - **当前结论**：第一轮桥/限高杆有改善，第二轮训练地形 level 略升但 Part 1 迁移退化；不能只靠续训，也不能把训练 reward 当通过率。详见 [`training/p1-basic-obstacle.md`](training/p1-basic-obstacle.md)。
 - **下一步（等用户指示）**：先做训练环境评估和课程/奖励调整；再决定 P1 第三轮训练或转向 Part 1 专项。
+- **2026-10-24 方法论修订（用户指出）**：① 当前 flat/smooth slope/stairs 训练地形覆盖不到绕柱、桥、限高杆、高墙、砂砾、梅花桩等"深度视觉最有价值"的障碍，不能据此裁决 blind vs depth；② 当前 run 只开 foot_clearance、mirror loss=0，后腿不对称（symmetry breaking）仍在；③ 最终裁决改为"方法论拉满后的 judge 对比"，且该对比即最终模型选择（blind-final 先训、depth 用 warm-start 增量训练，避免 2× 从零）。方案与时间线见 [`training/competition-terrain-and-symmetry-plan.md`](training/competition-terrain-and-symmetry-plan.md)。当前在跑的 3000/warm-start 只作简单地形筛选。
 - **后续顺序**：slope/stairs 稳定 → T 台阶/高台 10–20 cm → Part 1 limit_bar/bridge/high_wall 专项 → history/camera。
 - **P1 gate**：不在本文件展开，见 [`training/eval-protocol.md`](training/eval-protocol.md) 与 [`training/training-plan.md`](training/training-plan.md)。
 

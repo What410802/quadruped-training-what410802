@@ -9,7 +9,8 @@
 - **deadline**：2026-11-04 晚。
 - **2026-10-24 主栈决策**：手动/演示主栈迁移到 **rl_sar**（控制层复用，`quadruped_control` 降为备选）；场景适配脚本已落地并本机验证，深度相机后续也走 rl_sar 线。见 `../docs/reference/rl-sar-migration-plan.md`。
 - **next**：① **视觉主线 blind vs depth 已续训到 1500 iter**：depth 仍全面略好（reward +10%/episode +3%/terrain +9%/非法接触 −16%）但 500 iter 时的优势大幅缩小、成本 ×1.56，blind 算力效率更高（`../docs/training/camera-depth.md` §7.1/§10）；下一步建议 depth 跑 3000–5000 iter 或做分辨率/latent 消融后再定是否值得部署（3000 长训已启动；warm-start from blind 已实现并 smoke 通过、排队跑，见 `../docs/training/camera-depth.md` §11/§12），DR 放到地形课程稳定后（§9）；`best.pt` 已可进演示 GUI（quadruped_control 路径，`../docs/training/deploy-him-best.md`）；② **主栈迁移 rl_sar**：评估+场景适配已验证（`../docs/reference/rl-sar-migration-plan.md`），下一步起跑位姿/演示脚本/策略切换扩展；③ P1 数字虽已稳，但质量 gate 未过，需要课程/奖励评估而不是盲目续训；④ G1 待训练出真实成功 rollout 后补 PASS/冻结。
-  当前没有训练进程、远程机 flag=0、可关机。
+  **2026-10-24 方法论修订**：简单地形 3000/warm-start 只作筛选；最终 blind vs depth 裁决改为竞争地形代理（绕柱/桥/限高杆/高墙/砂砾/梅花桩）+ mirror 0.1 对称约束 + 真实 Part1/Part2 judge 的一次性对比（winner 即最终策略，depth 用 warm-start 增量），见 `../docs/training/competition-terrain-and-symmetry-plan.md`。
+  当前远程机在跑 3000-iter 筛选 + 排队 warm-start 臂（flag=1），结束后自动复位。
 - **blockers**：无已确认 scorer blocker。G1 残余同前（砂砾坑真实坑体/碎木未 recut；Part2 官方能力场未逐档核对；限高杆 under-bar 用 base z 代理；真实成功 rollout 缺失；正式手动 3 次整场演练视频未补；course runner 为脚本化诊断链路；slalom 终点与最后一杆显示重叠）。
   **新增观察（不阻塞）**：Part2 `high_wall` 的 `max_z ≥ max(wall_h+0.1, 0.55)` 对“跨过而非爬上墙”的通过方式偏保守（`best.pt` 10 cm 档实测越墙仍判失败）；是否改判属 G1/协议范围，需审计后再动。
 

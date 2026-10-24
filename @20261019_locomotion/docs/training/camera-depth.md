@@ -200,6 +200,7 @@ MuJoCo 深度相机 (64x48 fovy70 下俯15°, 0.1-3.0 m, 只看 geom group 0 的
 注意：rsl_rl 的 resume 不恢复 RNG 状态（迭代计数与权重恢复），两个臂同语义，不影响单变量比较；仍是单 seed，结论按"信号"看，不当最终选型。
 
 **2026-10-24 启动状态**：两臂已于 13:51:45 启动（depth 先跑、blind 后跑），预计约 80 min 训练 + 视频渲染；结束后自动复位 GPU flag。之后排队跑 §12 的 warm-start 臂（`cmp_depth_warm_1500`：同一 blind 1500 checkpoint 初始化、+1500 iter、单开关）。
+**定位修订（2026-10-24）**：本组 1500/3000/warm-start 实验只作**简单地形筛选**（flat/slope/stairs 覆盖不到绕柱/桥/限高杆/高墙等结构障碍，无法裁决全场能力）；最终 blind vs depth 的裁决改为在竞争地形代理 + mirror 对称约束 + 真实 judge 下做，见 [`competition-terrain-and-symmetry-plan.md`](competition-terrain-and-symmetry-plan.md)。
 
 ## 12. depth 策略要不要用预训练/已有权重？（可行性，2026-10-24 评估）
 
