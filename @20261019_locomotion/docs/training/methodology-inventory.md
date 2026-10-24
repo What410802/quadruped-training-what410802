@@ -81,7 +81,7 @@
 | 弹药 | 现在引入？ | 理由/成本 |
 |---|---|---|
 | **竞争地形代理 + 任务成功奖励** | **是，第一优先** | 决定训练分布和奖励与比赛得分对齐；不做的话后面所有比较都建立在错误环境上；地形约 1–1.5 天，任务奖励与地形一起做 |
-| **历史帧（blind 45→270；depth 45×6+64）** | **是，第二优先** | 纯配置改动（MjLab native `history_length`），部署契约 270 维已被 rl_sar/quadruped_control 支持；预计对 rough/障碍稳定性提升；A/B 成本 2×~1–2 h |
+| **历史帧（blind 45→270；depth 45×6+64）** | **是，已实现，A/B 中** | 新增 `black-competition-hist` / `black-competition-depth-hist`（MjLab native history 6 帧、flatten 270；symmetry 已支持 45×k mirror）；部署契约 270 维已被 rl_sar/quadruped_control 支持；A/B `cmp_comp_blind_800` vs `cmp_comp_hist_800` 2026-10-24 起跑 |
 | **mirror loss 0.1 + foot_clearance** | **是，与历史帧同批** | 已有 flat A/B 证据，改动只是环境变量；回归四个对称性指标即可；几乎零代码 |
 | **HIM 完整版（estimator/对比学习）** | **是，第三优先（history 之后）** | 训练仓已实现但没训过；若 history 单独不够再上；成本中等、调参风险中 |
 | **教师蒸馏（height scan 特权教师 → depth 学生）** | **是，depth 线第四优先** | 对 depth 最有价值的方法学升级；需要先训教师（带 height scan 的 actor）再蒸馏；总成本约 3–4 h GPU + 半天工程 |

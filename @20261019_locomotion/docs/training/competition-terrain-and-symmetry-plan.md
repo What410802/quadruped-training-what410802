@@ -88,3 +88,19 @@
 - 当前 3000-iter（blind/depth）与排队中的 warm-start 臂**继续跑完**（成本已花），结果只写进"简单地形筛选/成本曲线"，**不进入最终选型判据**；
 - warm-start 代码保留，作为阶段 3 的工具；
 - 阶段 1 的 `black-competition` 地形与 mirror A/B 在 GPU 空出来后开始（预计 2026-10-24 傍晚），先各跑 500–800 iter 筛选，再进长训。
+
+## 8. 实现状态（2026-10-24）
+
+已落地（训练仓 worktree，未提交上游）：
+
+| 项 | 落点 | 状态/证据 |
+|---|---|---|
+| 竞争地形代理 | `src/alldog_mjlab/tasks/velocity/black/competition_terrain.py`（8 个自定义 SubTerrainCfg + 复用 flat/slope/stairs/gravel，共 14 列 × 6 行、难度 0..1） | CPU 几何检查通过（634 geoms、goal patch 48/84 = 8 障碍列 × 6 行）；GPU 3-iter smoke 通过 |
+| 任务 | `black-competition` / `black-competition-depth`（+ `-hist` 6 帧历史变体）注册在 `__init__.py` | smoke：blind 3 iter、depth 3 iter、history/depth-hist + mirror 0.1 各 2 iter 均 rc=0、无 NaN/CUDA |
+| 任务成功奖励 | `competition_rewards.py`：goal flat patch（8 个障碍列）→ 稀疏 `competition_goal` 奖励（权重 3.0）+ `competition_goal_reached` 终止；非障碍列用 spawn origin 填充并按最小距离 0.8 m 屏蔽 | smoke 的 `Episode_Reward/competition_goal`/`Episode_Termination/competition_goal_reached` 项存在（迭代太短，成功数 0，符合预期） |
+| 历史帧 | `black-competition-hist`（270 维 actor）、`black-competition-depth-hist`（270+64 CNN） | smoke 通过；`symmetry.py` 已扩展为支持 45×k 历史布局的 mirror loss |
+| mirror 0.1 | 环境变量 `BLACK_MIRROR_LOSS_COEFF=0.1` 作用于所有新 run | smoke 日志 `[INFO] mirror-loss symmetry enabled: coefficient=0.1` |
+| 预览视频 | `prep.d/videos/competition/` 12 段（blind/depth zero-shot × 障碍列）+ `contact_competition_preview.jpg`；review 页 §2.4 | 已生成；仅用于地形几何/基线行为检查 |
+| 历史帧 A/B | `cmp_comp_blind_800`（45-D）vs `cmp_comp_hist_800`（270-D），800 iter × 1024 envs，mirror 0.1 + goal 奖励 | **RUNNING**（2026-10-24 16:10 起，约 40 min） |
+
+备注：地形代理与官方场景仍有几何/材质/接触差异，最终裁决仍以 Part1/Part2 真实场景 judge 为准；接下来的实现顺序是 "历史帧结论 → blind-final 长训 → depth-final（warm-start/from-scratch）→ judge 对比"。
