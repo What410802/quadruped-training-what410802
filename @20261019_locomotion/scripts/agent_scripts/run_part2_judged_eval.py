@@ -112,7 +112,7 @@ class LevelRunner:
         else:
             with torch.no_grad():
                 action = self.policy(obs_t).numpy().reshape(-1).astype(np.float64)
-        action = np.clip(action, -1.0, 1.0)
+        action = np.clip(action, -100.0, 100.0)  # training/deployment clip_actions contract
         self.runner.last_action[:] = action
         q_target = self.runner.q_default + ACTION_SCALE * action
         q = np.array(self.data.qpos[self.runner.qpos_adr])

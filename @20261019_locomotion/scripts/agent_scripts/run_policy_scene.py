@@ -177,7 +177,7 @@ class ScenePolicyRunner:
         else:
             with torch.no_grad():
                 raw = self.policy(obs).numpy().reshape(-1).astype(np.float64)
-        raw = np.clip(raw, -1.0, 1.0)
+        raw = np.clip(raw, -100.0, 100.0)  # training clip_actions (deployment contract)
         self.last_action[:] = raw
         q_target = self.q_default + ACTION_SCALE * raw
         q = np.array(self.data.qpos[self.qpos_adr])

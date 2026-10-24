@@ -124,3 +124,13 @@
 → **blind-final / depth-final 都采用单帧 45-D actor**；历史帧保留为研究记录（`-hist` 任务与导出脚本仍在仓库），不进入最终选型。
 
 **补充定量记录（2026-10-24）**：步态对称性（flat、0.8 m/s、6 s）单帧 RL−RR 前后差 0.062 m、后腿足端最高 0.038 m；历史帧 −0.114 m、0.025 m（两臂 z<0.04 接触率均 1.0，该阈值是近似，真实接触判据以 judge 为准）。难度 0.8/0.6 障碍列 12 s 评测在 800 iter 两臂均 0 成功率，平均前进 0.80 m（单帧）/0.89 m（历史帧），不具区分度；A/B 判定以训练指标（reward/episode/illegal/goal）+ 部署成本为准。A/B 视频与拼图见 `prep.d/videos/competition/comp_ab_*.mp4`、`contact_competition_ab.jpg`，review 页 §2.5。
+
+## 9. 首次盲策略评测暴露的问题与修正（2026-10-24 17:20）
+
+1. **本地评测动作裁剪 bug**：`run_policy_scene.py` / `run_part2_judged_eval.py` 把 policy raw action 裁剪到 ±1，而训练/部署契约是 `clip_actions=±100`（动作再乘 0.25 的 action scale）。竞争地形策略的动作常超过 ±1，旧本地 judge 因此严重低估策略能力（机器人几乎不动）。**已改为 ±100**；此前所有本地 judge 结果（含 P1 zero-shot）都受此影响，最终裁决必须用修正后的链路重跑。
+2. **非法接触/卡死终止阻止障碍学习**：`illegal_contact`（trunk/thigh vs terrain）和 `stuck` 在障碍任务里会终止"爬墙/穿限高杆/上高台"所需的合法身体接触，且障碍列课程长期停在低难度（level ≈0.1）。竞争任务已改为：移除 `illegal_contact` 与 `stuck`，新增 `bad_orientation`（1.05 rad）摔倒终止；保留 time_out/bad_sim_state/out_of_terrain_bounds。深度任务继承同一环境。
+3. **任务奖励与命令改造**：竞争地形任务从"随机速度跟踪"改为"固定前进命令 (vx 0.4–1.0, vy=wz=0) + 关闭 command curriculum"，并加入 dense `competition_progress`（权重 1.5，沿 +x 到 far-end goal 的归一化进度）+ sparse `competition_goal`（权重 5.0）；地形课程保留，初始 level 上限从 1 提到 2（障碍列更快见到中难度）。
+4. **NaN 崩溃与防护**：blind-final 在总迭代 ~1930 时因 critic obs 出现 NaN 中止（`check_nan`）。已扩展 `bad_sim_state` 同时检查 joint/root **位置**非有限（此前只查速度），并给竞争任务 actor/critic 观测组加 `nan_policy="warn"`（打印 term 后 sanitize，单 env NaN 不再杀死 1024-env 长跑）；从 model_1900 resume 的 600 iter 运行中 NaN 警告为 0。
+5. 以上修正意味着 **stage3（从 model_2500 resume +2500 iter）用新的任务定义重训**，之后重新评测；之前所有比赛地形 run 只作过程记录。
+
+**结论（截至 2026-10-24 17:25）**：竞争地形代理训练本身还不足以让策略在真实 Part1/Part2 场景得分（首个 1900-iter 策略本地 judge Part1 0/8、Part2 0/27），主要原因是上述终止/命令/奖励设计问题（已于本小节修正）和训练预算不足；stage3 与后续 depth-final 的 judge 结果将决定是否继续在代理地形上加预算，或改为直接以真实场景为训练分布。
