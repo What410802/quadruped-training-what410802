@@ -21,6 +21,8 @@
 | `depth_plumbing_test_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | 从零（10 iter 内） | 64 | 3 | — | 训练仓 + depth task 改动 | — | — | — | PLUMBING OK（CNNModel actor、obs 45+camera、3 次 PPO update） |
 | `cost_smoke_20261024` | 2026-10-24 | `black-basic-obstacle` / `-depth` | 从零（成本测量，各 25 iter） | 1024 / 2048 | 25×4 | 1–3 min/case | 训练仓 + depth task 改动 | — | — | — | COST：blind 1.39 s/iter、depth32 2.12 s、depth64 3.53 s、depth64@2048 6.22 s（15 GB） |
 | `depth_100iter_smoke_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | 从零 | 1024 | 100 | 3:19 | 训练仓 + depth task 改动 | — | — | — | SMOKE PASS（100/100、无 CUDA/NaN、mean 2.11 s/iter、32×32） |
+| `cmp_blind_500_20261024` | 2026-10-24 | `black-basic-obstacle` | 从零 | 1024 | 500 | 10:35（1.27 s/iter） | 训练仓 + depth/safety 改动 | — | — | — | TRAIN DONE（对照 blind，同 seed/地形/奖励；rollout 视频见 `prep.d/videos/cmp/`） |
+| `cmp_depth_500_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | 从零 | 1024 | 500 | 16:17（1.96 s/iter） | 训练仓 + depth task 改动 | — | — | — | TRAIN DONE（对照 depth 32×32；rollout 视频见 `prep.d/videos/cmp/`） |
 
 ## 单开关说明
 
@@ -30,6 +32,9 @@
 | `p1_basic_obstacle` | 混合 terrain generator（flat+smooth slope+stairs，无 rough/discrete） | 坡度/台阶通过 | 部分改善，未过 gate |
 | `eval-only:part1-v2` / `part2-v2` / `course-v2` | 只替换评测器（judge V2 + 参数化 Part2 档位 + 整场协议），策略未变 | 得到可审计的 0 分诊断，验证评测链路 | 与 v1 一致（flat 策略 0 分），链路跑通 |
 | `fixed2_5496_200_20261024` | 相对 `probe2` 只加三项安全网（obs clip / action clip / bad_sim_state 终止） | 同一崩点不再 NaN/CUDA 710 | 见 training-health §7.5 |
+| `cmp_blind_500` / `cmp_depth_500` | 唯一差异是 actor 观测（45 维本体 vs 45 本体 + 32×32 深度 CNN latent）；同 seed/地形/奖励/envs/iters，从零 | 量化深度相机在短训练预算下的代价/收益 | 见 camera-depth §7 |
+| `eval-only:him-best-videos` | 只加录像（不改评测口径/起点/时间尺度） | 让用户能二次检查 zero-shot 评测过程 | 28 段视频 + `index.html`；分数与无录像时一致（Part1 0/8、Part2 ext 300/1300） |
+| `deploy-him-best` | 控制仓库只加 1 个策略循环配置 + 窗口 geom group 可见性 | 能在演示 GUI 手动试操作 best.pt | 契约核对通过、GUI GetUp→Running→行走验证，见 `docs/training/deploy-him-best.md` |
 
 ## 失败 run
 

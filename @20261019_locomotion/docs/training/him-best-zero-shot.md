@@ -113,3 +113,13 @@ pixi run python @20261019_locomotion/scripts/agent_scripts/eval_him_best.py --pa
 ```
 
 产物（不入库）：`../prep.d/results/him_best_part1_v2[_extended].json`、`him_best_part2_v2[_extended].json`、`him_best_eval_summary[_extended].md`。
+
+录像（让用户能二次检查评测过程；只加渲染，不改 judge/起点/时长，数字与不录像时一致）：
+
+```bash
+MUJOCO_GL=egl pixi run python @20261019_locomotion/scripts/agent_scripts/eval_him_best.py \
+    --part all --time-scale 2.0 --p2-seconds 12 --tag _extended \
+    --video --video-dir ../prep.d/videos/him_best --out-dir ../prep.d/results
+```
+
+产物：`../prep.d/videos/him_best/part1/*.mp4`（8 段，每个障碍独立起点/命令）、`part2/*.mp4`（20 档），索引 `../prep.d/videos/him_best/index.html`；全部可视化（含 blind vs depth 对照与演示 GUI 截图）汇总在 `../prep.d/videos/review_20261024.html`。

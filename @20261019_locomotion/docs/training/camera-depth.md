@@ -101,8 +101,24 @@ MUJOCO_GL=egl .venv/bin/train <task> --agent.max-iterations 25 --agent.save-inte
 
 ## 6. 尚未做（按优先级）
 
-1. **blind vs depth 课程对照**：同 seed/同地形 100–500 iter，比较 iter 成本、`bad_sim_state` 触发数、tracking/非法接触；再决定 500/1000 iter 的正式对照。
+1. ~~**blind vs depth 课程对照**~~：已完成 500-iter 对照（见 §7）；结论是深度侧各项指标更好但成本 ×1.5，是否加长训练/上相机 DR 待用户确认。
 2. **相机 DR**：深度噪声（已加 obs 噪声，未做渲染级噪声）、丢帧/延迟 0–2 帧、外参扰动、FOV/分辨率变化、遮挡；策略 50 Hz vs 相机 20–30 Hz 的帧保持策略。
 3. **局部高度图方案 A**（备选）：如果 CNN 成本过高或学不动，改为 depth → body 系局部高度图（17×11 或 32×32）→ MLP，需要地面/平面估计或按基座系高度定义，且要和"禁止 heightmap 传感器"规则区分（这是相机算出来的，不是特权 sensor）。
 4. **部署契约**：actor 输入 45 → 109（45 proprio + 64 latent），`rl_sar` 需要深度相机推理 wrapper（含同样的归一化/无命中处理）；在对照实验前不冻结、不导 ONNX。
 5. **teacher-student**：现有 critic 259 特权（height_scan）已经可以当 teacher；是否做 privilege distillation 由对照结果决定。
+
+## 7. blind vs depth 500-iter 课程对照（2026-10-24）
+
+目的：回答"深度相机这条线目前值不值得继续"，不是判断最终质量。两个 run 除 actor 观测外完全同配置：从零训练、同 seed/地形/奖励/envs(1024)/iters(500)，远程 5060 Ti 16 GB。
+
+| run | actor 观测 | 时长 | mean iter | Mean reward | Mean episode length | terrain level mean | illegal_contact | error_vel_xy | track_linear_velocity |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `cmp_blind_500` | 45 维本体 | 10:35 | 1.271 s | 7.02 | 708.7 | 0.741 | 0.980 | 0.515 | 0.441 |
+| `cmp_depth_500` | 45 本体 + 32×32 深度 CNN latent | 16:17 | 1.956 s | **9.77** | **842.9** | **1.010** | **0.539** | **0.479** | **0.605** |
+| 差值 | — | +54% | +0.63 s | +2.75 | +134 steps | +0.27 | −45% | −0.036 | +37% |
+
+- 两 run 全程无 CUDA/NaN/`bad_sim_state` 触发（500/500 iter，`max_abs_bad_sim_state=0`）。
+- 指标取自训练日志末次迭代（`Learning iteration 499/500`）；曲线/CSV/JSON：`prep.d/results/cmp_blind_depth_metrics.csv`、`prep.d/results/cmp_blind_depth.json`，曲线图与视频见复核页 `prep.d/videos/review_20261024.html`。
+- rollout 视频（play env、常速 vx=0.5 m/s、10 s；两边都跑满 500 步未摔倒）：`prep.d/videos/cmp/cmp_blind_500.mp4`、`cmp_depth_500.mp4`（后者左 RGB + 右深度面板，深度面板近亮远暗、天空黑，与 §4 自检一致）。注意 play env 起点是平地，这两段只用于确认"策略在动、深度面板正常"，不代表障碍能力。
+- 解读（谨慎）：**500 iter 的早期阶段深度侧各项质量指标全面更好**（reward/episode 长度/地形课程推进/非法接触/速度跟踪），代价是每 iter 1.5×（显存见 §5：1024 envs depth32 约 4.3 GB，仍可 2048 envs）。这支持"继续深度相机线"，但 500 iter 远未到质量 gate：均值 episode 843 步（上限 1000）说明还会摔，训练 reward 也不能当通过率；结论需更长训练 + Part1/Part2 judge 才能下。
+- 单 seed、只跑一次：若要把这作为选型依据，按协议至少要 3 seed 或更长预算；本轮只作为"是否继续"的信号。

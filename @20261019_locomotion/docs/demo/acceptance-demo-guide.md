@@ -33,15 +33,17 @@ pixi run python @20261019_locomotion/scripts/agent_scripts/audit_deployment.py
 ```bash
 cd RoboCon/prep.d/quadruped_control_local
 P=../../MyMonoRepo.d/.pixi/envs/default
-$P/bin/cmake -S . -B .build-pixi \
+export PATH="$P/bin:$PATH" LD_LIBRARY_PATH="$P/lib"
+cmake -S . -B .build-pixi -G Ninja \
   -DQUADRUPED_ENABLE_MUJOCO=ON -DQUADRUPED_ENABLE_TORCH=ON \
   -DQUADRUPED_BUILD_APPS=ON \
   -DQUADRUPED_MUJOCO_SIMULATE_DIR="$PWD/third_party/mujoco_simulate" \
   -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_COMPILER="$P/x86_64-conda-linux-gnu-c++" \
+  -DCMAKE_CXX_COMPILER="$P/bin/c++" \
   -DPNG_LIBRARY="$P/lib/libpng.so" -DPNG_PNG_INCLUDE_DIR="$P/include" \
-  -DZLIB_LIBRARY=/usr/lib/x86_64-linux-gnu/libz.so -DZLIB_INCLUDE_DIR=/usr/include
-$P/bin/cmake --build .build-pixi --target quadruped_mujoco_sim -j4
+  -DZLIB_LIBRARY=/usr/lib/x86_64-linux-gnu/libz.so -DZLIB_INCLUDE_DIR=/usr/include \
+  -DCMAKE_EXE_LINKER_FLAGS="-lpthread -lrt -ldl"
+cmake --build .build-pixi --target quadruped_mujoco_sim -j6
 LD_PRELOAD=$P/lib/libstdc++.so.6 LD_LIBRARY_PATH=$P/lib \
   .build-pixi/apps/mujoco_sim/quadruped_mujoco_sim \
   --scene ../../MyMonoRepo.d/@20261019_locomotion/assets/terrain/part1/part1_eval_scene.xml
@@ -52,8 +54,9 @@ LD_PRELOAD=$P/lib/libstdc++.so.6 LD_LIBRARY_PATH=$P/lib \
 ```text
 0  GetUp
 1  Start/Return RL
+2/3  Running 中切策略（无固定轮驱配置时）
 F/G/J/B/T/Y/U/N  flat / loose / limit_bar / bridge / stairs / high_wall / slope / slalom
-W/S/A/D/Q/E 速度；Space 归零；X 退出
+W/S/A/D/Q/E 速度；Space 归零；R 重置并对准机器人；X 退出
 ```
 
 讲解：
@@ -62,6 +65,21 @@ W/S/A/D/Q/E 速度；Space 归零；X 退出
 - 按 `T`/`B` 看 `policy switched`，说明状态选择链路已通；
 - 8 个 policy 目前共用 `flat_ft`，只演示接口，不演示专项通过；
 - 桥/限高杆不要强行走；当前 zero-shot 是 fail，这是诊断结果。
+
+### 2.2b 试操作 best.pt（可选，用户手动验证用）
+
+在上面命令基础上加 `--policy-switch-config`（绝对路径），启动后 `1` 键进入 RL 跑的就是 `best.pt`（HIMLoco）：
+
+```bash
+LD_PRELOAD=$P/lib/libstdc++.so.6 LD_LIBRARY_PATH=$P/lib \
+  .build-pixi/apps/mujoco_sim/quadruped_mujoco_sim \
+  --scene ../../MyMonoRepo.d/@20261019_locomotion/assets/terrain/part1/part1_eval_scene.xml \
+  --policy-switch-config "$PWD/configs/policies/black/policy_switch_best.yaml"
+```
+
+- 策略循环：`obstacle`（=best.pt，启动策略）→ 7 个 `flat_ft` 占位策略；`2` 键循环、`F/G/J/B/T/Y` 选占位策略；
+- 相机默认取景约 1.9 m，走起来容易出画面：先用滚轮拉远，`Ctrl`+右键双击可切 tracking camera；
+- 契约、验证证据与深度策略暂不部署的原因见 [`../training/deploy-him-best.md`](../training/deploy-him-best.md)。
 
 ### 2.3 Part 1 judge + zero-shot 诊断（2 分钟）
 
