@@ -28,6 +28,7 @@
 | `cmp_depth_3000_cont_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | resume `cmp_depth_1500_cont model_1498` | 1024 | +1500 | 46:08（1.82 s/iter） | 训练仓 + depth task 改动 | — | — | — | TRAIN DONE（总 3000 iter；reward 14.86/ep 910/terrain 1.55/illegal 0.31；简单地形筛选） |
 | `cmp_blind_3000_cont_20261024` | 2026-10-24 | `black-basic-obstacle` | resume `cmp_blind_1500_cont model_1498` | 1024 | +1500 | 29:15（1.17 s/iter） | 同上 | — | — | — | TRAIN DONE（总 3000 iter；reward 13.15/ep 851/terrain 1.43/illegal 0.48；简单地形筛选） |
 | `cmp_comp_blind_800_20261024` | 2026-10-24 | `black-competition` | 从零（竞争地形 + goal 奖励 + mirror 0.1） | 1024 | 800 | ~16 min 预计 | 训练仓 competition_terrain/competition_rewards + env 注册 | — | — | — | RUNNING（竞争地形 single-frame 45-D 对照） |
+| `cmp_comp_hist_800_20261024` | 2026-10-24 | `black-competition-hist` | 从零（竞争地形 + goal 奖励 + mirror 0.1 + 6 帧历史） | 1024 | 800 | ~20 min 预计 | 训练仓 competition_terrain/competition_rewards/history task | — | — | — | RUNNING（历史帧 270-D 对照） |
 | `cmp_depth_warm_1500_20261024` | 2026-10-24 | `black-basic-obstacle-depth` | warm start from `cmp_blind_1500_cont model_1498`（CNN latent 列置零） | 1024 | 1500 | 46:24（1.83 s/iter） | 训练仓 + `depth_warm_start.py` + runner env-var 入口 | — | — | — | TRAIN DONE（3000等效 reward 12.83/ep 846；≈blind@3000、< depth-from-scratch；简单地形筛选） |
 
 ## 单开关说明
