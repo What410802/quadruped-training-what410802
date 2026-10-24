@@ -134,3 +134,14 @@
 5. 以上修正意味着 **stage3（从 model_2500 resume +2500 iter）用新的任务定义重训**，之后重新评测；之前所有比赛地形 run 只作过程记录。
 
 **结论（截至 2026-10-24 17:25）**：竞争地形代理训练本身还不足以让策略在真实 Part1/Part2 场景得分（首个 1900-iter 策略本地 judge Part1 0/8、Part2 0/27），主要原因是上述终止/命令/奖励设计问题（已于本小节修正）和训练预算不足；stage3 与后续 depth-final 的 judge 结果将决定是否继续在代理地形上加预算，或改为直接以真实场景为训练分布。
+
+## 10. 第二次训练设计修正（2026-10-24 18:00，stage3 中途发现）
+
+stage3 训练到 ~900 iter 时发现：地形课程（native `terrain_levels_vel`，按"走够距离"升级）与 **goal 终止**冲突——成功穿越障碍后 episode 提前结束，走过的距离达不到距离阈值，导致 8 个障碍列里 `slalom / height_bar / trench / platform` 长期停在 level 0，`bridge/bands/stones/high_wall` 靠"走得多"升到 2.7–3.4。结果就是 policy 根本没训练到这四类障碍，真实 judge 自然 0 分。
+
+修正（stage3b 起生效）：
+- 竞争任务**关闭 terrain curriculum**（`cfg.curriculum.pop("terrain_levels")`），改为固定难度分布 `max_init_terrain_level=4`（训练时行 0–4 随机 = 难度 0–0.8；play 仍全 0–5）；
+- 保留固定前进命令、progress/goal 奖励、去 illegal/stuck 终止、startup NaN guard。
+- stage3 在 ~900 iter 手动停止（checkpoint `cmp_comp_blind_stage3/model_3400.pt`），stage3b 从该 checkpoint resume +2500 iter。
+
+同时记录：stage3 中途策略（900 iter）本地 judge 仍为 Part1 0/8、Part2 0/27，但 Part1 多个障碍状态从"pending"变为"running/fail"（有位移/接触），说明动作裁剪修正后评测链路能反映行为；真实场景得分仍依赖四类障碍的补齐训练。
