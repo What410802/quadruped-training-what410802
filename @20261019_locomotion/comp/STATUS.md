@@ -7,6 +7,7 @@
 
 - **stage**：**C1 完成（PASS）**；G1 评测器仍**未冻结**（用户决策 A）；**C2 训练线重开（2026-10-24）**：Warp 710 已修（见 `../docs/training/training-health.md` §7），视觉主线的 depth task 已进训练仓，blind baseline `best.pt` 已 zero-shot 评测。
 - **deadline**：2026-11-04 晚。
+- **2026-10-24 主栈决策**：手动/演示主栈迁移到 **rl_sar**（控制层复用，`quadruped_control` 降为备选）；场景适配脚本已落地并本机验证，深度相机后续也走 rl_sar 线。见 `../docs/reference/rl-sar-migration-plan.md`。
 - **next**：① **视觉主线 500-iter 对照已完成**：`cmp_blind_500`/`cmp_depth_500`（从零、同 seed/地形/奖励/1024 envs）显示 depth 侧 reward/episode 长度/terrain 课程/非法接触全面更好、iter 成本 ×1.54（见 `../docs/training/camera-depth.md` §7）；是否加长训练/上相机 DR/正式多 seed 对照待用户确认；`best.pt` 已进 `quadruped_control` 演示 GUI 可手动试操作（`../docs/training/deploy-him-best.md`）；② P1 数字虽已稳，但质量 gate 未过，需要课程/奖励评估而不是盲目续训；③ G1 待训练出真实成功 rollout 后补 PASS/冻结。
   当前没有训练进程、远程机 flag=0、可关机。
 - **blockers**：无已确认 scorer blocker。G1 残余同前（砂砾坑真实坑体/碎木未 recut；Part2 官方能力场未逐档核对；限高杆 under-bar 用 base z 代理；真实成功 rollout 缺失；正式手动 3 次整场演练视频未补；course runner 为脚本化诊断链路；slalom 终点与最后一杆显示重叠）。

@@ -1,6 +1,8 @@
-# 部署栈对比：rl_sar vs quadruped_control（2026-10-22）
+# 部署栈对比：rl_sar vs quadruped_control（2026-10-22，2026-10-24 决策更新）
 
-> 回答两个问题：上次 assignment 的 rl_sar 是否弃用；这次为什么选 `quadruped_control`，两者部署差别在哪。结论先行：**比赛主部署选 `quadruped_control`；rl_sar 不删除，作为参考资料和备选路径保留，但不维护两套并行主栈。**
+> 回答两个问题：上次 assignment 的 rl_sar 是否弃用；这次为什么选 `quadruped_control`，两者部署差别在哪。原结论（2026-10-22）：**比赛主部署选 `quadruped_control`；rl_sar 不删除，作为参考资料和备选路径保留。**
+>
+> **2026-10-24 决策更新（以此为准）**：用户手动试操作后认为 **rl_sar 控制层手感更好**，决定把主栈迁移到 rl_sar（原计划 P2 提前），后续深度相机也基于该线；`quadruped_control` 降为备选/参考、不删除。迁移评估、技术栈差异、改动清单与验收见 [`rl-sar-migration-plan.md`](rl-sar-migration-plan.md)。**迁移不重写控制层**：复用 `@20261007_assignment/ws/src/rl_sar` + `@20261005_ros2` 的 `sim_node`，只新增本任务场景的数据转换（执行器顺序/可视化 group），已验证本机可跑。本文以下 2026-10-22 的对比仍作为"当时为什么选 quadruped_control"的记录保留。
 
 ## 1. 两套栈是什么
 
