@@ -72,9 +72,11 @@ def _render_final(runner: ScenePolicyRunner, name: str, status: str, out_dir: Pa
         f.write(img.tobytes())
 
 
-def run_task(name: str, policy_path: str, scene_path: str, render_dir: Path | None = None) -> dict:
+def run_task(name: str, policy_path: str, scene_path: str, render_dir: Path | None = None,
+             depth_config: dict | None = None) -> dict:
     (xyz, yaw, command, seconds, note) = TASKS[name]
-    runner = ScenePolicyRunner(scene_path, policy_path, (xyz[0], xyz[1], xyz[2], yaw))
+    runner = ScenePolicyRunner(scene_path, policy_path, (xyz[0], xyz[1], xyz[2], yaw),
+                               depth_config=depth_config)
     judge = Part1Judge(scene_path)
     _bind_judge(judge, runner)
     events = Part1EventJudge()
@@ -115,12 +117,18 @@ def main() -> None:
     parser.add_argument("--policy", default=POLICY)
     parser.add_argument("--json", default="prep.d/results/part1_zero_shot.json")
     parser.add_argument("--render-dir", default="")
+    parser.add_argument("--depth", action="store_true",
+                        help="policy is a depth CNN actor: input (45, [1,1,H,W])")
+    parser.add_argument("--depth-width", type=int, default=64)
+    parser.add_argument("--depth-height", type=int, default=48)
     args = parser.parse_args()
     names = args.task or sorted(TASKS)
+    depth_config = ({"width": args.depth_width, "height": args.depth_height}
+                    if args.depth else None)
     results = []
     for name in names:
         render_dir = Path(args.render_dir) if args.render_dir else None
-        result = run_task(name, args.policy, args.scene, render_dir)
+        result = run_task(name, args.policy, args.scene, render_dir, depth_config=depth_config)
         results.append(result)
         st = result["judge"]["states"][name]
         print(f"{name:14s} status={st['status']:8s} score={st['score']:3d} "
@@ -132,6 +140,7 @@ def main() -> None:
     out.write_text(json.dumps({
         "scene": args.scene,
         "policy": args.policy,
+        "depth": bool(args.depth),
         "total_score": total,
         "success_count": success,
         "attempts": results,

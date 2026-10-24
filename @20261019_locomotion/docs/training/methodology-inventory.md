@@ -30,6 +30,7 @@
 | **Distillation runner（teacher-student）** | rsl_rl `runners/distillation_runner.py` + `algorithms.distillation` | 库里有；本任务没接教师/学生任务 | 用特权 actor（带 height scan）当教师，蒸馏到 blind/depth 学生；对 depth 尤其有价值（相机学生可先模仿"看得见地形"的教师） | **中高（depth 线）** |
 | **mirror data augmentation** | `symmetry.py` 的 callback 已支持 `use_data_augmentation=True`，但 critic 的 height scan 镜像未实现 | 未启用 | 比 mirror loss 更强的对称约束；需补 critic 镜像变换；先做 mirror loss 0.1 的 A/B 再考虑 | 中 |
 | **Auxiliary / privileged teacher actor** | 环境里可以给 actor 加 height_scan 组（当前只有 critic 有），作为蒸馏教师/辅助监督源 | 未实现（需新增 actor 组/任务注册） | 给 depth CNN 加"预测高度图/教师 latent"的 aux loss 是文献常用手段，可显著改善视觉表征 | 中 |
+| **本地深度评测链路** | `export_depth_policy.py`（JIT 导出 CNN actor）+ `ScenePolicyRunner(depth_config=...)`（本地 MuJoCo 深度渲染/相机/归一化）+ Part1/Part2 judge `--depth` | 已实现并 dummy-policy 验证；待真实 checkpoint | 用于最终 blind vs depth 的真实场景 judge 裁决；camera 静态参数/机器人遮挡已按训练 contract 处理，渲染器差异需在结果里注明 | **高（裁决必需）** |
 | **深度分辨率/延迟/噪声/外参 DR** | 深度 obs 只有 ±0.02 噪声；渲染级噪声/丢帧/延迟/外参/分辨率未做 | 未实现 | 视觉鲁棒性（sim-only 比赛里优先级低于"能不能过障碍"，但可减少评估波动） | 中（最后做） |
 | **深度架构/潜维 A/B** | `DEPTH_CNN_CFG`（16/32/64、k5/k3/k3、global avg pool → 64）、BLACK_DEPTH_WIDTH/HEIGHT 环境变量 | 只测过成本（32×32 vs 64×48），无质量 A/B | 可能提升障碍细节判别；成本 ×1.7 | 中 |
 | **DR 范围 A/B / 更强扰动** | 现有 DR 参数均可配 | 未做单项 A/B | 提高鲁棒性；sim-only 比赛里边际收益一般 | 低中 |

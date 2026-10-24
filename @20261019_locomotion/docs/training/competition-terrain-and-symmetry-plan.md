@@ -78,7 +78,7 @@
 ## 6. 需要补的评测/工程项
 
 1. **`black-competition` + `black-competition-depth` 任务**：terrain generator（§2）、depth 相机沿用 `camera_depth.py`、runner 复用；
-2. **本地深度推理评测**：把训练好的 CNN actor 导出（rsl_rl `CNNModel` 两输入 obs group），在本任务 MuJoCo 场景里渲染 32×32 深度（MuJoCo Python `Renderer` 的深度渲染）+ 同一归一化/无命中规则，再跑现有 Part1/Part2 judge；blind 评测链路已通；
+2. **本地深度推理评测**：**已实现（2026-10-24，待真实 checkpoint 验证）**：训练仓 `scripts/agent_scripts/export_depth_policy.py` 用 rsl_rl `_TorchCNNModel` JIT 导出（`forward(obs_1d, [depth])`，输出 12 维 action，写 `contract.json`/sha256）；本地 `run_policy_scene.py` 的 `ScenePolicyRunner` 增加 `depth_config`（在 `d435_link` 上按训练参数加相机：70° fovy、0.1–3.0 m、64×48，隐藏机器人 geoms、归一化 /3.0），`run_part1_judged_rollout.py` / `run_part2_judged_eval.py` 增加 `--depth/--depth-width/--depth-height`；已用 dummy depth policy 端到端跑通 Part1 judge（无错误、JSON 记录 `depth: true`）。真实 depth checkpoint 的导出于 blind-final/depth-final 产出后补；blind 评测链路早已通。
 3. **几何对照检查**：新地形参数 vs CONTRACT/Part1/Part2 场景参数；
 4. **对称性指标脚本**：从 rollout 里算 §3 的四个指标，作为每次训练后的固定输出；
 5. 文档/账本：新增 run 行、实验结论进 `experiments.md`/`camera-depth.md`。

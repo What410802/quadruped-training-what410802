@@ -48,8 +48,10 @@ def sha256_file(path: Path) -> str:
 class LevelRunner:
     """Policy + judge loop for one attempt at one Part 2 level."""
 
-    def __init__(self, scene: str, policy: str, start: tuple[float, float, float, float]) -> None:
-        self.runner = ScenePolicyRunner(scene, policy, start)
+    def __init__(self, scene: str, policy: str, start: tuple[float, float, float, float],
+                 depth_config: dict | None = None) -> None:
+        self.runner = ScenePolicyRunner(scene, policy, start, depth_config=depth_config)
+        self.depth_config = depth_config
         self.model = self.runner.model
         self.data = self.runner.data
         self.policy = self.runner.policy
@@ -101,8 +103,14 @@ class LevelRunner:
 
     def _policy_step(self, command: np.ndarray, judge: Part2JudgeV2 | None) -> None:
         obs = self.runner.obs(command)
-        with torch.no_grad():
-            action = self.policy(torch.from_numpy(obs).unsqueeze(0)).numpy().reshape(-1).astype(np.float64)
+        obs_t = torch.from_numpy(obs).unsqueeze(0)
+        if self.depth_config is not None:
+            depth = torch.from_numpy(self.runner.render_depth())
+            with torch.no_grad():
+                action = self.policy(obs_t, [depth]).numpy().reshape(-1).astype(np.float64)
+        else:
+            with torch.no_grad():
+                action = self.policy(obs_t).numpy().reshape(-1).astype(np.float64)
         action = np.clip(action, -1.0, 1.0)
         self.runner.last_action[:] = action
         q_target = self.runner.q_default + ACTION_SCALE * action
@@ -134,6 +142,10 @@ class LevelRunner:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--policy", type=Path, default=POLICY)
+    ap.add_argument("--depth", action="store_true",
+                    help="policy is a depth CNN actor: input (45, [1,1,H,W])")
+    ap.add_argument("--depth-width", type=int, default=64)
+    ap.add_argument("--depth-height", type=int, default=48)
     ap.add_argument("--levels", type=Path, default=LEVELS_JSON)
     ap.add_argument("--contract", type=Path, default=CONTRACT)
     ap.add_argument("--only", action="append", default=[], help="category or category_level e.g. trench_10cm")
@@ -180,7 +192,9 @@ def main() -> None:
         attempts = []
         n_attempts = 1 if args.official else max(1, args.attempts)
         for _ in range(n_attempts):
-            lr = LevelRunner(scene, str(args.policy), start)
+            depth_config = ({"width": args.depth_width, "height": args.depth_height}
+                            if args.depth else None)
+            lr = LevelRunner(scene, str(args.policy), start, depth_config=depth_config)
             attempts.append(lr.run_attempt(entry, args.seconds))
         successes = sum(1 for a in attempts if a["judge"]["status"] == "success")
         cat = entry["category"]
