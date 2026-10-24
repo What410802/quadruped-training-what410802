@@ -153,3 +153,35 @@ stage3 训练到 ~900 iter 时发现：地形课程（native `terrain_levels_vel
 - Part1 的本地 judge 是按"脚本化起点/命令 + 自动通过判据"做的诊断，**Part1 正式比赛是人工遥控**（自动无额外分），所以 Part1 的 0/8 不应当作最终否决依据；Part1 需要的是速度跟踪/鲁棒性（blind 已够用），Part2（仅 RL）才是最终 blind vs depth 能力裁决的主战场。
 - 目前 blind 训练汇总（竞争地形代理、新任务定义、stage3b 进行中）：总 ~4300 iter 时 Part2 12s 窗口只有 trench 10cm 一个 0 分项；其余评分档（platform 10cm、stairs 10cm、slope 20°、high wall 20cm、trench 20cm、plum）尚未通过，需要更多训练/更好的 sim2sim 对齐。
 - 结论：**评测必须同时报告 6 s / 12 s 两种窗口，并注明官方窗口未定**；最终裁决以 Part2 的"评分档通过数/得分"为主，Part1 用速度跟踪+人工演示质量作辅。
+
+## 12. 阻塞点：代理地形训练→真实场景的迁移失败（2026-10-24 19:00，需要用户决策）
+
+### 12.1 证据
+
+blind（竞争地形代理，从 800-iter A/B 臂一路续训到 stage3b 结束，总 ~6800 iter）的本地 judge 结果（动作裁剪已修正、命令按 contract 固定）：
+
+| checkpoint / 阶段 | Part1（8 障碍自动诊断） | Part2（6 s 窗口） | Part2（12 s 窗口） | 训练侧指标 |
+|---|---:|---:|---:|---|
+| model_1900（旧任务定义） | 0/8 | 0/27 | — | reward ~9.7, terrain 0.37 |
+| model_2499（旧任务定义，resume 完） | 0/8 | 0/27 | — | reward 10.45, goal 12.2% |
+| stage3 中途（新任务定义，~900 iter） | 0/8 | 0/27 | 0/27 | goal 79%, progress 0.22 |
+| stage3b 最终（总 ~6800 iter） | **0/8** | **0/27** | **0/27** | reward 11.9, goal 47%, progress 0.21 |
+| flat_ft-2500（对照） | 0/2（slope/t_stairs） | 0/27 | 0/27 | — |
+| P1 basic（对照） | 0/2 | 0/27 | — | — |
+
+- 关键异常：stage3b 最终策略在本地 Part2 场景里 base z≈0.238 m、tilt≈22°，几乎**趴地/蹲行**（训练里为了钻限高杆/低姿态，学会了低姿态 gait），本地 judge 里基本原地不动 → 全部失败。
+- 训练侧 goal_reached 很高（47–79%）、progress 0.21，说明策略在**训练代理地形**上会走会过部分障碍；但真实场景分布（平台高度 0.6–0.8 m 起点、障碍尺寸/接触语义、机器人质量/摩擦）与代理差异大，出现"proxy 上高分、real 上趴地"的退化。
+- Part2 judge 12 s 窗口在 stage3b 中途 checkpoint 上出现过 trench 10cm SUCCESS（按 contract 是 0 分档），说明 judge 灵敏度正常；但评分档（platform 10cm=10、stairs 10cm=10、slope 20°=10、high wall 20cm=50、trench 20cm≈150、plum=200）均未通过。
+- **Part1 是人工遥控赛项**（自动无额外分），其自动 judge 只作诊断；Part1 需要的是速度跟踪/抗扰动，blind 基础策略是够的。**Part2 才是 blind vs depth 能力裁决主战场**。
+
+### 12.2 深度线现状
+
+depth-final warm start（从 stage3b blind checkpoint、64×48、1024 envs）启动即触发 **Warp CUDA OOM（16 GB）**：64×48 深度渲染 ×1024 env 超过显存；已停止。可行配置：32×32×1024（筛选用的分辨率）或 64×48×512。depth 的最终训练也要在"真实场景训练/代理地形"路线确定后进行。
+
+### 12.3 备选路线（需要用户拍板）
+
+- **A（推荐，针对 Part2 RL-only 1300 分）：直接用真实场景几何训练**。用 `SceneCfg.spec_fn` 把 Part1/Part2 的实际障碍 geometry 注入 mjlab training scene（或按 `config/part2-levels.json` 参数化重建），在真实起点/平台高度/尺寸上训练，奖励用 judge 同款的 region/height 成功条件；随机化起点、障碍档位与速度。代价：工程 ~1–2 天（场景注入/成功判定/课程），GPU 数小时；这是唯一有希望把 Part2 得分从 0 拉起来的路线，也能直接用于 depth 对比（相机看到真实障碍）。
+- **B（低成本、收益不确定）**：保留代理地形但修正退化：去掉 height_bar 的"钻"激励/强化 base height 与直立终止、把平台高度/尺寸对齐真实场景、提高 foot clearance；再训 5–10k iter 后重新 judge。可能仍 0 分，但工程小（~半天）。
+- **C（保守）**：Part1 维持 blind（人工遥控可用），Part2 用现有 best-effort 策略/回退（大概率 0–低分），把剩余时间投入 Part1 人工演示、答辩与部署稳定性。风险：Part2 1300 分基本放弃。
+
+**建议**：选 A，并把 Part2 作为 RL 主战场；Part1 用现有 blind 基础策略（flat_ft/p1）做人工遥控，不追求自动 judge 分。请用户确认路线（A/B/C）以及是否接受"A 需要 1–2 天额外工程 + GPU 时间"。
