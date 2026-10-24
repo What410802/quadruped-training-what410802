@@ -98,9 +98,11 @@
 | 竞争地形代理 | `src/alldog_mjlab/tasks/velocity/black/competition_terrain.py`（8 个自定义 SubTerrainCfg + 复用 flat/slope/stairs/gravel，共 14 列 × 6 行、难度 0..1） | CPU 几何检查通过（634 geoms、goal patch 48/84 = 8 障碍列 × 6 行）；GPU 3-iter smoke 通过 |
 | 任务 | `black-competition` / `black-competition-depth`（+ `-hist` 6 帧历史变体）注册在 `__init__.py` | smoke：blind 3 iter、depth 3 iter、history/depth-hist + mirror 0.1 各 2 iter 均 rc=0、无 NaN/CUDA |
 | 任务成功奖励 | `competition_rewards.py`：goal flat patch（8 个障碍列）→ 稀疏 `competition_goal` 奖励（权重 3.0）+ `competition_goal_reached` 终止；非障碍列用 spawn origin 填充并按最小距离 0.8 m 屏蔽 | smoke 的 `Episode_Reward/competition_goal`/`Episode_Termination/competition_goal_reached` 项存在（迭代太短，成功数 0，符合预期） |
-| 历史帧 | `black-competition-hist`（270 维 actor）、`black-competition-depth-hist`（270+64 CNN） | smoke 通过；`symmetry.py` 已扩展为支持 45×k 历史布局的 mirror loss |
+| 历史帧 | `black-competition-hist`（270 维 actor）、`black-competition-depth-hist`（270+64 CNN） | smoke 通过；`symmetry.py` 已扩展为支持 45×k 历史布局的 mirror loss（**2026-10-24 修正：MjLab native history 是 term-major 布局**——每个 term 的 6 帧连续排列，不是 6×45 帧块——mirror 已按 term-major 实现并验证 involutive；A/B 的 hist 臂在修正后启动） |
 | mirror 0.1 | 环境变量 `BLACK_MIRROR_LOSS_COEFF=0.1` 作用于所有新 run | smoke 日志 `[INFO] mirror-loss symmetry enabled: coefficient=0.1` |
 | 预览视频 | `prep.d/videos/competition/` 12 段（blind/depth zero-shot × 障碍列）+ `contact_competition_preview.jpg`；review 页 §2.4 | 已生成；仅用于地形几何/基线行为检查 |
 | 历史帧 A/B | `cmp_comp_blind_800`（45-D）vs `cmp_comp_hist_800`（270-D），800 iter × 1024 envs，mirror 0.1 + goal 奖励 | **RUNNING**（2026-10-24 16:10 起，约 40 min） |
 
 备注：地形代理与官方场景仍有几何/材质/接触差异，最终裁决仍以 Part1/Part2 真实场景 judge 为准；接下来的实现顺序是 "历史帧结论 → blind-final 长训 → depth-final（warm-start/from-scratch）→ judge 对比"。
+
+**部署/评测注意（270 维历史策略）**：mjlab native history 的 270 维布局是 term-major、oldest→newest（`[command×6, ang_vel×6, gravity×6, joint_pos×6, joint_vel×6, actions×6]`，每个 term 内部按时间旧→新），与 `rl_sar`/`best.pt` 的 HIM 270 维约定（frame-major、newest→oldest）不同。若历史帧 A/B 胜出，导出 TorchScript 时需要把第一层 Linear 的列置换为部署约定（离线重排权重即可，不需要重训），本地 judge 的 `ScenePolicyRunner` 也需要按部署/评测约定做历史栈；否则只能用于训练侧评测。此工作在 A/B 结论后按需执行。
