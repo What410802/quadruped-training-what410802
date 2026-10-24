@@ -122,3 +122,5 @@
 - 800 iter 不是历史帧的"完全体"（可能更长训练/更多历史帧会改善），但当前比赛窗口下不优先赌它。
 
 → **blind-final / depth-final 都采用单帧 45-D actor**；历史帧保留为研究记录（`-hist` 任务与导出脚本仍在仓库），不进入最终选型。
+
+**补充定量记录（2026-10-24）**：步态对称性（flat、0.8 m/s、6 s）单帧 RL−RR 前后差 0.062 m、后腿足端最高 0.038 m；历史帧 −0.114 m、0.025 m（两臂 z<0.04 接触率均 1.0，该阈值是近似，真实接触判据以 judge 为准）。难度 0.8/0.6 障碍列 12 s 评测在 800 iter 两臂均 0 成功率，平均前进 0.80 m（单帧）/0.89 m（历史帧），不具区分度；A/B 判定以训练指标（reward/episode/illegal/goal）+ 部署成本为准。A/B 视频与拼图见 `prep.d/videos/competition/comp_ab_*.mp4`、`contact_competition_ab.jpg`，review 页 §2.5。
