@@ -145,3 +145,11 @@ stage3 训练到 ~900 iter 时发现：地形课程（native `terrain_levels_vel
 - stage3 在 ~900 iter 手动停止（checkpoint `cmp_comp_blind_stage3/model_3400.pt`），stage3b 从该 checkpoint resume +2500 iter。
 
 同时记录：stage3 中途策略（900 iter）本地 judge 仍为 Part1 0/8、Part2 0/27，但 Part1 多个障碍状态从"pending"变为"running/fail"（有位移/接触），说明动作裁剪修正后评测链路能反映行为；真实场景得分仍依赖四类障碍的补齐训练。
+
+## 11. 评测窗口敏感性 & 首次出现的能力信号（2026-10-24 18:30）
+
+- 本地 Part2 judge 的每档尝试窗口默认 6 s（冻结自早期诊断；官方规则未写每档时限）。stage3b 中途 checkpoint（总 ~4300 iter）在 6 s 窗口 Part2 0/27；把窗口放宽到 12 s 后出现 **trench 10cm SUCCESS**（机器人跨过 10 cm 沟壑；按 contract 曲线 10cm 是 0 分，但证明能力信号和 judge 灵敏度都正常）。
+- 同一 12 s 窗口下 flat_ft-2500（无越障能力）仍 0 成功，说明不是"窗口放宽后随便什么都能过"。
+- Part1 的本地 judge 是按"脚本化起点/命令 + 自动通过判据"做的诊断，**Part1 正式比赛是人工遥控**（自动无额外分），所以 Part1 的 0/8 不应当作最终否决依据；Part1 需要的是速度跟踪/鲁棒性（blind 已够用），Part2（仅 RL）才是最终 blind vs depth 能力裁决的主战场。
+- 目前 blind 训练汇总（竞争地形代理、新任务定义、stage3b 进行中）：总 ~4300 iter 时 Part2 12s 窗口只有 trench 10cm 一个 0 分项；其余评分档（platform 10cm、stairs 10cm、slope 20°、high wall 20cm、trench 20cm、plum）尚未通过，需要更多训练/更好的 sim2sim 对齐。
+- 结论：**评测必须同时报告 6 s / 12 s 两种窗口，并注明官方窗口未定**；最终裁决以 Part2 的"评分档通过数/得分"为主，Part1 用速度跟踪+人工演示质量作辅。

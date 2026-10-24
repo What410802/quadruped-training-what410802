@@ -42,7 +42,8 @@
 - **2026-10-24 数值稳定性修复**：从 `model_5496` resume 的 4 次 run 在 100 iter 内崩 Warp CUDA 710；插桩定位为“坠落状态 -> 动作经 last-action 观测自激 -> 超大动作 -> NaN”，已装三项安全网（actor obs clip ±100 与部署一致、`clip_actions=±100` 与部署一致、`bad_sim_state` 极端状态终止），200-iter resume smoke 无 CUDA/NaN；详见 [`training/training-health.md`](training/training-health.md) §7。**P1 质量 gate 仍为未通过**（训练 reward 不等于通过率）。
 - **当前结论**：第一轮桥/限高杆有改善，第二轮训练地形 level 略升但 Part 1 迁移退化；不能只靠续训，也不能把训练 reward 当通过率。详见 [`training/p1-basic-obstacle.md`](training/p1-basic-obstacle.md)。
 - **下一步（等用户指示）**：先做训练环境评估和课程/奖励调整；再决定 P1 第三轮训练或转向 Part 1 专项。
-- **2026-10-24 18:00（课程修正）**：stage3 中途发现 distance-based terrain curriculum 与 goal 终止冲突，slalom/height_bar/trench/platform 停在 level 0；改为固定难度分布 rows 0–4、关闭 terrain curriculum，stage3b 从 model_3400 resume +2500 iter 重训。
+- **2026-10-24 18:35（能力信号+窗口敏感性）**：stage3b 中途 checkpoint 在 Part2 12 s 窗口首次出现 trench 10cm SUCCESS（6 s 窗口仍 0）；flat_ft 同窗口仍 0 → judge 灵敏度正常，但官方 Part2 每档时限未定，最终裁决需同时报 6 s/12 s。Part1 为人工遥控，其自动 judge 只作诊断。
+**2026-10-24 18:00（课程修正）**：stage3 中途发现 distance-based terrain curriculum 与 goal 终止冲突，slalom/height_bar/trench/platform 停在 level 0；改为固定难度分布 rows 0–4、关闭 terrain curriculum，stage3b 从 model_3400 resume +2500 iter 重训。
 **2026-10-24 17:25（竞争地形首次评测修正）**：发现本地 judge 动作裁剪 ±1 vs 训练 ±100 的 bug（已修）；竞争任务移除 illegal_contact/stuck 终止（它们阻止爬墙/穿杆等合法接触）、改为固定前进命令+goal progress 奖励、初始难度提到 2；blind-final 在 ~1930 iter 因 critic NaN 中止，已加位置检查 + obs nan guard 并 resume 完成 2500。stage3（从 2500 ckpt +2500 iter）重训进行中。
 **2026-10-24 16:50（历史帧 A/B 结果）**：竞争地形 800 iter A/B 完成——单帧 45-D（reward 9.72/ep 730/illegal 0.761/goal 8.7%）优于 6 帧 270-D（8.08/640/0.954/4.7%），且部署/评测链路更简单；**决定 final 用单帧 45-D**，历史帧保留研究记录。下一步：blind-final（竞争地形 2500 iter）→ depth-final（warm-start）→ Part1/Part2 judge 裁决。
 **2026-10-24 16:18（历史帧布局修正）**：发现 MjLab native history 为 term-major（非 6×45 帧块）；`symmetry.py` 的 mirror 已按 term-major 重写并验证 involutive；A/B hist 臂将在修正后启动；若 hist 胜出需在导出时重排第一层列以匹配 HIM 270 部署约定（见竞争地形计划 §8 部署注意）。
