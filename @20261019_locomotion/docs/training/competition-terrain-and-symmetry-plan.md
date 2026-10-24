@@ -194,3 +194,23 @@ depth-final warm start（从 stage3b blind checkpoint、64×48、1024 envs）启
 - 竞争地形训练指标：reward 14.33（历次最高）、base_height 惩罚 −0.009、goal_reached 51%、NaN 0；
 - **真实场景 judge 仍为 0**：Part1 0/8；Part2 6 s 0/27、12 s 0/27（机器人会动、会碰撞，但没有通过任何成功档）。
 - 结论：抗退化修复解决了"趴地"问题，但**代理地形训练仍不足以让策略通过真实 Part1/Part2 的成功判据**；路线 A（直接用真实场景几何训练）仍是推荐路径，需要用户确认后执行。
+
+## 13. 步态诊断与"借用开源基座"建议（2026-10-24 20:35）
+
+- **后腿拖地实测**：自训 stage4 / blind_yaw 的 RL/RR foot lift 只有 3–4 mm（FL 80–96 mm、FR 38–76 mm），HIM `best.pt` 为 97/93/28/62 mm；自训步态退化为"前腿拉、后腿拖"。
+- **限高杆已失真**：抗退化补丁把净空提到 0.55–0.60 m（高于站立高度），视频里杆在狗身上方，和真实 Part1 的低限高不一致；恢复低净空时需要用 terrain_type 掩码限制低姿态只出现在限高杆列，或把低头拆成单独技能。
+- **yaw/vy 命令实验**：800 iter 后代理成功率 18.75%→31.25%，但 yaw 跟踪仍只有 ~0.05 rad/s，且后腿拖地未改善 → 先修基座步态，再谈转向/高层大脑。
+- **depth 显存**：32×32×1024 已可训练（300 iter smoke 通过），warm-start 45→109 维机制工作；64×48 需 512 envs。
+- **开源调研**：见 `docs/reference/open-source-locomotion-survey.md`。核心结论：优先借用**同机器人同契约的 `best.pt`（HIM）**做基座/教师，其次移植 **MuJoCo Playground / mjlab / legbot_lab（TS recipe）**；IsaacGym 系仓库（legged_gym/unitree_rl_gym/parkour 等）在 RTX 5060 Ti 上不建议尝试；导航"大脑"可用 Navigation Model Zoo（ONNX `[v,ω]`）或 Nav2，但对本次比赛优先级最低。
+
+## 14. best.pt 基座审查（P0，2026-10-24 21:00）
+
+- **best.pt 结构**（TorchScript）：输入 270-D 历史（frame-major，最新帧在前）；内部 `estimator`(270→128→64→19，输出 vel3 + latent16) + `actor`(64→512→256→128→12；输入 = 最新 45-D 观测 + vel3 + normalize(latent16)）。**与我们 hist 任务 270-D actor 的普通 MLP 不同**，不能直接 state-dict 热启动；需要"复刻 HIM 结构（可微）+ 我们的 term-major→HIM frame-major 排列"或做教师蒸馏。
+- **零样本审查（我们的新奖励环境 `black-competition-hist`，270-D play env，12 s，16 env）**：
+  | 难度 | 成功率 | 摔倒率 | 平均前进 | 平均每步奖励 |
+  |---|---:|---:|---:|---:|
+  | level 0/1 | 12.5%（2/16；height_bar 50%、platform 50%） | 0% | 1.16 m | 0.0136 |
+  | level 2/3 | 0% | 0% | 0.86 m | 0.0084 |
+  - 说明：best.pt 在我们的新奖励环境里**没有摔倒/发散**（无退化迹象），但也和自训策略一样过不了桥/墙/沟/桩；它的优势在步态质量（四足 lift 97/93/28/62 mm vs 自训 96/38/3/4 mm）与真实 Part2 扩展窗口 8/20。
+  - 审查脚本：`nwwolf_mjlab_training_release/scripts/agent_scripts/audit_history_policy.py`（可对任意 HIM 270 策略做零样本 competition 评测；含 perm 转换）。
+- **热启动方案（待实施）**：在训练仓实现 `HimActor`（estimator+actor，加载 best.pt state_dict，内部把 mjlab term-major 270 转 HIM frame-major），用 rsl_rl PPO 在我们的奖励上 fine-tune；训练中持续监控：摔倒率、四足 lift（后腿 >20 mm）、每列成功率、reward 分项（base_height/termination/progress 是否被 hack）、最终 judge。退化即回滚。
