@@ -1,0 +1,108 @@
+# 深度相机接入（C2 视觉主线，2026-10-24）
+
+> 背景与决策见 [`../../comp/PLAN_C2_ARCH.md`](../../comp/PLAN_C2_ARCH.md) 的 2026-10-24 更新与 [`../../comp/CONTRACT.md`](../../comp/CONTRACT.md)（允许模拟真实相机/雷达；本队选深度相机、不用雷达；heightmap/足底力等特权量禁止进 actor）。
+> 本文记：mjlab 1.6 相机 API 的实测结论、训练仓改动、正确性自检、成本/100-iter 稳定性 smoke 与尚未做的部分。远程训练仓路径：`bis-ms7e56.tail4413b4.ts.net:/home/bis/rc_work/nwwolf_mjlab_training_release`。
+
+## 1. 结论
+
+- mjlab 1.6（mujoco_warp 3.11 / Warp 1.17）原生支持深度相机：`CameraSensorCfg(data_types=("depth",))` + 一个 2-D observation group + rsl_rl `CNNModel`，**不需要 EGL**，渲染与现有 terrain raycast 共用同一个 GPU sense graph。
+- 训练仓新增 task **`black-basic-obstacle-depth`**：与 `black-basic-obstacle` 同地形/奖励/终止，actor 输入从 45 维变 **45 proprio + 64 维深度 CNN latent**，critic 保持 259 维特权。blind task 未改动，保留 fallback。
+- 深度图正确性：8 env 自检通过（相机高约 0.53 m、下俯 15°，图像下半部地面深度 0.58–0.94 m，与几何一致；上半部天空/远处按 "≥3 m 视为最远" 处理）。
+- 成本 smoke（25 iter × 4 配置）+ 100-iter 稳定性 smoke：见 §5（每 iter 走时/显存/吞吐 vs blind task）。
+
+## 2. mjlab 1.6 相机 API（读源码得到的可用结论）
+
+| 事项 | 结论 | 出处（远程 `.venv/lib/python3.12/site-packages/`） |
+|---|---|---|
+| 配置 | `CameraSensorCfg(name, parent_body, pos, quat, fovy, width, height, data_types=("depth",), use_textures, use_shadows, enabled_geom_groups, clone_data)`；`parent_body` 用带 entity 前缀的名字如 `robot/d435_link` | `mjlab/sensor/camera_sensor.py` |
+| 数据 | `sensor.data.depth` 形状 `[num_envs, height, width, 1]` float32；同一 sensor 还可取 `rgb`/`segmentation`，本文只开 depth | 同上 |
+| 渲染路径 | `SensorContext` → `mjwarp.create_render_context(...)`；`Simulation.sense()` 把 `refit_bvh + mjwarp.render + raycast` 包进同一个 CUDA graph，每个 env step 调一次 | `mjlab/sensor/sensor_context.py`、`mjlab/sim/sim.py:522` |
+| 与 raycast 共用 | 现有 `terrain_scan` / `foot_height_scan` 已是 `requires_sensor_context` sensor，所以相机只是往同一个 context 里加 rendering，没有额外图形上下文 | `mjlab/scene/scene.py:179` |
+| 约束 | 一个 scene 里所有 camera 必须共享 `use_textures` / `use_shadows` / `enabled_geom_groups`；相机与 raycast 的 geom group 不一致时取并集并 warn | `mjlab/sensor/sensor_context.py:_validate_sensor_settings` |
+| EGL | 不需要。`MUJOCO_GL=egl` 只影响其它渲染路径（录像/查看器），深度走 GPU RenderContext | 实测：无窗口环境训练正常 |
+| 深度语义（实测） | 未命中的天空/背景像素返回 **0**；射线逃出地形时可返回几十米；有效地面像素是相机系距离（米）。进 obs 前要统一成 "0/非有限/≥cutoff 视为最远" | `depth_smoke.py` 统计 + 可视化 |
+| 观测接入 | 2-D obs group（`concatenate_terms=True`，形状 `(1,H,W)`）；rsl_rl `CNNModel` 按 obs group 自动建 CNN，1-D group 直接拼到 MLP 输入 | `rsl_rl/models/cnn_model.py`、`mjlab/rl/config.py` |
+| 网络 | actor `CNNModel`：CNN 输出 latent + 1-D obs → MLP `hidden_dims` → 12 维动作；本配置用 `global_pool="avg"` 得到 64 维 latent，MLP 输入 **109 = 45 + 64** | 同上 |
+
+## 3. 训练仓改动（工作区，未 commit）
+
+| 文件 | 改动 |
+|---|---|
+| `src/alldog_mjlab/tasks/velocity/black/camera_depth.py`（新增） | `depth_camera_cfg()`（相机传感器）、`camera_depth()`（深度 → `(B,1,H,W)` 归一化 obs）、`add_camera_observations()`（注册 `camera` obs group） |
+| `src/alldog_mjlab/tasks/velocity/black/black_config.py` | 新增 `DepthCameraParams`（分辨率/FOV/安装位姿/深度范围/obs 噪声）与 `RunnerParams.depth`（run 名 `basic_obstacle_depth`） |
+| `src/alldog_mjlab/tasks/velocity/black/env_cfgs.py` | `black_basic_obstacle_depth_env_cfg(play=False)` = P1 地形 + 相机 sensor + `camera` obs group |
+| `src/alldog_mjlab/tasks/velocity/black/rl_cfg.py` | `black_depth_ppo_runner_cfg()`：actor 换 `CNNModel`、`DEPTH_CNN_CFG`、`obs_groups={"actor": ("actor","camera"), "critic": ("critic",)}` |
+| `src/alldog_mjlab/tasks/velocity/black/__init__.py` | 注册 `black-basic-obstacle-depth`（train/play 两套 env cfg + depth runner cfg） |
+| `scripts/agent_scripts/depth_smoke.py`（新增，调查工具） | 8 env 正确性自检 + 深度图 PGM/NPY 导出 + 步进耗时/显存；`BLACK_DEPTH_WIDTH/HEIGHT` 可临时改分辨率 |
+
+相机安装：`robot/d435_link`（机器人模型自带的前部 RealSense 支架，trunk 前方 x≈0.225 m、z≈+0.028 m），再前移 0.01 m；fovy 70°，**下俯 15°**；深度 0.1–3.0 m；`enabled_geom_groups=(0,)` 只渲染地形/障碍（机器人 geom 是 group 3，不遮挡）。观测噪声：训练时对归一化深度图加 ±0.02 均匀噪声（play 关闭）。
+
+观测归一化（`camera_depth()`）：
+
+```text
+d_obs = clamp(clamp(depth, min_depth, cutoff) / cutoff, 0, 1)    # 0.1..3.0 m -> 0.033..1.0
+其中 depth 非有限或 <=0（无命中/天空）按 cutoff 处理
+```
+
+## 4. 正确性自检（8 env，play 模式）
+
+```bash
+cd ~/rc_work/nwwolf_mjlab_training_release
+MUJOCO_GL=egl .venv/bin/python scripts/agent_scripts/depth_smoke.py --num-envs 8 --steps 20 --out ~/rc_work/depth_smoke
+```
+
+实测（2026-10-24）：
+
+- observation groups：`actor (8,45) / critic (8,259) / camera (8,1,48,64)`，`camera` 的 term 是 `depth`；
+- `sensor.data.depth` 形状 `(8,48,64,1)`；
+- `camera` obs（归一化后）实测 `min=0.173 / max=1.000 / mean=0.634`：0.173×3 = 0.52 m 对应最近地面像素（相机高 0.53 m），max=1.0 对应天空/≥3 m；
+- 原始深度统计：图像下半部 row median 0.58–0.94 m（与相机高 0.53 m、下俯 15° 的几何一致），上半部为 0（天空/无命中，约占 30% 像素），另有 ~11% 像素 >3 m（逃逸射线）；
+- 深度图（近亮远暗）的 PGM 目视：地面梯度、远处暗带、上方天空，与“前向下俯相机”一致。
+
+## 5. 成本 smoke（2026-10-24，25 iter/次，远程 5060 Ti 16 GB）
+
+命令（远程训练仓，`scripts` 外的一次性批处理在 `~/rc_work/cost_smoke.sh`）：
+
+```bash
+# 每次 25 iter，前 4 iter（CUDA graph 捕获/编译）不计入均值；peak GPU 由 2 s 轮询 nvidia-smi 取
+MUJOCO_GL=egl .venv/bin/train <task> --agent.max-iterations 25 --agent.save-interval 1000 \
+    --agent.run-name cost_<case> --agent.logger tensorboard --env.scene.num-envs <N>
+```
+
+| case | 分辨率 | envs | 平均 iter | 峰值显存 | 相对 blind |
+|---|---|---:|---:|---:|---:|
+| blind（`black-basic-obstacle`） | — | 1024 | **1.39 s** | 2.0 GB | 1.00× |
+| depth | 32×32 | 1024 | **2.12 s** | 4.3 GB | 1.53× |
+| depth | 64×48 | 1024 | **3.53 s** | 11.1 GB | 2.54× |
+| depth | 64×48 | 2048 | **6.22 s** | 14.8 GB | 4.47× |
+| blind | — | 4096 | 2.84 s（同日 `fixed2` run） | 6.7 GB | 2.04× |
+
+结论/建议：
+
+- **分辨率主导成本**：1024 envs 下，32×32 比 blind 多 0.7 s/iter，64×48 多 2.1 s/iter；显存从 2.0 GB 分别涨到 4.3 / 11.1 GB。
+- **64×48 @2048 接近 16 GB 上限（14.8 GB）**：不是安全的长跑配置（其它分配/保存会挤爆）；长跑建议 **32×32 @2048**（按 1024 的 4.3 GB 估 ~7–8 GB）或 **64×48 @1024**。
+- **1000 iter 估算**（不含启动；启动约 1.5–2 min）：blind@1024 ≈ 23 min；depth32@1024 ≈ 35 min；depth64@1024 ≈ 59 min；depth64@2048 ≈ 1 h 44 min。→ 第一轮 blind vs depth 对照（500–1000 iter）在 32×32@1024 或 64×48@1024 上完全可行。
+- 四次 cost run 均无 CUDA 错误、无 NaN、`Metrics/twist` 正常；25 iter 只是成本量级，不是学习效果证据。
+- 日志：`~/rc_work/logs/cost_*.log`、汇总 `~/rc_work/logs/cost_smoke_summary.txt`（不入库）。
+
+### 5.1 100-iter 训练稳定性 smoke（32×32 @1024 envs，从零）
+
+按 handoff 的验收口径跑满 100 iteration（`--agent.max-iterations 100`，run `depth_100iter_smoke_20261024`）：
+
+| 检查 | 结果 |
+|---|---|
+| 完成 iteration | **100/100** |
+| CUDA 错误 / NaN | 0 / 0 |
+| 每 iter 耗时 | mean **2.11 s**，max 3.47 s（首 iter 编译/capture） |
+| observation shape | actor `(1024,45)`、critic `(1024,259)`、camera `(1024,1,32,32)`（同 run 日志） |
+| 学习信号（从零 100 iter，不是效果结论） | `Mean value loss` 0.011；`Mean action std` 1.00→0.45；`Mean episode length` ~10→180 step（随机策略在学站/走） |
+
+→ 相机 sensor + obs 管线 + CNN actor + PPO 全链路在 100 iter 上无崩溃；下一轮才做 blind vs depth 的对照（500–1000 iter）。
+
+## 6. 尚未做（按优先级）
+
+1. **blind vs depth 课程对照**：同 seed/同地形 100–500 iter，比较 iter 成本、`bad_sim_state` 触发数、tracking/非法接触；再决定 500/1000 iter 的正式对照。
+2. **相机 DR**：深度噪声（已加 obs 噪声，未做渲染级噪声）、丢帧/延迟 0–2 帧、外参扰动、FOV/分辨率变化、遮挡；策略 50 Hz vs 相机 20–30 Hz 的帧保持策略。
+3. **局部高度图方案 A**（备选）：如果 CNN 成本过高或学不动，改为 depth → body 系局部高度图（17×11 或 32×32）→ MLP，需要地面/平面估计或按基座系高度定义，且要和"禁止 heightmap 传感器"规则区分（这是相机算出来的，不是特权 sensor）。
+4. **部署契约**：actor 输入 45 → 109（45 proprio + 64 latent），`rl_sar` 需要深度相机推理 wrapper（含同样的归一化/无命中处理）；在对照实验前不冻结、不导 ONNX。
+5. **teacher-student**：现有 critic 259 特权（height_scan）已经可以当 teacher；是否做 privilege distillation 由对照结果决定。

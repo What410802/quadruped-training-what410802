@@ -98,3 +98,76 @@
 6. `Curriculum/command/*`。
 7. `Loss/value`（>100/inf 预警）→ `Loss/entropy`、`Policy/mean_std` → `Loss/learning_rate`。
 8. `Metrics/twist/error_*` → `Perf/*` → `*/time` 变体。
+
+## 7. 2026-10-24 复发：Warp CUDA 710 的插桩复现与修复
+
+> 本节是 2026-10-23 夜间 ~10-24 上午的排查记录。脚本/日志在远程训练仓与 `~/rc_work/logs/`（不入库），本地文档只留结论与可复现命令。
+
+### 7.1 现象
+
+从 p1 续训最终权重 `logs/rsl_rl/black_velocity/2026-10-22_16-44-17_p1_basic_obstacle_cont/model_5496.pt` 出发的 **4 次** run 全部在 100 iteration 内崩 `Warp CUDA error 710`（`normal expects all elements of std >= 0.0` 之后）：`basobstacle_from_p1_20261023`（~iter 5676）、`rough_from_p1_20261023`（~iter 5513）、`smoke100_resume_20261024`（100 iter 跑完但 23/100 iter 的 `action_rate_l2` 离群，最后一次 -1.5e6）与插桩 run。同一 checkpoint 所属的 `p1_basic_obstacle_cont` 自身 1500 iter **无异常**。
+
+### 7.2 对照实验（全部 4096 envs、100 iter、同 seed 42、resume）
+
+| 实验 | 初始化 | 结果 |
+|---|---|---|
+| E1 `e1_ctrl_3997_20261024` | 复现 `p1_cont` 起点：run1 `model_3997` | **100/100 clean**；指标与 10-22 的 `p1_cont` 前 100 iter 几乎逐位一致（action_rate max \|.\| 0.050 vs 0.051） |
+| E5 `e5_5400` | `p1_cont` `model_5400` | **100/100 clean**（action_rate max \|.\| 0.088；value loss 尖峰 1.52 后回落） |
+| probe `probe2_5496_20261024` | `p1_cont` `model_5496` + `BLACK_ANOMALY_PROBE=1` | 第 1 个 rollout 的 **step 29** 抓到跨阈值动作 |
+| fixed `fixed2_5496_200_20261024` | 同上 + 三项安全网（§7.4） | 200 iter 无 CUDA 错误（见 §7.5） |
+
+结论：**环境/机器/code 快照都没变**（run 目录里的 `git/` 快照逐字节相同），差异在 checkpoint 状态。`model_5400` 干净、`model_5496` 不稳定，说明 p1 续训最后 ~100 iter 把策略推进了一个"遇到离群状态会自激"的区域，但训练当次因为 rollout 未碰到而未暴露。
+
+### 7.3 插桩：动作反馈环放大，不是物理先爆
+
+新增 `src/alldog_mjlab/utils/anomaly_probe.py`（`BLACK_ANOMALY_PROBE=1` 时包装 `RslRlVecEnvWrapper.step`，记录每步 max \|action\|/max \|qvel\|/obs 并按阈值停训）。probe 在 resume 后第 29 个 env step（第一个 rollout 内）抓到：
+
+```text
+history step=18 |action|max=13.75 |joint_vel|max=27.64 gt5=30 gt10=3 gt50=0
+history step=21 |action|max=22.94 |joint_vel|max=28.51 gt5=32 gt10=7 gt50=0
+history step=24 |action|max=50.91 |joint_vel|max=28.29 gt5=44 gt10=10 gt50=1
+history step=27 |action|max=56.54 |joint_vel|max=37.35 gt5=45 gt10=11 gt50=1
+history step=28 |action|max=89.06 |joint_vel|max=35.29 gt5=42 gt10=10 gt50=1
+history step=29 |action|max=135.3 |joint_vel|max=46.31 gt5=43 gt10=8 gt50=1
+env 1690 ep_len=726 |a|max=135.3 |jv|max=46.31 root_lin=[0.46,1.37,-1.86] root_ang=[-14.64,-6.58,-6.33] root_pos=[-20.17,0.43,0.30]
+```
+
+关键读数：**动作在单个 env 内几何增长（~12 步 ×1.2–1.5），而 `|qvel|` 只有 ~20–46 rad/s（正常量级）、物理尚未爆**；`obs` 的 max 与 `action` 的 max 同步增长（obs 里含 `actions` 项）→ 放大机制是 **"上一帧动作 → 观测 → 下一帧动作"的自激环**，触发状态是坠落/翻滚（`|root_ang|` 14.6 rad/s、x=-20 已出界）。等到动作足够大，才由力矩/接触把物理打成 NaN，最后在 PPO 采样处报 `torch.normal` 断言 → Warp 710。所以"先修 action std / 先降 LR"都不是根因修复。
+
+与 2026-10-20 那次（`Loss/value` 先到 inf）的区别：本轮 reward clamp ±50 与 return clamp ±1000/±100 **已经装上**，value loss 尖峰还在（`fixed` 之前的 smoke100 里 29% iteration 的 `action_rate_l2` < -100）但不再到 inf；致命路径变成动作自激。
+
+### 7.4 修复（训练仓工作区，单开关之外的安全网）
+
+1. **actor 观测 clip（部署一致）**：部署侧 `clip_obs=100`，训练侧原来没有 clip。mjlab 的 per-term clip 在 **scale 之前**执行，所以每项按 `100 / max(scale)` 折（如 joint_vel：raw ±2000、×0.05 后 ±100），等价于部署对拼接后观测的 ±100。配置项 `BLACK_CONFIG.observation.actor_obs_clip`（<=0 关闭）。
+2. **动作 clip（部署一致）**：`clip_actions = BLACK_CONFIG.control.action_clip = 100`，进入 runner cfg；部署侧同样是 ±100。这一步把自激环里的动作上界钉住。
+3. **数值安全终止 `bad_sim_state`**：`terminations.py` 新 term，任一 env 的 `joint_vel`/root 线角速度非有限，或超过 `100 / 40 / 20`（rad·s⁻¹）阈值就终止并 reset。它在 reward 之后、obs 之前执行，因此 NaN 物理状态不会进到策略输入（切断 NaN→policy→`torch.normal` 断言）。阈值远高于正常步态（正常 |qvel| < 40、|root ang| < 5），play 模式会移除该 term。
+
+这三项都不改 reward 设计、不改动作/观测维数契约；`bad_sim_state` 只影响"物理异常 episode"的终止统计。
+
+### 7.5 修复后冒烟
+
+- `fixed2_5496_200_20261024`（4096 envs、resume `model_5496`、200 iter、probe 阈值放宽到 action>1000 / qvel>200 以免把 100–300 的饱和动作误报）：**200/200 完成，无 CUDA 错误、无 NaN、无 probe 硬触发**。整段 200 iter 的指标（tfevents 实测）：
+  - `Episode_Reward/action_rate_l2` last=-0.044、max abs=0.047；`smoothness` last=-0.093、max abs=0.100（对比崩溃前 smoke100 的 -1.5e6 / -2.7e5，且 23% iteration 离群）；
+  - `Episode_Metrics/mean_action_acc` max=0.764；`Loss/value` max=0.0225（对比崩溃前的 12.8/59.8/288）；
+  - `reward clamp` 统计：`clipped_env_steps=0`、`max_abs_before_clip=1.65`（per-step 总 reward 根本不用裁剪了）；
+  - 原始动作仍会在个别 env 饱和到 ~300（clip_actions=100 后实际下发的动作被钉住），但不再放大成 1e5、也不再产生 NaN。
+  日志 `~/rc_work/logs/fixed2_5496_200_20261024.log`。
+- 复现命令（远程训练仓）：
+
+```bash
+cd ~/rc_work/nwwolf_mjlab_training_release
+export UV_CACHE_DIR="$HOME/rc_work/.uv-cache"
+MUJOCO_GL=egl .venv/bin/train black-basic-obstacle \
+  --agent.resume True \
+  --agent.load-run 2026-10-22_16-44-17_p1_basic_obstacle_cont \
+  --agent.load-checkpoint model_5496.pt \
+  --agent.max-iterations 200 --agent.save-interval 100 \
+  --agent.run-name fixed2_5496_200_20261024 \
+  --agent.logger tensorboard --env.scene.num-envs 4096
+```
+
+### 7.6 仍未做 / 后续
+
+- `model_5000` 的对照（E6）在拿到 E5 结果后主动中止，未测；"从哪一版开始不稳定"还没有精确到 checkpoint 粒度。
+- 200 iter 不是长跑稳定性证明：长跑仍要 run card + 每 ~20% 检查 `Loss/value`、`action_rate_l2`、`Log/probe` 类指标；若再出现动作饱和到 1e3 量级，应停训看 `bad_sim_state` 触发次数。
+- 长期根治方向（未做）：depth/相机观测上线后重新审视 `njmax/nconmax` 与 `torch.normal` 前端 NaN 检测；或把 PPO 的更新加 "non-finite loss → 保存并退出" 的干净停训。
