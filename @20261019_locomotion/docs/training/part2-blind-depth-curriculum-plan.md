@@ -39,10 +39,10 @@
 
 ### 3.1 总原则
 
-- 每个障碍单独一个 exact 地形任务（现有 `blackw-*-exact` + `blackw-plum`），**手工 success-gated 课程**（mjlab 自带 `terrain_levels_vel` 按距离升级，与 goal 终止的障碍 episode 不兼容，训练时已 pop，见报告 §12.3）。
-- 升级门控：部署对齐环境（`BLACKW_DEPLOY_SIM=1`，官方场景物理近似）上 canonical + 随机化各 ≥100 episodes；deterministic ≥95%、随机化（初始状态 + 指令 + DR）≥90% 才升档/加宽指令；每档 judge 复核（warp 成功率只作下界，判定以 judge 为准，原因见报告 §12.1）。
+- 每个障碍单独一个 exact 地形任务（现有 `blackw-*-exact` + `blackw-plum`），**手工 success-gated 课程**（mjlab 自带 `terrain_levels_vel` 按距离升级，与 goal 终止的障碍 episode 不兼容，训练时已 pop，见归档 [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §12.3）。
+- 升级门控：部署对齐环境（`BLACKW_DEPLOY_SIM=1`，官方场景物理近似）上 canonical + 随机化各 ≥100 episodes；deterministic ≥95%、随机化（初始状态 + 指令 + DR）≥90% 才升档/加宽指令；每档 judge 复核（warp 成功率只作下界，判定以 judge 为准，原因见归档 [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §12.1）。
 - 随机化：初始状态（root x±0.10、y±0.15、yaw±0.05；关节 offset/速度；现有 DR 保留）、指令（真实手柄线性映射：`joy_command_scale=1.5`，`rl_sim.cpp:394-396` axes→vx/vy/yaw；障碍训练 vx∈[0.2,0.8]、vy±0.2、wz±0.3，另留满杆上界测试）。
-- 奖励：potential-based 进度差分 + 一次性成功奖励 ≥60 + 判负规则用 termination（壕沟"轮沉超限"判负）；不用状态式 goal/climb 刷分项（详见报告 §11）。
+- 奖励：potential-based 进度差分 + 一次性成功奖励 ≥60 + 判负规则用 termination（壕沟"轮沉超限"判负）；不用状态式 goal/climb 刷分项（详见归档 [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §11）。
 
 ### 3.2 阶段安排
 
@@ -97,7 +97,7 @@ BeamDojo 解决"人形稀疏落脚点"的三件事：
 3. **规则合规**：相机/雷达必须"模拟真实相机"，禁止直接接入 heightmap 传感器；**由深度相机推导的 ego 高度图/点云属于相机处理，可进 actor**（与 PIM/BeamDojo 真机做法一致）；heightmap 只进 critic。
 4. **渲染域差异**：训练用 mujoco_warp 渲染，部署用 MuJoCo/EGL；深度图统计（噪声、边缘、缺失值）要在两个渲染器上对拍，训练端加噪声/缺帧/遮挡增强（模拟真实 d435）。
 5. **深度下坡/下台阶的歧义仍在**：但相机能区分"宽地面下降"（台阶/高台）与"窄槽"（沟壑）——这正是视觉要解决的核心问题；训练数据里要同时出现两者，避免 CNN 把"深度跳变"一律当槽。
-6. **成本**：depth 训练 ×1.54、CNN 推理 <10 ms，在 8GB/线显存协议下用 256–512 env 可跑（见 [`part2-bc-policy-report.md`](part2-bc-policy-report.md) §12.4）。
+6. **成本**：depth 训练 ×1.54、CNN 推理 <10 ms，在 8GB/线显存协议下用 256–512 env 可跑（见归档 [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §12.4）。
 
 ## 5. 风险与备选
 
@@ -122,4 +122,4 @@ BeamDojo 解决"人形稀疏落脚点"的三件事：
 - 评测与 judge：[`part2-bc-policy-report.md`](part2-bc-policy-report.md)、[`part2-failure-vs-reward-design.md`](part2-failure-vs-reward-design.md)
 - 深度链路实测：[`camera-depth.md`](camera-depth.md)
 - BeamDojo: Wang et al., *BeamDojo: Learning Agile Humanoid Locomotion on Sparse Footholds*, RSS 2025, [arXiv:2502.10363](https://arxiv.org/abs/2502.10363)
-- 队内赛 GPU 共享协议与容量实测：报告 §12.4；启动检查 `@20261024_blackw/scripts/gpu_budget_check.py`
+- 队内赛 GPU 共享协议与容量实测：归档 [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §12.4；启动检查 `@20261024_blackw/scripts/gpu_budget_check.py`

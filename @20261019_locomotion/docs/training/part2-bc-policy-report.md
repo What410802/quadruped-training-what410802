@@ -1,4 +1,6 @@
-# Part 2 官方几何评测与可部署权重（BC/DAgger 蒸馏，2026-10-25）
+# Part 2 官方几何评测与可部署权重（PPO/BC 线，2026-10-26 更新）
+
+> **新会话先读**：[`part2-ppo-handoff-2026-10-26.md`](part2-ppo-handoff-2026-10-26.md)（交接：远程状态、明天命令、开放问题）；后续计划见 [`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)；详细历史在 [`part2-ppo-training-history.md`](part2-ppo-training-history.md)。本文件只保留结论、方法与当前状态。
 
 ## 0. 结论速览
 
@@ -6,8 +8,8 @@
 - **严格 judge v5（四轮终态判据）**：官方几何 20 关、每关单独 MuJoCo 场景、0.002s 物理、无时间限制口径下，按"逐障碍选择速度指令"的参考 profile 得分 **750/1300**：高台 40cm = 200、高墙 40cm = 200、斜坡 35° = 100、壕沟 20cm = 150、楼梯 20cm = 100、梅花桩 0。
 - **同一 judge（v5）下官方三份权重 + 同样逐障碍选命令的基线 = 660/1300**（官方策略不会下 20/30cm 台阶：楼梯只到 10cm/10 分；平台 40/高墙 40/斜坡 35/壕沟 20 与自训权重持平）。自训单份权重靠"完整楼梯 20cm"多拿 90 分。
 - **可部署性**：rl_sar 无头自检 `check_walk_blackw.py --realtime false --policy comp_bc_v5` 前进段 PASS；转向指令覆盖不足（数据里 yaw 只在 flat 教师里出现），属于已知缺口。
-- **4 次挑战口径下的期望分**：平台 40/斜坡 35/壕沟 20 均 4/4；高墙 40 为 3/4、楼梯 20 为 2/4（±0.1m 横向抖动下）→ 期望 ≈ 743/1300，最好情况 750。
-- **未拿到**：斜坡 45°（200）、楼梯 30cm（200）、壕沟 30cm（300，洁净跨越口径）、梅花桩（200）。这 900 分是下一阶段专项 RL 的目标（§7 记录进行中的 specialist 实验）。
+- **4 次挑战口径下的期望分**：平台 40/斜坡 35/壕沟 20 均 4/4；高墙 40 为 3/4、楼梯 20 为 2/4（±0.1m 横向抖动下）→ 期望 ≈ 743/1300，最好情况 750。最低档（平台 10/wall 10/slope 20/stairs 10/trench 10）在 judge 上均 8/8；档位结构验证见归档 §12.2。
+- **未拿到**：斜坡 45°（200）、楼梯 30cm（200）、壕沟 30cm（300，洁净跨越口径）、梅花桩（200）。这 900 分是下一阶段专项 RL 的目标；2026-10-25/26 的审计修复与训练现状见 §5/§7，后续计划见 [`part2-ppo-handoff-2026-10-26.md`](part2-ppo-handoff-2026-10-26.md)。
 
 ## 1. 规则与评测口径（对齐 `docs/reference/team-race-2026.md`）
 
@@ -59,21 +61,17 @@ judge v5 的判据（`@20261024_blackw/scripts/eval_blackw_part2.py`，`JUDGE_VE
 - **为什么不做单帧 45 维**：部署契约是 57×6 历史；教师权重也是历史策略。BC 目标就是"用同一契约把三位教师合成一份"，避免任何观测差异。
 - **为什么 BC 不是最终形态**：BC 上界 = 教师能力（斜坡 45°、楼梯 30cm、壕沟 30cm、梅花桩教师都不会）；要越过这些档位必须 RL 训练新技能，见 §5。
 
-## 5. 训练环境与 RL 尝试（含失败记录）
+## 5. 训练环境与关键教训（详细实验记录见归档）
 
-训练环境：MjLab v1.6.0 + mujoco_warp（远程 `bis-ms7e56` RTX 5060 Ti），任务 `blackw-official`（`@20261019_locomotion` 之外为独立训练仓，改动在 `alldog_mjlab/tasks/velocity/blackw/`）：
+训练环境：MjLab v1.6.0 + mujoco_warp（远程 `bis-ms7e56` RTX 5060 Ti），任务 `blackw-official`（几何/判据改动在独立训练仓 `alldog_mjlab/tasks/velocity/blackw/`，代码快照见 `@20261024_blackw/training/`）。地形/判据/命令/奖励全部可用环境变量覆盖；`BLACKW_DEPLOY_SIM=1` 把训练物理对齐官方 judge（euler/elliptic/impratio=100/iterations=100/ccd=35；mujoco_warp 不支持 PGS，用 newton 近似）。
 
-- 地形：5 类官方几何（`exact_terrain.py`：平台/高墙/斜坡/完整上+下楼梯/壕沟），坐标与官方隔离场景一致（平台 2.55m、墙 1.86m、斜坡起点 1.8m、槽近边 3.8m、楼梯 1.8–6.2m）；`difficulty_range` 可被 `BLACKW_DIFF_MIN/MAX` 固定到指定档位（专项训练用）。
-- 判据同源：`part2_success`/`part2_failure` termination 与 judge v5 同一套谓词（四轮支撑带 + 基座高度/vz），成功给 `part2_clear=+25` 一次性奖励；壕沟轮子沉槽 `trench_wheel_drop=-5.0` 惩罚并同时触发 `part2_failure`；lane 越界终止。
-- 命令/奖励可用环境变量覆盖（`BLACKW_VX_MIN/MAX`、`BLACKW_LATERAL_CMD`、`BLACKW_YAW_CMD`、`BLACKW_CLIMB_W`、`BLACKW_PROGRESS_W`、`BLACKW_GOAL_W`、`BLACKW_CLEAR_W`、`BLACKW_LR`、`BLACKW_PHYSICS_DT`、`BLACKW_DECIMATION`）。
+曾经导致"训练看起来在学、部署却是 0"的三类坑（已全部修复，证据见归档 §11/§12）：
 
-三个已确认的坑（都影响后续所有 RL 实验）：
+1. **success 谓词死代码 + 训练/评测物理不一致**：exact 任务的 sub-terrain key 写成 `"exact"`，而 `part2_success/failure` 按列名分支 → 恒为 False；同时训练坡道是带 2cm 台阶的薄板、sim 物理与 judge 不同（newton/pyramidal/impratio=1 vs PGS/elliptic/impratio=100），导致 BC 在 judge 能过 35° 坡但训练环境爬不上去。修复后 lr=0 预检：BC v5 在 slope 20–25° success 0.97、stairs 10cm 0.57–0.68。
+2. **可刷分奖励**：基线 `competition_goal`（过线后每步 +5）和状态式 progress/climb 让策略学会"原地站着刷分"；已改为 potential-based 进度差分（Ng et al. 1999）+ 一次性成功奖励（+60）+ 判负 termination，并加 `part2_out_of_course` 防越线滞留。
+3. **直接 full-resume 微调会破坏 BC**：旧 checkpoint 的 critic/optimizer 来自别的任务、entropy 把 σ 从 0.30 推到 0.52+；已加 `make_bc_checkpoint.py --reset-trainer`（critic 重初始化、optimizer 清空、iter/info 归零）、冻结 σ/entropy=0、以及 `GuardedPPO` 权重信赖域（单 iter 漂移 2.35e-4 → 3.3e-5）。
 
-1. **5ms 训练物理不迁移**：早期 PPO 用默认 0.005s/dt、decimation 4；训练环境内能过 slope 45°/platform 20，但部署评测（0.002s/dt、decimation 10）0 分。改成 0.002/10 后 BC v4 在 MjLab 2ms 评测与本地部署评测基本一致（platform 30/wall 40/slope 30/stairs 10/trench 20），确认 dt 必须对齐部署。
-2. **PPO 微调会快速破坏 BC 权重**：从 BC v4 续训，即使 lr 降到 2e-4/1e-4，100–200 iter 后部署评测从 750 掉到 10–50（权重相对变化仅 6%，但 BC 策略对权重扰动极敏感；同时 entropy 从 3.45 涨到 4.07，探索把行为带飞）。
-3. **奖励 hack 的根因是"事件判据"**：第一版 `part2_success` 只判"轮底≥支撑面"，机器人跳起来（四轮都高于台面）就触发成功；训练均值 reward 从 −0.16 涨到 12+，但真实越障能力崩塌。v5 训练谓词改成"轮底在支撑带内 + 基座高度带 + |vz|<0.4"后才与 judge 对齐（本轮 specialist 实验即用此版本）。
-
-结论：**大规模 PPO 混合地形微调暂时不是可靠增益**；当前把 RL 用在"单障碍专项"上（每项一个 specialist 环境，见 §7），产物按障碍切换使用（Part 2 每障碍独立 4 次挑战，规则不要求同一份策略）。
+更早的 5ms 物理不迁移、事件式判据 reward hack 等失败记录见归档 §13。
 
 ## 6. 评测结果（judge v5，官方几何，15–30s 窗口）
 
@@ -115,17 +113,11 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 前进段 PASS（站立 z 0.517、前进+停止不摔）；转向仍 FAIL（BC 数据的 yaw 命令覆盖不足）。无头部署检查的仿真参数与 `@20261024_blackw/README.md` 一致。
 
-## 7. 进行中：专项 RL 实验（specialist，anti-farming 版本）
+## 7. 专项 RL 现状（2026-10-26 交接时）
 
-目标缺口 = 斜坡 45°（+100）、楼梯 30cm（+100）、壕沟 30cm（+150）、梅花桩（+200）。当前并行跑：
-
-- 第一轮 specialist（fixed 45°/30cm、无 anti-farming）在 400 iter 内 0 success，且发现 **reward farming**：`climb_height` 每步奖励 + `competition_goal` 在 root 过 goal 线后每步 +10，策略学会"爬到半坡/越过线后原地待着"。已修：progress/climb 只在 goal 线之前计分，goal 逐奖励默认 0，并加 `part2_out_of_course` 终止（越线后 0.8m 未成功即结束），成功一次性奖励 `part2_clear=+50`。
-- 第二轮（anti-farming）跑 400 iter 后仍 0 success，复查发现**进度奖励本身也是状态式**（`competition_goal_progress` 原地站着也每步给分），且 `climb_height` 同理；已改成 **potential-based 进度差分**（`_course_progress_delta`，只奖励进度增量，符合 Ng et al. 1999 的 policy-invariance），从 exact 任务移除 climb 项、成功一次性奖励提到 +60。第三轮从 comp_bc_v5 初始化、2ms/10 decimation、lr 1.5e-4、difficulty rows 0..5 并行跑：
-  - `spec_slope_v3`：`blackw-slope-exact`，512 env × 1200 iter（斜坡 20→45° 课程）；
-  - `spec_stairs_v3`：`blackw-stairs-exact`，512 env × 1200 iter（台阶 10→30cm、完整上+下）；
-  - `spec_plum_v1`：`blackw-plum`，256 env × 1200 iter（固定 tier-1 桩场 + 落足奖励 `plum_foothold`：轮底落在桩顶 [0.14,0.34]m 才给分）。
-- 每个 specialist 出 checkpoint 后在对应官方隔离场景上用 judge v5 评测；达到 4/4 稳定后剪视频给用户复核、再决定是否入库；此外计划 `blackw-trench-exact`（gap 0.3m 洁净跨越）专项。
-
+- **结论先行**：改 bug 之前所有 specialist 的"0 success"不可用（谓词死代码 + 刷分，见归档 §11）；修复 + 物理对齐后，200-iter GuardedPPO pilot 能**保住**已有技能（slope m20/m40 仍过 30°/35°，stairs m20/m80/m199 过 15cm），但 **45°/30cm 仍未出现**。
+- **长跑**：`guard4_{slope,stairs,plum}`（800 iter、blend 0.95、aligned physics、每 50 iter 存档）在远程关机前状态未确认（SSH 已不可达）；中途快照 model_450：slope 仅 30°/35°、stairs 仅 15/20cm。上机后先按交接文档 Step 1 做 eval-gated 复核/续跑。
+- **下一步**：① B0 主线门控微调把 wall40/stairs20 稳定到 4/4；② T30 壕沟 30cm 盲专项门槛实验；③ 若盲阶段 800–1200 iter 仍出不来 → 转深度相机课程（见 [`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)）。
 ## 8. 参考文献与复现结果
 
 | 工作 | 用到的内容 | 我们的复现/验证 |
@@ -133,7 +125,7 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 | HIMLoco（arXiv 2312.11460, ICLR'24） | "历史观测 + proprioceptive estimator" 的盲走框架；官方 blackW 权重是 HIM 导出 | 官方权重直接作为 BC 教师；HIM 结构 1:1 映射进 MjLab 已验证（14 个张量 diff=0）；HIM 训练路线未采用（Warp assert + 平台爬升信号问题，见 `blackw-training-runs.md`） |
 | RMA（arXiv 2107.04034）/ DreamWaQ | 特权信息/历史蒸馏的动机 | 本方案用 BC+DAgger 把多教师策略蒸馏成单份 342 维 MLP，等价于"用专家数据学一个历史条件策略" |
 | CTS（arXiv 2405.10830）/ Extreme Parkour（arXiv 2306.05043） | 障碍课程、地形课程与指令条件化的做法 | 训练环境 5 类官方地形 + difficulty rows；评测定标参照 |
-| BeamDojo（arXiv 2408.xxxx）/ Risky Terrains | 落足点奖励、双头 critic、两阶段课程（梅花桩/窄桥） | 尚未实现，列为梅花桩 specialist 的备选方案（§9） |
+| BeamDojo（arXiv:2502.10363, RSS 2025）/ Risky Terrains | sampling 落足奖励、double critic、两阶段课程（平地 + 任务地形感知观测 → 实际地形） | 尚未实现；列为梅花桩/壕沟 30cm 的深度路线核心配方，课程见 [`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md) §4 |
 | PIM（arXiv 2411.14386, ICRA'25） | 深度内部模型/高程图 | 未复现：调研（子任务报告）确认无代码、人形设定、困难梅花桩 46.67%；若做感知，改用 MjLab raycast 高度图 + 轻量 CNN/attention（见 §9） |
 | N-W-wolf `super-dog` / `nwwolf_mjlab_training_release` | 训练栈（MjLab + rsl_rl）、地形生成器、地形难度行 | 直接作为训练代码底座，改动记录在训练仓 `alldog_mjlab/tasks/velocity/blackw/` |
 | HYNova `zeitvex/RC_WheelLeg`（MIT） | 轮腿控制参考 | 参考其 action/观测约定，未直接复制 |
@@ -142,128 +134,24 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 ## 9. 局限与下一步
 
-1. **未过档位**：斜坡 45°、楼梯 30cm、壕沟 30cm（洁净）、梅花桩；合计 550 分。specialist 训练进行中（§7）。
-2. **梅花桩的落足点问题**：盲策略在 0.2m 立方/0.4m 间隙上需要准确的落足，建议下一步（若 specialist 盲训失败）在 MjLab 里加 raycast 高度图观测（原生 BVH，无需渲染）或 BeamDojo 式落足奖励（踩桩奖励、桩间触地终止）；部署侧需要 d435 深度→局部高程图，工作量较大，先把盲训结果作为门槛。
-3. **PPO 稳定性**：lr/entropy 需要更小或 KL 锚定；混合地形大规模微调会破坏 BC 策略，当前只用于单障碍 specialist。
-4. **转向命令覆盖**：BC 数据的 yaw 命令只在 flat 教师片段里有，部署自检转向不跟随；若 Part 2 只需要直线，可不补；若需要，重采一组带 yaw 的数据重训。
-5. **评测口径**：judge 是"规则可复现的最严格本地实现"（终态+支撑带+壕沟轮半径阈值）；比赛现场若裁判口径不同（例如允许桥接/允许掉槽再爬出），需要按现场规则微调 judge 阈值并重报数字。
-
+1. **未过档位**：斜坡 45°、楼梯 30cm、壕沟 30cm（洁净跨越）、梅花桩，合计 550 分；盲阶段 800-iter 长跑未出，按交接文档 Step 2/3 继续（必要时转深度）。
+2. **壕沟 30cm 是定性新技能**：槽宽 0.3m > 轮径 0.206m、judge 允许轮底下沉仅 0.103m → 不能滚过，必须抬轮/腾空；盲感知"前轮突降"无法区分沟槽/台阶/高台边缘 → 建议主线 + 专项分叉，深度相机是最终解法（见 plan §1/§2）。
+3. **梅花桩盲策略大概率不可行**：0.2m 桩、0.4m 缺口需要落足感知；走深度 + BeamDojo 式课程（plan §4）。
+4. **PPO 保护机制已验证能防退化但不能快速长新技能**：后续考虑 BC 正则/残差/LoRA/更长的 gated 课程（交接文档 §4 风险与备选）。
+5. **转向命令覆盖不足**（BC 数据里 yaw 只在 flat 教师片段出现）；Part2 以直线为主，暂缓。
+6. **评测口径**：judge 是本地最严格实现；现场若口径不同（允许桥接/掉槽再爬出等）需按现场规则微调并重报数字。Type-B Codex 审计当前不可用（见 `comp/audits/2026-10-25-judge-v5-G1-REVIEW_UNAVAILABLE.md`），分数只作 executor 证据。
 ## 10. 文件索引
 
-- 评测：`@20261024_blackw/scripts/eval_blackw_part2.py`（judge v5）、`gen_part2_official_levels.py`（官方几何场景生成）、`summarize_blackw_eval.py`（多命令汇总）、`check_walk_blackw.py`（rl_sar 无头部署自检）
-- 训练/蒸馏：`@20261024_blackw/scripts/collect_bc_blackw.py`、`collect_bc_dagger.py`、`train_bc_blackw.py`、`make_bc_checkpoint.py`、`export_bc_policy_local.py`
-- 权重（已入库备份，commit `b12ac33`）：`@20261024_blackw/models/comp_bc_v5/`（policy.pt + checkpoint.pt + config.yaml + manifest.json，含 sha256/评测数据/命令 profile）与部署目录 `@20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v5/`
-- 结果：`prep.d/results/blackw_official/judge_v5/`（judge v5 全量评测 JSON）、`JUDGE_V5_BC_V4.md`（汇总）、`prep.d/videos/judge_v5_bc_v4/`（复核视频）
-- 训练仓（远程）：`bis-ms7e56:~/rc_work/part2_team_race/`，任务与环境变量见 §5；日志 `~/rc_work/part2_team_race/logs/rsl_rl/black_velocity/`
-- 原理文档：[`part2-failure-vs-reward-design.md`](part2-failure-vs-reward-design.md)（termination vs reward shaping 的文献与设计规则）
-- 无视觉/深度相机模型分工与课程规划：[`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)（壕沟歧义量化、主线+专项分叉、BeamDojo 深度课程 D0–D5）
+- **交接/计划**：[`part2-ppo-handoff-2026-10-26.md`](part2-ppo-handoff-2026-10-26.md)（明天上机步骤、命令、远程状态、开放问题）、[`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)（模型分叉、盲课段 B0–B4、深度 BeamDojo 课程 D0–D5）
+- **归档**：[`part2-ppo-training-history.md`](part2-ppo-training-history.md)（训练侧 bug 审计与修复证据、最低档/档位结构验证、显存实测、早期 specialist 记录）
+- **评测**：`@20261024_blackw/scripts/eval_blackw_part2.py`（judge v5）、`gen_part2_official_levels.py`（官方几何场景生成）、`summarize_blackw_eval.py`（多命令汇总）、`check_walk_blackw.py`（rl_sar 无头部署自检）
+- **门控/诊断**：`@20261024_blackw/scripts/check_tier_success.py`（最低档/canonical+随机化成功率）、`check_tier_geometry.py`（档位结构无质变检查）、`diag_rollout.py`（训练环境 rollout 诊断）、`gpu_budget_check.py`（8GB/线显存协议启动检查）
+- **训练/蒸馏**：`@20261024_blackw/scripts/collect_bc_blackw.py`、`collect_bc_dagger.py`、`train_bc_blackw.py`、`make_bc_checkpoint.py`（含 `--reset-trainer`）、`export_bc_policy_local.py`
+- **训练侧代码快照**：`@20261024_blackw/training/`（env_cfgs.py / exact_terrain.py / guarded_ppo.py / black_config.py / rl_cfg.py，对应远程仓 `~/rc_work/part2_team_race/src/`）
+- **权重（已入库备份）**：`@20261024_blackw/models/comp_bc_v5/`（policy.pt + checkpoint.pt + config.yaml + manifest.json，含 sha256/评测数据/命令 profile）与部署目录 `@20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v5/`
+- **结果/视频**：`prep.d/results/blackw_official/`（judge v5 全量 JSON、final_profile/、audit_fix/）、`prep.d/videos/comp_bc_v5/`（复核视频）
+- **远程训练仓**：`bis-ms7e56:~/rc_work/part2_team_race/`；日志 `logs/rsl_rl/black_velocity/`
+- **原理文档**：[`part2-failure-vs-reward-design.md`](part2-failure-vs-reward-design.md)（termination vs reward shaping 的设计规则与文献）
+## 11. 历史与归档
 
-## 11. 2026-10-25 训练侧代码审计：确认并修复的 bug（含"0 success"结论作废说明）
-
-对 PPO/BC 线做了一次针对性代码审计（用户侧 review 指出若干问题），逐条核实后确认并修复了以下 bug；其中前两条直接使此前所有"specialist 训练 0 success"的观察**不可作为"学不会"的证据**。
-
-### 11.1 `_exact_env_cfg` 的 success/failure 谓词是死代码（确认）
-
-`_exact_env_cfg` 把单地形放进 `generator.sub_terrains = {"exact": terrain_cfg}`，而 `_part2_terrain_state` 按 **sub-terrain 列名**分支（`"slope"`/`"stairs"`/…）；列名是 `"exact"` → 所有分支都不命中 → `part2_success`/`part2_failure`/`part2_clear` 恒为 False。证据：`spec_slope_v3` 跑 903 iter `part2_success` 全 0、`part2_clear` 全 0，而同一 BC v5 权重在部署 judge 下能过 slope 35°/stairs 20°。
-
-修复：单地形 sub-terrain key 直接用 judge kind（`{"slope": ...}` 等，由 `_EXACT_TERRAIN_KIND` 从地形类名映射）；并把训练谓词与 judge v5 对齐（去掉 judge 没有的 `|vz|` 稳定性条件、加上 judge 的"爬上证据"（ stairs 顶部平台 / wall 交叉+climb_z / plum 未跌落）、hold 15 步 = judge 的 0.2+0.1 s）。
-
-修复后 **lr=0 预检（BC v5 在训练环境里不回传）**：slope rows 0-1（20-25°）success 0.97；stairs rows 0-1 success 0.57–0.68；固定 45° 仍 0（没有产生假成功）。这证明契约/谓词链路已通。**注意**：`Episode_Termination/*` 日志是计数型指标，可能 >1，不能当通过率用；通过率以外部 judge 评测为准。
-
-### 11.2 `competition_goal` 残留奖励导致"过线刷分"（确认）
-
-`_exact_env_cfg` 只在 `BLACKW_GOAL_W>0` 时**添加** `competition_goal`，没有 pop 基线 `black/env_cfgs.py` 里的 `competition_goal`（weight 5.0，语义是 root 过 goal 线后每步 +1）。于是 `BLACKW_GOAL_W=0` 并没有关掉它：`spec_slope_v3` 日志里 `competition_goal` 0.88→3.98/s 持续上升，而 `part2_success` 恒 0（死代码）——策略在学"过线后蹲着刷分"。
-
-修复：exact/mixed/plum 三个 cfg 都先 `pop("competition_goal")`（和 `climb_height`）再按需 opt-in 添加；进度奖励改成 potential-based 差分（只奖励进度增量，Ng et al. 1999），成功一次性奖励提高到 +60。
-
-### 11.3 `BLACKW_MAX_ROW` 在 exact 任务里没被读取（确认）
-
-`_exact_env_cfg` 只用 `0/1` 行起步，忽略了命令行给的 `BLACKW_MAX_ROW`（review 里"课程没生效"属实）。已补：`BLACKW_MAX_ROW>=0` 时 `max_init_terrain_level = min(MAX_ROW, num_rows-1)`。
-
-### 11.4 训练地形几何 bug：坡道薄板有 2cm 台阶、且新坡道 y 偏移错（确认，重要）
-
-`ExactSlopeTerrainCfg` 用"绕 y 轴旋转的薄板"表示坡面（厚 4 cm），其**上表面比地面高约 2 cm**，等于在坡道入口加了一个小台阶；官方场景是**实心楔形**（`map.xml` mesh 顶点即 (0,0)→(2,rise)）。另外把薄板改成实心楔形时，`_ramp` 忘记传 y 中心（默认 y=0 而地形中心 y=4 m），坡道被放到赛道外 4 m 处——机器人走到 x≈3.5 被 landing 的立面挡住，永远上不了坡。这两处解释了"BC 在 judge 场景能过 35°，但训练环境 35° 0 success"的怪象。
-
-修复：新增 `_ramp()` 生成**实心楔形**（上表面精确经过 (start, start_z)→(start+run, start+rise)，带 y 中心参数），替换 slope/trench/plum 的全部坡道；用 raycast 验证训练地形剖面与官方一致（30°: x=1.8 z=0 → x=3.8 z=1.155 → landing）。
-
-### 11.5 训练物理与部署 judge 不一致（确认，重要）
-
-官方 `part2` 场景 XML 的 `<option>` 是：elliptic cone、PGS solver、`impratio=100`、Euler integrator、100 solver iterations、35 CCD iterations；而 MjLab 训练默认是 newton/pyramidal/impratio=1/implicitfast/10 iterations。同一个 BC v5 权重在训练环境里**爬不上 30-35° 坡**，在 judge 里却 4/4 通过——PPO 于是在"错的物理"里把已经正确的行为往错误方向拉（这正是"微调后评测掉到 10–50"的一个根因）。
-
-修复：`_apply_deployment_sim_options()`（`BLACKW_DEPLOY_SIM=1` 启用）把训练 sim 对齐到 judge：euler/elliptic/impratio=100/iterations=100/ls_iterations=50/ccd=35/更接近的 spawn 高度。mujoco_warp 不支持 PGS，用 newton+100 iter 近似。对齐后 BC v5 在训练环境 35° 坡能爬上去（diag rollout 基座 z 升到 1.5 m），预检 success 明显回升。
-
-### 11.6 继承 checkpoint 的 critic/optimizer/iter（确认）
-
-`make_bc_checkpoint.py` 只替换 actor，critic/optimizer/iter 来自 `comp_high600`（另一个任务、另一个奖励尺度）。已加 `--reset-trainer`：critic MLP 用默认 nn.Linear 初始化、optimizer state 清空并按 `--lr` 设学习率、iter/infos 归零。
-
-### 11.7 "有 base 模型的续训"保护（新增 GuardedPPO）
-
-除 11.6 外，新增 `alldog_mjlab/tasks/velocity/blackw/guarded_ppo.py`（`GuardedPPO`，经 `BLACKW_ALGORITHM` 注册）：每个 optimizer step 后把 actor 参数投影回 base 的权重信赖域 `θ ← θ_base + λ(θ-θ_base)`（λ=0.9），并支持冻结部分层（`BLACKW_GUARD_FREEZE`）。10 步观测：未保护 run 单 iter actor 权重漂移 2.35e-4，GuardedPPO 为 3.3e-5（约 1/7）。配套 env 覆盖：`BLACKW_ENTROPY_COEF=0`、`BLACKW_LEARN_STD=false`（冻结 σ=0.1–0.3）、`BLACKW_EPOCHS=2`、`BLACKW_MINIBATCHES=8`、`BLACKW_NORM_ADV_PER_MB=true`、`BLACKW_LR=5e-5`。
-
-### 11.8 评测侧：梅花桩 judge `z_cross_min` 用错（确认）
-
-`gen_part2_official_levels.py` 把 `z_cross_min` 写成 `BASE_REF_Z + top - 0.15 = 0.55`（root 高度口径），但 eval judge 拿它当**轮底**阈值 → 轮底永远 <0.55 → 梅花桩所有尝试必失败（官方基线 plum=0 也被这个 bug 掩盖过）。已改为轮底阈值 0.05（轮底在桩顶 0.2 m、落到地面 ≈0 可区分），并重新生成 20 个场景。
-
-### 11.9 受影响的旧结论（作废/待重测）
-
-- "PPO specialist 在 slope/stairs 训练 400–900 iter 仍 0 success → 学不会/信号不可用"：**作废**（死代码 + 残留刷分奖励导致，success 从未被测量）。
-- "HIM gate：500–800 iter 0 success 就停"的判据同样建立在同一 `_part2_terrain_state` 上（HIM 的 `blackw-platform-exact-him` 继承 `_exact_env_cfg`），**同样无效**，需在修 key 后重测。
-- "微调后掉到 10–50 是纯 PPO 不稳定"：部分原因其实是 11.4/11.5 的 train/judge 物理与几何不一致（训练环境里行为本身就不对），需在修正后的环境里重做防护实验。
-
-### 11.10 修复后的验证实验（2026-10-25 21:00–22:00）
-
-在修完 11.1–11.7 后做了三组实验（远程训练仓；judge 评测在本地官方隔离场景上做）：
-
-1. **信号有效性（lr=0 预检，BC v5 权重直接跑训练环境）**：slope rows 0–1（20–25°）`part2_success` 0.97、stairs rows 0–1 0.57–0.68；固定 45° 仍 0（没有假成功）。修复前同一任务跑 900+ iter `part2_success` 恒 0。
-2. **训练/评测物理对齐**：对齐前 BC v5 在训练环境 30–35° 坡上 `x` 卡在 3.5 m（被 landing 立面挡住，坡道未接上/有 2 cm 台阶）、基座 z≈0.52；对齐后同一权重能爬上 35° 坡（基座 z 升到 1.5 m），训练环境 success 从 0 变成可测的正常水平。
-3. **GuardedPPO 200-iter pilot（对齐物理 + 冻结 σ=0.1 + trust-region λ=0.9）**：每 iter 权重漂移 3.3e-5（未保护 2.35e-4）；checkpoint 在官方 judge 上：m20/m40 仍过 slope 30°/35°（未退化），m80/m100 开始丢 30°，m199 丢 35°；slope 45° 所有 checkpoint 仍失败（timeout）。stairs 同型：15 cm 间歇通过、20/30 cm 未过。**结论**：修 bug 后训练不再"必然破坏"BC（200 iter 内保持技能），但 200 iter × 小步长还不足以学出 45°/30 cm 新技能；需要更长训练 + eval-gated 选 checkpoint 或换更有塑性的方案（LoRA/残差/BC 正则）。已启动 `guard4_{slope,stairs,plum}` 长跑（800 iter、blend 0.95、对齐物理）。
-
-**交付分数不变**：`comp_bc_v5` 在 judge v5 下仍是 750/1300（最好情况，4 次挑战期望 ≈743）；本次审计主要修复的是训练信号与训练/评测一致性问题，尚未带来新档位。
-
-## 12. 最低挡位 / 档位结构验证、课程与显存协议（2026-10-25 深夜）
-
-### 12.1 所有任务最低挡位成功率（排除梅花桩）
-
-judge（官方几何 + 官方场景物理，BC v5 = `comp_bc_v5`/`model_0_bc_v5_guarded` 的 actor，推荐速度）各 8 次尝试：
-
-| 任务 | 最低挡 | 命令 | judge 结果 |
-|---|---|---|---|
-| high_platform | 10cm | vx=0.5 | **8/8 通过** |
-| high_wall | 10cm | vx=0.6 | **8/8 通过** |
-| slope | 20° | vx=0.3 | **8/8 通过** |
-| stairs | 10cm | vx=0.5 | **8/8 通过** |
-| trench | 10cm | vx=0.3 | **8/8 通过** |
-
-训练环境（`BLACKW_DEPLOY_SIM=1`，canonical spawn（清零 reset 随机化）+ clean obs + 128 env × 3 episodes，`check_tier_success.py`）：
-platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad_sim_state`，属 warp 数值边界）；
-**stairs 只有 58–71%**，但同一权重在 judge 上 8/8 —— 差异来自 **mujoco_warp 不支持 PGS solver**（官方场景用 PGS；训练只能 newton 近似），多级台阶的接触/冲击对 solver 更敏感，导致训练环境里下台阶时横向漂移偏多（lane deviation）。这是已知 sim2sim 差距，不是逻辑 bug；台阶类训练应把 warp 下的成功率当"更严格的下界"，最终以 judge 为准。
-
-### 12.2 高档位是否只是尺寸变化（无质变）
-
-- **训练地形**（`check_tier_geometry.py`，difficulty 0 vs 1）：平台/墙/坡/楼梯/沟/桩场的 geom **数量与类型序列完全一致**；仅尺寸变化：平台高 0.10→0.40、墙高 0.10→0.40、坡 rise 0.728→2.00（20°→45°）、楼梯总高 0.60→1.80（单级 10→30cm）；沟壑高度 0.30 不变（只有槽宽 0.10→0.30）、桩场完全固定。没有额外台阶/侧墙/数量变化。
-- **官方场景**（20 个隔离场景）：每个类别的 geom 数量、geom 类型、judge 键集合在全部档位完全一致，只有数值缩放：平台 `top_z` 0.1/0.2/0.3/0.4；楼梯 `top_z` 0.6/0.9/1.2/1.8（`goal_x_min=3.7`、`descend_end_x=6.2` 不变）；斜坡 `rise_z` 0.728/1.155/1.400/2.000（goal_x 3.9 不变）；墙 `wall_h` 0.1–0.4、`climb_z_min` 0.52–0.58、`wall_x=1.86`、`goal_x_min=2.27` 不变；沟壑只有槽宽 0.1/0.2/0.3（`near_x=3.8`、`plateau_z=0.3` 不变）；梅花桩只有一档且 `z_cross_min` 已修为轮底口径 0.05。
-→ 结论：档位之间没有质变，此前"高档位疑似几何 bug"可以排除；剩余差距是能力问题。
-
-### 12.3 课程问题的回答
-
-**现在没有用 mjlab 自带的课程**：`black_competition_env_cfg` 在训练模式下 `pop("terrain_levels")`（mjlab 的 `terrain_levels_vel` 按行走距离升级，与 goal 终止的障碍 episode 不兼容；stage-3 曾出现 4 个列长期 level 0），exact 任务只是把 `max_init_terrain_level` 设成随机初始 row 上限（`BLACKW_MAX_ROW`）。所以当前 specialist 长跑是"**从 BC 初始化、在 row 0..5 上随机混合采样**"，**不是**"上一档位训好了再升下一档"。
-
-建议（也是我准备实施的）：手工 **success-gated 课程**，逐档推进：
-1. stage k 固定档位（或很窄的 range，例如 k±0.1），从 stage k−1 的 best checkpoint 热启动；
-2. **升级门控**：在部署对齐环境上，canonical spawn + 随机化（见下）各跑 ≥100 episodes，要求 deterministic 成功率 ≥95%（更严：随机指令下 ≥90%）才进入 k+1；
-3. 每 stage 存 checkpoint 并用 judge 复核（eval-gated 选 best），失败不升级、只继续当前 stage 或降回前一档。
-4. **随机化必须覆盖**：① 初始状态——当前 reset 只随机关节 offset（thigh ±0.40 rad 等）与 root 速度 ±0.5 m/s，**root 位置/朝向没有随机化**，建议加 x±0.10、y±0.15、yaw±0.05（对应操作手摆位误差）；② 指令——真实手柄是线性映射：`rl_sim.cpp:394-396` 用 `axes[1]→vx, axes[0]→vy, axes[3]→yaw`，`rl_sim_blackw.launch.py` 的 `joy_command_scale` 默认 **1.5**（满杆 = 1.5 m/s、1.5 rad/s）；障碍赛实际用低前进速（约 0.2–0.8 m/s）、小侧移/小转向，课程门控里应对 vx∈[0.2,0.8]、vy∈±0.2、wz∈±0.3 做随机化（并保留满杆范围做安全上界测试）；③ 已有 DR（摩擦/负载/质心/编码器偏置/PD/推力）保持不变。
-5. 这样也能避免"高档位训练把低档位能力破坏"：门控保证前一档在随机化下仍鲁棒后，再解冻/升温。
-
-### 12.4 两线各占一半显存（~8GB）的可行性评估
-
-实测（2026-10-25 22:00，RTX 5060 Ti 16GB）：exact 任务 512 envs（默认 `nconmax=1024/njmax=4096`）每进程 **3.83 GB**；256 envs 的 plum **1.60 GB**；我这条线三个 run 合计 9.3 GB，已超过 8GB。显存主要由 warp 的 `nconmax/njmax` capacity 决定，不是 env 数线性。
-
-已做：`_exact_env_cfg` 增加 `BLACKW_NCONMAX` / `BLACKW_NJMAX` 环境变量（plum 已有）。**实测**（2026-10-25 22:47，512 env、`BLACKW_NCONMAX=256`、`BLACKW_NJMAX=1024`）：总显存 9453→11006 MiB，即每个 run **≈1.55 GB**（默认 1024/4096 是 3.83 GB），且 iteration time 6.1–7.8 s 与默认容量同场景 6.4–7.6 s 无差异（capacity 只占显存、不影响吞吐），无 nefc overflow 警告。一条线 8GB 预算内存上可放 2–3 个 512-env run；单条 1024-env run 也可行。启动前用 `@20261024_blackw/scripts/gpu_budget_check.py --need-gb 2 --max-line-gb 8 --max-processes 2` 检查。
-
-**效果损失**：显存减半不改变算法/样本质量（capacity 只影响极端接触场景，需监控 `nefc overflow`），但两条线同时跑会**各分 ~50% SM 吞吐**，wall-clock 大约 **1.5–2×**（我的 3 个并发 run 现在就是 99% util、单 iter 明显变慢）。建议明天实施：
-- 每条线同时最多 2 个 512-env run（或 1 个 512 + 1 个评测），启动时显式 `BLACKW_NCONMAX=256 BLACKW_NJMAX=1024`；
-- 长跑尽量错峰（一条线跑长训时另一条只做评测/短跑），或把 800–1000 iter 拆成 2×400 做 eval-gated 选点，用"质量"换回吞吐；
-- 加一个启动前检查（`nvidia-smi` 显存/占用进程数）脚本，超过 8GB 或 GPU 已有 >2 个训练进程时拒绝启动。
-
-**2026-10-25 22:55 长跑中途快照**（`guard4_*`，800 iter，aligned physics，blend 0.95）：slope model_450 仍只过 30°/35°，45° timeout；stairs model_450 过 15/20cm，30cm timeout。说明 450 iter 的小步长锚定还不足以长出 45°/30cm；长跑结束后做完整 eval-gated 选点再定论。
+详细审计/验证记录不再放在主报告里，见 [`part2-ppo-training-history.md`](part2-ppo-training-history.md)：§11（训练侧 bug 审计与修复）、§12（最低档/档位结构/课程/显存验证）、§13（早期 specialist 训练记录，含已作废结论说明）。

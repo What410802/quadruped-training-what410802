@@ -28,35 +28,32 @@
 可用 Part2 key：
 `high_platform_10cm/20cm/30cm/40cm`、`stairs_10cm/15cm/20cm/30cm`、`slope_20deg/30deg/35deg/45deg`、`high_wall_10cm/20cm/30cm/40cm`、`trench_10cm/20cm/30cm`、`plum_1bool`。
 
-## Part2 策略选择与官方几何评测（2026-10-25，judge v5）
+## Part2 策略与官方几何评测（2026-10-26 更新，judge v5）
 
-Part2 权重分两套来源：
+- **当前最佳权重**：`policy/blackW/comp_bc_v5/`（342→512→256→128→16 ELU MLP，官方 obstacle/stair/flat 三份权重 BC + 两轮 DAgger 蒸馏，部署契约与 `config.yaml` 齐全）。已入库备份：`@20261024_blackw/models/comp_bc_v5/`（policy.pt + checkpoint + config + manifest，含 sha256/评测数据/命令 profile）。
+- **严格 judge v5（官方几何隔离场景，0.002s 物理）**：逐障碍选命令的参考 profile = **750/1300**（最好情况；4 次挑战期望 ≈743）；同 judge 官方三份权重基线 = **660/1300**。
+- 最低档（平台 10/wall 10/slope 20/stairs 10/trench 10）judge 各 8 次尝试全部通过；档位之间只有尺寸缩放、无几何质变（验证记录见归档）。
 
-- **自训可部署权重**：`policy/blackW/comp_bc_v5`（342→512→256→128→16 ELU MLP，官方 obstacle/stair/flat 三份权重行为克隆 + 两轮 DAgger 蒸馏，观测/动作完全按本仓库部署契约；`policy.pt` + `config.yaml`；`comp_bc_v4` 保留为上一版对照）；
-- 官方三份权重 `flat` / `stair` / `obstacle` 与早期自训权重 `comp_high600` / `comp_lane300`（保留作对照）。
+| Part2 障碍 | 权重 | 推荐指令 | 最高档 | 4 次尝试通过率 | 得分 |
+|---|---|---|---|---|---:|
+| high_platform | `comp_bc_v5` | vx=0.5 | 40cm | 4/4 | 200 |
+| high_wall | `comp_bc_v5` | vx=0.65 → x=1.6m → 0.35 | 40cm | 3/4 | 200 |
+| slope | `comp_bc_v5` | vx=0.3 | 35° | 4/4 | 100 |
+| stairs | `comp_bc_v5` | vx=0.75 → x=1.1m → 0.45 | 20cm（完整上+下） | 2/4 | 100 |
+| trench | `comp_bc_v5` | vx=0.3 | 20cm（洁净跨越） | 4/4 | 150 |
+| plum | 暂无 | — | — | 0/4 | 0 |
+| **合计** | | | | | **750** |
 
-评测底座为**官方几何逐关隔离场景**：`scenes/blackW/part2_off_<key>.xml`（由 `scripts/gen_part2_official_levels.py` 从官方 `map.xml` 逐 geom 复制、障碍平移到 spawn 前方 1.8 m）与 `scenes/blackW/part2_official_levels.json`（judge 元数据）。评测器 `scripts/eval_blackw_part2.py`（`JUDGE_VERSION=v5-wheel-terminal-bands-2026-10-25`）按部署契约（0.002s 物理 / 50Hz policy / 57×6 frame-major obs / ±10 镜像轮速）在 MuJoCo 里跑，成功判据是**终态谓词**：四轮落在目标支撑面（支撑带 + hold）、高墙四轮回到墙后地面、壕沟四轮都在远台且槽内任一轮下沉不超过 `min(0.5×槽深, 轮半径)`、楼梯必须完成上+平台+下、梅花桩四轮都在出口平台且桩间不得触地。
+未过档位：斜坡 45°、楼梯 30cm、壕沟 30cm、梅花桩（合计 550 分）。2026-10-25/26 训练侧审计修复（success 谓词死代码、可刷分奖励、训练地形/物理与 judge 不一致、critic 继承等）与后续计划见交接文档；壕沟 30cm 需要"抬轮/腾空跨槽"的定性新技能（几何依据见 plan §1），盲阶段先做 T30 专项门槛，必要时转深度路线。
 
-| Part2 障碍 | 推荐权重 | 推荐速度指令 | 实测最高档 | 得分 |
-|---|---|---|---|---:|
-| high_platform | `comp_bc_v5` | vx=0.5 直冲 | 40cm（4/4） | 200 |
-| high_wall | `comp_bc_v5` | vx=0.65，到 x=1.6m 降 0.35 | 40cm（3/4） | 200 |
-| slope | `comp_bc_v5` | vx=0.3 | 35°（4/4） | 100 |
-| stairs | `comp_bc_v5` | vx=0.75，到 x=1.1m 降 0.45 | 20cm（完整上+下，2/4） | 100 |
-| trench | `comp_bc_v5` | vx=0.3（或 0.8） | 20cm（洁净跨越，4/4） | 150 |
-| plum | 暂无 | — | — | 0 |
-| **合计** | | | | **750/1300** |
-
-同一 judge 下"官方三份权重 + 逐障碍选命令"的基线约 **700/1300**；逐关通过矩阵与全部 JSON 见仓库 `prep.d/results/blackw_official/JUDGE_V5_BC_V4.md`，原理与文献见 `@20261019_locomotion/docs/training/part2-bc-policy-report.md` 与 `part2-failure-vs-reward-design.md`。未达档位：斜坡 45°、楼梯 30cm、壕沟 30cm、梅花桩（专项 RL 训练中）。
-
-复现（仓库根目录）：
+复现命令（仓库根目录）：
 
 ```bash
 # 重新生成官方几何场景
 pixi run python @20261024_blackw/scripts/gen_part2_official_levels.py
 # 单策略全 20 关评测（按障碍选命令）
 pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
-  --policy @20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v4 --command 0.8 0 0
+  --policy @20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v5 --command 0.8 0 0
 # 多命令/多策略汇总
 pixi run python @20261024_blackw/scripts/summarize_blackw_eval.py --eval 'prep.d/results/.../*.json'
 ```
@@ -64,10 +61,21 @@ pixi run python @20261024_blackw/scripts/summarize_blackw_eval.py --eval 'prep.d
 无头部署自检（rl_sar + sim_node）：
 
 ```bash
-pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false --policy comp_bc_v4
+pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false --policy comp_bc_v5
 ```
 
 前进段通过（基座 z 0.517、倾角 1.3°）；转向指令尚未覆盖（BC 数据里 yaw 只在 flat 教师片段出现）。部署契约修复：轮速 `action_scale` 必须是官方镜像符号（FL+10/FR−10/RL+10/RR−10）；`src/rl_sim.cpp` 在每次进 RL 前对 history buffer 做 backfill（与 MjLab/rsl_rl 训练时一致），否则 6 帧历史首帧全 0 会让策略（尤其蒸馏权重）在部署时发散。
+
+## 文档与交接（PPO/BC 线）
+
+| 文档 | 用途 |
+|---|---|
+| [`@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md`](../@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md) | **新会话入口**：远程状态、明天步骤/命令、边界、开放问题 |
+| [`part2-bc-policy-report.md`](../@20261019_locomotion/docs/training/part2-bc-policy-report.md) | 主报告：judge v5、BC/DAgger、评测结果、参考文献、局限 |
+| [`part2-ppo-training-history.md`](../@20261019_locomotion/docs/training/part2-ppo-training-history.md) | 归档：训练侧 bug 审计与修复证据、最低档/档位结构验证、显存实测、早期记录 |
+| [`part2-blind-depth-curriculum-plan.md`](../@20261019_locomotion/docs/training/part2-blind-depth-curriculum-plan.md) | 模型分工（主线 M0 + T30/S45/St30/P）、盲课段 B0–B4、深度 BeamDojo 课程 D0–D5 |
+| [`part2-failure-vs-reward-design.md`](../@20261019_locomotion/docs/training/part2-failure-vs-reward-design.md) | termination vs reward shaping 原则与文献 |
+| `@20261024_blackw/training/README.md` | 训练侧代码快照与远程仓对应关系 |
 
 ## 出生点检查
 
@@ -79,7 +87,7 @@ pixi run python @20261024_blackw/scripts/check_spawns.py
 
 结果：原始 Part2 `judge.start` 的 z 是按点足高度给的，blackW 轮底比点足低约 0.12 m，直接用会全部穿模（最严重 plum 约 -0.186 m）；改用 `part2_levels.json` 的 `spawn` 后 **21/21 初始穿透为 0**，Part1 出生点同步修正为 z=0.676。
 
-Part2 严格口径 baseline（2026-10-24，含沟底接触/绕过 lane 判罚）已归档到 [`summary_strict_20261024.md`](../../prep.d/blackw_validation/summary_strict_20261024.md)：三份官方策略最佳组合约 **650/1300**，trench 30cm、plum、high_platform 40cm、slope 35/45° 仍是主要缺口。
+Part2 judge v5 口径下，官方三份策略按障碍选命令的基线是 **660/1300**（楼梯只到 10cm 是最大短板），自训 `comp_bc_v5` 为 **750/1300**；评测方法、逐档结果与复现命令见主报告（文档地图见上）。
 
 ## 策略运行时切换（已实现）
 
@@ -90,8 +98,8 @@ Part2 严格口径 baseline（2026-10-24，含沟底接触/绕过 lane 判罚）
 | flat 策略 | `2` | `Start + D-pad Left` |
 | stair 策略 | `3` | `Start + D-pad Up` |
 | obstacle 策略 | `4` | `Start + D-pad Right` |
-| comp_high600（新训） | 启动参数 `policy_name:=comp_high600` | 最高 30cm 高台 / 35° 斜坡 / 20cm 沟壑 |
-| comp_lane300（新训） | 启动参数 `policy_name:=comp_lane300` | 30cm 楼梯 |
+| comp_bc_v5（自训可部署，**Part2 推荐**） | 启动参数 `policy_name:=comp_bc_v5` | 见上方 Part2 表（judge v5 750/1300 profile） |
+| 早期自训权重（对照） | `policy_name:=comp_high600` 或 `comp_lane300` | 旧口径，保留作对照 |
 
 固定动作（**仅 Part1**；Part2 规则只允许 RL，禁止固定动作）：
 
