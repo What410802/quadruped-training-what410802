@@ -209,3 +209,12 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 - "HIM gate：500–800 iter 0 success 就停"的判据同样建立在同一 `_part2_terrain_state` 上（HIM 的 `blackw-platform-exact-him` 继承 `_exact_env_cfg`），**同样无效**，需在修 key 后重测。
 - "微调后掉到 10–50 是纯 PPO 不稳定"：部分原因其实是 11.4/11.5 的 train/judge 物理与几何不一致（训练环境里行为本身就不对），需在修正后的环境里重做防护实验。
 
+### 11.10 修复后的验证实验（2026-10-25 21:00–22:00）
+
+在修完 11.1–11.7 后做了三组实验（远程训练仓；judge 评测在本地官方隔离场景上做）：
+
+1. **信号有效性（lr=0 预检，BC v5 权重直接跑训练环境）**：slope rows 0–1（20–25°）`part2_success` 0.97、stairs rows 0–1 0.57–0.68；固定 45° 仍 0（没有假成功）。修复前同一任务跑 900+ iter `part2_success` 恒 0。
+2. **训练/评测物理对齐**：对齐前 BC v5 在训练环境 30–35° 坡上 `x` 卡在 3.5 m（被 landing 立面挡住，坡道未接上/有 2 cm 台阶）、基座 z≈0.52；对齐后同一权重能爬上 35° 坡（基座 z 升到 1.5 m），训练环境 success 从 0 变成可测的正常水平。
+3. **GuardedPPO 200-iter pilot（对齐物理 + 冻结 σ=0.1 + trust-region λ=0.9）**：每 iter 权重漂移 3.3e-5（未保护 2.35e-4）；checkpoint 在官方 judge 上：m20/m40 仍过 slope 30°/35°（未退化），m80/m100 开始丢 30°，m199 丢 35°；slope 45° 所有 checkpoint 仍失败（timeout）。stairs 同型：15 cm 间歇通过、20/30 cm 未过。**结论**：修 bug 后训练不再"必然破坏"BC（200 iter 内保持技能），但 200 iter × 小步长还不足以学出 45°/30 cm 新技能；需要更长训练 + eval-gated 选 checkpoint 或换更有塑性的方案（LoRA/残差/BC 正则）。已启动 `guard4_{slope,stairs,plum}` 长跑（800 iter、blend 0.95、对齐物理）。
+
+**交付分数不变**：`comp_bc_v5` 在 judge v5 下仍是 750/1300（最好情况，4 次挑战期望 ≈743）；本次审计主要修复的是训练信号与训练/评测一致性问题，尚未带来新档位。
