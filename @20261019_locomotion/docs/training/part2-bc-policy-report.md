@@ -2,10 +2,11 @@
 
 ## 0. 结论速览
 
-- **交付**：`@20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v4/` 是一份**单份、可部署**的 blackW 权重（342→512→256→128→16 ELU MLP，行动/观测完全按 rl_sar 部署契约），由官方三份 blackW 策略（obstacle/stair/flat）行为克隆 + 一轮 DAgger 蒸馏而来。
+- **交付**：`@20261024_blackw/models/comp_bc_v5/`（已入库备份，commit `b12ac33`）是一份**单份、可部署**的 blackW 权重（342→512→256→128→16 ELU MLP，行动/观测完全按 rl_sar 部署契约），由官方三份 blackW 策略（obstacle/stair/flat）行为克隆 + 两轮 DAgger 蒸馏而来；部署目录 `@20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v5/`。
 - **严格 judge v5（四轮终态判据）**：官方几何 20 关、每关单独 MuJoCo 场景、0.002s 物理、无时间限制口径下，按"逐障碍选择速度指令"的参考 profile 得分 **750/1300**：高台 40cm = 200、高墙 40cm = 200、斜坡 35° = 100、壕沟 20cm = 150、楼梯 20cm = 100、梅花桩 0。
 - **同一 judge 下官方三份权重 + 同样逐障碍选命令的基线 = 700/1300**（楼梯 15cm、壕沟 20cm 等）；自训单份权重在楼梯上多拿 50 分（20cm vs 15cm），其余持平。
-- **可部署性**：rl_sar 无头自检 `check_walk_blackw.py --realtime false --policy comp_bc_v4` 前进段 PASS（基座 z 0.52、倾角 1.3°）；转向指令覆盖不足（数据里 yaw 只在 flat 教师里出现），属于已知缺口。
+- **可部署性**：rl_sar 无头自检 `check_walk_blackw.py --realtime false --policy comp_bc_v5` 前进段 PASS；转向指令覆盖不足（数据里 yaw 只在 flat 教师里出现），属于已知缺口。
+- **4 次挑战口径下的期望分**：平台 40/斜坡 35/壕沟 20 均 4/4；高墙 40 为 2/4、楼梯 20 为 1/4（±0.1m 横向抖动下）→ 期望 ≈ 706/1300，最好情况 750。
 - **未拿到**：斜坡 45°（200）、楼梯 30cm（200）、壕沟 30cm（300，洁净跨越口径）、梅花桩（200）。这 900 分是下一阶段专项 RL 的目标（§7 记录进行中的 specialist 实验）。
 
 ## 1. 规则与评测口径（对齐 `docs/reference/team-race-2026.md`）
@@ -80,19 +81,19 @@ judge v5 的判据（`@20261024_blackw/scripts/eval_blackw_part2.py`，`JUDGE_VE
 
 跨策略、跨指令取每障碍最高档：高台 40cm=200、高墙 40cm=200、斜坡 35°=100、楼梯 15cm=50、壕沟 20cm=150、梅花桩 0 → **700/1300**。
 
-### 6.2 comp_bc_v4（单份权重 + 逐障碍选指令 profile）
+### 6.2 comp_bc_v5（单份权重 + 逐障碍选指令 profile，当前最佳）
 
-| 障碍 | 最高通过档 | 得分 | 推荐指令 |
-|---|---|---:|---|
-| 高台 | 40cm | 200 | vx=0.9 直冲 |
-| 高墙 | 40cm | 200 | vx=0.8 → 到 x=1.2m 降到 0.3 |
-| 斜坡 | 35° | 100 | vx=0.3 |
-| 楼梯 | 20cm（完整上+下） | 100 | vx=0.8 → 到 x=1.2m 降到 0.3 |
-| 壕沟 | 20cm（洁净跨越） | 150 | vx=0.3（或 0.8） |
-| 梅花桩 | — | 0 | — |
-| **合计** | | **750** | |
+| 障碍 | 最高通过档 | 得分 | 推荐指令 | 4 次尝试通过率 |
+|---|---|---:|---|---|
+| 高台 | 40cm | 200 | vx=0.5 直冲 | 4/4 |
+| 高墙 | 40cm | 200 | vx=0.6 → 到 x=1.5m 降到 0.3 | 2/4 |
+| 斜坡 | 35° | 100 | vx=0.3 | 4/4 |
+| 楼梯 | 20cm（完整上+下） | 100 | vx=0.8 → 到 x=0.8m 降到 0.5 | 1/4 |
+| 壕沟 | 20cm（洁净跨越） | 150 | vx=0.3 | 4/4 |
+| 梅花桩 | — | 0 | — | 0/4 |
+| **合计（最好情况）** | | **750** | | 期望 ≈706 |
 
-单条固定指令的最好一次：vx=0.8→0.3 schedule = 450/1300。逐障碍 profile 的 750 分是比赛可用策略（每障碍单独 4 次尝试）；逐关通过矩阵见 `prep.d/results/blackw_official/JUDGE_V5_BC_V4.md`。
+单条固定指令的最好一次：vx=0.5 直冲 = 400/1300。逐障碍 profile 的 750 分是比赛可用策略（每障碍单独 4 次挑战机会）；4 次尝试是在横向抖动 ±0.1m 下测的，`prep.d/results/blackw_official/final_profile/` 是规范化证据，逐关通过矩阵见 `JUDGE_V5_BC_V5.md`。comp_bc_v4 为上一版（同为 750 类别上限，但高台 40cm 需要 vx=0.9 且 3/4，稳定性略差），保留作对照。
 
 ### 6.3 复现稳定性（judge v5，每项 4 次尝试、横向抖动 ±0.1m、各自推荐指令）
 
@@ -114,14 +115,16 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 前进段 PASS（站立 z 0.517、前进+停止不摔）；转向仍 FAIL（BC 数据的 yaw 命令覆盖不足）。无头部署检查的仿真参数与 `@20261024_blackw/README.md` 一致。
 
-## 7. 进行中：专项 RL 实验（specialist）
+## 7. 进行中：专项 RL 实验（specialist，anti-farming 版本）
 
 目标缺口 = 斜坡 45°（+100）、楼梯 30cm（+100）、壕沟 30cm（+150）、梅花桩（+200）。当前并行跑：
 
-- `spec_slope45_v0`：`blackw-slope-exact`，difficulty 固定 1.0（45°），500 iter × 512 env，从 comp_bc_v4 续训，reward progress/goal/clear + climb。
-- `spec_stairs30_v0`：`blackw-stairs-exact`，difficulty 固定 1.0（单级 30cm、完整上+下），500 iter × 512 env。
-- 待跑：`blackw-trench-exact`（gap 0.3m、洁净跨越）、`blackw-plum`（桩场，失败判据=轮子触地）。
-- 每个 specialist 出 checkpoint 后在对应官方隔离场景上用 judge v5 评测；达到 4/4 稳定后剪视频给用户复核、再决定是否入库。
+- 第一轮 specialist（fixed 45°/30cm、无 anti-farming）在 400 iter 内 0 success，且发现 **reward farming**：`climb_height` 每步奖励 + `competition_goal` 在 root 过 goal 线后每步 +10，策略学会"爬到半坡/越过线后原地待着"。已修：progress/climb 只在 goal 线之前计分，goal 逐奖励默认 0，并加 `part2_out_of_course` 终止（越线后 0.8m 未成功即结束），成功一次性奖励 `part2_clear=+50`。
+- 第二轮（anti-farming）当前并行跑，均从 comp_bc_v5 初始化、2ms/10 decimation、lr 1.5e-4、difficulty rows 0..5：
+  - `spec_slope_v2`：`blackw-slope-exact`，512 env × 1200 iter（斜坡 20→45° 课程）；
+  - `spec_stairs_v2`：`blackw-stairs-exact`，512 env × 1200 iter（台阶 10→30cm、完整上+下）；
+  - `spec_plum_v0`：`blackw-plum`，256 env × 1200 iter（固定官方 tier-1 桩场）。
+- 每个 specialist 出 checkpoint 后在对应官方隔离场景上用 judge v5 评测；达到 4/4 稳定后剪视频给用户复核、再决定是否入库；此外计划 `blackw-trench-exact`（gap 0.3m 洁净跨越）专项。
 
 ## 8. 参考文献与复现结果
 
@@ -149,7 +152,7 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 - 评测：`@20261024_blackw/scripts/eval_blackw_part2.py`（judge v5）、`gen_part2_official_levels.py`（官方几何场景生成）、`summarize_blackw_eval.py`（多命令汇总）、`check_walk_blackw.py`（rl_sar 无头部署自检）
 - 训练/蒸馏：`@20261024_blackw/scripts/collect_bc_blackw.py`、`collect_bc_dagger.py`、`train_bc_blackw.py`、`make_bc_checkpoint.py`、`export_bc_policy_local.py`
-- 权重：`@20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v4/`（policy.pt + config.yaml）
+- 权重（已入库备份，commit `b12ac33`）：`@20261024_blackw/models/comp_bc_v5/`（policy.pt + checkpoint.pt + config.yaml + manifest.json，含 sha256/评测数据/命令 profile）与部署目录 `@20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v5/`
 - 结果：`prep.d/results/blackw_official/judge_v5/`（judge v5 全量评测 JSON）、`JUDGE_V5_BC_V4.md`（汇总）、`prep.d/videos/judge_v5_bc_v4/`（复核视频）
 - 训练仓（远程）：`bis-ms7e56:~/rc_work/part2_team_race/`，任务与环境变量见 §5；日志 `~/rc_work/part2_team_race/logs/rsl_rl/black_velocity/`
 - 原理文档：[`part2-failure-vs-reward-design.md`](part2-failure-vs-reward-design.md)（termination vs reward shaping 的文献与设计规则）
