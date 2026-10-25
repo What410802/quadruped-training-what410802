@@ -258,7 +258,7 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 
 实测（2026-10-25 22:00，RTX 5060 Ti 16GB）：exact 任务 512 envs（默认 `nconmax=1024/njmax=4096`）每进程 **3.83 GB**；256 envs 的 plum **1.60 GB**；我这条线三个 run 合计 9.3 GB，已超过 8GB。显存主要由 warp 的 `nconmax/njmax` capacity 决定，不是 env 数线性。
 
-已做：`_exact_env_cfg` 增加 `BLACKW_NCONMAX` / `BLACKW_NJMAX` 环境变量（plum 已有），可按预算压到如 256/1024（45° 坡实测 nefc<172，256 足够；njmax 1024 留 4× 余量）。按此估计 512-env run ≈ 1.5–2 GB，一条线 **2 个 512-env 并发 ≈ 3–4 GB**，8GB 预算绰绰有余；单条 1024-env run 也可行。
+已做：`_exact_env_cfg` 增加 `BLACKW_NCONMAX` / `BLACKW_NJMAX` 环境变量（plum 已有）。**实测**（2026-10-25 22:47，512 env、`BLACKW_NCONMAX=256`、`BLACKW_NJMAX=1024`）：总显存 9453→11006 MiB，即每个 run **≈1.55 GB**（默认 1024/4096 是 3.83 GB），且 iteration time 6.1–7.8 s 与默认容量同场景 6.4–7.6 s 无差异（capacity 只占显存、不影响吞吐），无 nefc overflow 警告。一条线 8GB 预算内存上可放 2–3 个 512-env run；单条 1024-env run 也可行。启动前用 `@20261024_blackw/scripts/gpu_budget_check.py --need-gb 2 --max-line-gb 8 --max-processes 2` 检查。
 
 **效果损失**：显存减半不改变算法/样本质量（capacity 只影响极端接触场景，需监控 `nefc overflow`），但两条线同时跑会**各分 ~50% SM 吞吐**，wall-clock 大约 **1.5–2×**（我的 3 个并发 run 现在就是 99% util、单 iter 明显变慢）。建议明天实施：
 - 每条线同时最多 2 个 512-env run（或 1 个 512 + 1 个评测），启动时显式 `BLACKW_NCONMAX=256 BLACKW_NJMAX=1024`；
