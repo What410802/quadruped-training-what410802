@@ -8,7 +8,11 @@
     "action": "16 raw actions; legs q=default+0.25*a, wheels velocity target +/-10*a (FL+10 FR-10 RL+10 RR-10)",
     "policy_rate_hz": 50,
     "physics_dt_s": 0.002,
-    "torque_limits_nm": {"hip_thigh": 23.7, "calf": 59.25, "wheel": 20}
+    "torque_limits_nm": {
+      "hip_thigh": 23.7,
+      "calf": 59.25,
+      "wheel": 20
+    }
   },
   "evaluation": {
     "harness": "@20261024_blackw/scripts/eval_blackw_part2.py",
@@ -17,20 +21,53 @@
     "score_best_case": 750,
     "score_max": 1300,
     "category_profile": {
-      "high_platform": {"max_level_cm": 40, "points": 200, "command": "vx=0.5", "attempts_4": "4/4"},
-      "high_wall": {"max_level_cm": 40, "points": 200, "command": "vx=0.6 -> x=1.5m -> vx=0.3", "attempts_4": "2/4"},
-      "slope": {"max_level_deg": 35, "points": 100, "command": "vx=0.3", "attempts_4": "4/4"},
-      "stairs": {"max_level_cm": 20, "points": 100, "command": "vx=0.8 -> x=0.8m -> vx=0.5", "attempts_4": "1/4"},
-      "trench": {"max_level_cm": 20, "points": 150, "command": "vx=0.3", "attempts_4": "4/4"},
-      "plum": {"max_level": null, "points": 0, "attempts_4": "0/4"}
+      "high_platform": {
+        "max_level_cm": 40,
+        "points": 200,
+        "command": "vx=0.5",
+        "attempts_4": "4/4"
+      },
+      "high_wall": {
+        "max_level_cm": 40,
+        "points": 200,
+        "command": "vx=0.65 -> x=1.6m -> vx=0.35",
+        "attempts_4": "3/4"
+      },
+      "slope": {
+        "max_level_deg": 35,
+        "points": 100,
+        "command": "vx=0.3",
+        "attempts_4": "4/4"
+      },
+      "stairs": {
+        "max_level_cm": 20,
+        "points": 100,
+        "command": "vx=0.75 -> x=1.1m -> vx=0.45",
+        "attempts_4": "2/4"
+      },
+      "trench": {
+        "max_level_cm": 20,
+        "points": 150,
+        "command": "vx=0.3",
+        "attempts_4": "4/4"
+      },
+      "plum": {
+        "max_level": null,
+        "points": 0,
+        "attempts_4": "0/4"
+      }
     },
     "official_weights_reference_best_case": 660,
-    "expected_score_with_4_attempts": 706,
+    "expected_score_with_4_attempts": 743,
     "evidence": "prep.d/results/blackw_official/final_profile/*.json, JUDGE_V5_BC_V5.md",
     "videos": "prep.d/videos/comp_bc_v5/"
   },
   "training": {
-    "teachers": ["official blackW/obstacle", "official blackW/stair", "official blackW/flat"],
+    "teachers": [
+      "official blackW/obstacle",
+      "official blackW/stair",
+      "official blackW/flat"
+    ],
     "data": "blackw_bc_v6.npz: 639,903 samples / 1,456 episodes (demo + 2 DAgger rounds)",
     "loss": "Huber, 40 epochs, val 0.0090",
     "export": "@20261024_blackw/scripts/export_bc_policy_local.py"
