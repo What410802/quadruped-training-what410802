@@ -26,6 +26,11 @@ def main() -> int:
     ap.add_argument("--bc", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--std", type=float, default=0.8, help="initial Gaussian std")
+    ap.add_argument("--reset-trainer", action="store_true",
+                    help="reset critic weights, optimizer momentum, iteration and env "
+                         "curriculum state (required for a clean warm start)")
+    ap.add_argument("--lr", type=float, default=5e-5,
+                    help="optimizer lr stored in the reset checkpoint")
     args = ap.parse_args()
 
     base = torch.load(args.base, map_location="cpu", weights_only=False)
@@ -41,6 +46,29 @@ def main() -> int:
         base_actor[key] = value.clone()
     base_actor["distribution.std_param"] = torch.full((16,), float(args.std))
     base["actor_state_dict"] = base_actor
+    if args.reset_trainer:
+        import torch.nn as nn
+        critic = dict(base["critic_state_dict"])
+        # Re-initialise the critic MLP with the same default ``nn.Linear`` init a
+        # fresh rsl_rl run would use (the base critic was trained on a different
+        # task/reward scale, so its value estimates are noise after a warm start).
+        for key, value in list(critic.items()):
+            if not key.startswith("mlp.") or not key.endswith(".weight"):
+                continue
+            layer = nn.Linear(value.shape[1], value.shape[0])
+            critic[key] = layer.weight.detach().clone()
+            bias_key = key[: -len("weight")] + "bias"
+            if bias_key in critic:
+                critic[bias_key] = layer.bias.detach().clone()
+        base["critic_state_dict"] = critic
+        groups = []
+        for group in base["optimizer_state_dict"]["param_groups"]:
+            group = dict(group)
+            group["lr"] = float(args.lr)
+            groups.append(group)
+        base["optimizer_state_dict"] = {"state": {}, "param_groups": groups}
+        base["iter"] = 0
+        base["infos"] = {}
     base["bc_source"] = str(args.bc)
     base["bc_val_loss"] = float(bc.get("val_loss", -1.0))
     args.out.parent.mkdir(parents=True, exist_ok=True)

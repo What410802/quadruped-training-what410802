@@ -156,3 +156,56 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 - 结果：`prep.d/results/blackw_official/judge_v5/`（judge v5 全量评测 JSON）、`JUDGE_V5_BC_V4.md`（汇总）、`prep.d/videos/judge_v5_bc_v4/`（复核视频）
 - 训练仓（远程）：`bis-ms7e56:~/rc_work/part2_team_race/`，任务与环境变量见 §5；日志 `~/rc_work/part2_team_race/logs/rsl_rl/black_velocity/`
 - 原理文档：[`part2-failure-vs-reward-design.md`](part2-failure-vs-reward-design.md)（termination vs reward shaping 的文献与设计规则）
+
+## 11. 2026-10-25 训练侧代码审计：确认并修复的 bug（含"0 success"结论作废说明）
+
+对 PPO/BC 线做了一次针对性代码审计（用户侧 review 指出若干问题），逐条核实后确认并修复了以下 bug；其中前两条直接使此前所有"specialist 训练 0 success"的观察**不可作为"学不会"的证据**。
+
+### 11.1 `_exact_env_cfg` 的 success/failure 谓词是死代码（确认）
+
+`_exact_env_cfg` 把单地形放进 `generator.sub_terrains = {"exact": terrain_cfg}`，而 `_part2_terrain_state` 按 **sub-terrain 列名**分支（`"slope"`/`"stairs"`/…）；列名是 `"exact"` → 所有分支都不命中 → `part2_success`/`part2_failure`/`part2_clear` 恒为 False。证据：`spec_slope_v3` 跑 903 iter `part2_success` 全 0、`part2_clear` 全 0，而同一 BC v5 权重在部署 judge 下能过 slope 35°/stairs 20°。
+
+修复：单地形 sub-terrain key 直接用 judge kind（`{"slope": ...}` 等，由 `_EXACT_TERRAIN_KIND` 从地形类名映射）；并把训练谓词与 judge v5 对齐（去掉 judge 没有的 `|vz|` 稳定性条件、加上 judge 的"爬上证据"（ stairs 顶部平台 / wall 交叉+climb_z / plum 未跌落）、hold 15 步 = judge 的 0.2+0.1 s）。
+
+修复后 **lr=0 预检（BC v5 在训练环境里不回传）**：slope rows 0-1（20-25°）success 0.97；stairs rows 0-1 success 0.57–0.68；固定 45° 仍 0（没有产生假成功）。这证明契约/谓词链路已通。**注意**：`Episode_Termination/*` 日志是计数型指标，可能 >1，不能当通过率用；通过率以外部 judge 评测为准。
+
+### 11.2 `competition_goal` 残留奖励导致"过线刷分"（确认）
+
+`_exact_env_cfg` 只在 `BLACKW_GOAL_W>0` 时**添加** `competition_goal`，没有 pop 基线 `black/env_cfgs.py` 里的 `competition_goal`（weight 5.0，语义是 root 过 goal 线后每步 +1）。于是 `BLACKW_GOAL_W=0` 并没有关掉它：`spec_slope_v3` 日志里 `competition_goal` 0.88→3.98/s 持续上升，而 `part2_success` 恒 0（死代码）——策略在学"过线后蹲着刷分"。
+
+修复：exact/mixed/plum 三个 cfg 都先 `pop("competition_goal")`（和 `climb_height`）再按需 opt-in 添加；进度奖励改成 potential-based 差分（只奖励进度增量，Ng et al. 1999），成功一次性奖励提高到 +60。
+
+### 11.3 `BLACKW_MAX_ROW` 在 exact 任务里没被读取（确认）
+
+`_exact_env_cfg` 只用 `0/1` 行起步，忽略了命令行给的 `BLACKW_MAX_ROW`（review 里"课程没生效"属实）。已补：`BLACKW_MAX_ROW>=0` 时 `max_init_terrain_level = min(MAX_ROW, num_rows-1)`。
+
+### 11.4 训练地形几何 bug：坡道薄板有 2cm 台阶、且新坡道 y 偏移错（确认，重要）
+
+`ExactSlopeTerrainCfg` 用"绕 y 轴旋转的薄板"表示坡面（厚 4 cm），其**上表面比地面高约 2 cm**，等于在坡道入口加了一个小台阶；官方场景是**实心楔形**（`map.xml` mesh 顶点即 (0,0)→(2,rise)）。另外把薄板改成实心楔形时，`_ramp` 忘记传 y 中心（默认 y=0 而地形中心 y=4 m），坡道被放到赛道外 4 m 处——机器人走到 x≈3.5 被 landing 的立面挡住，永远上不了坡。这两处解释了"BC 在 judge 场景能过 35°，但训练环境 35° 0 success"的怪象。
+
+修复：新增 `_ramp()` 生成**实心楔形**（上表面精确经过 (start, start_z)→(start+run, start+rise)，带 y 中心参数），替换 slope/trench/plum 的全部坡道；用 raycast 验证训练地形剖面与官方一致（30°: x=1.8 z=0 → x=3.8 z=1.155 → landing）。
+
+### 11.5 训练物理与部署 judge 不一致（确认，重要）
+
+官方 `part2` 场景 XML 的 `<option>` 是：elliptic cone、PGS solver、`impratio=100`、Euler integrator、100 solver iterations、35 CCD iterations；而 MjLab 训练默认是 newton/pyramidal/impratio=1/implicitfast/10 iterations。同一个 BC v5 权重在训练环境里**爬不上 30-35° 坡**，在 judge 里却 4/4 通过——PPO 于是在"错的物理"里把已经正确的行为往错误方向拉（这正是"微调后评测掉到 10–50"的一个根因）。
+
+修复：`_apply_deployment_sim_options()`（`BLACKW_DEPLOY_SIM=1` 启用）把训练 sim 对齐到 judge：euler/elliptic/impratio=100/iterations=100/ls_iterations=50/ccd=35/更接近的 spawn 高度。mujoco_warp 不支持 PGS，用 newton+100 iter 近似。对齐后 BC v5 在训练环境 35° 坡能爬上去（diag rollout 基座 z 升到 1.5 m），预检 success 明显回升。
+
+### 11.6 继承 checkpoint 的 critic/optimizer/iter（确认）
+
+`make_bc_checkpoint.py` 只替换 actor，critic/optimizer/iter 来自 `comp_high600`（另一个任务、另一个奖励尺度）。已加 `--reset-trainer`：critic MLP 用默认 nn.Linear 初始化、optimizer state 清空并按 `--lr` 设学习率、iter/infos 归零。
+
+### 11.7 "有 base 模型的续训"保护（新增 GuardedPPO）
+
+除 11.6 外，新增 `alldog_mjlab/tasks/velocity/blackw/guarded_ppo.py`（`GuardedPPO`，经 `BLACKW_ALGORITHM` 注册）：每个 optimizer step 后把 actor 参数投影回 base 的权重信赖域 `θ ← θ_base + λ(θ-θ_base)`（λ=0.9），并支持冻结部分层（`BLACKW_GUARD_FREEZE`）。10 步观测：未保护 run 单 iter actor 权重漂移 2.35e-4，GuardedPPO 为 3.3e-5（约 1/7）。配套 env 覆盖：`BLACKW_ENTROPY_COEF=0`、`BLACKW_LEARN_STD=false`（冻结 σ=0.1–0.3）、`BLACKW_EPOCHS=2`、`BLACKW_MINIBATCHES=8`、`BLACKW_NORM_ADV_PER_MB=true`、`BLACKW_LR=5e-5`。
+
+### 11.8 评测侧：梅花桩 judge `z_cross_min` 用错（确认）
+
+`gen_part2_official_levels.py` 把 `z_cross_min` 写成 `BASE_REF_Z + top - 0.15 = 0.55`（root 高度口径），但 eval judge 拿它当**轮底**阈值 → 轮底永远 <0.55 → 梅花桩所有尝试必失败（官方基线 plum=0 也被这个 bug 掩盖过）。已改为轮底阈值 0.05（轮底在桩顶 0.2 m、落到地面 ≈0 可区分），并重新生成 20 个场景。
+
+### 11.9 受影响的旧结论（作废/待重测）
+
+- "PPO specialist 在 slope/stairs 训练 400–900 iter 仍 0 success → 学不会/信号不可用"：**作废**（死代码 + 残留刷分奖励导致，success 从未被测量）。
+- "HIM gate：500–800 iter 0 success 就停"的判据同样建立在同一 `_part2_terrain_state` 上（HIM 的 `blackw-platform-exact-him` 继承 `_exact_env_cfg`），**同样无效**，需在修 key 后重测。
+- "微调后掉到 10–50 是纯 PPO 不稳定"：部分原因其实是 11.4/11.5 的 train/judge 物理与几何不一致（训练环境里行为本身就不对），需在修正后的环境里重做防护实验。
+

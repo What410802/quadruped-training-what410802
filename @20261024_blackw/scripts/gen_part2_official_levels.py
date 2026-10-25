@@ -206,7 +206,11 @@ def _judge(kind: str, geoms: list[str], bmin: np.ndarray, bmax: np.ndarray,
         return {"kind": "plum", "top_z": float(top),
                 "cube_x_range": [round(float(first_x - 0.15), 4), round(float(last_x + 0.15), 4)],
                 "goal_x_min": round(float(last_x + 0.55), 4),
-                "z_margin": 0.35, "z_cross_min": round(BASE_REF_Z + float(top) - 0.15, 4), **lane}
+                # Wheel-bottom contact threshold: a wheel touching the floor between
+                # piles has its bottom at ~0.0 m; on a pile top it is at 0.2 m.  The
+                # old value (0.55) was a *root-height* reference misused as a
+                # wheel-bottom threshold, which made every plum attempt fail.
+                "z_margin": 0.35, "z_cross_min": 0.05, **lane}
     raise ValueError(kind)
 
 
