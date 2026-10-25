@@ -218,3 +218,49 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 3. **GuardedPPO 200-iter pilot（对齐物理 + 冻结 σ=0.1 + trust-region λ=0.9）**：每 iter 权重漂移 3.3e-5（未保护 2.35e-4）；checkpoint 在官方 judge 上：m20/m40 仍过 slope 30°/35°（未退化），m80/m100 开始丢 30°，m199 丢 35°；slope 45° 所有 checkpoint 仍失败（timeout）。stairs 同型：15 cm 间歇通过、20/30 cm 未过。**结论**：修 bug 后训练不再"必然破坏"BC（200 iter 内保持技能），但 200 iter × 小步长还不足以学出 45°/30 cm 新技能；需要更长训练 + eval-gated 选 checkpoint 或换更有塑性的方案（LoRA/残差/BC 正则）。已启动 `guard4_{slope,stairs,plum}` 长跑（800 iter、blend 0.95、对齐物理）。
 
 **交付分数不变**：`comp_bc_v5` 在 judge v5 下仍是 750/1300（最好情况，4 次挑战期望 ≈743）；本次审计主要修复的是训练信号与训练/评测一致性问题，尚未带来新档位。
+
+## 12. 最低挡位 / 档位结构验证、课程与显存协议（2026-10-25 深夜）
+
+### 12.1 所有任务最低挡位成功率（排除梅花桩）
+
+judge（官方几何 + 官方场景物理，BC v5 = `comp_bc_v5`/`model_0_bc_v5_guarded` 的 actor，推荐速度）各 8 次尝试：
+
+| 任务 | 最低挡 | 命令 | judge 结果 |
+|---|---|---|---|
+| high_platform | 10cm | vx=0.5 | **8/8 通过** |
+| high_wall | 10cm | vx=0.6 | **8/8 通过** |
+| slope | 20° | vx=0.3 | **8/8 通过** |
+| stairs | 10cm | vx=0.5 | **8/8 通过** |
+| trench | 10cm | vx=0.3 | **8/8 通过** |
+
+训练环境（`BLACKW_DEPLOY_SIM=1`，canonical spawn（清零 reset 随机化）+ clean obs + 128 env × 3 episodes，`check_tier_success.py`）：
+platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad_sim_state`，属 warp 数值边界）；
+**stairs 只有 58–71%**，但同一权重在 judge 上 8/8 —— 差异来自 **mujoco_warp 不支持 PGS solver**（官方场景用 PGS；训练只能 newton 近似），多级台阶的接触/冲击对 solver 更敏感，导致训练环境里下台阶时横向漂移偏多（lane deviation）。这是已知 sim2sim 差距，不是逻辑 bug；台阶类训练应把 warp 下的成功率当"更严格的下界"，最终以 judge 为准。
+
+### 12.2 高档位是否只是尺寸变化（无质变）
+
+- **训练地形**（`check_tier_geometry.py`，difficulty 0 vs 1）：平台/墙/坡/楼梯/沟/桩场的 geom **数量与类型序列完全一致**；仅尺寸变化：平台高 0.10→0.40、墙高 0.10→0.40、坡 rise 0.728→2.00（20°→45°）、楼梯总高 0.60→1.80（单级 10→30cm）；沟壑高度 0.30 不变（只有槽宽 0.10→0.30）、桩场完全固定。没有额外台阶/侧墙/数量变化。
+- **官方场景**（20 个隔离场景）：每个类别的 geom 数量、geom 类型、judge 键集合在全部档位完全一致，只有数值缩放：平台 `top_z` 0.1/0.2/0.3/0.4；楼梯 `top_z` 0.6/0.9/1.2/1.8（`goal_x_min=3.7`、`descend_end_x=6.2` 不变）；斜坡 `rise_z` 0.728/1.155/1.400/2.000（goal_x 3.9 不变）；墙 `wall_h` 0.1–0.4、`climb_z_min` 0.52–0.58、`wall_x=1.86`、`goal_x_min=2.27` 不变；沟壑只有槽宽 0.1/0.2/0.3（`near_x=3.8`、`plateau_z=0.3` 不变）；梅花桩只有一档且 `z_cross_min` 已修为轮底口径 0.05。
+→ 结论：档位之间没有质变，此前"高档位疑似几何 bug"可以排除；剩余差距是能力问题。
+
+### 12.3 课程问题的回答
+
+**现在没有用 mjlab 自带的课程**：`black_competition_env_cfg` 在训练模式下 `pop("terrain_levels")`（mjlab 的 `terrain_levels_vel` 按行走距离升级，与 goal 终止的障碍 episode 不兼容；stage-3 曾出现 4 个列长期 level 0），exact 任务只是把 `max_init_terrain_level` 设成随机初始 row 上限（`BLACKW_MAX_ROW`）。所以当前 specialist 长跑是"**从 BC 初始化、在 row 0..5 上随机混合采样**"，**不是**"上一档位训好了再升下一档"。
+
+建议（也是我准备实施的）：手工 **success-gated 课程**，逐档推进：
+1. stage k 固定档位（或很窄的 range，例如 k±0.1），从 stage k−1 的 best checkpoint 热启动；
+2. **升级门控**：在部署对齐环境上，canonical spawn + 随机化（见下）各跑 ≥100 episodes，要求 deterministic 成功率 ≥95%（更严：随机指令下 ≥90%）才进入 k+1；
+3. 每 stage 存 checkpoint 并用 judge 复核（eval-gated 选 best），失败不升级、只继续当前 stage 或降回前一档。
+4. **随机化必须覆盖**：① 初始状态——当前 reset 只随机关节 offset（thigh ±0.40 rad 等）与 root 速度 ±0.5 m/s，**root 位置/朝向没有随机化**，建议加 x±0.10、y±0.15、yaw±0.05（对应操作手摆位误差）；② 指令——真实手柄是线性映射：`rl_sim.cpp:394-396` 用 `axes[1]→vx, axes[0]→vy, axes[3]→yaw`，`rl_sim_blackw.launch.py` 的 `joy_command_scale` 默认 **1.5**（满杆 = 1.5 m/s、1.5 rad/s）；障碍赛实际用低前进速（约 0.2–0.8 m/s）、小侧移/小转向，课程门控里应对 vx∈[0.2,0.8]、vy∈±0.2、wz∈±0.3 做随机化（并保留满杆范围做安全上界测试）；③ 已有 DR（摩擦/负载/质心/编码器偏置/PD/推力）保持不变。
+5. 这样也能避免"高档位训练把低档位能力破坏"：门控保证前一档在随机化下仍鲁棒后，再解冻/升温。
+
+### 12.4 两线各占一半显存（~8GB）的可行性评估
+
+实测（2026-10-25 22:00，RTX 5060 Ti 16GB）：exact 任务 512 envs（默认 `nconmax=1024/njmax=4096`）每进程 **3.83 GB**；256 envs 的 plum **1.60 GB**；我这条线三个 run 合计 9.3 GB，已超过 8GB。显存主要由 warp 的 `nconmax/njmax` capacity 决定，不是 env 数线性。
+
+已做：`_exact_env_cfg` 增加 `BLACKW_NCONMAX` / `BLACKW_NJMAX` 环境变量（plum 已有），可按预算压到如 256/1024（45° 坡实测 nefc<172，256 足够；njmax 1024 留 4× 余量）。按此估计 512-env run ≈ 1.5–2 GB，一条线 **2 个 512-env 并发 ≈ 3–4 GB**，8GB 预算绰绰有余；单条 1024-env run 也可行。
+
+**效果损失**：显存减半不改变算法/样本质量（capacity 只影响极端接触场景，需监控 `nefc overflow`），但两条线同时跑会**各分 ~50% SM 吞吐**，wall-clock 大约 **1.5–2×**（我的 3 个并发 run 现在就是 99% util、单 iter 明显变慢）。建议明天实施：
+- 每条线同时最多 2 个 512-env run（或 1 个 512 + 1 个评测），启动时显式 `BLACKW_NCONMAX=256 BLACKW_NJMAX=1024`；
+- 长跑尽量错峰（一条线跑长训时另一条只做评测/短跑），或把 800–1000 iter 拆成 2×400 做 eval-gated 选点，用"质量"换回吞吐；
+- 加一个启动前检查（`nvidia-smi` 显存/占用进程数）脚本，超过 8GB 或 GPU 已有 >2 个训练进程时拒绝启动。

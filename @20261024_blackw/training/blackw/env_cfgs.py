@@ -829,9 +829,11 @@ def _exact_env_cfg(terrain_cfg, play: bool) -> ManagerBasedRlEnvCfg:
     if (dmin, dmax) != (0.0, 1.0):
         generator.difficulty_range = (dmin, dmax)
     # Exact ramps/platforms create many wheel/edge contacts; blackW smoke hit
-    # nconmax=172 on the 45-degree ramp. Give the exact tasks headroom.
-    cfg.sim.nconmax = 1024
-    cfg.sim.njmax = 4096
+    # nconmax=172 on the 45-degree ramp.  Default is generous for single-line
+    # experiments; when two training lines share one GPU, cap the warp capacity
+    # (e.g. BLACKW_NCONMAX=256, BLACKW_NJMAX=1024) to fit a half-GPU memory budget.
+    cfg.sim.nconmax = int(os.environ.get("BLACKW_NCONMAX", "1024"))
+    cfg.sim.njmax = int(os.environ.get("BLACKW_NJMAX", "4096"))
     # Wheel cylinders vs platform box hit a Mujoco-Warp CCD assert in HIM
     # exploration; these tasks are low-speed, so disable CCD.
     cfg.sim.ccd_iterations = 0
@@ -905,6 +907,11 @@ def _exact_env_cfg(terrain_cfg, play: bool) -> ManagerBasedRlEnvCfg:
 def blackw_stairs_exact_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     """Exact official stairs task (full up + landing + down staircase)."""
     return _exact_env_cfg(ExactStairsTerrainCfg(), play)
+
+
+def blackw_wall_exact_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
+    """Exact official high-wall task (cross_bar 10..40 cm)."""
+    return _exact_env_cfg(ExactHighWallTerrainCfg(), play)
 
 
 def blackw_platform_exact_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
