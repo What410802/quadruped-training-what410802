@@ -264,3 +264,5 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 - 每条线同时最多 2 个 512-env run（或 1 个 512 + 1 个评测），启动时显式 `BLACKW_NCONMAX=256 BLACKW_NJMAX=1024`；
 - 长跑尽量错峰（一条线跑长训时另一条只做评测/短跑），或把 800–1000 iter 拆成 2×400 做 eval-gated 选点，用"质量"换回吞吐；
 - 加一个启动前检查（`nvidia-smi` 显存/占用进程数）脚本，超过 8GB 或 GPU 已有 >2 个训练进程时拒绝启动。
+
+**2026-10-25 22:55 长跑中途快照**（`guard4_*`，800 iter，aligned physics，blend 0.95）：slope model_450 仍只过 30°/35°，45° timeout；stairs model_450 过 15/20cm，30cm timeout。说明 450 iter 的小步长锚定还不足以长出 45°/30cm；长跑结束后做完整 eval-gated 选点再定论。
