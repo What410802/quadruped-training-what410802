@@ -156,6 +156,7 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 - 结果：`prep.d/results/blackw_official/judge_v5/`（judge v5 全量评测 JSON）、`JUDGE_V5_BC_V4.md`（汇总）、`prep.d/videos/judge_v5_bc_v4/`（复核视频）
 - 训练仓（远程）：`bis-ms7e56:~/rc_work/part2_team_race/`，任务与环境变量见 §5；日志 `~/rc_work/part2_team_race/logs/rsl_rl/black_velocity/`
 - 原理文档：[`part2-failure-vs-reward-design.md`](part2-failure-vs-reward-design.md)（termination vs reward shaping 的文献与设计规则）
+- 无视觉/深度相机模型分工与课程规划：[`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)（壕沟歧义量化、主线+专项分叉、BeamDojo 深度课程 D0–D5）
 
 ## 11. 2026-10-25 训练侧代码审计：确认并修复的 bug（含"0 success"结论作废说明）
 
