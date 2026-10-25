@@ -120,10 +120,10 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 目标缺口 = 斜坡 45°（+100）、楼梯 30cm（+100）、壕沟 30cm（+150）、梅花桩（+200）。当前并行跑：
 
 - 第一轮 specialist（fixed 45°/30cm、无 anti-farming）在 400 iter 内 0 success，且发现 **reward farming**：`climb_height` 每步奖励 + `competition_goal` 在 root 过 goal 线后每步 +10，策略学会"爬到半坡/越过线后原地待着"。已修：progress/climb 只在 goal 线之前计分，goal 逐奖励默认 0，并加 `part2_out_of_course` 终止（越线后 0.8m 未成功即结束），成功一次性奖励 `part2_clear=+50`。
-- 第二轮（anti-farming）当前并行跑，均从 comp_bc_v5 初始化、2ms/10 decimation、lr 1.5e-4、difficulty rows 0..5：
-  - `spec_slope_v2`：`blackw-slope-exact`，512 env × 1200 iter（斜坡 20→45° 课程）；
-  - `spec_stairs_v2`：`blackw-stairs-exact`，512 env × 1200 iter（台阶 10→30cm、完整上+下）；
-  - `spec_plum_v0`：`blackw-plum`，256 env × 1200 iter（固定官方 tier-1 桩场）。
+- 第二轮（anti-farming）跑 400 iter 后仍 0 success，复查发现**进度奖励本身也是状态式**（`competition_goal_progress` 原地站着也每步给分），且 `climb_height` 同理；已改成 **potential-based 进度差分**（`_course_progress_delta`，只奖励进度增量，符合 Ng et al. 1999 的 policy-invariance），从 exact 任务移除 climb 项、成功一次性奖励提到 +60。第三轮从 comp_bc_v5 初始化、2ms/10 decimation、lr 1.5e-4、difficulty rows 0..5 并行跑：
+  - `spec_slope_v3`：`blackw-slope-exact`，512 env × 1200 iter（斜坡 20→45° 课程）；
+  - `spec_stairs_v3`：`blackw-stairs-exact`，512 env × 1200 iter（台阶 10→30cm、完整上+下）；
+  - `spec_plum_v1`：`blackw-plum`，256 env × 1200 iter（固定 tier-1 桩场 + 落足奖励 `plum_foothold`：轮底落在桩顶 [0.14,0.34]m 才给分）。
 - 每个 specialist 出 checkpoint 后在对应官方隔离场景上用 judge v5 评测；达到 4/4 稳定后剪视频给用户复核、再决定是否入库；此外计划 `blackw-trench-exact`（gap 0.3m 洁净跨越）专项。
 
 ## 8. 参考文献与复现结果
