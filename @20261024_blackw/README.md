@@ -44,7 +44,7 @@
 | plum | 暂无 | — | — | 0/4 | 0 |
 | **合计** | | | | | **750** |
 
-未过档位：斜坡 45°、楼梯 30cm、壕沟 30cm、梅花桩（合计 550 分）。2026-10-25/26 训练侧审计修复（success 谓词死代码、可刷分奖励、训练地形/物理与 judge 不一致、critic 继承等）与后续计划见交接文档；壕沟 30cm 需要"抬轮/腾空跨槽"的定性新技能（几何依据见 plan §1），盲阶段先做 T30 专项门槛，必要时转深度路线。
+未过档位：楼梯 30cm（**盲可训练**，盲侧 850 的天花板只差这一项 +100）、斜坡 45°（**judge 物理摩擦上限不可达**：官方场景 μ=1.0、tan45°=1.0 零余量，2026-10-26 判定，见历史归档 §14.2）、壕沟 30cm、梅花桩（**盲不可达**：trench30 gap > 前后轮触地跨距一半 0.213 m，梅花桩需落足感知；深度依赖相对盲侧增量 350 = trench30 +150、梅花桩 +200）。2026-10-25/26 训练侧审计修复（success 谓词死代码、可刷分奖励、训练地形/物理与 judge 不一致、critic 继承等）与后续计划见交接文档与执行计划；深度部署必须开始做（D0 + rl_sar 渲染/CNN 最小链路）。
 
 复现命令（仓库根目录）：
 
@@ -70,7 +70,8 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 | 文档 | 用途 |
 |---|---|
-| [`@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md`](../@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md) | **新会话入口**：远程状态、明天步骤/命令、边界、开放问题 |
+| [`@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md`](../@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md) | **新会话入口**：课程规则（单谱系逐档 gate、禁止多难度并行）、原明天清单/命令、远程/GPU 队列状态、边界、开放问题 |
+| [`@20261019_locomotion/docs/training/part2-ppo-execution-plan-2026-10-26.md`](../@20261019_locomotion/docs/training/part2-ppo-execution-plan-2026-10-26.md) | **当前执行计划（2026-10-26 起）**：修正后的分数账、分阶段排期、task-spooler GPU 队列使用协议、待确认项 |
 | [`part2-bc-policy-report.md`](../@20261019_locomotion/docs/training/part2-bc-policy-report.md) | 主报告：judge v5、BC/DAgger、评测结果、参考文献、局限 |
 | [`part2-ppo-training-history.md`](../@20261019_locomotion/docs/training/part2-ppo-training-history.md) | 归档：训练侧 bug 审计与修复证据、最低档/档位结构验证、显存实测、早期记录 |
 | [`part2-blind-depth-curriculum-plan.md`](../@20261019_locomotion/docs/training/part2-blind-depth-curriculum-plan.md) | 模型分工（主线 M0 + T30/S45/St30/P）、盲课段 B0–B4、深度 BeamDojo 课程 D0–D5 |

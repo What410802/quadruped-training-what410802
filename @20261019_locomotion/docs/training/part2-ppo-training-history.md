@@ -99,7 +99,9 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 4. **随机化必须覆盖**：① 初始状态——当前 reset 只随机关节 offset（thigh ±0.40 rad 等）与 root 速度 ±0.5 m/s，**root 位置/朝向没有随机化**，建议加 x±0.10、y±0.15、yaw±0.05（对应操作手摆位误差）；② 指令——真实手柄是线性映射：`rl_sim.cpp:394-396` 用 `axes[1]→vx, axes[0]→vy, axes[3]→yaw`，`rl_sim_blackw.launch.py` 的 `joy_command_scale` 默认 **1.5**（满杆 = 1.5 m/s、1.5 rad/s）；障碍赛实际用低前进速（约 0.2–0.8 m/s）、小侧移/小转向，课程门控里应对 vx∈[0.2,0.8]、vy∈±0.2、wz∈±0.3 做随机化（并保留满杆范围做安全上界测试）；③ 已有 DR（摩擦/负载/质心/编码器偏置/PD/推力）保持不变。
 5. 这样也能避免"高档位训练把低档位能力破坏"：门控保证前一档在随机化下仍鲁棒后，再解冻/升温。
 
-### 12.4 两线各占一半显存（~8GB）的可行性评估
+### 12.4 两线各占一半显存（~8GB）的可行性评估（历史记录：现已被 GPU 队列取代）
+
+> **历史状态**：这是 2026-10-25 的"手动限制半显存"方案；之后算力机启用了 GPU 队列，目标训练按队列提交即可，**不再需要手动限半显存**（`BLACKW_NCONMAX/NJMAX` 仅留作显存/性能选项）。本节保留作实测记录。
 
 实测（2026-10-25 22:00，RTX 5060 Ti 16GB）：exact 任务 512 envs（默认 `nconmax=1024/njmax=4096`）每进程 **3.83 GB**；256 envs 的 plum **1.60 GB**；我这条线三个 run 合计 9.3 GB，已超过 8GB。显存主要由 warp 的 `nconmax/njmax` capacity 决定，不是 env 数线性。
 
@@ -124,5 +126,35 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
   - `spec_stairs_v3`：`blackw-stairs-exact`，512 env × 1200 iter（台阶 10→30cm、完整上+下）；
   - `spec_plum_v1`：`blackw-plum`，256 env × 1200 iter（固定 tier-1 桩场 + 落足奖励 `plum_foothold`：轮底落在桩顶 [0.14,0.34]m 才给分）。
 - 每个 specialist 出 checkpoint 后在对应官方隔离场景上用 judge v5 评测；达到 4/4 稳定后剪视频给用户复核、再决定是否入库；此外计划 `blackw-trench-exact`（gap 0.3m 洁净跨越）专项。
+
+## 14. 2026-10-26 上午：guard4 复核、slope45 摩擦上限、GPU 队列实测
+
+> 交接后（10-26 08:30 远程机开机）的复核证据；执行计划与当日排期见 [`part2-ppo-execution-plan-2026-10-26.md`](part2-ppo-execution-plan-2026-10-26.md)。
+
+### 14.1 guard4 长跑复核：无可捞档位
+
+- 三个 run 均完成 800 iter（`model_799.pt` 落盘；最后 mtime 10-25 23:09）；`max_init_terrain_level=5`（row 0..5 随机 = 交接 §3.3 禁止的混合难度做法），都从 `bc_v5_guarded_s01/model_0_bc_v5_guarded_s01.pt` 热启动。
+- 导出 5 个 checkpoint/run（m0/200/400/600/799；单次导出 5–6 s，policy.pt 1.38 MB）到 `prep.d/results/guard4_ts_trial/exports/`，本地 judge（`eval_blackw_part2.py --attempts 4`，无抖动、deterministic）：slope45 **0/16**、stairs30 **0/15**（唯一一次 4/4 是确定性单轨迹，±0.1 m 抖动 3 次全挂）、plum **0**；slope35 与 stairs20 只在部分 checkpoint 保持。
+- 命令 sweep 复核（`--jitter-y 0.1`、每配置 3 次）：comp_bc_v5 + 3 个 guard4 checkpoint × stairs30 的 8 组指令 = **0/24**；同 4 权重 × slope45 的 4 组指令 = **0/8**。
+- 结论：混合行 guarded 微调不产生 45°/30cm 新技能，与交接 §3.3 一致；guard4 不续训，只作证据。产物 `prep.d/results/guard4_ts_trial/{judge,sweep}/*.json`（不入库）。
+
+### 14.2 slope45 摩擦上限（盲侧目标 950→850 的依据）
+
+- 官方 judge 场景 geom 摩擦系数 = 1.0（`assets/terrain/part2/ability_field/map.xml`：floor/platform 显式 `friction="1 .005 .0001"`；slope mesh 与机器人轮子用默认 1.0，MuJoCo 接触摩擦按元素取大）→ 45° 爬坡所需 tan45° = 1.0，**零余量**。
+- 探针（`@20261019_locomotion/scripts/agent_scripts/probe_slope_friction.py`）：comp_bc_v5 @vx=0.3、场景 `part2_off_slope_45deg.xml`，加载后改 `model.geom_friction` 再跑同一 judge 判据：
+
+| μ | judge | max root z |
+|---|---|---|
+| 1.0（官方） | fail timeout | 0.79 m |
+| 1.2 | fail timeout | 0.82 m |
+| 1.5 | fail timeout | 2.08 m（18 s 窗口内几乎登顶） |
+| 2.0 | fail fell（tilt 76°） | 2.54 m |
+
+- 结论：μ=1.0 时策略在 45° 坡上滑住；μ≥1.5 同一权重几乎登顶 → **45° 的瓶颈是摩擦余量，不是策略能力**。盲侧可拿满分相应修正为 **850**（platform40 200 + wall40 200 + slope35 100 + stairs20 100 + trench20 150 + stairs30 100 增量），全体实际上限 1200/1300（trench30 +150、plum +200 仍靠深度）。
+
+### 14.3 task-spooler 单卡队列实测
+
+- 远程 `~/rc_work/gpu_jobs/` 下已落地 `common.sh`（flock 等 GPU + flag + trap 清理 + 持久日志）、`on_finish.sh`（TS_ONFINISH 兜底）与 job 脚本模板；详细契约与 3 个 job 的实测数字见 [`remote-training-workflow.md`](remote-training-workflow.md) §5。
+- 关键结论：单槽串行、排队即自动启动、`ts -k` 走 SIGTERM 可被 trap 清理、日志/退出码/耗时可用 `ts -i/-c` 取；队列状态在 `/tmp`，重启丢失，持久记录以 `~/rc_work/logs/*.log` 为准。
 
 
