@@ -19,49 +19,45 @@
 - **slope45 诊断（2026-10-26 第二轮补充）**：不直接判死——先把**训练环境**地形摩擦调到 μ=1.2 做课程训练，看训练侧成功率能否起来（judge 物理保持 μ=1.0 不变；该实验只用于判定瓶颈归属，不作为交付）。实现 `BLACKW_WORLD_FRICTION`（默认不生效）+ 自检脚本，见 §2.3。**评测时 μ=1.2 与 μ=1.0 都要报**（正式赛物理口径由用户告知培训方）。
 - **冲坡缺口（用户 2026-10-26 第二轮要求核算）**：μ=1.0 时“平地加速冲坡”能否上顶、是否导致关节速度超限——核算见 §2.4；结论：纯惯性不可行（需 6.26 m/s，对应轮速 60.8 rad/s，超过部署 dq_des 上限 20 rad/s），但冲坡提供的 6–11% 摩擦余量是真实可用的，且 ≤2 m/s 入坡不会触发关节速度限幅 → 若 μ=1.2 训练有效，**后期可尝试 μ 递减课程 + 冲坡（手动 gate）**。
 
-## 0.2 待办清单（Living TODO，2026-10-26 10:15 建立；每次 session 结束前更新）
+## 0.2 待办清单（Living TODO，2026-10-26 11:10 按用户反馈重整；每次 session 结束前更新）
 
-> 规则：本清单是这条线**唯一的"说到就要做"记录处**——对话里新增的未完成事项先落到这里再执行；完成后打 `[x]` 并写证据路径/commit；每个工作时段结束复盘一次，长期项按日期推进。短期 = 今天/24 h；长期 = 到 11-04 赛前。
+> 背景（用户 2026-10-26 追问）：上一版把审计杂项、科学探索、运维债混在一张清单里，显得"待办爆炸"。现在按**是否阻塞主线**分 A/B/C/D 四组：A=主线（GPU 训练/必须今天推进）、B=防错修复（≤2 h，本地，防"再次误判"）、C=视情况/后期、D=运维债（可延后、不阻塞）。**不再把与当前目标无关的探索项塞进今天**。
 
-### 短期（今天 10-26 余下时间）
+### A. 主线（按用户 2026-10-26 第三轮定的路线：row0 跑通 → 手动 gate 逐档提难度；除 trench30/plum 外先拿 8/8）
 
-- [x] task-spooler 队列落地 + 3 类 job 实测（SIGTERM 清理 / 3 iter 训练 smoke / 15 个 checkpoint 批量导出）→ [`remote-training-workflow.md`](remote-training-workflow.md) §5
-- [x] guard4 三个 800-iter run 复核：无可捞档位 → [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §14.1
-- [x] stairs30 专项 v0（r=0.75→1.0）首轮：judge 首次 stairs30 1/4（m350/m650）→ 历史归档 §14.4
-- [x] slope45 μ=1.2 课程诊断（job 11）：BC 基线 40°=95.7%、45°=0%；stage A 40°→100%；**stage B（45°，再 350 iter）训练 0%，judge 双测 μ=1.2/1.0 均 fail** → 历史归档 §14.5
-- [ ] **stairs30 续训 job 13**（10:39–约 11:10 运行）：结束后 **不要直接重训同配方**——先对 s100b 全部 checkpoint 做 judge（stairs30/20 + platform40/wall40/slope35/trench20 回归）选点；仍 <2/8 走单变量变体：**提高塑性应把 `BLACKW_GUARD_BLEND` 调到 0.98**（实现是 `θ=base+blend·Δ`，0.90 反而把锚加得更死；0.95→0.98 ≈ 有效步长 20×→50×），同时开 `BLACKW_GUARD_LOG=1` 记录每 iter actor drift，或插入 r=0.9 中间档
-- [ ] **slope45 下一步（μ 递减课程起点）**：μ=1.2 学不会 → 改从 **μ=2.0 或 1.5** 先学 45°（BC v5 在 μ=1.5 可攀到 root z≈2.08、μ=2.0 能到顶），学会后逐档降 μ（2.0→1.7→1.5→1.3→1.2→1.1→1.0，每档 resume + ~200 iter + 手动 gate）；每档同时报 μ=1.2/1.0；排在主线空档，不抢 8/8 主线 GPU
-- [ ] **gate 工具实现（本地，不占 GPU）**：`eval_blackw_part2.py` 加 `--jitter-x/--jitter-yaw/--joint-offset/--joint-vel/--command-set`（3 档速度指令 + 关节随机化）；新增 `gate_stage.py`（阶段表 → 每关×每指令档通过矩阵 + verdict）；自检后对 comp_bc_v5 跑 placement
-- [ ] **comp_bc_v5 placement（本地）**：20 关 × 3 指令档 × 8/16 次 → 输出 `prep.d/results/blackw_official/stage_gates/`，得到"最低未通过 stage"清单
-- [ ] **M0 逐档 gate 训练**：按 placement 结果只训未过档（mixed official 固定 r，每档 300 iter ≈10–12 min）；目标 platform40/wall40/slope35/stairs20/trench20 + stairs30 全部 8/8
-- [x] **核实 10:45 交叉审计中 PPO 相关条目**（结论与证据见历史归档 §15）：配置/指标/guarded base/ blend 方向/早停缺口属实；"PREVDIR glob 匹配 s100b" 不属实；gate 工具欠账属实。**并确认 HIM 的 play=True 假测量 bug 在 PPO gate 链路上不存在**（tiercheck 用 play=False、输出 part2_terms；judge 是独立判据），但同构风险需加断言防复发
-- [ ] **修文档/代码里的 blend 方向**（本行上面已改计划；`guarded_ppo.py` docstring 已有正确语义，但所有新脚本注释/汇总必须写"blend 越大越塑性"）
-- [ ] **GuardedPPO 增补（审后改）**：新增 `BLACKW_GUARD_BASE_CKPT`（显式指定以哪个 checkpoint 的 actor 为锚，默认仍用加载权重）；每次 run 打印 base 来源与 sha；所有 guarded run 开 `BLACKW_GUARD_LOG=1`
-- [ ] **评测脚本 fail-closed 断言**：`check_tier_success.py`（已 play=False）加 `assert "part2_success" in active_terms`；任何新 eval 脚本禁止用 `play=True` 读训练终止项（HIM 的假测量事故反例，只记录不改其仓）
-- [ ] **job 提交前检查清单进 §6**：指标是否权威（judge/tiercheck 用途）、是否有 eval-gated 选点、anchor 是否显式、早停条件是否定义、是否走 common.sh、summary 是否写 gate verdict
-- [ ] **早停规则（写进后续 job）**：每 100 iter 导出 checkpoint；连续 2 个 100-iter judge 评估无提升（或训练 success 与 judge 同时不涨）→ `ts -k` 停当日该线，从最近 checkpoint 人工导出后再决定
-- [ ] **深度 D0-a**：把 `black/camera_depth.py` 的 `CameraSensorCfg` + camera obs group + `CNNModel` 接到 blackw exact/mixed 任务（只读参考 HIM 文件，不改其文件）；训练端 depth smoke（约 10 min GPU）
-- [ ] **深度 D0-b**：本地 rl_sar 侧 MuJoCo 深度渲染 + TorchScript CNN 前向最小链路 + 与训练端深度统计对拍（不占 GPU）
-- [ ] **今晚 00:00 前收工检查**：所有 job 结束/checkpoint 落盘、flag=0、summary 齐全；夜间关机 00:00–09:00（最晚等 00:30）
+- [ ] **A1 stairs30 选点**：job 13（s100b）约 11:10 结束后先导出全部 checkpoint，本地跑 **judge 全档回归**：stairs30/20 + platform40/wall40/slope35/trench20（每个 4 attempt，jitter ±0.1 m，按障碍选命令 profile）→ 选 anchor、判断是否把低档带偏；不盲目再训 800 iter
+- [ ] **A2 gate 工具 + placement（今天核心欠账，约 2–3 h 本地，不占 GPU）**：`eval_blackw_part2.py` 加 `--jitter-x/--jitter-yaw/--joint-offset/--joint-vel/--command-set`；新增 `gate_stage.py`（row/stage 表 → 每关×每指令档通过矩阵）；先对 comp_bc_v5 跑 placement，得到"哪一档的 8/8 不达标"
+- [ ] **A3 M0 逐档课程**：按 placement 只训未过档（mixed official 固定 r，每档 300 iter ≈10–12 min，逐档 gate 通过再升 r）；**注意 mixed 任务的 r 是所有类别同一个难度**，r 到 1.0 会同时引入 blind 不可达的 trench30 与摩擦零余量的 slope45 → mixed 课程封顶 S6（r≈2/3），stairs30 走 exact 专项，trench30/plum 留深度（与交接 §3 一致）
+- [ ] **A4 奖励/终止优化（按需、单开关）**：只有当某一档在课程中"奖励涨、judge 不涨"或明显学不动时才改一项（reward 项/终止/课程档），并配 judge 回归；目的就是让下一档能过 gate，不做无目标的奖励工程
+- [ ] **A5 深度（后期）**：盲侧 8/8 稳定后再开 D0/D1；trench30/plum 视深度结果加入，不影响盲侧交付
 
-### 长期（到 11-04）
+### B. 防错修复（≤2 h，本地；防"再次用错测量/用反参数"）
 
-- [ ] **盲侧 8/8 拿满 850**：platform40 / wall40 / slope35 / stairs20 / trench20 / stairs30 全部 8/8（简单档 S0–S2 按 16/16）
-- [ ] **3 份策略交付形态**（§3.1）：`M0(+St30 DAgger 合并)` + 深度 T30 + 深度 P；若深度只成一个则退化 2 份；始终保留单份盲 fallback
-- [ ] **深度 T30（+150）**：D1 训练在 **10-28 前**看训练侧 trench success 是否从 0 起来；不过则 10-28 EOD 止损并记录负结果
-- [ ] **深度 P 梅花桩（+200）**：仅在 T30 成功后启动；10-29 决策
-- [ ] **slope45（+100，可争）**：μ 递减课程 + 冲坡（见 §2.4 与短期项）；正式赛物理口径由用户与培训方确认；过 8/8 gate 才把盲侧目标由 850 提到 950
-- [ ] **10-30 冻结候选、11-01 冻结**（AGENTS：D-3 起不开新训练线）；11-02–11-04 复跑/视频/答辩
-- [ ] **文档同步**：每次 gate/训练结论 → 历史归档 + 本文件 §1/§2 更新；不入库产物放 `prep.d/` 并写路径
+- [x] 文档修正 `BLACKW_GUARD_BLEND` 方向（越大越塑性；原"换 0.90"说法已改）
+- [ ] `check_tier_success.py` 加 `assert "part2_success" in active_terms`（缺项直接报错，防 HIM 式静默 0）；新 eval 脚本禁止用 `play=True` 读训练终止项
+- [ ] GuardedPPO 增加 `BLACKW_GUARD_BASE_CKPT`（显式指定锚点，可选 BC v5），并打印 base 来源/sha + `BLACKW_GUARD_LOG=1` 的每 iter drift
+- [ ] 早停规则进 job 模板：每 100 iter 导出 checkpoint；连续 2 个 100-iter judge 无提升即停；job 脚本去硬编码/去 glob（显式 run 名 + checkpoint）
+- [ ] §6 增加"提交前检查清单"（指标权威性/ eval-gated / anchor 明确 / 早停 / common.sh / summary 写 verdict）
 
-### 当前在跑/排队（每次更新）
+### C. 视情况/后期（不占今天）
+
+- [ ] slope45 μ 递减课程 + 冲坡（诊断已完成：μ=1.2 学不会；下一步从 μ=1.5/2.0 起，非交付项，等主线空档）
+- [ ] 3 份策略交付形态（盲通用 + 深度 T30 + 深度 P；M0+St30 用 DAgger 合并）
+- [ ] 10-30 冻结候选、11-01 冻结、11-02–04 复跑/视频/答辩
+
+### D. 运维债（可延后）
+
+- [ ] 日志/summary 统一模板（含 gate verdict、rc 归因）；job 脚本抽取公共函数；文档索引自动检查
+- [ ] 双线共享队列约定（标签/排队上限/中断清理手册）落成一句话清单
+
+### 当前队列（每次更新）
 
 | 队列 job | 内容 | 状态 |
 |---|---|---|
 | job 13 | `ppo_st30_s100b`（stairs30 从 m650 续训 800 iter） | running（约 11:10 完成） |
-| job 12 | HIM 线 `him_row0_mixed_gate.sh` | ✅ finished 10:39，但 **gate 结果无效**（HIM 侧 play=True 缺 part2 项；属 HIM 区，见历史归档 §15） |
-| job 11 | slope μ=1.2 诊断 | ✅ finished（负结果，§14.5） |
-| — | job 13 后队列空；下一步先做 s100b judge 选点，再决定是否排 stairs30 塑性变体（不盲目续训） | — |
+| job 14 | HIM 线 `him_regate_job12.sh` | queued（HIM 用它修正 gate 重测，先到先得，让给 HIM） |
+| job 12 | HIM `him_row0_mixed_gate.sh` | ✅ finished（其 gate 结果无效；HIM 区问题，仅记录） |
+| job 11 | slope μ=1.2 诊断 | ✅ finished（负结果，历史 §14.5） |
 
 ## 1. 实测状态（2026-10-26 08:30–10:00）
 
@@ -211,6 +207,24 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 - **placement**：先用 comp_bc_v5 对 20 关 ×3 指令档 ×8 次跑一遍（≈15–30 min 本地并发），按 stage 表（交接 §3.2）判定"最低未通过 stage"；只训练未过档，不重复已过档。
 - **晋升**：简单档 S0–S2 每档 16/16、较难档 S3–S6 与专项最高档 ≥8/8，且 3 指令档每档全过；warp 训练环境成功率只作诊断下界，判定以 judge 为准。
 - **每次 gate 产物**：`prep.d/results/blackw_official/stage_gates/<stage>_<policy>.json` + 一句话结论写进本文件 §4 对应日期。
+
+### 5.1 代码风险面审查（回答用户"是否要全量审查"）
+
+结论：**不做全量逐行通读**（mjlab/rsl_rl/上游数万行，通读成本高、收益低），做**风险面审查**——只逐行审查"会静默改变成功/失败/可学性判断"的我们自己的代码；上游只查实际用到的接口。清单与预计工时：
+
+| 优先级 | 文件 | 为什么必须审 | 预计 |
+|---|---|---|---|
+| P0 | `@20261024_blackw/scripts/eval_blackw_part2.py`、`@20261019_locomotion/scripts/agent_scripts/comp_part2_judge.py` | 唯一权威分数来源；判据/场景/命令 profile 错 → 全盘误判 | 60 min |
+| P0 | 远程 `scripts/agent_scripts/check_tier_success.py`、`export_blackw_policy.py` | 训练侧诊断口径（play=False / term 断言 / 统计）与导出契约；HIM 假测量同类风险 | 30 min |
+| P0 | `@20261024_blackw/training/blackw/env_cfgs.py` 的 reward / termination / command 段 | 决定"能不能学会/会不会刷分"；此前修过 6 处 bug，需确认无残留状态式奖励/重复计分 | 60 min |
+| P1 | `exact_terrain.py`（几何已审）+ 动作/观测契约（已审） | train/judge 几何一致、部署一致；已有 raycast/对拍证据，复读 | 20 min |
+| P1 | `guarded_ppo.py`、`black/rl_cfg.py`、`black/black_config.py`、我们的 job 脚本 | 锚点/超参 plumbing；已发现 blend 方向、base 时机两个坑 | 30 min |
+| P2 | mjlab / rsl_rl 上游 | 只查用到的接口（terrain generator、termination manager、runner），不逐行 | 按需 |
+
+总预计 **2–3 h**，可与 GPU 训练并行；先做 P0。产出写入本节下方：每个文件一行"契约/断言/已知坑"+ 新增自检命令。
+
+> 审查记录（2026-10-26 起逐步填）：待填。
+
 
 ## 6. 远程机与 GPU 队列使用协议
 
