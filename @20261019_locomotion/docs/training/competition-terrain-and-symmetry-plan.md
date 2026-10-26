@@ -5,6 +5,10 @@
 
 ## 1. 为什么现在的地形不足以裁决
 
+> **验收口径（2026-10-26 更新，用户明确）**：此前文档中的 `8/8`、`16/16`、`<1%` 等通过次数/百分比均为自拟指标，已作废。现行验收 = 覆盖的初始状态×指令集内"零摔倒 + 可行子集全部穿越 + held-out 同样成立"，逐 case 报告，不设固定次数门槛；详见 `part2-ppo-execution-plan-2026-10-26.md` §0.3。
+
+
+
 | 比赛地形 | 当前训练地形覆盖 | blind 是否本来就能过 | depth 的信息优势 |
 |---|---|---|---|
 | flat / 斜坡 / 台阶 | ✅（flat + smooth slopes + stairs） | 主要靠本体历史/自适应即可 | 有限（几何简单、可预测） |
@@ -69,7 +73,7 @@
 
 **成本估算**（5060 Ti，1024 envs）：blind-final 3000–5000 iter ≈ 1–2 h；depth-final warm-start 1500–3000 iter ≈ 0.8–1.6 h；judge 评测（CPU）≈ 0.5–1 h/轮；合计约 4–6 h GPU，10 天窗口足够。时间线建议：10/24–25 地形生成器 + mirror A/B（GPU 排队间隙）；10/26–27 blind-final + judge 迭代；10/28 depth-final + 深度评测链路；10/29 裁决/冻结；10/30–11/03 DR（可选）/演示/审计/答辩准备。
 
-**判据**：以 judge 总分为主（Part1 8 项 + Part2 20 档），辅以 0 摔倒/失效 <1%、对称性指标达标、推理成本；若两条线分数接近（<5%），选 blind（成本低、风险小）。不再用训练 reward 或"简单地形曲线"直接裁决。
+**判据**：以 judge 总分为主（Part1 8 项 + Part2 20 档），辅以 0 摔倒/失效（用户口径：任何一次失败都算待修，见执行计划 §0.3）、对称性指标达标、推理成本；若两条线分数接近（<5%），选 blind（成本低、风险小）。不再用训练 reward 或"简单地形曲线"直接裁决。
 
 ## 5. DR 的位置
 
@@ -95,7 +99,7 @@
 
 | 项 | 落点 | 状态/证据 |
 |---|---|---|
-| 竞争地形代理 | `src/alldog_mjlab/tasks/velocity/black/competition_terrain.py`（8 个自定义 SubTerrainCfg + 复用 flat/slope/stairs/gravel，共 14 列 × 6 行、难度 0..1） | CPU 几何检查通过（634 geoms、goal patch 48/84 = 8 障碍列 × 6 行）；GPU 3-iter smoke 通过 |
+| 竞争地形代理 | `src/alldog_mjlab/tasks/velocity/black/competition_terrain.py`（8 个自定义 SubTerrainCfg + 复用 flat/slope/stairs/gravel，共 14 列 × 6 行、难度 0..1） | CPU 几何检查通过（634 geoms、goal patch 4覆盖集零失败（§0.3）4 = 8 障碍列 × 6 行）；GPU 3-iter smoke 通过 |
 | 任务 | `black-competition` / `black-competition-depth`（+ `-hist` 6 帧历史变体）注册在 `__init__.py` | smoke：blind 3 iter、depth 3 iter、history/depth-hist + mirror 0.1 各 2 iter 均 rc=0、无 NaN/CUDA |
 | 任务成功奖励 | `competition_rewards.py`：goal flat patch（8 个障碍列）→ 稀疏 `competition_goal` 奖励（权重 3.0）+ `competition_goal_reached` 终止；非障碍列用 spawn origin 填充并按最小距离 0.8 m 屏蔽 | smoke 的 `Episode_Reward/competition_goal`/`Episode_Termination/competition_goal_reached` 项存在（迭代太短，成功数 0，符合预期） |
 | 历史帧 | `black-competition-hist`（270 维 actor）、`black-competition-depth-hist`（270+64 CNN） | smoke 通过；`symmetry.py` 已扩展为支持 45×k 历史布局的 mirror loss（**2026-10-24 修正：MjLab native history 是 term-major 布局**——每个 term 的 6 帧连续排列，不是 6×45 帧块——mirror 已按 term-major 实现并验证 involutive；A/B 的 hist 臂在修正后启动） |

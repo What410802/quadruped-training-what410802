@@ -4,12 +4,16 @@
 
 ## 0. 结论速览
 
+> **验收口径（2026-10-26 更新，用户明确）**：此前文档中的 `8/8`、`16/16`、`<1%` 等通过次数/百分比均为自拟指标，已作废。现行验收 = 覆盖的初始状态×指令集内"零摔倒 + 可行子集全部穿越 + held-out 同样成立"，逐 case 报告，不设固定次数门槛；详见 `part2-ppo-execution-plan-2026-10-26.md` §0.3。
+
+
+
 - **交付**：`@20261024_blackw/models/comp_bc_v5/`（已入库备份，commit `b12ac33`）是一份**单份、可部署**的 blackW 权重（342→512→256→128→16 ELU MLP，行动/观测完全按 rl_sar 部署契约），由官方三份 blackW 策略（obstacle/stair/flat）行为克隆 + 两轮 DAgger 蒸馏而来；部署目录 `@20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v5/`。
 - **严格 judge v5（四轮终态判据）**：官方几何 20 关、每关单独 MuJoCo 场景、0.002s 物理、无时间限制口径下，按"逐障碍选择速度指令"的参考 profile 得分 **750/1300**：高台 40cm = 200、高墙 40cm = 200、斜坡 35° = 100、壕沟 20cm = 150、楼梯 20cm = 100、梅花桩 0。
 - **同一 judge（v5）下官方三份权重 + 同样逐障碍选命令的基线 = 660/1300**（官方策略不会下 20/30cm 台阶：楼梯只到 10cm/10 分；平台 40/高墙 40/斜坡 35/壕沟 20 与自训权重持平）。自训单份权重靠"完整楼梯 20cm"多拿 90 分。
 - **可部署性**：rl_sar 无头自检 `check_walk_blackw.py --realtime false --policy comp_bc_v5` 前进段 PASS；转向指令覆盖不足（数据里 yaw 只在 flat 教师里出现），属于已知缺口。
-- **4 次挑战口径下的期望分**：平台 40/斜坡 35/壕沟 20 均 4/4；高墙 40 为 3/4、楼梯 20 为 2/4（±0.1m 横向抖动下）→ 期望 ≈ 743/1300，最好情况 750。最低档（平台 10/wall 10/slope 20/stairs 10/trench 10）在 judge 上均 8/8；档位结构验证见归档 §12.2。
-- **未拿到**：斜坡 45°（200）、楼梯 30cm（200）、壕沟 30cm（300，洁净跨越口径）、梅花桩（200）。这 900 分是下一阶段专项 RL 的目标；2026-10-25/26 的审计修复与训练现状见 §5/§7，后续计划见 [`part2-ppo-handoff-2026-10-26.md`](part2-ppo-handoff-2026-10-26.md)。
+- **4 次挑战口径下的期望分**：平台 40/斜坡 35/壕沟 20 均 4/4；高墙 40 为 3/4、楼梯 20 为 2/4（±0.1m 横向抖动下）→ 期望 ≈ 743/1300，最好情况 750。最低档（平台 10/wall 10/slope 20/stairs 10/trench 10）在 judge 上均 覆盖集零失败（§0.3）；档位结构验证见归档 §12.2。
+- **未拿到**：斜坡 45°（200）、楼梯 30cm（200）、壕沟 30cm（300）、梅花桩（200）。按用户 2026-10-26 校正：前两者属**盲可训练**（继续 gated 课程，盲侧满分 950、当前 750 的缺口就是这两项 +200）；后两者**盲不可达**（trench30 gap 0.30 m > 前后轮触地跨距一半 0.213 m；梅花桩需落足感知）→ 深度依赖项目（500 分，必须开始做）。2026-10-25/26 的审计修复与训练现状见 §5/§7，后续计划见 [`part2-ppo-handoff-2026-10-26.md`](part2-ppo-handoff-2026-10-26.md)。
 
 ## 1. 规则与评测口径（对齐 `docs/reference/team-race-2026.md`）
 
@@ -117,7 +121,7 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 - **结论先行**：改 bug 之前所有 specialist 的"0 success"不可用（谓词死代码 + 刷分，见归档 §11）；修复 + 物理对齐后，200-iter GuardedPPO pilot 能**保住**已有技能（slope m20/m40 仍过 30°/35°，stairs m20/m80/m199 过 15cm），但 **45°/30cm 仍未出现**。
 - **长跑**：`guard4_{slope,stairs,plum}`（800 iter、blend 0.95、aligned physics、每 50 iter 存档）在远程关机前状态未确认（SSH 已不可达）；中途快照 model_450：slope 仅 30°/35°、stairs 仅 15/20cm。上机后先按交接文档 Step 1 做 eval-gated 复核/续跑。
-- **下一步**：① B0 主线门控微调把 wall40/stairs20 稳定到 4/4；② T30 壕沟 30cm 盲专项门槛实验；③ 若盲阶段 800–1200 iter 仍出不来 → 转深度相机课程（见 [`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)）。
+- **下一步**：① 按交接 §3/§4.2 做 M0 逐档 gate 课程（固定单档 stage → 鲁棒性 gate → 热启动升档；**禁止**多难度并行混合训练），盲侧缺口 slope45/stairs30 用 exact 盲专项补；② 深度部署必须开工：D0 可见性 + rl_sar 渲染/CNN 最小链路（交接 §4.3），T30 + 梅花桩 走深度专项（§4.4）；③ 计划与依据见 [`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)。
 ## 8. 参考文献与复现结果
 
 | 工作 | 用到的内容 | 我们的复现/验证 |
@@ -134,8 +138,8 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 ## 9. 局限与下一步
 
-1. **未过档位**：斜坡 45°、楼梯 30cm、壕沟 30cm（洁净跨越）、梅花桩，合计 550 分；盲阶段 800-iter 长跑未出，按交接文档 Step 2/3 继续（必要时转深度）。
-2. **壕沟 30cm 是定性新技能**：槽宽 0.3m > 轮径 0.206m、judge 允许轮底下沉仅 0.103m → 不能滚过，必须抬轮/腾空；盲感知"前轮突降"无法区分沟槽/台阶/高台边缘 → 建议主线 + 专项分叉，深度相机是最终解法（见 plan §1/§2）。
+1. **未过档位按盲/深度划分**：斜坡 45°、楼梯 30cm 是**盲可训练目标**（当前 750 → 盲侧 950 的 +200，用 M0 逐档 + exact 盲专项继续训，不转深度）；壕沟 30cm、梅花桩是**盲不可达**（深度依赖 500 分），深度部署必须开工。
+2. **壕沟 30cm 判据**：槽宽 0.3 m > 前后轮触地跨距一半 0.213 m（也 > 轮径 0.206 m）、judge 只允许轮底下沉 0.103 m → 盲不可达；盲感知"前轮突降"无法区分窄槽/台阶/高台边缘，视觉（深度）是解法。
 3. **梅花桩盲策略大概率不可行**：0.2m 桩、0.4m 缺口需要落足感知；走深度 + BeamDojo 式课程（plan §4）。
 4. **PPO 保护机制已验证能防退化但不能快速长新技能**：后续考虑 BC 正则/残差/LoRA/更长的 gated 课程（交接文档 §4 风险与备选）。
 5. **转向命令覆盖不足**（BC 数据里 yaw 只在 flat 教师片段出现）；Part2 以直线为主，暂缓。
@@ -145,7 +149,7 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 - **交接/计划**：[`part2-ppo-handoff-2026-10-26.md`](part2-ppo-handoff-2026-10-26.md)（明天上机步骤、命令、远程状态、开放问题）、[`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)（模型分叉、盲课段 B0–B4、深度 BeamDojo 课程 D0–D5）
 - **归档**：[`part2-ppo-training-history.md`](part2-ppo-training-history.md)（训练侧 bug 审计与修复证据、最低档/档位结构验证、显存实测、早期 specialist 记录）
 - **评测**：`@20261024_blackw/scripts/eval_blackw_part2.py`（judge v5）、`gen_part2_official_levels.py`（官方几何场景生成）、`summarize_blackw_eval.py`（多命令汇总）、`check_walk_blackw.py`（rl_sar 无头部署自检）
-- **门控/诊断**：`@20261024_blackw/scripts/check_tier_success.py`（最低档/canonical+随机化成功率）、`check_tier_geometry.py`（档位结构无质变检查）、`diag_rollout.py`（训练环境 rollout 诊断）、`gpu_budget_check.py`（8GB/线显存协议启动检查）
+- **门控/诊断**：`@20261024_blackw/scripts/check_tier_success.py`（最低档/canonical+随机化成功率）、`check_tier_geometry.py`（档位结构无质变检查）、`diag_rollout.py`（训练环境 rollout 诊断）、`gpu_budget_check.py`（可选的手动显存/进程检查；算力机已启用 GPU 队列，正常训练按队列提交即可）
 - **训练/蒸馏**：`@20261024_blackw/scripts/collect_bc_blackw.py`、`collect_bc_dagger.py`、`train_bc_blackw.py`、`make_bc_checkpoint.py`（含 `--reset-trainer`）、`export_bc_policy_local.py`
 - **训练侧代码快照**：`@20261024_blackw/training/`（env_cfgs.py / exact_terrain.py / guarded_ppo.py / black_config.py / rl_cfg.py，对应远程仓 `~/rc_work/part2_team_race/src/`）
 - **权重（已入库备份）**：`@20261024_blackw/models/comp_bc_v5/`（policy.pt + checkpoint.pt + config.yaml + manifest.json，含 sha256/评测数据/命令 profile）与部署目录 `@20261024_blackw/ws/src/rl_sar_blackw/policy/blackW/comp_bc_v5/`

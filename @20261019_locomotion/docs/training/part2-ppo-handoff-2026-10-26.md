@@ -5,11 +5,15 @@
 
 ## 0. 一句话交接
 
+> **验收口径（2026-10-26 更新，用户明确）**：此前文档中的 `8/8`、`16/16`、`<1%` 等通过次数/百分比均为自拟指标，已作废。现行验收 = 覆盖的初始状态×指令集内"零摔倒 + 可行子集全部穿越 + held-out 同样成立"，逐 case 报告，不设固定次数门槛；详见 `part2-ppo-execution-plan-2026-10-26.md` §0.3。
+
+
+
 - **2026-10-26 复核修正（先读）**：guard4 三个 800-iter run 已确认真跑完，但复核**无可捞档位**（15 个 checkpoint 的 judge：slope45 0/60、stairs30 4/60、plum 0；±0.1 m 抖动复核同结论，证据见 [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §14）；**slope45 稳态爬坡静态摩擦零余量**（官方 judge 场景 μ=1.0 = tan45°；μ=1.5 时同一权重可爬到 root z≈2.08 m），**但按用户 2026-10-26 第二轮指示不判死**：μ=1.2 训练只作诊断、评测同时报 μ=1.2 与 1.0，冲坡可把等效需求降到 0.89–0.94 且不超关节速度限幅，后期可试 μ 递减课程。**盲侧当前阶段目标仍按 850 计**（当前 750 的缺口 = stairs30 +100），全体实际上限 1200/1300。今日起的执行顺序、GPU 队列协议与待确认项见 [`part2-ppo-execution-plan-2026-10-26.md`](part2-ppo-execution-plan-2026-10-26.md)（本文件 §4 的"明天清单"以其为准）。
-- **当前交付不变**：`comp_bc_v5` 单份可部署权重，judge v5 下 **750/1300**（最好情况，4 次挑战期望 ≈743），已入库 `@20261024_blackw/models/comp_bc_v5/`；官方权重基线 660。最低档 5 类 judge 全部 8/8。
-- **训练目标与原则（最重要，先读 §3）**：目标是训练出**一个鲁棒的策略模型**，用 mjlab 的地形难度机制 + **逐档鲁棒性 gate 逐级提升**（单谱系、串行 stage、每档 gate 通过才升档、从上一档 best checkpoint 热启动）。**gate 标准（用户 2026-10-26 确认）**：简单档（S0–S2）judge **16/16**、较难档（S3–S6 及专项最高档）judge **≥8/8**，且 gate 必须包含合理的初始状态随机化 + 3 档速度指令随机化（见 §3.4）。**旧版"把不同难度混在一起并行训练"（`BLACKW_MAX_ROW` 随机混合 row 0..5）是严重错误，已废弃，不要再这样训**；那是做多难度对比实验的做法，不是课程学习，也不可能得到逐档鲁棒的模型。
+- **当前交付不变**：`comp_bc_v5` 单份可部署权重，judge v5 下 **750/1300**（最好情况，4 次挑战期望 ≈743），已入库 `@20261024_blackw/models/comp_bc_v5/`；官方权重基线 660。最低档 5 类 judge 全部 覆盖集零失败（§0.3）。
+- **训练目标与原则（最重要，先读 §3）**：目标是训练出**一个鲁棒的策略模型**，用 mjlab 的地形难度机制 + **逐档鲁棒性 gate 逐级提升**（单谱系、串行 stage、每档 gate 通过才升档、从上一档 best checkpoint 热启动）。**gate 标准（用户 2026-10-26 确认）**：简单档（S0–S2）judge **覆盖集零失败 + 可行子集全部穿越**（见执行计划 §0.3），且 gate 必须包含合理的初始状态随机化 + 3 档速度指令随机化（见 §3.4）。**旧版"把不同难度混在一起并行训练"（`BLACKW_MAX_ROW` 随机混合 row 0..5）是严重错误，已废弃，不要再这样训**；那是做多难度对比实验的做法，不是课程学习，也不可能得到逐档鲁棒的模型。
 - **训练侧已修复**：success 谓词死代码、可刷分奖励、训练地形几何（坡道薄板 2cm 台阶 / ramp y 偏移）、训练物理与 judge 不一致（euler/elliptic/impratio=100；warp 不支持 PGS）、critic/optimizer 继承、entropy 推大 σ、`BLACKW_MAX_ROW` 未生效等（细节见归档 §11）。
-- **待做**：① 上机先确认 `guard4_*` 长跑是否跑完并做 eval-gated 选点（关机前状态未知）；② 用 §3/§4 的分档 gate 课程推进 M0 主线：**盲侧目标 950 分**（当前 750，缺口只有 slope45 +100、stairs30 +100，这两项继续盲训，§4.2）；③ **深度部署必须开始做**（用户 2026-10-26 确认）：深度依赖只有 **trench30 + 梅花桩**（盲侧先做到 ≥855/950），D0 可见性 + rl_sar 深度渲染/CNN 推理链路当天开工（§4.3），D1/D2/D3 专项按 8/8 gate（§4.4）。
+- **待做**：① 上机先确认 `guard4_*` 长跑是否跑完并做 eval-gated 选点（关机前状态未知）；② 用 §3/§4 的分档 gate 课程推进 M0 主线：**盲侧目标 950 分**（当前 750，缺口只有 slope45 +100、stairs30 +100，这两项继续盲训，§4.2）；③ **深度部署必须开始做**（用户 2026-10-26 确认）：深度依赖只有 **trench30 + 梅花桩**（盲侧先做到 ≥855/950），D0 可见性 + rl_sar 深度渲染/CNN 推理链路当天开工（§4.3），D1/D2/D3 专项按 覆盖集 gate（§0.3）（§4.4）。
 - **壕沟 30cm 语义（行动前必读）**：盲策略的"前轮突然降低"无法区分窄槽/台阶下沿/高台边缘；且 30cm 槽宽 0.30 m > 前后轮触地跨距一半 0.213 m（也 > 轮径 0.206 m）→ **盲不可达，不做盲试**，直接进深度专项（§4.4）；trench 20cm 盲已实测 4/4，保留在盲侧。
 - **11-01 前优先级（用户 2026-10-26 确认）**：M0 逐档 gate 推进（盲侧 950 目标）+ 深度部署 D0/D1 **并行**（不是只保分数）。
 - **远程机今晚关机、已启用 GPU 队列**：上机先查看 GPU 队列状态再提交；所有 run 的 checkpoint 每 50 iter 已落盘，从最近 checkpoint 续训，不要从零重跑。`/tmp/part2_train/src` 可能丢失，代码快照在 `@20261024_blackw/training/`。
@@ -95,9 +99,9 @@ M0 = `blackw-official` mixed 任务（5 类可滚障碍同场，单策略覆盖"
 | S6 | 2/3 | **30cm** | **30cm** | 37° | 24 | 23 | platform 30 / wall 30 |
 | S7 | 1.00 | **40cm** | **40cm** | **45°** | **30cm** | **30cm** | 不用于 M0 训练（trench30 盲不可达、混入会稀释样本）；slope45/stairs30 走 exact 盲专项（§4.2） |
 
-**gate 次数标准**：简单档（S0–S2）每档 judge **16/16**；较难档（S3–S6 及盲/深度专项最高档）judge **≥8/8**（都要 100%，不是 3/4）。每次 attempt 随机采样初始状态与 3 档速度指令之一（§3.4），每个指令档都必须全过。
+**gate 次数标准**：简单档（S0–S2）每档 judge **覆盖集零失败**（§0.3）；较难档（S3–S6 及盲/深度专项最高档）judge **覆盖集零失败**（§0.3）（都要 100%，不是 3/4）。每次 attempt 随机采样初始状态与 3 档速度指令之一（§3.4），每个指令档都必须全过。
 
-流程（每个 stage）：① 判定起点：先用 comp_bc_v5 跑一遍 gate（§3.4），从**最低的未通过 stage** 开始，不重复训练已过的档；② 在 stage r 训练 200–400 iter（guarded，save 50，每 50 iter export→judge）；③ 做 gate：该 stage "新增官方档"及以下都要按上述次数标准全过（judge 16/16 或 ≥8/8，3 档指令每档全过）；④ 过 → 记录 `stage_best`，升下一 stage 热启动；不过 → 继续当前 stage（降 lr/换 seed），或停在上一 stage 并记录（改用 exact 专项继续，见 §4.2）。M0 主线到 **S6 封顶**（S7 含盲不可达的 trench30，不做 mixed S7）；**slope45/stairs30 是盲可训练目标，用 exact 盲专项继续训到过（8/8 gate，§4.2）**；**trench30 盲不可达**（gap>0.213 m），不做盲试，交深度（§4.4）。
+流程（每个 stage）：① 判定起点：先用 comp_bc_v5 跑一遍 gate（§3.4），从**最低的未通过 stage** 开始，不重复训练已过的档；② 在 stage r 训练 200–400 iter（guarded，save 50，每 50 iter export→judge）；③ 做 gate：该 stage "新增官方档"及以下都要按上述次数标准全过（judge 覆盖集零失败（§0.3），3 档指令每档全过）；④ 过 → 记录 `stage_best`，升下一 stage 热启动；不过 → 继续当前 stage（降 lr/换 seed），或停在上一 stage 并记录（改用 exact 专项继续，见 §4.2）。M0 主线到 **S6 封顶**（S7 含盲不可达的 trench30，不做 mixed S7）；**slope45/stairs30 是盲可训练目标，用 exact 盲专项继续训到过（覆盖集 gate（§0.3），§4.2）**；**trench30 盲不可达**（gap>0.213 m），不做盲试，交深度（§4.4）。
 
 ### 3.3 明令禁止的做法（旧版错误）
 
@@ -107,9 +111,9 @@ M0 = `blackw-official` mixed 任务（5 类可滚障碍同场，单策略覆盖"
 
 ### 3.4 gate 判定细节（每 stage 必做；用户 2026-10-26 确认的标准）
 
-- **档位分级**：简单档 = S0–S2（最低 3 个 stage，全部障碍的低档）；较难档 = S3–S6 及盲/深度专项最高档（统一 ≥8/8）。
+- **档位分级**：简单档 = S0–S2（最低 3 个 stage，全部障碍的低档）；较难档 = S3–S6 及盲/深度专项最高档（统一 覆盖集零失败（§0.3））。
 - **authoritative judge gate（必须全过，不留失败）**：
-  - 简单档每个目标档 **16/16**；较难档每个目标档 **≥8/8**（8 次也要求 100%；不要 3/4、2/4 这类"勉强过"）。
+  - 简单档每个目标档 **覆盖集零失败（§0.3）**；较难档每个目标档 **覆盖集零失败（§0.3）**（8 次也要求 100%；不要 3/4、2/4 这类"勉强过"）。
   - 16 次按 3 个指令档平衡分配（约 6/5/5），8 次约 3/3/2；**每个指令档都必须 100% 通过**，任一指档有失败则 gate 不通过。
   - 每个 attempt 随机采样：初始状态（root x±0.10 m、y±0.15 m、yaw±0.05 rad，关节 offset/速度与现有 reset 随机化一致）+ 3 档速度指令之一；judge 场景与 judge v5 一致（官方几何、0.002s 物理）。
   - **3 档速度指令（符合真实手柄线性映射）**：`joy_command_scale=1.5` 满杆可达 ±1.5 m/s，实际障碍操作范围取名义速度的 **0.6× / 1.0× / 1.3×**（clamp 0.2–1.1 m/s；wall/stairs 的 `--slow-from-x` schedule 按同一比例缩放）；另加 vy±0.2、wz±0.3 小随机。每个 attempt 固定一档（模拟操作手一次给一个速度），若想更严可选在 attempt 内按 0.5 s 间隔在 3 档间跳变。
@@ -131,7 +135,7 @@ cd ~/rc_work/part2_team_race && export PYTHONPATH=$PWD/src MUJOCO_GL=egl
 BLACKW_DEPLOY_SIM=1 .venv/bin/python scripts/agent_scripts/check_tier_success.py \
   --task blackw-stairs-exact --checkpoint logs/rsl_rl/black_velocity/bc_v5_guarded/model_0_bc_v5_guarded.pt \
   --difficulty 0.0 --vx 0.5 --envs 64 --episodes 2 --no-dr --exact-spawn --clean-obs
-# 期望 platform/wall/slope/trench ≈100%；stairs 训练环境 55–75%（warp 无 PGS 的已知差距，judge 8/8）
+# 期望 platform/wall/slope/trench ≈100%；stairs 训练环境 55–75%（warp 无 PGS 的已知差距，judge 覆盖集零失败（§0.3））
 ```
 
 ### 4.1 Step 1：eval-gated 复核 guard4 长跑（**2026-10-26 已完成，无可捞档位**）
@@ -154,7 +158,7 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
   --only slope_45deg --only slope_35deg --command 0.3 0 0 --attempts 4
 ```
 
-3. 判定：若某个 checkpoint 已过 45°/stairs30 → 立刻做完整 8/8 gate + 录视频复核，并把该权重视为最高档盲专项候选；若都不过 → 进入 §4.2（盲侧逐档课程）与 §4.3（深度 D0）。
+3. 判定：若某个 checkpoint 已过 45°/stairs30 → 立刻做完整 覆盖集 gate（§0.3） + 录视频复核，并把该权重视为最高档盲专项候选；若都不过 → 进入 §4.2（盲侧逐档课程）与 §4.3（深度 D0）。
 
 ### 4.2 Step 2：M0 主线逐档 gate（盲侧目标：750 → 850，2026-10-26 修正）
 
@@ -166,7 +170,7 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 - 当前 750；盲侧缺口 = **stairs30（+100）**，用 `blackw-stairs-exact` 固定 r=1.0 的盲专项训练；slope45 因摩擦上限不再训练；
 - 目标：盲侧先到 **850**（85%，也是实际天花板），深度项另行争取。
 
-流程：① placement：用 comp_bc_v5 逐 stage 跑 gate（§3.4），从**最低未通过 stage** 开始；② 每 stage 固定 r 训练 200–400 iter（guarded，save 50，每 50 iter export→judge）；③ gate（S0–S2 每档 16/16，S3–S6 每档 ≥8/8，3 档指令每档全过 + 初始状态随机化）→ 过则记录 `stage_best` 热启动下一 stage；④ M0 到 **S6 封顶**；盲侧剩余 100 分（stairs30）用 `blackw-stairs-exact` **固定 r=1.0 的盲专项**训练 400–800 iter（8/8 gate），通过后按切换策略使用（规则允许；若需单模型再 DAgger 合并回 M0）；**不要转深度**、也不要跑 mixed S7（会混入盲不可达的 trench30）。
+流程：① placement：用 comp_bc_v5 逐 stage 跑 gate（§3.4），从**最低未通过 stage** 开始；② 每 stage 固定 r 训练 200–400 iter（guarded，save 50，每 50 iter export→judge）；③ gate（S0–S2 每档 覆盖集零失败（§0.3），S3–S6 每档 覆盖集零失败（§0.3），3 档指令每档全过 + 初始状态随机化）→ 过则记录 `stage_best` 热启动下一 stage；④ M0 到 **S6 封顶**；盲侧剩余 100 分（stairs30）用 `blackw-stairs-exact` **固定 r=1.0 的盲专项**训练 400–800 iter（覆盖集 gate（§0.3）），通过后按切换策略使用（规则允许；若需单模型再 DAgger 合并回 M0）；**不要转深度**、也不要跑 mixed S7（会混入盲不可达的 trench30）。
 
 ```bash
 # 通用模板（把 STAGE_R / PREV_RUN / PREV_CK / RUN 名替换；按 GPU 队列提交）
@@ -196,17 +200,17 @@ nohup env BLACKW_DEPLOY_SIM=1 BLACKW_DIFF_MIN=<STAGE_R> BLACKW_DIFF_MAX=<STAGE_R
 3. **CNN 推理链路**：先在 Python/离线脚本里跑通导出的 TorchScript CNN（单帧深度 → latent → 与训练同 obs 拼接）；再接到 rl_sar 控制循环（延迟 <10 ms 目标）；观测归一化参数与训练端逐项对齐。
 4. **产出**：① depth vs RGB/几何对比图 + "槽/桩是否可见"结论；② rl_sar 深度渲染 + CNN 前向的 demo 日志/视频；③ "部署端与训练端深度统计差异"记录。若槽不可分辨，先解决分辨率/ego 高度图；但**链路本身必须当天通**。
 
-### 4.4 Step 4：深度专项 T30 + 梅花桩（D1/D2/D3，按较难档 8/8 gate）
+### 4.4 Step 4：深度专项 T30 + 梅花桩（D1/D2/D3，按较难档 覆盖集 gate（§0.3））
 
 - **为什么不做盲试**：trench30 gap 0.30 m > 前后轮触地跨距一半 0.213 m（`blackW_description.xml` keyframe 0：前轮 +0.229、后轮 −0.197 → 跨距 0.426 m），且 > 轮径 0.206 m；梅花桩 0.2 m 桩 + 0.4 m 缺口需要落足感知——两者判为盲不可达，**不再浪费 GPU 做盲 T30/P**。
 - D1（BeamDojo stage1 风格）：平地/低难度动力学 + 任务地形感知观测；CNN trunk 从盲 M0 初始化。
 - D2：特权 critic（heightmap/足底接触）+ BeamDojo 式 foothold/落点奖励 + double critic；plum 地形课程：大平台→小桩→官方 0.2m 桩/0.4m 缺口；T30 固定 r=1.0。
-- D3：实地形 fine-tune，每 25–50 iter judge；两者都按较难档 **8/8** gate 通过才进部署。
+- D3：实地形 fine-tune，每 25–50 iter judge；两者都按较难档 **覆盖集零失败（§0.3）** gate 通过才进部署。
 - D4：深度策略与盲 M0 按障碍切换（规则允许）；若要求单模型，DAgger 蒸馏；保留盲 fallback。
 
 ### 4.5 Step 5：最终评测、录像、入库
 
-1. 全 20 关 judge v5 逐障碍 4 次，记录盲侧得分（目标 ≥855/950）与深度专项（T30/P 8/8）；
+1. 全 20 关 judge v5 逐障碍 4 次，记录盲侧得分（目标 ≥855/950）与深度专项（T30/P 覆盖集零失败（§0.3））；
 2. 每个通过的权重重录视频给用户复核，更新 `final_profile.json` 与 `models/<name>/manifest.json`；
 3. 把本文件 §3 stage 表、gate JSON、深度里程碑记录到归档，供答辩引用。
 
@@ -240,7 +244,7 @@ nohup env BLACKW_DEPLOY_SIM=1 BLACKW_DIFF_MIN=<STAGE_R> BLACKW_DIFF_MAX=<STAGE_R
 
 **已确认（无需再问）**：
 - 从最近 checkpoint 续训是常规操作（不必重开 run）。
-- gate 标准：简单档 S0–S2 judge 16/16；较难档 S3–S6 及专项最高档 judge ≥8/8；gate 含初始状态随机化 + 3 档速度指令随机化（§3.4）。
+- gate 标准：简单档 S0–S2 judge 覆盖集零失败（§0.3）；较难档 S3–S6 及专项最高档 judge 覆盖集零失败（§0.3）；gate 含初始状态随机化 + 3 档速度指令随机化（§3.4）。
 - 11-01 前优先级：M0 逐档 gate + stairs30 盲专项（盲侧目标 850，2026-10-26 由 950 修正）+ 深度部署 D0/D1 **并行**。
 - 盲/深度划分（2026-10-26 修正）：盲可拿分 850（platform40/wall40/slope35/stairs20/trench20 + stairs30 增量）；深度依赖 = trench30（+150）与梅花桩（+200）。slope45 当前阶段不计入 850，但**不判死**：judge μ=1.0 静态零余量；按用户要求做 μ=1.2 诊断并双报 μ=1.2/1.0；冲坡可提供 6–11% 摩擦余量且不超 dq_des 20 rad/s，后期可试 μ 递减课程（1.5→1.0，手动 gate）。
 - **深度部署必须开始做**：盲可达任务先拿满/≥90% 分数（850→≥850），深度侧 D0 + 部署最小链路当天开工（§4.3），深度专项 = trench30 + 梅花桩（§4.4）。
@@ -252,7 +256,7 @@ nohup env BLACKW_DEPLOY_SIM=1 BLACKW_DIFF_MIN=<STAGE_R> BLACKW_DIFF_MAX=<STAGE_R
 2. **夜间关机窗口**：是否每天约 23:00–08:00 关机？所有 job 按 ≤2 h 切分 + save-interval 50 是否 OK？
 3. **slope45 是否接受移除**：摩擦探针显示官方 judge 物理下 45° 零余量（历史归档 §14.2）；若确认正式赛不改该口径，是否同意盲侧目标由 950 改为 850，把算力转向 stairs30 与深度？
 4. **交付形态**：正式提交允许"按障碍切换策略"（M0 + stairs30 专项 + 深度专项）吗？还是必须单份模型（需额外 DAgger 合并工期）？
-5. **截止前 gate 兜底**：若某档在 11-01 前只到 6/8 这类（4 次机会下期望分仍高），是否允许作为最终候选交付（仍以 8/8 为训练目标）？
+5. **截止前 gate 兜底**：若某档在 11-01 前只到 6/8 这类（4 次机会下期望分仍高），是否允许作为最终候选交付（仍以 覆盖集零失败（§0.3） 为训练目标）？
 6. **深度侧部署链路最小验收口径**：是否"当天能渲染 + 前向推理跑通"即可，还是要接完整 6 障碍闭环？默认按前者（最小链路可演示）推进。
 
 ## 8. 快速命令卡片

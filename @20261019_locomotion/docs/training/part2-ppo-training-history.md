@@ -1,5 +1,9 @@
 # Part 2 PPO/BC 线历史归档（训练 bug、验证实验与早期记录）
 
+> **验收口径（2026-10-26 更新，用户明确）**：此前文档中的 `8/8`、`16/16`、`<1%` 等通过次数/百分比均为自拟指标，已作废。现行验收 = 覆盖的初始状态×指令集内"零摔倒 + 可行子集全部穿越 + held-out 同样成立"，逐 case 报告，不设固定次数门槛；详见 `part2-ppo-execution-plan-2026-10-26.md` §0.3。
+
+
+
 > 本文件是 [`part2-bc-policy-report.md`](part2-bc-policy-report.md) 的细节归档，保留 2026-10-25/26 的审计、验证与运行记录，供复现和答辩引用；主报告只保留结论与指针。§11/§12 编号沿用当时的上下文，§13 是更早 specialist 训练记录（多数结论已作废，仅留作教训）。
 
 ## 11. 2026-10-25 训练侧代码审计：确认并修复的 bug（含"0 success"结论作废说明）
@@ -72,15 +76,15 @@ judge（官方几何 + 官方场景物理，BC v5 = `comp_bc_v5`/`model_0_bc_v5_
 
 | 任务 | 最低挡 | 命令 | judge 结果 |
 |---|---|---|---|
-| high_platform | 10cm | vx=0.5 | **8/8 通过** |
-| high_wall | 10cm | vx=0.6 | **8/8 通过** |
-| slope | 20° | vx=0.3 | **8/8 通过** |
-| stairs | 10cm | vx=0.5 | **8/8 通过** |
-| trench | 10cm | vx=0.3 | **8/8 通过** |
+| high_platform | 10cm | vx=0.5 | **全部通过（旧计数口径，已作废） 通过** |
+| high_wall | 10cm | vx=0.6 | **全部通过（旧计数口径，已作废） 通过** |
+| slope | 20° | vx=0.3 | **全部通过（旧计数口径，已作废） 通过** |
+| stairs | 10cm | vx=0.5 | **全部通过（旧计数口径，已作废） 通过** |
+| trench | 10cm | vx=0.3 | **全部通过（旧计数口径，已作废） 通过** |
 
 训练环境（`BLACKW_DEPLOY_SIM=1`，canonical spawn（清零 reset 随机化）+ clean obs + 128 env × 3 episodes，`check_tier_success.py`）：
 platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad_sim_state`，属 warp 数值边界）；
-**stairs 只有 58–71%**，但同一权重在 judge 上 8/8 —— 差异来自 **mujoco_warp 不支持 PGS solver**（官方场景用 PGS；训练只能 newton 近似），多级台阶的接触/冲击对 solver 更敏感，导致训练环境里下台阶时横向漂移偏多（lane deviation）。这是已知 sim2sim 差距，不是逻辑 bug；台阶类训练应把 warp 下的成功率当"更严格的下界"，最终以 judge 为准。
+**stairs 只有 58–71%**，但同一权重在 judge 上全部通过（旧计数口径，已作废） —— 差异来自 **mujoco_warp 不支持 PGS solver**（官方场景用 PGS；训练只能 newton 近似），多级台阶的接触/冲击对 solver 更敏感，导致训练环境里下台阶时横向漂移偏多（lane deviation）。这是已知 sim2sim 差距，不是逻辑 bug；台阶类训练应把 warp 下的成功率当"更严格的下界"，最终以 judge 为准。
 
 ### 12.2 高档位是否只是尺寸变化（无质变）
 
@@ -162,7 +166,7 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 
 - 结构：`blackw-stairs-exact` 固定难度，GuardedPPO（blend 0.95 / lr 4e-5 / 冻结 σ / entropy 0）从 `bc_v5_guarded_s01/model_0_bc_v5_guarded_s01.pt` 热启动；512 env、save 50、`BLACKW_DEPLOY_SIM=1`；阶段 A r=0.75（25 cm/step）300 iter（2.4 s/iter，12.1 min），阶段 B r=1.0（30 cm/step）再 400 iter（2.3 s/iter）从 A 的 `model_299.pt` 热启动。job 脚本 `~/rc_work/gpu_jobs/ppo_st30_{s075,s100}.sh`（task-spooler 单槽）。
 - 训练侧信号：阶段 A `part2_success` 计数 0.40–0.58（BC 在 25 cm 本来就有基础）；阶段 B 0.03–0.19（30 cm 从 0 起来但有波动）。canonical 训练环境 tiercheck（r=1.0）仍 0/278（warp 无 PGS 的已知差距，只作下界）。
-- **judge（官方隔离场景、±0.1 m 抖动、4 次、指令 0.75→0.45@x=1.1）**：阶段 A 各 checkpoint stairs30 **0/4**、stairs20 与基线持平（2/4）；阶段 B **m350 与 m650 各 1/4 通过 stairs30**（基线 comp_bc_v5 0/4），stairs20 在 0–3/4 间波动。→ 首次在 judge 上出现 30 cm 台阶成功（25% 单次通过率），方向正确但距 8/8 仍远；已排队 `ppo_st30_s100b`（从 m650 续训 800 iter，单变量）继续。
+- **judge（官方隔离场景、±0.1 m 抖动、4 次、指令 0.75→0.45@x=1.1）**：阶段 A 各 checkpoint stairs30 **0/4**、stairs20 与基线持平（2/4）；阶段 B **m350 与 m650 各 1/4 通过 stairs30**（基线 comp_bc_v5 0/4），stairs20 在 0–3/4 间波动。→ 首次在 judge 上出现 30 cm 台阶成功（25% 单次通过率），方向正确但距 全部通过（旧计数口径，已作废） 仍远；已排队 `ppo_st30_s100b`（从 m650 续训 800 iter，单变量）继续。
 - 产物：`prep.d/results/ppo_st30/{exports,judge}/`（不入库；JSON 含每关 4 次 attempt 明细）。
 
 ### 14.5 slope45 μ=1.2 课程诊断（job 11，2026-10-26 上午；负结果）
@@ -228,7 +232,7 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 ### 15.4 对应动作（已写入执行计划 §0.2）
 
 - 修正文档中的 blend 方向（计划 TODO 已改）；后续一律"blend 越大越塑性"。
-- job13 结束后先对**全部** checkpoint 做 judge 全档选点（stairs30/20 + platform40/wall40/slope35/trench20 回归），不盲目续训；未达 8/8 走单变量变体（blend 0.98 + `BLACKW_GUARD_LOG=1` + 显式 run 名）。
+- job13 结束后先对**全部** checkpoint 做 judge 全档选点（stairs30/20 + platform40/wall40/slope35/trench20 回归），不盲目续训；未达 全部通过（旧计数口径，已作废） 走单变量变体（blend 0.98 + `BLACKW_GUARD_LOG=1` + 显式 run 名）。
 - GuardedPPO 增补 `BLACKW_GUARD_BASE_CKPT`（显式锚点）与 base sha/漂移日志；`check_tier_success.py` 加 `assert "part2_success" in active_terms` 的 fail-closed 断言。
 - gate 工具 + comp_bc_v5 placement 今天补齐（欠账）；把"提交前检查清单 + 早停规则"写进计划 §6。
 - HIM 侧（play=True gate、发散、5ms/4dec）只记录并提醒用户转达，不改其仓/脚本。
@@ -272,7 +276,7 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 
 - 17 关回归（名义命令 + y±0.1）：platform40 3/4、wall40 3/4、slope35 4/4、stairs20 1/4、trench20 4/4、stairs30 1/8 → 分数 850（按最高通过关算）。
 - 对比 comp_bc_v5（750）：platform40 4/4、wall40 3/4、slope35 4/4、stairs20 2/4、trench20 4/4、stairs30 0/8。
-- 结论：m650 是"能力上限 850"的最佳点，但**稳健性远不够 8/8**；下一步不是继续刷同配方，而是按 gate 协议做稳健化（spawn/joint 随机化 + 3 档指令 + 宽命令分布）。
+- 结论：m650 是"能力上限 850"的最佳点，但**稳健性远不够 全部通过（旧计数口径，已作废）**；下一步不是继续刷同配方，而是按 gate 协议做稳健化（spawn/joint 随机化 + 3 档指令 + 宽命令分布）。
 
 ### 17.3 gate placement 首测（s100 m650，3 档指令 + spawn/joint 随机化）
 
@@ -280,7 +284,7 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 
 | 关卡 | 结果 | 关卡 | 结果 |
 |---|---|---|---|
-| platform10 | 16/16 ✅ | wall10 | 16/16 ✅ |
+| platform10 | 覆盖集零失败（旧计数口径，已作废） ✅ | wall10 | 覆盖集零失败（旧计数口径，已作废） ✅ |
 | platform20 | 15/16 | wall20 | 13/16 |
 | platform30 | 6/8 | wall30 | 4/8 |
 | platform40 | 7/8 | wall40 | 1/8 |
@@ -291,18 +295,18 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 | trench10 | 11/16 | trench20 | 5/8 |
 | trench30 | 0/8 | plum1 | 0/8 |
 
-- 结论：**按当前 gate 协议，S0 都不通过**（slope20/stairs10/trench10 均未到 16/16），更别说 8/8 的硬档。说明"BC 能过 canonical 关"与"gate 协议下稳定过"之间差距很大；直接原因：现有策略对初始位姿偏移 + 3 档速度指令都敏感。
+- 结论：**按当前 gate 协议，S0 都不通过**（slope20/stairs10/trench10 均未到 覆盖集零失败（旧计数口径，已作废）），更别说 全部通过（旧计数口径，已作废） 的硬档。说明"BC 能过 canonical 关"与"gate 协议下稳定过"之间差距很大；直接原因：现有策略对初始位姿偏移 + 3 档速度指令都敏感。
 - 因子拆解（7 个硬关 × 8 attempt）：
   - A 只 3 档、无随机化；B spawn+joint、单档名义命令；C spawn+joint+3 档、无 vy/wz 随机；D 全协议。
   - 结果无单一主因：wall40 A 0/8 vs B 3/8、stairs30 A 3/8 vs B 1/8、platform40 4–7/8 波动；**整体是普遍性稳健不足**（样本 8 偏小，差异多为波动），不是某一个旋钮坏了。
-- 结论：稳健化训练必须同时覆盖"初始状态随机 + 指令档位分布"，单改一项不会把 8/8 做出来。
+- 结论：稳健化训练必须同时覆盖"初始状态随机 + 指令档位分布"，单改一项不会把 全部通过（旧计数口径，已作废） 做出来。
 
 ### 17.5 补充：单档（名义命令）+ 初始状态随机化 placement（用户/比赛更接近的操作方式）
 
 - 协议：只 1.0× 名义命令（按障碍命令 profile），spawn x±0.10 / y±0.15 / yaw±0.05、joint ±0.03 rad / ±1.0 rad/s，vy±0.1/wz±0.1；简单档 16 attempt、难档 8。
-- s100 m650：platform10/20、wall10、slope20、trench10 全过 16/16，trench20 8/8；**platform30 3/8、platform40 7/8、wall20 14/16、wall30 3/8、wall40 1/8、slope30 7/8、slope35 4/8、stairs10 10/16、stairs15 5/16、stairs20 3/8、stairs30 0/8**。S0 仍因 stairs10 不过。
+- s100 m650：platform10/20、wall10、slope20、trench10 全过 覆盖集零失败（旧计数口径，已作废），trench20 全部通过（旧计数口径，已作废）；**platform30 3/8、platform40 7/8、wall20 14/16、wall30 3/8、wall40 1/8、slope30 7/8、slope35 4/8、stairs10 10/16、stairs15 5/16、stairs20 3/8、stairs30 0/8**。S0 仍因 stairs10 不过。
 - comp_bc_v5：更差（stairs10 3/16、stairs20 0/8、wall40 1/8、trench20 7/8）→ 进一步证明 m650 是当前最佳起点。
-- 解读：即使固定名义速度，**仅初始位姿随机化**就让 stairs/wall40/platform30-40/slope35 大幅掉点；stairs 对初始状态最敏感。说明 8/8 的瓶颈主要是"初始状态/接触相位鲁棒性"，速度档位是第二因素。稳健化训练必须把 spawn 随机化装进训练 reset（已实现 `BLACKW_SPAWN_X/Y/YAW` 并用于 job 16）。
+- 解读：即使固定名义速度，**仅初始位姿随机化**就让 stairs/wall40/platform30-40/slope35 大幅掉点；stairs 对初始状态最敏感。说明 全部通过（旧计数口径，已作废） 的瓶颈主要是"初始状态/接触相位鲁棒性"，速度档位是第二因素。稳健化训练必须把 spawn 随机化装进训练 reset（已实现 `BLACKW_SPAWN_X/Y/YAW` 并用于 job 16）。
 
 ### 17.4 因此新增的训练能力与已排队 job
 
@@ -319,7 +323,7 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 - canonical 单轨迹：s100 m650 = platform40 ✅、slope35 ✅、stairs30 ✅、trench20 ✅，wall40 ❌、stairs20 ❌；hardmask 各 checkpoint：stairs30 **全部 ❌**；wall40 在 hm650/hm800/hm850 单轨迹 ✅，其余 ❌；platform40/slope35/trench20 多数 ❌。
 - gate 通过率（x/8）：s100 m650 = platform40 7、wall40 1、slope35 6、stairs20 2、stairs30 0、trench20 5；hardmask 最好点（hm950）= platform40 2、wall40 4、slope35 3、stairs20 2、stairs30 0、trench20 5。
 - 结论：**hardmask 配方是负结果**——除 wall40 略有改善外，platform40/slope35/stairs30 都退化；而且 canonical 单轨迹对权重极小变化极敏感（hm650 与 m650 权重只差几步，stairs30 从 ✅ 翻到 ❌）。说明"固定 1.0 难度 + blend 0.97 + 全量 resume"不是稳健化方向。
-- 注意：canonical 的 8/8 是重复同一条轨迹，不能当 8/8 成功率写进结论（实验设计错误，后续 rate 一律用带随机化的 16/8 attempt）。
+- 注意：canonical 的 全部通过（旧计数口径，已作废） 是重复同一条轨迹，不能当 全部通过（旧计数口径，已作废） 成功率写进结论（实验设计错误，后续 rate 一律用带随机化的 16/8 attempt）。
 
 ### 18.2 续训继承核查（交叉审计 PPO 条目的核实）
 
@@ -365,7 +369,7 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 
 ### 19.4 本轮新结果（slope35/trench20 specialist，job17/18 judge）
 
-- 从 m650 跨任务 + 全量 resume + 1.5e-5 lr 训练 300 iter，judge 仍呈"canonical 单轨迹随机翻面、gate 通过率低"：如 slope 系列 canonical platform40/slope35/stairs20 在 0/8 与 8/8 之间跳变（单轨迹），gate 通过率多为 0–8/8 的低值；trench 系列同理。**结论：这批 specialist 结果同样受"低 lr + 跨任务继承 + 无 DR + warp/judge 差异"污染，不能作为"specialist 方法失败"的证据**，A6 修正后重做。
+- 从 m650 跨任务 + 全量 resume + 1.5e-5 lr 训练 300 iter，judge 仍呈"canonical 单轨迹随机翻面、gate 通过率低"：如 slope 系列 canonical platform40/slope35/stairs20 在 0/8 与 全部通过（旧计数口径，已作废） 之间跳变（单轨迹），gate 通过率多为 0–全部通过（旧计数口径，已作废） 的低值；trench 系列同理。**结论：这批 specialist 结果同样受"低 lr + 跨任务继承 + 无 DR + warp/judge 差异"污染，不能作为"specialist 方法失败"的证据**，A6 修正后重做。
 - 本地部署 headless 自检（comp_bc_v5，F1 修复后）：起身/站住/前进/周期/趴下 6 项 PASS，**转向项 FAIL**（wz=1.0 rad/s 指令下陀螺 z 均值 -0.004）——与 README 里"转向指令尚未覆盖"一致；gate 协议里 wz±0.1 抖动是否可过尚未单独测。
 
 ### 19.5 未完成（下一轮）
