@@ -75,9 +75,13 @@ training/
 
 ## 6. 未完成项（Phase 1 收尾待做）
 
-- P1-12 导出链统一（`export_history_policy --robot black|blackW`、HIM/depth 导出、manifest 含 round 字段）及用旧 checkpoint 验证 state_dict sha256；
-- P1-13 其余工具脚本迁移（checks/diagnostics/render/bc），`scripts/checks/dump_env_cfgs.py` 与 `scripts/tools/gen_official_terrain_spec.py` 已入库；
-- P1-17 `common/` 抽取：把 `rl_cfg`/`curriculum_checkpoint`/通用 HIM helper 移入 `tasks/velocity/common/`，消除 blackW 对 `black.env_cfgs`/`black_competition_env_cfg` 的残留依赖（当前行为等价验证已覆盖，结构移动待做）。
+### Phase 1 收尾后更新（本轮补充）
+
+- **P1-12 已完成**：`scripts/export/export_history_policy.py --robot black|blackW` 合并两套导出脚本；同一旧 checkpoint（`~/rc_work/models/model_0_bc_v5_guarded.pt`，blackW 342 维）用旧脚本（legacy/ppo）与新脚本各导出一次：**TorchScript state_dict 8 个张量逐个 sha256 完全一致**；新脚本 contract/manifest 增加 robot、频率三字段、checkpoint sha256。HIM 导出（canonical 6×57→16）与 depth 导出保留。
+- **P1-13 已完成**：`scripts/` 按用途迁入 `export/ checks/ diagnostics/ render/ bc/ tools/`（含 `dump_env_cfgs.py`、`gen_official_terrain_spec.py`、tier success/geometry、predicate parity、world friction、BC/DAgger 工具），删除旧 proxy/一次性脚本；全部 `compileall` 通过，`scripts/README.md` 说明各目录。
+- **P1-17 部分完成**：`profiles/{part1,part2}` 已拆出；`common/` 新增，`config.py`（原 `black/black_config.py`）与 `rl_cfg.py`（原 `black/rl_cfg.py`）已移入并全仓改 import，37 任务 cfg dump 与移动前一致（仅 dump 工具 property 表示差异）。**剩余**：`curriculum_checkpoint.py`/`him_runner.py`/`him_rl_cfg.py` 仍留在 `black/`（被 blackW 复用），以及 blackW 对 `black.env_cfgs`（`_build_black_env_cfg`/`black_competition_env_cfg`）的依赖；消除它们需要拆分通用 velocity 装配与 Part1 course 机制，行为等价验证已就绪，结构移动留待 Phase 2 前完成。
+
+- **P1-15 验收补充**：L2 smoke 三条路径 rc=0；`dump_env_cfgs` 37 个任务可构造（12 black + 13 blackW + 12 MjLab 自带）；checkpoint 导出等价性如上。
 
 ## 7. 新仓提交记录（migrate/phase1）
 
