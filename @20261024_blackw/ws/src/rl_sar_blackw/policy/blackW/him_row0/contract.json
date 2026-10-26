@@ -1,0 +1,44 @@
+{
+  "task": "blackw-official-him",
+  "checkpoint": "logs/rsl_rl/blackw_velocity_him/2026-10-26_09-59-54_him_row0_mixed_gate_1026_0959/model_0.pt",
+  "policy": "/tmp/him_model0_export/policy.pt",
+  "input": "canonical history [B, history_length*single_frame_dim], frame-major newest->oldest",
+  "history_length": 6,
+  "single_frame_dim": 57,
+  "input_dim": 342,
+  "action_dim": 16,
+  "action_order": "FL,FR,RL,RR x hip,thigh,calf,wheel",
+  "action_scale": {
+    "legs": [
+      0.25,
+      0.25,
+      0.25,
+      0.25
+    ],
+    "wheel": {
+      "FL": 10.0,
+      "FR": -10.0,
+      "RL": 10.0,
+      "RR": -10.0
+    },
+    "note": "official HIM signed wheel scale; do NOT use PPO trained-blackw unsigned +10 contract"
+  },
+  "dummy_action": [
+    -0.22662389278411865,
+    0.12237591296434402,
+    0.00027485191822052,
+    0.03673207387328148,
+    0.10124784708023071,
+    0.10826759040355682,
+    -0.5367516279220581,
+    0.35601502656936646,
+    -0.12565946578979492,
+    0.06968916952610016,
+    0.08787581324577332,
+    0.24567532539367676,
+    0.06948915123939514,
+    -0.024604782462120056,
+    -0.3153623342514038,
+    0.377704381942749
+  ]
+}
