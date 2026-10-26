@@ -70,12 +70,12 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 | 文档 | 用途 |
 |---|---|
-| [`@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md`](../@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md) | **新会话入口**：课程规则（单谱系逐档 gate、禁止多难度并行）、原明天清单/命令、远程/GPU 队列状态、边界、开放问题 |
-| [`@20261019_locomotion/docs/training/part2-ppo-execution-plan-2026-10-26.md`](../@20261019_locomotion/docs/training/part2-ppo-execution-plan-2026-10-26.md) | **当前执行计划（2026-10-26 起）**：修正后的分数账、分阶段排期、task-spooler GPU 队列使用协议、待确认项 |
-| [`part2-bc-policy-report.md`](../@20261019_locomotion/docs/training/part2-bc-policy-report.md) | 主报告：judge v5、BC/DAgger、评测结果、参考文献、局限 |
-| [`part2-ppo-training-history.md`](../@20261019_locomotion/docs/training/part2-ppo-training-history.md) | 归档：训练侧 bug 审计与修复证据、最低档/档位结构验证、显存实测、早期记录 |
-| [`part2-blind-depth-curriculum-plan.md`](../@20261019_locomotion/docs/training/part2-blind-depth-curriculum-plan.md) | 模型分工（主线 M0 + T30/S45/St30/P）、盲课段 B0–B4、深度 BeamDojo 课程 D0–D5 |
-| [`part2-failure-vs-reward-design.md`](../@20261019_locomotion/docs/training/part2-failure-vs-reward-design.md) | termination vs reward shaping 原则与文献 |
+| [`@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md`](../@20261019_locomotion/docs/21-part2-ppo/handoff.md) | **新会话入口**：课程规则（单谱系逐档 gate、禁止多难度并行）、原明天清单/命令、远程/GPU 队列状态、边界、开放问题 |
+| [`@20261019_locomotion/docs/training/part2-ppo-execution-plan-2026-10-26.md`](../@20261019_locomotion/docs/21-part2-ppo/execution-plan.md) | **当前执行计划（2026-10-26 起）**：修正后的分数账、分阶段排期、task-spooler GPU 队列使用协议、待确认项 |
+| [`part2-bc-policy-report.md`](../@20261019_locomotion/docs/21-part2-ppo/bc-policy-report.md) | 主报告：judge v5、BC/DAgger、评测结果、参考文献、局限 |
+| [`part2-ppo-training-history.md`](../@20261019_locomotion/docs/21-part2-ppo/history-experiments.md) | 归档：训练侧 bug 审计与修复证据、最低档/档位结构验证、显存实测、早期记录 |
+| [`part2-blind-depth-curriculum-plan.md`](../@20261019_locomotion/docs/21-part2-ppo/blind-depth-curriculum.md) | 模型分工（主线 M0 + T30/S45/St30/P）、盲课段 B0–B4、深度 BeamDojo 课程 D0–D5 |
+| [`part2-failure-vs-reward-design.md`](../@20261019_locomotion/docs/20-part2-shared/failure-vs-reward.md) | termination vs reward shaping 原则与文献 |
 | `@20261024_blackw/training/README.md` | 训练侧代码快照与远程仓对应关系 |
 
 ## 出生点检查

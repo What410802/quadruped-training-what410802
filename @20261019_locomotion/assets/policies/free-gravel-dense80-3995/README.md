@@ -35,4 +35,4 @@
 - 自由石块不是颗粒介质；只是“踩得动/会滚动”的近似。
 - 16–32 envs 才能跑；4096 envs 不适用。
 - 32 envs 需要 `nconmax=2048 / njmax=4096`；低容量会出现 `nefc overflow`/arc 段 NaN。正式复测仍要做 multi-seed/固定布局。
-- 权重入库策略见 [`../../../docs/training/experiments.md`](../../../docs/training/experiments.md) §5。
+- 权重入库策略见 [`../../../docs/training/experiments.md`](../../../docs/10-part1/experiments.md) §5。

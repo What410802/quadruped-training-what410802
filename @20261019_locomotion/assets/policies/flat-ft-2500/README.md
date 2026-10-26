@@ -28,7 +28,7 @@
 | yaw-pos | 否 | 0.0421 | 0.1690 | 4.6° | −0.180, 0.050 |
 | combined | 否 | 0.0705 | 0.0442 | 3.3° | −0.510, 4.210 |
 
-G1 的 stand 漂移 0.275 m、fwd-nominal MAE 0.0687；G1/G2/G4/G5 通过（G2 日志的 `vx_min/vx_max` 到 ±2.0；见 [`../../../docs/training/experiments.md`](../../../docs/training/experiments.md)）。
+G1 的 stand 漂移 0.275 m、fwd-nominal MAE 0.0687；G1/G2/G4/G5 通过（G2 日志的 `vx_min/vx_max` 到 ±2.0；见 [`../../../docs/training/experiments.md`](../../../docs/10-part1/experiments.md)）。
 
 ## 地形 zero-shot（2026-10-21）
 
@@ -44,5 +44,5 @@ G1 的 stand 漂移 0.275 m、fwd-nominal MAE 0.0687；G1/G2/G4/G5 通过（G2 �
 ## 步态与 S1b
 
 - 0.8 m/s 前进、暖机后 6 s：RL−RR 平均 x 差 **0.051 m**（原始 `model_1999` 为 0.155 m）；RL/RR 接触比例 0.85/0.89，后腿足端最高 z 4.7/4.2 cm；不是完全对称，但拖腿明显缓解。
-- `black-gravel-flat` 32 envs play：全段 0 摔倒；0.3/0.5 m/s vx MAE **0.134/0.178**、p95 tilt 8.8°/8.6°。64 envs 复测：fwd-slow 摔倒率 1.56%（1/64，≤5%）、0.3/0.5 m/s vx MAE 0.140/0.133、p95 tilt 7.1°/7.8°；按 [`../../../docs/training/eval-protocol.md`](../../../docs/training/eval-protocol.md) §6.2 初版 S1b **provisional pass**。
-- 仍不是最终验收策略：只在 2048 envs、500 iteration fine-tune；没有经过多 seed、正式固定地形/种子评测和 sim2sim。权重入库策略见 [`../../../docs/training/experiments.md`](../../../docs/training/experiments.md) §5。
+- `black-gravel-flat` 32 envs play：全段 0 摔倒；0.3/0.5 m/s vx MAE **0.134/0.178**、p95 tilt 8.8°/8.6°。64 envs 复测：fwd-slow 摔倒率 1.56%（1/64，≤5%）、0.3/0.5 m/s vx MAE 0.140/0.133、p95 tilt 7.1°/7.8°；按 [`../../../docs/training/eval-protocol.md`](../../../docs/10-part1/eval-protocol.md) §6.2 初版 S1b **provisional pass**。
+- 仍不是最终验收策略：只在 2048 envs、500 iteration fine-tune；没有经过多 seed、正式固定地形/种子评测和 sim2sim。权重入库策略见 [`../../../docs/training/experiments.md`](../../../docs/10-part1/experiments.md) §5。

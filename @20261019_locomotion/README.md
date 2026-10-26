@@ -1,8 +1,8 @@
 # 强化学习 Locomotion：2026 队内赛（障碍赛 + 越障能力）
 
-> **任务真值已校准（2026-10-21）**：当前目标是 **2026-11-04 队内赛**，不是 2027 赛季。比赛分两个赛项：24 届 RC 足式障碍赛（8 障碍 × 100 + 返回启动区 100，遥控满分 900）与越障能力测试（高台/楼梯/斜坡/高墙/沟壑/梅花桩，满分 1300）；两项得分和占 70%，7 分钟答辩占 30%。规则、成功定义、传感器/力矩限制见 [`docs/reference/team-race-2026.md`](docs/reference/team-race-2026.md)。
+> **任务真值已校准（2026-10-21）**：当前目标是 **2026-11-04 队内赛**，不是 2027 赛季。比赛分两个赛项：24 届 RC 足式障碍赛（8 障碍 × 100 + 返回启动区 100，遥控满分 900）与越障能力测试（高台/楼梯/斜坡/高墙/沟壑/梅花桩，满分 1300）；两项得分和占 70%，7 分钟答辩占 30%。规则、成功定义、传感器/力矩限制见 [`docs/reference/team-race-2026.md`](docs/00-competition/rules-team-race-2026.md)。
 >
-> 当前有效进度：`flat-ft-2500` 在 flat gate、固定砂砾、composite 自由砂砾 zero-shot 上初版可用；但没有正式障碍场/能力场任务，`black-rough` 综合 zero-shot 4 envs 仍 25% 摔倒，离比赛要求有明显差距。旧 2027/S1b-first/rough-first 路线降为研究性 backlog；14 天路线见 [`docs/status.md`](docs/status.md) 与 [`docs/training/training-plan.md`](docs/training/training-plan.md) §0。
+> 当前有效进度：`flat-ft-2500` 在 flat gate、固定砂砾、composite 自由砂砾 zero-shot 上初版可用；但没有正式障碍场/能力场任务，`black-rough` 综合 zero-shot 4 envs 仍 25% 摔倒，离比赛要求有明显差距。旧 2027/S1b-first/rough-first 路线降为研究性 backlog；14 天路线见 [`docs/status.md`](docs/status.md) 与 [`docs/training/training-plan.md`](docs/10-part1/plan.md) §0。
 >
 > 目录（TOC）：[做了什么](#做了什么) · [怎么跑](#怎么跑) · [目录与文件](#目录与文件) · [文档](#文档)
 
@@ -10,15 +10,15 @@
 
 | 事项 | 状态 | 入口 |
 |---|---|---|
-| 任务真值：2026 队内赛 PDF（障碍赛 + 越障能力 + 答辩），取代旧 2027/V2.0 假设 | 已读取并校准路线 | [`docs/reference/team-race-2026.md`](docs/reference/team-race-2026.md) |
+| 任务真值：2026 队内赛 PDF（障碍赛 + 越障能力 + 答辩），取代旧 2027/V2.0 假设 | 已读取并校准路线 | [`docs/reference/team-race-2026.md`](docs/00-competition/rules-team-race-2026.md) |
 | 比赛迭代工作流（评测可信 / 分数证据链 / Codex 独立审计）：`comp/` 契约、协议草稿、诊断评测导入、记分板 dry-run | 已落地；G1 审计 FAIL，按修复清单重写 judge 后重审 | [`comp/README.md`](comp/README.md) |
-| 地形与资源盘点：只读材料 `terrain.zip`、`scene_terrain.xml`，旧 2026 V2.0/2027 规则仅作参考 | 已盘点；正式队内赛障碍场尚未建模 | [`docs/terrain/materials.md`](docs/terrain/materials.md) |
-| 本地环境：沿用仓库根 `pixi.toml` 的单环境（MuJoCo 3.12 + glfw + cmake + CPU libtorch），本任务不新开本地环境 | 已确认无需新增本地依赖 | [`docs/environment.md`](docs/environment.md) |
-| 远程训练机：`bis-ms7e56`（RTX 5060 Ti 16 GB / 驱动 595.99.02 / CUDA 13.4 / 原生 uv 0.13.3），GPU、EGL 渲染与训练冒烟均通过 | 环境已核验；512–8192 envs 基准见环境文档 | [`docs/environment.md`](docs/environment.md) |
+| 地形与资源盘点：只读材料 `terrain.zip`、`scene_terrain.xml`，旧 2026 V2.0/2027 规则仅作参考 | 已盘点；正式队内赛障碍场尚未建模 | [`docs/terrain/materials.md`](docs/10-part1/terrain-materials.md) |
+| 本地环境：沿用仓库根 `pixi.toml` 的单环境（MuJoCo 3.12 + glfw + cmake + CPU libtorch），本任务不新开本地环境 | 已确认无需新增本地依赖 | [`docs/environment.md`](docs/30-ops/environment.md) |
+| 远程训练机：`bis-ms7e56`（RTX 5060 Ti 16 GB / 驱动 595.99.02 / CUDA 13.4 / 原生 uv 0.13.3），GPU、EGL 渲染与训练冒烟均通过 | 环境已核验；512–8192 envs 基准见环境文档 | [`docs/environment.md`](docs/30-ops/environment.md) |
 | C++ 视窗：复用 `@20260927_motor` 里自写的 GLFW + mjv/mjr 窗口，本任务先用它看场景，后续接策略推理 | 已拷贝源码并加最小可运行程序 | [`cpp/`](cpp) |
-| TensorBoard：训练仓库已支持 `--agent.logger tensorboard`；记录方式与查看方式已写 | 已定 | [`docs/environment.md`](docs/environment.md) |
-| 文献与开源实现索引：论文清单 + 可复用仓库/许可 | 已整理初版 | [`docs/reference/literature.md`](docs/reference/literature.md)、[`docs/reference/open-source.md`](docs/reference/open-source.md) |
-| C2 视觉主线：深度相机 task（mjlab 1.6 + mujoco_warp RenderContext）、`best.pt` zero-shot 评测、Warp 710 数值稳定性修复 | 管线 + 成本/100-iter 稳定性 smoke；对照训练未开 | [`docs/training/camera-depth.md`](docs/training/camera-depth.md)、[`docs/training/him-best-zero-shot.md`](docs/training/him-best-zero-shot.md)、[`docs/training/training-health.md`](docs/training/training-health.md) §7 |
+| TensorBoard：训练仓库已支持 `--agent.logger tensorboard`；记录方式与查看方式已写 | 已定 | [`docs/environment.md`](docs/30-ops/environment.md) |
+| 文献与开源实现索引：论文清单 + 可复用仓库/许可 | 已整理初版 | [`docs/reference/literature.md`](docs/40-reference/literature.md)、[`docs/reference/open-source.md`](docs/40-reference/open-source.md) |
+| C2 视觉主线：深度相机 task（mjlab 1.6 + mujoco_warp RenderContext）、`best.pt` zero-shot 评测、Warp 710 数值稳定性修复 | 管线 + 成本/100-iter 稳定性 smoke；对照训练未开 | [`docs/training/camera-depth.md`](docs/20-part2-shared/camera-depth.md)、[`docs/training/him-best-zero-shot.md`](docs/22-part2-him/best-pt-zero-shot.md)、[`docs/training/training-health.md`](docs/10-part1/health.md) §7 |
 
 ## 怎么跑
 
@@ -44,7 +44,7 @@ uv sync --locked
 MUJOCO_GL=egl .venv/bin/train black-flat --env.scene.num-envs 4096 --agent.max-iterations 2000 --agent.logger tensorboard
 ```
 
-实测（2026-10-20，原生 uv）：`black-flat` 512/1024/2048/4096/8192 envs 冒烟均通过；迭代时间 0.67/0.82/1.05/1.57/2.62 s，峰值显存约 1.8/2.4/3.9/6.8 GB，其中 4096 envs 约 167k env steps/s（基准细节见 [`docs/environment.md`](docs/environment.md) §3）。录屏/截图用 `MUJOCO_GL=egl`（远程简单场景 0.063 ms/帧 @320×240）。
+实测（2026-10-20，原生 uv）：`black-flat` 512/1024/2048/4096/8192 envs 冒烟均通过；迭代时间 0.67/0.82/1.05/1.57/2.62 s，峰值显存约 1.8/2.4/3.9/6.8 GB，其中 4096 envs 约 167k env steps/s（基准细节见 [`docs/environment.md`](docs/30-ops/environment.md) §3）。录屏/截图用 `MUJOCO_GL=egl`（远程简单场景 0.063 ms/帧 @320×240）。
 
 TensorBoard（`tensorboard` 只在训练仓库的 venv 里，远程 PATH 上没有；不要直接敲 `tensorboard`）：
 
@@ -116,34 +116,34 @@ cd ~/rc_work/nwwolf_mjlab_training_release
 **状态与环境**
 
 - 当前状态、待决、下一步：[`docs/status.md`](docs/status.md)
-- 环境（pixi / 远程 uv / EGL / TensorBoard / C++ 视窗）：[`docs/environment.md`](docs/environment.md)
+- 环境（pixi / 远程 uv / EGL / TensorBoard / C++ 视窗）：[`docs/environment.md`](docs/30-ops/environment.md)
 
 **训练与评测**
 
 - 比赛迭代工作流（契约/评测协议/记分板/独立审计/冻结/答辩）：[`comp/README.md`](comp/README.md)
-- 训练计划（阶段、手动/状态机、相机、PPO）：[`docs/training/training-plan.md`](docs/training/training-plan.md)
-- 现有课程/奖励基线：[`docs/training/training-baseline.md`](docs/training/training-baseline.md)
-- 实验记录（run 表、评测、gate、步态/yaw）：[`docs/training/experiments.md`](docs/training/experiments.md)
-- 评测协议与 G1–G5：[`docs/training/eval-protocol.md`](docs/training/eval-protocol.md)
-- 外部 HIMLoco `best.pt` zero-shot 评测：[`docs/training/him-best-zero-shot.md`](docs/training/him-best-zero-shot.md)
-- 深度相机接入（C2 视觉主线）：[`docs/training/camera-depth.md`](docs/training/camera-depth.md)
-- 训练健康检查（数值不稳定、地形课程）：[`docs/training/training-health.md`](docs/training/training-health.md)
-- 每轮训练记录清单：[`docs/training/training-record-checklist.md`](docs/training/training-record-checklist.md)
-- 视频可视化（场景/节点、图例、代码分布）：[`docs/training/visualization.md`](docs/training/visualization.md)
+- 训练计划（阶段、手动/状态机、相机、PPO）：[`docs/training/training-plan.md`](docs/10-part1/plan.md)
+- 现有课程/奖励基线：[`docs/training/training-baseline.md`](docs/10-part1/baseline.md)
+- 实验记录（run 表、评测、gate、步态/yaw）：[`docs/training/experiments.md`](docs/10-part1/experiments.md)
+- 评测协议与 G1–G5：[`docs/training/eval-protocol.md`](docs/10-part1/eval-protocol.md)
+- 外部 HIMLoco `best.pt` zero-shot 评测：[`docs/training/him-best-zero-shot.md`](docs/22-part2-him/best-pt-zero-shot.md)
+- 深度相机接入（C2 视觉主线）：[`docs/training/camera-depth.md`](docs/20-part2-shared/camera-depth.md)
+- 训练健康检查（数值不稳定、地形课程）：[`docs/training/training-health.md`](docs/10-part1/health.md)
+- 每轮训练记录清单：[`docs/training/training-record-checklist.md`](docs/10-part1/record-checklist.md)
+- 视频可视化（场景/节点、图例、代码分布）：[`docs/training/visualization.md`](docs/10-part1/visualization.md)
 
 **地形与素材**
 
-- 2026 队内赛真值：[`docs/reference/team-race-2026.md`](docs/reference/team-race-2026.md)
-- 手动保底状态机：[`docs/training/manual-fallback-state-machine.md`](docs/training/manual-fallback-state-machine.md)
-- 地形/资源盘点与 mjlab 映射：[`docs/terrain/materials.md`](docs/terrain/materials.md)
-- 砂砾/碎石可行性：[`docs/terrain/gravel-feasibility.md`](docs/terrain/gravel-feasibility.md)、踩入深度实验 [`docs/terrain/gravel-penetration.md`](docs/terrain/gravel-penetration.md)、比赛地形资产 [`docs/terrain/competition-assets.md`](docs/terrain/competition-assets.md)
+- 2026 队内赛真值：[`docs/reference/team-race-2026.md`](docs/00-competition/rules-team-race-2026.md)
+- 手动保底状态机：[`docs/training/manual-fallback-state-machine.md`](docs/00-competition/fallback-state-machine.md)
+- 地形/资源盘点与 mjlab 映射：[`docs/terrain/materials.md`](docs/10-part1/terrain-materials.md)
+- 砂砾/碎石可行性：[`docs/terrain/gravel-feasibility.md`](docs/10-part1/gravel-feasibility.md)、踩入深度实验 [`docs/terrain/gravel-penetration.md`](docs/10-part1/gravel-penetration.md)、比赛地形资产 [`docs/terrain/competition-assets.md`](docs/10-part1/terrain-assets.md)
 
 **参考**
 
-- 文献与培训方补充材料：[`docs/reference/literature.md`](docs/reference/literature.md)
-- 开源实现、许可与任务来源：[`docs/reference/open-source.md`](docs/reference/open-source.md)
-- 仓库划分与分支策略：[`docs/reference/repos.md`](docs/reference/repos.md)
+- 文献与培训方补充材料：[`docs/reference/literature.md`](docs/40-reference/literature.md)
+- 开源实现、许可与任务来源：[`docs/reference/open-source.md`](docs/40-reference/open-source.md)
+- 仓库划分与分支策略：[`docs/reference/repos.md`](docs/30-ops/repo-layout.md)
 
 ## 来源与许可
 
-统一记录在 [`docs/reference/open-source.md`](docs/reference/open-source.md) §7：地形/规则素材、2026 场地 CAD 参考、训练框架、C++ viewer 与本次培训方补充材料的来源与许可。
+统一记录在 [`docs/reference/open-source.md`](docs/40-reference/open-source.md) §7：地形/规则素材、2026 场地 CAD 参考、训练框架、C++ viewer 与本次培训方补充材料的来源与许可。

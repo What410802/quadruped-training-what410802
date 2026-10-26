@@ -33,4 +33,4 @@
 - 自由石块不是颗粒介质；只是“踩得动/会滚动”的近似，不能代替真实砂砾坑。
 - `black-gravel-free` 只适合 16–64 envs；4096 会因 free joint 数量/接触容量失败。
 - 只在 32 envs、seed/布局固定的 screening 下 provisional pass；需要多 seed、随机石块布局和固定地形/命令复测后才能谈验收。
-- 权重入库策略见 [`../../../docs/training/experiments.md`](../../../docs/training/experiments.md) §5。
+- 权重入库策略见 [`../../../docs/training/experiments.md`](../../../docs/10-part1/experiments.md) §5。

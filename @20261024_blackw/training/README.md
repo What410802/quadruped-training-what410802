@@ -12,4 +12,4 @@ PPO/BC 线涉及的文件快照，便于入库追溯；远程训练仓仍是运�
 | `black/black_config.py` | PPO/策略超参数 env 覆盖（entropy/std/epochs/mini-batches/normalize-advantage） |
 | `black/rl_cfg.py` | 上述超参数到 rsl_rl 配置的映射 + `BLACKW_ALGORITHM` 算法类选择 |
 
-修复背景、证据与当前状态见主报告 [`part2-bc-policy-report.md`](../../@20261019_locomotion/docs/training/part2-bc-policy-report.md) 与归档 [`part2-ppo-training-history.md`](../../@20261019_locomotion/docs/training/part2-ppo-training-history.md) §11；明天上机步骤见交接 [`part2-ppo-handoff-2026-10-26.md`](../../@20261019_locomotion/docs/training/part2-ppo-handoff-2026-10-26.md)。
+修复背景、证据与当前状态见主报告 [`part2-bc-policy-report.md`](../../@20261019_locomotion/docs/21-part2-ppo/bc-policy-report.md) 与归档 [`part2-ppo-training-history.md`](../../@20261019_locomotion/docs/21-part2-ppo/history-experiments.md) §11；明天上机步骤见交接 [`part2-ppo-handoff-2026-10-26.md`](../../@20261019_locomotion/docs/21-part2-ppo/handoff.md)。

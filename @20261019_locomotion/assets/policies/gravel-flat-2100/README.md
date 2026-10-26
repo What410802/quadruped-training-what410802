@@ -15,7 +15,7 @@
 
 ## S1b 评测（32 envs，play 模式，随机 terrain level 0–2）
 
-按 [`../../../docs/training/eval-protocol.md`](../../../docs/training/eval-protocol.md) §6.2 初版门槛：
+按 [`../../../docs/training/eval-protocol.md`](../../../docs/10-part1/eval-protocol.md) §6.2 初版门槛：
 
 | 指标 | 结果 |
 |---|---|
@@ -31,4 +31,4 @@
 
 - flat 步态仍有左右不对称：在 `black-flat` play 环境测 RL−RR 平均 x 差约 **0.129 m**（RL 0.79 / RR 0.92 接触），比原始 baseline 0.155 m 略好但没有解决；不要当验收策略。
 - 只训练约 115 iteration；0.3 m/s 跟踪只是刚过线，速度裕度不足。
-- 权重入库策略见 [`../../../docs/training/experiments.md`](../../../docs/training/experiments.md) §5。
+- 权重入库策略见 [`../../../docs/training/experiments.md`](../../../docs/10-part1/experiments.md) §5。
