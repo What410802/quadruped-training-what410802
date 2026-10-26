@@ -73,3 +73,8 @@ BLACKW_HIM_INIT_STD=0.05 python -c 'load_rl_cfg("blackw-official-him")...'
 - 修复后 smoke：model_0 platform，1 attempt，train physics，1/1 success，JSON 正常，`gate_pass=true`。
 - 旧 job14 结果作废；新 job20 用 model_0 ×5 类 ×20 attempts ×2 seeds ×train/deploy 重建基线。
 - 所有 HIM job 现在必须 fail-loud：gate rc!=0 或无 JSON 时 job 退出非零。
+
+## 6. 2026-10-26 12:10 补充
+
+- gate 新增 `--command-scale`（0.6/1.0/1.3× 包络）、`--jitter-x/y/yaw`、`--physics deploy`（2 ms/10 dec）。
+- 当前 job20 先跑 1.0× 基线；包络扫描作为下一组 gate，避免一次 job 过长。

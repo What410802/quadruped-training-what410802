@@ -44,7 +44,7 @@
 
 ## 2. 短期待办（P0，今天/队列内）
 
-- [x] P0-1 修复 `him_part2_gate.py`：`play=False`、assert strict term、clean obs、timeout 计 attempt、记录 out_of_course。
+- [x] P0-1 修复 `him_part2_gate.py`：`play=False`、assert strict term、clean obs、timeout 计 attempt、记录 out_of_course、spawn jitter、command scale、deploy physics。
 - [x] P0-2 gate 配置层 smoke 通过；**2026-10-26 12:00 之前版本在 JSON 输出处有 `wheel_drop` NameError，旧“2/2”不可作为当前脚本证据**。修复后 1 attempt platform = 1/1 success。
 - [ ] P0-3 旧 job14 **无效**：155/155 rc=1，无 JSON；不采用其结果。已提交 job20（model_0 ×5 类 ×20 attempts ×2 seed ×2 physics）替代。
 - [ ] P0-4 等 job20 结束读 `~/rc_work/logs/him_model0_gate20_*`：model_0 的 per-category 20/20 基线；之后才决定是否 gate 早/中期 checkpoint。
