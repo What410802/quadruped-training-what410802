@@ -45,11 +45,11 @@
 ## 2. 短期待办（P0，今天/队列内）
 
 - [x] P0-1 修复 `him_part2_gate.py`：`play=False`、assert strict term、clean obs、timeout 计 attempt、记录 out_of_course。
-- [x] P0-2 修复后 smoke：2/2 success，证明 gate 能区分成功，不再全 0。
-- [x] P0-3 已提交修正后的 job12 全 checkpoint re-gate（task-spooler job 14；31 个 checkpoint × 5 类 × 10 attempts）。
-- [ ] P0-4 job14 结束后读 `~/rc_work/logs/him_regate_job12_*`：找出早/中期 success 最高的 checkpoint；不要用 job12 原 gate 的 0。
-- [ ] P0-5 对 job12 的 `model_0`（warm-start）与最佳 checkpoint 做 20/20；结论写入本文件 §4。
-- [ ] P0-6 对 job13（PPO stairs30）不做盲目续训：等其结束/早停后，对 m650 起的 checkpoint 跑完整 judge；若 continue 无提升，记录为负结果，不占 HIM 主线。
+- [x] P0-2 gate 配置层 smoke 通过；**2026-10-26 12:00 之前版本在 JSON 输出处有 `wheel_drop` NameError，旧“2/2”不可作为当前脚本证据**。修复后 1 attempt platform = 1/1 success。
+- [ ] P0-3 旧 job14 **无效**：155/155 rc=1，无 JSON；不采用其结果。已提交 job20（model_0 ×5 类 ×20 attempts ×2 seed ×2 physics）替代。
+- [ ] P0-4 等 job20 结束读 `~/rc_work/logs/him_model0_gate20_*`：model_0 的 per-category 20/20 基线；之后才决定是否 gate 早/中期 checkpoint。
+- [ ] P0-5 对 job20 中未过的 category 选最佳 checkpoint 做第二组 seed/加严 gate；结论写入本文件 §4。
+- [ ] P0-6 job13 已结束且训练 success 全程 0、tiercheck 0/278；记录为负结果，不再作为 HIM/PPO 有效 base。
 - [x] P0-7 把“gate 假测量/job12 发散”的结论同步到 `training/him-part2-gate-curriculum-plan.md` 和 `training/nan-video-diagnosis.md`。
 
 ## 2b. 无 GPU 审查已落地（2026-10-26）
@@ -61,6 +61,15 @@
 - std：新增 `BLACKW_HIM_FREEZE_STD=1` 训练冻结；`precheck` 保留旧语义。
 - reward A/B：新增 `BLACKW_PROGRESS_W` / `BLACKW_CLIMB_W` / `BLACKW_CLEAR_W`，默认值不变。
 - 未改：5ms/4dec 默认物理、绝对 shaping reward 默认权重、judge/export；这些需要 GPU/实验验证，不能盲改。
+
+## 2c. 2026-10-26 12:05 回归修复与队列
+
+- 修复 gate JSON 输出：`wheel_drop` NameError → `out_of_course` 已定义，`wheel_drop` 显式 0（任务没有独立 wheel-drop 输出，strict `part2_failure` 已覆盖落沟），并加 `gate_pass/success_rate/physics/jitter`。
+- 新增 `--jitter-x/y/yaw` 与 `--physics deploy`（2 ms/10 dec 评测）；单 attempt 修复 smoke：platform model_0 1/1 success，JSON 正常。
+- 旧 job14 的 155 个 gate 全部无效，已弃用；不把 job12 的旧 0 当能力证据。
+- 队列新增：
+  - job20 `him_model0_gate20_2seed`：model_0 × 5 类 × 20 attempts × 2 seeds × {train,deploy}，fail-loud；
+  - job21 `him_microfine_row0`：`BLACKW_HIM_INIT_STD=0.1`、`FREEZE_STD=1`、`ANCHOR_ALPHA=0.01`、lr=1e-4、entropy=0、300 iter、save25、每 checkpoint 10-attempt gate，fail-loud。
 
 ## 3. 短期待办（P1，HIM 下一轮）
 

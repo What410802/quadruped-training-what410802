@@ -70,6 +70,7 @@
 - **P1 第二轮续训完成**：`model_5496.pt`，1 h 11 min；训练地形 level 略升（mean≈1.62）但非法接触仍高；本地 Part 1 迁移变差（bands tilt≈38.7°、height 碰杆、T fail）。P1 **未完成**；不再盲目续训，下一步先做训练环境评估与课程/奖励调整。两轮训练共约 2 h 22 min；P1 总估 3–4 h。contact sheet：`prep.d/videos/part1_p1_cont_contact.png`。
 - rl_sar 后备自检：`check_rl_sar_fallback.sh` 的 input_map/command_limit 两项均 `all checks passed`；完整 `check_walk` 未重跑（需 GUI）。
 - **2026-10-26 无GPU修复/审查决策**：gate 增加 `--check-config-only` 预检与 `gate_pass/success_rate`，修正文档假 smoke；job14 trap/verdict 加固。确定不做全仓无差别审查，改为下一轮长训前完成 HIM 主链路关键合同审查（范围见 plan.md §8）。用户方案“row0逐档 + trench30/plum后期depth”方向批准，但要求 per-category gate 与奖励单变量。
+- **2026-10-26 gate 回归修复**：`him_part2_gate.py` 曾引用未定义 `wheel_drop`，导致 job14 的155次gate全部rc=1、无JSON；已修为 `out_of_course`/`wheel_drop=0`，加 `gate_pass/success_rate/physics/jitter`。单attempt model_0 platform smoke 1/1成功。job20（model_0×5×20×2seed×train/deploy）和job21（HIM 300iter microfine：freeze std0.1/anchor.01/lr1e-4/entropy0）已入队。
 - **2026-10-26 计划看板**：新增 [`plan.md`](plan.md)，记录 P0/P1/P2 待办、HIM gate 假测量修复、job12 发散结论与队列 job13/14。后续进度先更新该文件。
 - **2026-10-26 row0 队列已提交**：HIM row0 mixed train+gate job `him_row0_mixed_gate_20261026_...` 已提交 task-spooler，位于队列 ID12（当前 PPO job11 运行中，完成后自动执行）；训练 512env×96step×1500iter，随后对 platform/slope/stairs/high_wall/trench 各跑20次 gate。
 - **2026-10-26 防护+gate 落地**：HIM 加 reward/return clamp、HIMPPO/estimator 非有限 loss 跳过、policy log_std sanitize、terminal target nan_to_num、estimator_velocity sanitize、nonfinite_state 加 sensordata；新增 `him_part2_gate.py` 和 `BLACKW_MAX_ROW` 手动 row gate。guard/gate smoke 通过；未改原始地形。

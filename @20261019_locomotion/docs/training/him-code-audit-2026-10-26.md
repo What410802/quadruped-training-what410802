@@ -65,3 +65,11 @@ BLACKW_HIM_INIT_STD=0.05 python -c 'load_rl_cfg("blackw-official-him")...'
 - gate 20/20 与官方 judge；
 - 2 ms/10 dec 部署物理复测；
 - HIM 导出 TorchScript。
+
+## 5. 2026-10-26 12:05 回归修复
+
+- `him_part2_gate.py` 的 JSON 输出引用了未定义 `wheel_drop`，导致 job14 的 155 次 gate 全部 rc=1、无 JSON；这是修复 `out_of_course` 字段时引入的回归。
+- 已修：`out_of_course` 用真实计数；`wheel_drop` 显式 0（strict `part2_failure` 已覆盖落沟）；增加 `gate_pass`、`success_rate`、`physics`、`jitter`。
+- 修复后 smoke：model_0 platform，1 attempt，train physics，1/1 success，JSON 正常，`gate_pass=true`。
+- 旧 job14 结果作废；新 job20 用 model_0 ×5 类 ×20 attempts ×2 seeds ×train/deploy 重建基线。
+- 所有 HIM job 现在必须 fail-loud：gate rc!=0 或无 JSON 时 job 退出非零。

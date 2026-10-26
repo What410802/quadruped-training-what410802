@@ -80,7 +80,7 @@ python @20261019_locomotion/scripts/agent_scripts/him_part2_gate.py \
   --out gate_platform_r0.json
 ```
 
-修正后的 gate smoke：platform row0，2 attempts 得到 2/2 success，证明它不是“缺 term 恒 0”的假测量。旧版 play=True 的 smoke 只验证了 JSON 能生成，不能区分“没这项”和“没成功”，已废弃。
+gate 的配置层 smoke（play=False + strict term）通过；**2026-10-26 12:00 前的版本在 JSON 输出处引用了未定义 `wheel_drop`，造成 job14 的 155 次 gate 全部 rc=1，旧“2/2”不能作为当前脚本证据**。修复后 model_0 platform 单 attempt = 1/1 success，JSON 正常；新 job20 重新做 20/20 ×2 seed。
 
 ## 7. 已落地的数值防护
 
