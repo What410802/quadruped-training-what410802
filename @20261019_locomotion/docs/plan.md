@@ -95,9 +95,9 @@
 
 ## 2h. 2026-10-26 13:3x 恢复 HIM 主线
 
-- 独立审计 READY 后，按用户规则解除 HIM 5 分钟连续 GPU 限制；已启动受控 microfine（task-spooler job24，300 iter、512 env×96 step、lr1e-4、entropy0、freeze std、anchor0.01、save25、每 checkpoint 20-attempt screen）。
-- **caveat**：训练仍使用 5 ms/4 dec 与 training predicate screen；proxy judge 不是官方分数，部署未 ROS/FSM 测试。
-- 下一步看 job24 early success/action std；若发散就停，不盲目续训。
+- 独立审计 READY 后，按用户规则解除 HIM 5 分钟连续 GPU 限制；已启动受控 microfine（job24，300 iter、512 env×96 step、lr1e-4、entropy0、freeze std、anchor0.01）。
+- **job24 结果：提前终止（约 iter105）**。mean reward 从 -315 到 -200，`bad_sim_state` 每批 4–17，`part2_success=0`，action std 保持0.10；不是可接受的训练信号。已 kill，未做后续 gate。
+- 结论：HIM 算法/路径 READY，但当前 reward/termination/物理组合仍会让 microfine 掉进 bad_sim_state；恢复长训前先做 5–20 iter 的 reward/physics 诊断和 A/B，不盲目续训。
 
 ## 3. 短期待办（P1，HIM 下一轮）
 
