@@ -93,6 +93,12 @@
 - 文档已降级为本地 judge proxy，不冒充官方 ability_field。
 - 剩余 accepted risks：proxy judge scene 与官方 map 不一致、训练 5ms/4dec vs judge 2ms/10dec、部署未 ROS/FSM 测试；不阻塞 row0→row1 代码工作，但不能当官方分数。
 
+## 2h. 2026-10-26 13:3x 恢复 HIM 主线
+
+- 独立审计 READY 后，按用户规则解除 HIM 5 分钟连续 GPU 限制；已启动受控 microfine（task-spooler job24，300 iter、512 env×96 step、lr1e-4、entropy0、freeze std、anchor0.01、save25、每 checkpoint 20-attempt screen）。
+- **caveat**：训练仍使用 5 ms/4 dec 与 training predicate screen；proxy judge 不是官方分数，部署未 ROS/FSM 测试。
+- 下一步看 job24 early success/action std；若发散就停，不盲目续训。
+
 ## 3. 短期待办（P1，HIM 下一轮）
 
 - [ ] P1-1（job21 已撤回，未执行）不再直接升 row1/扩命令；先用 warm-start teacher 做 300–500 iter 微调：
