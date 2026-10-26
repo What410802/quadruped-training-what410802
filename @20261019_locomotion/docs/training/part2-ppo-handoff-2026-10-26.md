@@ -5,7 +5,7 @@
 
 ## 0. 一句话交接
 
-- **2026-10-26 08:30 复核修正（先读）**：guard4 三个 800-iter run 已确认真跑完，但复核**无可捞档位**（15 个 checkpoint 的 judge：slope45 0/16、stairs30 0/15、plum 0；±0.1 m 抖动复核同结论，证据见 [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §14）；**slope45 被摩擦上限判死**（官方 judge 场景 μ=1.0，tan45°=1.0 零余量；同一权重 μ=1.5 可爬到 root z≈2.08 m）→ **盲侧目标由 950 修正为 850**（当前 750 的缺口只剩 stairs30 +100），全体实际上限 1200/1300。今日起的执行顺序、GPU 队列协议与待确认项见 [`part2-ppo-execution-plan-2026-10-26.md`](part2-ppo-execution-plan-2026-10-26.md)（本文件 §4 的"明天清单"以其为准）。
+- **2026-10-26 复核修正（先读）**：guard4 三个 800-iter run 已确认真跑完，但复核**无可捞档位**（15 个 checkpoint 的 judge：slope45 0/60、stairs30 4/60、plum 0；±0.1 m 抖动复核同结论，证据见 [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §14）；**slope45 稳态爬坡静态摩擦零余量**（官方 judge 场景 μ=1.0 = tan45°；μ=1.5 时同一权重可爬到 root z≈2.08 m），**但按用户 2026-10-26 第二轮指示不判死**：μ=1.2 训练只作诊断、评测同时报 μ=1.2 与 1.0，冲坡可把等效需求降到 0.89–0.94 且不超关节速度限幅，后期可试 μ 递减课程。**盲侧当前阶段目标仍按 850 计**（当前 750 的缺口 = stairs30 +100），全体实际上限 1200/1300。今日起的执行顺序、GPU 队列协议与待确认项见 [`part2-ppo-execution-plan-2026-10-26.md`](part2-ppo-execution-plan-2026-10-26.md)（本文件 §4 的"明天清单"以其为准）。
 - **当前交付不变**：`comp_bc_v5` 单份可部署权重，judge v5 下 **750/1300**（最好情况，4 次挑战期望 ≈743），已入库 `@20261024_blackw/models/comp_bc_v5/`；官方权重基线 660。最低档 5 类 judge 全部 8/8。
 - **训练目标与原则（最重要，先读 §3）**：目标是训练出**一个鲁棒的策略模型**，用 mjlab 的地形难度机制 + **逐档鲁棒性 gate 逐级提升**（单谱系、串行 stage、每档 gate 通过才升档、从上一档 best checkpoint 热启动）。**gate 标准（用户 2026-10-26 确认）**：简单档（S0–S2）judge **16/16**、较难档（S3–S6 及专项最高档）judge **≥8/8**，且 gate 必须包含合理的初始状态随机化 + 3 档速度指令随机化（见 §3.4）。**旧版"把不同难度混在一起并行训练"（`BLACKW_MAX_ROW` 随机混合 row 0..5）是严重错误，已废弃，不要再这样训**；那是做多难度对比实验的做法，不是课程学习，也不可能得到逐档鲁棒的模型。
 - **训练侧已修复**：success 谓词死代码、可刷分奖励、训练地形几何（坡道薄板 2cm 台阶 / ramp y 偏移）、训练物理与 judge 不一致（euler/elliptic/impratio=100；warp 不支持 PGS）、critic/optimizer 继承、entropy 推大 σ、`BLACKW_MAX_ROW` 未生效等（细节见归档 §11）。
@@ -242,7 +242,7 @@ nohup env BLACKW_DEPLOY_SIM=1 BLACKW_DIFF_MIN=<STAGE_R> BLACKW_DIFF_MAX=<STAGE_R
 - 从最近 checkpoint 续训是常规操作（不必重开 run）。
 - gate 标准：简单档 S0–S2 judge 16/16；较难档 S3–S6 及专项最高档 judge ≥8/8；gate 含初始状态随机化 + 3 档速度指令随机化（§3.4）。
 - 11-01 前优先级：M0 逐档 gate + stairs30 盲专项（盲侧目标 850，2026-10-26 由 950 修正）+ 深度部署 D0/D1 **并行**。
-- 盲/深度划分（2026-10-26 修正）：盲可拿分 850（platform40/wall40/slope35/stairs20/trench20 + stairs30 增量）；深度依赖 = trench30（+150）与梅花桩（+200）；slope45 因 judge 物理摩擦上限（μ=1.0 vs tan45°=1.0）判为不可达。
+- 盲/深度划分（2026-10-26 修正）：盲可拿分 850（platform40/wall40/slope35/stairs20/trench20 + stairs30 增量）；深度依赖 = trench30（+150）与梅花桩（+200）。slope45 当前阶段不计入 850，但**不判死**：judge μ=1.0 静态零余量；按用户要求做 μ=1.2 诊断并双报 μ=1.2/1.0；冲坡可提供 6–11% 摩擦余量且不超 dq_des 20 rad/s，后期可试 μ 递减课程（1.5→1.0，手动 gate）。
 - **深度部署必须开始做**：盲可达任务先拿满/≥90% 分数（850→≥850），深度侧 D0 + 部署最小链路当天开工（§4.3），深度专项 = trench30 + 梅花桩（§4.4）。
 - **GPU 队列（2026-10-26）**：task-spooler 单槽已实测可用（见 §2.3 / `remote-training-workflow.md` §5），训练/导出任务一律经 `ts` 提交。
 - **guard4 复核（2026-10-26）**：三个 800-iter run 跑完但无新档位（历史归档 §14.1），不续训。

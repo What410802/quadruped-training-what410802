@@ -138,7 +138,7 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 - 命令 sweep 复核（`--jitter-y 0.1`）：comp_bc_v5 + 3 个 guard4 checkpoint × stairs30 的 8 组指令 × 3 次 = **0/96**；同 4 权重 × slope45 的 4 组指令 × 2 次 = **0/32**。
 - 结论：混合行 guarded 微调不产生 45°/30cm 新技能，与交接 §3.3 一致；guard4 不续训，只作证据。产物 `prep.d/results/guard4_ts_trial/{judge,sweep}/*.json`（不入库）。
 
-### 14.2 slope45 摩擦上限（盲侧目标 950→850 的依据）
+### 14.2 slope45 摩擦余量核算（盲侧目标 950→850 的依据；2026-10-26 第二轮补充：不判死）
 
 - 官方 judge 场景 geom 摩擦系数 = 1.0（`assets/terrain/part2/ability_field/map.xml`：floor/platform 显式 `friction="1 .005 .0001"`；slope mesh 与机器人轮子用默认 1.0，MuJoCo 接触摩擦按元素取大）→ 45° 爬坡所需 tan45° = 1.0，**零余量**。
 - 探针（`@20261019_locomotion/scripts/agent_scripts/probe_slope_friction.py`）：comp_bc_v5 @vx=0.3、场景 `part2_off_slope_45deg.xml`，加载后改 `model.geom_friction` 再跑同一 judge 判据：
@@ -150,11 +150,18 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 | 1.5 | fail timeout | 2.08 m（18 s 窗口内几乎登顶） |
 | 2.0 | fail fell（tilt 76°） | 2.54 m |
 
-- 结论：μ=1.0 时策略在 45° 坡上滑住；μ≥1.5 同一权重几乎登顶 → **45° 的瓶颈是摩擦余量，不是策略能力**。盲侧可拿满分相应修正为 **850**（platform40 200 + wall40 200 + slope35 100 + stairs20 100 + trench20 150 + stairs30 100 增量），全体实际上限 1200/1300（trench30 +150、plum +200 仍靠深度）。
+- 结论：μ=1.0 时策略在 45° 坡上滑住；μ≥1.5 同一权重几乎登顶 → **45° 稳态爬坡的瓶颈是摩擦余量（tan45°=μ=1.0 静态零余量），不是策略能力**。盲侧当前阶段目标相应按 **850** 计（platform40 200 + wall40 200 + slope35 100 + stairs20 100 + trench20 150 + stairs30 100 增量），全体实际上限 1200/1300（trench30 +150、plum +200 仍靠深度）。
+- **2026-10-26 第二轮补充（用户指示：不判死、双测 μ）**：① 训练环境 `BLACKW_WORLD_FRICTION` 已实现（§14.2 之后新增），μ=1.2 的 45° 课程实验见 §14.5；② **评测必须同时报 μ=1.2 与 μ=1.0**（judge 官方场景 μ=1.0；μ=1.2 用同场景改 friction 的 `probe_slope_friction.py --mu 1.2` 测）；③ **冲坡核算**：纯惯性登顶需 6.26 m/s（轮速 60.8 rad/s），超过部署 `dq_des` 上限 20 rad/s，不可行；但入坡 1.5–2.0 m/s 可把等效需求 μ_eff 从 1.0 降到 0.943–0.898（能量 22.9–40.8 J / ΔPE 399.9 J），且实测轮速峰值 19.3 rad/s < 20 rad/s（不触发限幅）、腿关节动态峰值 22–30 rad/s（模型无速度限位）→ **冲坡不会造成关节速度超限，是可用的摩擦余量机制**；④ 后期可做 **μ 递减课程（1.5→1.3→1.2→1.1→1.0）+ 冲坡**，逐档手动 gate；正式赛物理口径由用户与培训方沟通。计算脚本 `@20261019_locomotion/scripts/agent_scripts/probe_slope_friction.py`。
 
 ### 14.3 task-spooler 单卡队列实测
 
 - 远程 `~/rc_work/gpu_jobs/` 下已落地 `common.sh`（flock 等 GPU + flag + trap 清理 + 持久日志）、`on_finish.sh`（TS_ONFINISH 兜底）与 job 脚本模板；详细契约与 3 个 job 的实测数字见 [`remote-training-workflow.md`](remote-training-workflow.md) §5。
 - 关键结论：单槽串行、排队即自动启动、`ts -k` 走 SIGTERM 可被 trap 清理、日志/退出码/耗时可用 `ts -i/-c` 取；队列状态在 `/tmp`，重启丢失，持久记录以 `~/rc_work/logs/*.log` 为准。
 
+### 14.4 stairs30 专项 v0：第一次拿到 judge 上的 stairs30 成功（2026-10-26 上午）
+
+- 结构：`blackw-stairs-exact` 固定难度，GuardedPPO（blend 0.95 / lr 4e-5 / 冻结 σ / entropy 0）从 `bc_v5_guarded_s01/model_0_bc_v5_guarded_s01.pt` 热启动；512 env、save 50、`BLACKW_DEPLOY_SIM=1`；阶段 A r=0.75（25 cm/step）300 iter（2.4 s/iter，12.1 min），阶段 B r=1.0（30 cm/step）再 400 iter（2.3 s/iter）从 A 的 `model_299.pt` 热启动。job 脚本 `~/rc_work/gpu_jobs/ppo_st30_{s075,s100}.sh`（task-spooler 单槽）。
+- 训练侧信号：阶段 A `part2_success` 计数 0.40–0.58（BC 在 25 cm 本来就有基础）；阶段 B 0.03–0.19（30 cm 从 0 起来但有波动）。canonical 训练环境 tiercheck（r=1.0）仍 0/278（warp 无 PGS 的已知差距，只作下界）。
+- **judge（官方隔离场景、±0.1 m 抖动、4 次、指令 0.75→0.45@x=1.1）**：阶段 A 各 checkpoint stairs30 **0/4**、stairs20 与基线持平（2/4）；阶段 B **m350 与 m650 各 1/4 通过 stairs30**（基线 comp_bc_v5 0/4），stairs20 在 0–3/4 间波动。→ 首次在 judge 上出现 30 cm 台阶成功（25% 单次通过率），方向正确但距 8/8 仍远；已排队 `ppo_st30_s100b`（从 m650 续训 800 iter，单变量）继续。
+- 产物：`prep.d/results/ppo_st30/{exports,judge}/`（不入库；JSON 含每关 4 次 attempt 明细）。
 
