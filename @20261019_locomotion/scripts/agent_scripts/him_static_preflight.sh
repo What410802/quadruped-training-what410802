@@ -7,8 +7,8 @@ GATE="$ROOT/him_part2_gate.py"
 for f in "$GATE" "$ROOT/him_model0_gate20_2seed.sh" "$ROOT/him_microfine_row0.sh" "$ROOT/him_regate_job12.sh"; do
   [ -f "$f" ] || { echo "missing $f"; exit 1; }
 done
-python3 -m pyflakes "$GATE"
-python3 -m py_compile "$GATE"
+python3 -m pyflakes "$GATE" "$ROOT/export_him_policy.py"
+python3 -m py_compile "$GATE" "$ROOT/export_him_policy.py"
 grep -q "load_env_cfg(args.task, play=True)" "$GATE" && { echo "gate must not use play=True"; exit 1; } || true
 grep -q "screen_pass" "$GATE" || { echo "gate missing screen_pass"; exit 1; }
 grep -q "acceptance_eligible" "$GATE" || { echo "gate missing acceptance_eligible"; exit 1; }

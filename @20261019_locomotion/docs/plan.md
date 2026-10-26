@@ -62,6 +62,14 @@
 - reward A/B：新增 `BLACKW_PROGRESS_W` / `BLACKW_CLIMB_W` / `BLACKW_CLEAR_W`，默认值不变。
 - 未改：5ms/4dec 默认物理、绝对 shaping reward 默认权重、judge/export；这些需要 GPU/实验验证，不能盲改。
 
+## 2e. 2026-10-26 HIM 导出/judge 基线
+
+- 新增 [HIM judge/export 基线](training/him-judge-export-baseline.md)。
+- `model_0` 导出 TorchScript 后跑官方本地 judge：total_score=410；stairs 10/15/20 成功、platform 10/20/30 成功等。
+- job20 不完整 screen 的 stairs=0/20 与 judge 成功矛盾，确认训练 predicate 的 stairs 是 false negative（旧 down_end/descend 语义过严）。
+- job12 末 checkpoint judge total560，但 trench 出现 base_z=-84 等非法状态，judge runner 需要 invalid-state 守卫；不采用该分数。
+- 训练 predicate 对齐 judge 之前，HIM 不恢复长训。
+
 ## 2d. 2026-10-26 2h 静态路径推演
 
 - 新增 [HIM 路径推演](training/him-path-trace-2026-10-26.md)：按训练/rollout/storage/update/checkpoint/gate 实际调用路径核对语义；确认 process_env_step 使用 next_obs、terminal extras 覆盖、PPO.load(actor=True) 覆盖 estimator 等路径正确。
