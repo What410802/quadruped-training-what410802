@@ -134,8 +134,8 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 ### 14.1 guard4 长跑复核：无可捞档位
 
 - 三个 run 均完成 800 iter（`model_799.pt` 落盘；最后 mtime 10-25 23:09）；`max_init_terrain_level=5`（row 0..5 随机 = 交接 §3.3 禁止的混合难度做法），都从 `bc_v5_guarded_s01/model_0_bc_v5_guarded_s01.pt` 热启动。
-- 导出 5 个 checkpoint/run（m0/200/400/600/799；单次导出 5–6 s，policy.pt 1.38 MB）到 `prep.d/results/guard4_ts_trial/exports/`，本地 judge（`eval_blackw_part2.py --attempts 4`，无抖动、deterministic）：slope45 **0/16**、stairs30 **0/15**（唯一一次 4/4 是确定性单轨迹，±0.1 m 抖动 3 次全挂）、plum **0**；slope35 与 stairs20 只在部分 checkpoint 保持。
-- 命令 sweep 复核（`--jitter-y 0.1`、每配置 3 次）：comp_bc_v5 + 3 个 guard4 checkpoint × stairs30 的 8 组指令 = **0/24**；同 4 权重 × slope45 的 4 组指令 = **0/8**。
+- 导出 5 个 checkpoint/run（m0/200/400/600/799；单次导出 5–6 s，policy.pt 1.38 MB）到 `prep.d/results/guard4_ts_trial/exports/`，本地 judge（`eval_blackw_part2.py --attempts 4`；无抖动时 4 次为确定性重复，15 个 checkpoint × 4 次）：slope45 **0/60**、stairs30 **4/60**（只有 guard4_plum_m200 一条确定性轨迹过，±0.1 m 抖动重测 3 次全挂）、plum **0/60**；slope35 与 stairs20 只在 9/15 与 3/15 个 checkpoint 保持。
+- 命令 sweep 复核（`--jitter-y 0.1`）：comp_bc_v5 + 3 个 guard4 checkpoint × stairs30 的 8 组指令 × 3 次 = **0/96**；同 4 权重 × slope45 的 4 组指令 × 2 次 = **0/32**。
 - 结论：混合行 guarded 微调不产生 45°/30cm 新技能，与交接 §3.3 一致；guard4 不续训，只作证据。产物 `prep.d/results/guard4_ts_trial/{judge,sweep}/*.json`（不入库）。
 
 ### 14.2 slope45 摩擦上限（盲侧目标 950→850 的依据）

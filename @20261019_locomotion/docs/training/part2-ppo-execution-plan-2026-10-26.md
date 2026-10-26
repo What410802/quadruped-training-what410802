@@ -4,7 +4,7 @@
 
 ## 0. 结论（先读）
 
-- **guard4 长跑已完成但无可捞档位**：`guard4_{slope,stairs,plum}` 三个 800-iter run 全部跑完（`model_799.pt` 落盘）；导出 5 个 checkpoint/run 做 judge 复核，**slope 45° 0/16、stairs 30cm 0/15、plum 0**，slope35°/stairs20cm 只在部分 checkpoint 保持。唯一一次 stairs30 4/4 是确定性单轨迹，±0.1 m 横向抖动重测 3 次全挂。结论与交接 §3.3 一致：**混合难度行（row 0..5 随机）的 guarded 微调不会凭空长出 45°/30cm**；guard4 只作历史证据，不续训。
+- **guard4 长跑已完成但无可捞档位**：`guard4_{slope,stairs,plum}` 三个 800-iter run 全部跑完（`model_799.pt` 落盘）；导出 5 个 checkpoint/run 做 judge 复核（15 个 checkpoint × 4 次；无抖动时 4 次等价确定性重复），**slope 45° 0/60、stairs 30cm 4/60（只有 1 个 checkpoint 的确定性轨迹过，±0.1 m 抖动重测 3 次全挂）、plum 0/60**，slope35°/stairs20cm 只在 9/15 与 3/15 个 checkpoint 保持。结论与交接 §3.3 一致：**混合难度行（row 0..5 随机）的 guarded 微调不会凭空长出 45°/30cm**；guard4 只作历史证据，不续训。
 - **slope 45° 在官方 judge 物理下基本不可达，盲侧目标由 950 修正为 850**：judge 场景 geom 摩擦系数全为 **1.0**（`ability_field/map.xml`），45° 爬坡所需 tan45° = 1.0 → **零余量**；摩擦探针实测同一 comp_bc_v5 权重在 μ=1.0 只爬到 root z≈0.79 m（滑住），把摩擦抬到 μ=1.5 后同一权重能爬到 z≈2.08 m（几乎登顶）。这是物理口径上限，不是策略能力问题；**不再给 slope45 分配训练算力**（待用户确认，见 §9）。
 - **修正后的分数账**：当前交付 `comp_bc_v5` = **750/1300**（4 次挑战期望 ≈743）；可争取 = stairs30（+100，盲专项）+ trench30（+150，深度）+ plum（+200，深度）；不可达 = slope45（+100）。**盲侧实际天花板 = 850**（当前 750 + stairs30 的 100），**全体实际上限 = 1200/1300**。
 - **今日关键路径**：① stairs30 盲专项 A/B（GPU 队列，约 80 min，本文件 §4/§7 给了可直接提交的 job）；② gate 工具扩展 + comp_bc_v5 全程 placement（本地 CPU，不占 GPU）；③ 深度 D0（训练侧相机移植 + rl_sar 渲染/CNN 最小链路，GPU 只占 ~20 min smoke）。
@@ -31,7 +31,7 @@
 | guard4_stairs m0/m200/m400/m600/m799 | 0/4 ×5 | 4/4 ×3、0/4 ×2 | 0/4 ×5 | 4/4 ×1、0/4 ×4 | 0/4 ×5 |
 | guard4_plum m0/m200/m400/m600/m799 | 0/4 ×5 | 4/4 ×2、0/4 ×3 | 4/4 ×1、0/4 ×4 | 4/4 ×1、0/4 ×4 | 0/4 ×5 |
 
-命令 sweep 复核（±0.1 m 横向抖动、每配置 3 次；`prep.d/results/guard4_ts_trial/sweep/`）：comp_bc_v5 / guard4_plum_m200 / guard4_stairs_m0 / guard4_stairs_m799 × stairs30 的 8 组速度指令（0.4–1.0 m/s 直冲、0.65→0.35、0.75→0.45、0.8→0.3、0.9→0.35、1.0）× 3 次 = **0/24 全挂**；同 4 个权重 × slope45 的 4 组指令 = **0/8 全挂**。→ 现有 checkpoint 无法用"换指令"白拿 stairs30/slope45。
+命令 sweep 复核（±0.1 m 横向抖动；`prep.d/results/guard4_ts_trial/sweep/`）：comp_bc_v5 / guard4_plum_m200 / guard4_stairs_m0 / guard4_stairs_m799 × stairs30 的 8 组速度指令（0.4–1.0 m/s 直冲、0.65→0.35、0.75→0.45、0.8→0.3、0.9→0.35、1.0）× 3 次 = **0/96 全挂**；同 4 个权重 × slope45 的 4 组指令 × 2 次 = **0/32 全挂**。→ 现有 checkpoint 无法用"换指令"白拿 stairs30/slope45。
 
 **slope45 摩擦探针**（`@20261019_locomotion/scripts/agent_scripts/probe_slope_friction.py`，改 `model.geom_friction` 后同场景重跑 comp_bc_v5，vx=0.3）：
 
