@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Pre-launch GPU budget check for the shared training machine.
+"""Optional manual GPU budget check (historical helper).
 
-Two training lines (HIM / PPO+BC) share one RTX 5060 Ti (16 GB).  Protocol:
-each line may use at most half of the GPU memory (~8 GB) and at most 2
-concurrent training processes.  Launch training only after this check passes.
+The compute machine now uses a GPU queue for training jobs, so launching through
+the queue is the normal path and the old "half GPU / 8 GB per line" protocol is
+retired.  This script is kept only as a manual sanity check for memory/process
+counts when running something outside the queue.
 
 Recommended per-line launch flags (exact Part2 tasks):
   BLACKW_NCONMAX=256 BLACKW_NJMAX=1024   # ~1.5 GB for a 512-env run
