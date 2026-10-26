@@ -165,12 +165,14 @@ def run_level(level: dict, judge_level: dict, policy: str, realtime: bool) -> di
         # sim-time timeline: GetUp, Enter-RL, then the level's official command via
         # joystick axes (same path as a human operator; JOY_SCALE=1.5 at full stick).
         getup = (0.5, 0.9)
-        enter = (2.0, 2.4)
-        cmd_start = 3.0
-        cmd_end = cmd_start + seconds
+        enter_from = 2.0
         axes_cmd = {0: command[1] / JOY_SCALE, 1: command[0] / JOY_SCALE,
                     3: command[2] / JOY_SCALE}
         t_cmd_sim: float | None = None
+        cmd_start: float | None = None
+        cmd_end: float | None = None
+        rl_entered_at: float | None = None
+        next_rl_probe = 0.0
         wall_deadline = time.monotonic() + 300.0
         while True:
             if time.monotonic() > wall_deadline:
@@ -178,18 +180,36 @@ def run_level(level: dict, judge_level: dict, policy: str, realtime: bool) -> di
                 break
             rclpy.spin_once(node, timeout_sec=0.002)
             now = node.sim_time - t0
+            # RL entry is detected from rl_sim's own stdout marker (the FSM prints
+            # "[FSM] ... Entered RL_Locomotion"; /mit_command is published before RL
+            # too, so it cannot be used as the signal).
+            if rl_entered_at is None and time.monotonic() >= next_rl_probe:
+                next_rl_probe = time.monotonic() + 0.2
+                try:
+                    if "Entered RL_Locomotion" in rl_log.read_text(
+                            encoding="utf-8", errors="replace"):
+                        rl_entered_at = node.sim_time
+                except OSError:
+                    pass
             buttons, axes = [], {}
             if getup[0] <= now < getup[1]:
                 buttons = ["A"]
-            elif enter[0] <= now < enter[1]:
-                buttons, axes = ["RB"], {7: 1.0}
-            elif now >= cmd_start:
-                axes = dict(axes_cmd)
+            elif rl_entered_at is None and now >= enter_from:
+                if (int(now * 5) % 4) == 0:  # Enter-RL pulse every 0.8 s sim
+                    buttons, axes = ["RB"], {7: 1.0}
+            elif rl_entered_at is not None:
+                if cmd_start is None:
+                    cmd_start = (rl_entered_at - t0) + 0.5  # settle before command
+                    cmd_end = cmd_start + seconds + 1.0
+                if now >= cmd_start:
+                    axes = dict(axes_cmd)
+                    if t_cmd_sim is None:
+                        t_cmd_sim = node.sim_time
+                        rl_start_sim = node.sim_time
+                if now >= cmd_end + 1.0:
+                    break
             node.send_joy(buttons, axes)
-            if rl_start_sim is None and now >= cmd_start:
-                rl_start_sim = node.sim_time
-                t_cmd_sim = node.sim_time
-            if rl_start_sim is not None and now >= cmd_end + 1.5:
+            if rl_start_sim is not None and cmd_end is not None and now >= cmd_end + 1.0:
                 break
         # stop sending the command; the judge uses the recorded interval only.
         try:
@@ -278,8 +298,16 @@ def main() -> int:
     realtime = args.realtime == "true"
     for level in selected:
         print(f"\n== {level['key']} ({level.get('category')}) ==")
+        judge_key = level["key"]
+        if judge_key not in by_key and judge_key.endswith("bool"):
+            judge_key = judge_key[:-4]
+        if judge_key not in by_key:
+            results.append({"level": level["key"], "status": "fail",
+                            "reason": f"judge rules missing for key {level['key']!r}"})
+            print(f"  -> FAIL judge rules missing ({level['key']})")
+            continue
         try:
-            res = run_level(level, by_key[level["key"]], args.policy, realtime)
+            res = run_level(level, by_key[judge_key], args.policy, realtime)
         except Exception as exc:  # keep the remaining levels running
             res = {"level": level["key"], "status": "fail", "reason": f"exception: {exc}"}
         results.append(res)

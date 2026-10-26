@@ -85,12 +85,15 @@ def main() -> int:
     unwrapped = env.unwrapped
     tm = unwrapped.termination_manager
     obs = env.get_observations()
-    reset_terms = [t for t in tm.active_terms if "part2" in t]
-    # Fail closed: a missing part2 term silently reports 0 success (the HIM line
-    # hit exactly this with a play=True gate config).  Never publish a rate without it.
-    if "part2_success" not in reset_terms:
+    reset_terms = [t for t in tm.active_terms if "part2" in t or t == "official_platform_success"]
+    # Fail closed: a missing success term silently reports 0 success (the HIM line
+    # hit exactly this with a play=True gate config).  Platform-exact tasks also
+    # terminate on official_platform_success, so count either success predicate.
+    success_terms = [t for t in tm.active_terms
+                     if t in ("part2_success", "official_platform_success")]
+    if not success_terms:
         raise SystemExit(
-            f"check_tier_success: task {args.task!r} has no part2_success termination "
+            f"check_tier_success: task {args.task!r} has no success termination "
             f"(active={sorted(tm.active_terms)}); refusing to report a silent 0")
     if "part2_failure" not in reset_terms:
         print(f"[warn] task {args.task!r} has no part2_failure term; "
@@ -107,10 +110,13 @@ def main() -> int:
         with torch.no_grad():
             actions = policy(obs, stochastic_output=args.stochastic)
         obs, _rew, dones, _extras = env.step(actions)
-        success_term = tm.get_term("part2_success")
+        succ = torch.zeros_like(tm.get_term(success_terms[0]))
+        for name in success_terms:
+            term = tm.get_term(name)
+            succ = succ | term.bool().to(succ.device)
         if bool(dones.any()):
             done_mask = dones.bool().cpu()
-            success[done_mask] += success_term[done_mask.to(success_term.device)].long().cpu()
+            success[done_mask] += succ[done_mask.to(succ.device)].long().cpu()
             episodes[done_mask] += 1
             for name in tm.active_terms:
                 term = tm.get_term(name).cpu()
@@ -122,7 +128,8 @@ def main() -> int:
     rate = torch.where(
         done_envs,
         success.float() / episodes.clamp(min=1).float(),
-        torch.full_like(success, float("nan")).float(),
+        torch.full((success.numel(),), float("nan"), dtype=torch.float32,
+                   device=success.device),
     )
     truncated = int(episodes.min().item()) < args.episodes
     out = {
