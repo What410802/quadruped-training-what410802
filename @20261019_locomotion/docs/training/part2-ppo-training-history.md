@@ -182,3 +182,53 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 
 - 结论：**μ=1.2 的 20% 静态余量不足以让当前 BC 谱系学会 45°**（GuardedPPO 小步长 350 iter 也没找到）；并不意味着 μ 课程无效——下一步按用户指示从更高摩擦起学（μ=1.5/2.0，BC v5 在 μ=1.5 可攀到 root z≈2.08、μ=2.0 能到顶），学会后逐档降 μ（2.0→1.7→1.5→1.3→1.2→1.1→1.0），每档手动 gate 并双报 μ=1.2/1.0。整体计划与待办见 [`part2-ppo-execution-plan-2026-10-26.md`](part2-ppo-execution-plan-2026-10-26.md) §0.2/§2.3。
 - 产物：远程 `~/rc_work/models/ppo_slope{A,B}_mu12_*`；本地 `prep.d/results/slope_mu12/`（不入库）。
+
+## 15. 2026-10-26 10:45 交叉审计核实（PPO 侧）与根因
+
+> 背景：另一条线（HIM）提交了一份队列/计划诊断，用户要求核实其中与 PPO 相关的说法、检查 HIM 的问题是否在 PPO 中出现，并从更高层思考根因。本文只记录核实过的证据；HIM 仓/脚本保持只读、不改。
+
+### 15.1 逐条核实（PPO 部分）
+
+| 报告条目 | 核实 | 证据 |
+|---|---|---|
+| job13 配置正确（r=1.0、deploy sim、blend 0.95、lr 4e-5、entropy 0、learn_std false、512 env、save 50、resume m650） | ✅ 属实 | job13 `params/agent.yaml`、`params/env.yaml`；补充：`init_std: 1.0` 因 `learn_std: false` 被忽略，实际 `Policy/mean_std` 恒为 0.100 |
+| 10:45 iter≈748/1450，训练 success≈0（偶尔 0.03）、reward 7.5–8.1 | ✅ 属实 | tfevents：`part2_success` max 0.083 / last 0.0；`Train/mean_reward` last 8.197（max 9.42） |
+| stage2 末段 reward 4.1–4.5、success 0.03–0.19 | ✅ 属实 | tfevents：`Train/mean_reward` last 4.513；`part2_success` max 0.269 / last 0.032 |
+| judge 侧只有 m350/m650 各 1/4 | ✅ 属实 | `prep.d/results/ppo_st30/judge/`；补充：无抖动时 4 次 attempt 是确定性重复（等价 1 条轨迹），不能当成功率 |
+| 同配方再 800 iter ROI 低、建议早停 | ✅ 证据支持 | job13：reward 4.5→8.2 但 success 仍 0；`time_out` 0.16→0.68、episode length 684→822、`bad_orientation` 0.90→0.58（"少摔但卡住/超时"的退化） |
+| GuardedPPO 的 base 是加载后的 m650，不是 BC v5 | ✅ 属实 | `guarded_ppo.py` `update()`：首次 update 时把当前 actor 快照为 base；job13 `load_run/load_checkpoint` 即 m650 |
+| blend 方向：0.95=每步保留 95% 累计漂移；换 0.90 会强化锚 | ✅ 属实 | 实现 `θ = base + blend·Δ`；单 iter 漂移保留 `0.95^16≈0.44` vs `0.90^16≈0.185`；本文档配套的计划 TODO 已修正 |
+| `BLACKW_GUARD_MAX_DRIFT` 已存在 | ✅ 属实 | `guarded_ppo.py`（默认 0 = off） |
+| job13 只做 tiercheck、无 judge 选点/早停 | ⚠️ 部分属实 | job 脚本确实只做 tiercheck；judge 选点是我们计划在 job 结束后手动做，缺的是**训练中/早停用的在线门控** |
+| `PREVDIR` glob 会匹配 `*_ppo_st30_s100b`，重跑会 resume 错 run | ❌ 不属实 | 实测 `ls -d .../*_ppo_st30_s100` 只列出 s100；job13 `params/agent.yaml` 的 `load_run` 也是 s100。真实风险是硬编码 `model_650.pt`（中断重跑会重复同一段） |
+| job13 之后队列为空 | ✅ 属实 | `ts -l`（finished 11/12 + running 13，无后续排队） |
+| gate 工具 / placement 未按 10:30 完成 | ✅ 属实（欠账） | 本地不存在 `gate_stage.py`，`eval_blackw_part2.py` 未加 jitter/command-set 参数 |
+
+HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `load_env_cfg(play=True)`、`:84` 缺 term 时静默 `None` ✅；gate JSON `attempts_done=14`、high_wall `0`、success=failure=0 ✅；job12 `timestep 0.005 / decimation 4 / lr 5e-4 / entropy 3e-3 / init_std 0.3` ✅；job12 未走 `common.sh`、只有 `EXIT` trap 没有 `SIGTERM` trap 部分属实；其"训练发散"现象来自其自身日志，PPO 侧无法独立复现。
+
+### 15.2 HIM 的问题在 PPO 里有没有（同构性检查）
+
+| HIM 问题 | PPO 是否出现 | 说明 |
+|---|---|---|
+| gate 用 `play=True` 缺 part2 终止项 → 静默 0 | ❌ 不存在 | `check_tier_success.py` 用 `play=False`，JSON 输出 `part2_terms`；judge 是独立判据（`eval_blackw_part2.py` 自带 `Part2OfficialJudge`） |
+| 训练发散：σ 0.30→0.49、max action→100、reward↑/success↓ | ⚠️ 轻症同构 | σ 冻结 0.1（`Policy/mean_std` 恒定）不漂；但 job13 reward 4.5→8.2 而 success 0、timeout↑、episode length↑ —— 同一"步进奖励累积、目标错配"的轻症 |
+| 无 KL/BC anchor、锚到已漂移权重 | ⚠️ 部分同构 | 锚点=m650（已漂移），没有"显式指定 BC/最佳已知 checkpoint 为锚"的入口；GuardedPPO 只有权重投影，无 KL/BC 项 |
+| 只 gate 最后 checkpoint、无 eval-gated 选点 | ⚠️ 部分同构 | 每 50 iter 存档、每 100 iter 导出，但缺早停/在线 judge 门控；judge 选点靠事后手动 |
+| 物理不对齐（5ms/4dec vs 2ms/10dec） | ❌ 不存在 | PPO 训练用 0.002/10 dec（job13 params 确认）；残余偏差是 warp 无 PGS（stairs 训练成功率系统性偏低，已有记录） |
+| 未走 `common.sh`、无 SIGTERM trap | ❌ 不存在 | PPO job 走 `common.sh` + TERM/EXIT trap（`kill_test` 验证过 flag 复位） |
+
+### 15.3 根因（为什么这些问题会被引入）
+
+1. **评估层依附训练环境**：成功率来自"训练 env 的 termination term 计数"而不是独立评测契约；缺项时静默返回 0（无断言）。两条线各写一套 eval 脚本、没有共享接口与审计，所以同一类坑只在一侧爆出来。
+2. **BC 蒸馏权重的微调范式没被约束**：把"BC 初始化 + 从零 RL 超参"混用；GuardedPPO 是事后补丁，其语义（blend 越大越塑性、base 取首次 update 时权重）没进入接口/测试/文档强约束，于是被用反方向。
+3. **稀疏成功 vs 稠密奖励错配**：success 很少触发时，step-term 累积占主导，策略存在"不摔、慢走、超时"的局部最优（HIM reward≈71、PPO≈8.2 只是量级差异）。
+4. **流程把"GPU 先到先得"执行成"先跑再说"**：计划里的前置（gate 工具、placement、修好的 gate）被跳过；没有"提交前检查清单"和早停规则，doc 里的 deadline 没有强制。
+5. **手动运维**：硬编码 checkpoint 名、glob、复制粘贴 job 脚本（历史 `model_300` vs `model_299` 事故）；缺 per-iter 有效性自检（assert terms、打印 guard base、记录 drift）。
+
+### 15.4 对应动作（已写入执行计划 §0.2）
+
+- 修正文档中的 blend 方向（计划 TODO 已改）；后续一律"blend 越大越塑性"。
+- job13 结束后先对**全部** checkpoint 做 judge 全档选点（stairs30/20 + platform40/wall40/slope35/trench20 回归），不盲目续训；未达 8/8 走单变量变体（blend 0.98 + `BLACKW_GUARD_LOG=1` + 显式 run 名）。
+- GuardedPPO 增补 `BLACKW_GUARD_BASE_CKPT`（显式锚点）与 base sha/漂移日志；`check_tier_success.py` 加 `assert "part2_success" in active_terms` 的 fail-closed 断言。
+- gate 工具 + comp_bc_v5 placement 今天补齐（欠账）；把"提交前检查清单 + 早停规则"写进计划 §6。
+- HIM 侧（play=True gate、发散、5ms/4dec）只记录并提醒用户转达，不改其仓/脚本。

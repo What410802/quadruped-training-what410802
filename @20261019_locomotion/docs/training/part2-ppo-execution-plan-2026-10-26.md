@@ -29,11 +29,17 @@
 - [x] guard4 三个 800-iter run 复核：无可捞档位 → [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §14.1
 - [x] stairs30 专项 v0（r=0.75→1.0）首轮：judge 首次 stairs30 1/4（m350/m650）→ 历史归档 §14.4
 - [x] slope45 μ=1.2 课程诊断（job 11）：BC 基线 40°=95.7%、45°=0%；stage A 40°→100%；**stage B（45°，再 350 iter）训练 0%，judge 双测 μ=1.2/1.0 均 fail** → 历史归档 §14.5
-- [ ] **stairs30 续训 job 13**（排队，HIM job 12 之后）：跑完 scp 导出 + judge stairs30/20 选点；仍 <2/8 则换配方（blend 0.90 / lr 8e-5）或插入 r=0.9 中间档（单变量）
+- [ ] **stairs30 续训 job 13**（10:39–约 11:10 运行）：结束后 **不要直接重训同配方**——先对 s100b 全部 checkpoint 做 judge（stairs30/20 + platform40/wall40/slope35/trench20 回归）选点；仍 <2/8 走单变量变体：**提高塑性应把 `BLACKW_GUARD_BLEND` 调到 0.98**（实现是 `θ=base+blend·Δ`，0.90 反而把锚加得更死；0.95→0.98 ≈ 有效步长 20×→50×），同时开 `BLACKW_GUARD_LOG=1` 记录每 iter actor drift，或插入 r=0.9 中间档
 - [ ] **slope45 下一步（μ 递减课程起点）**：μ=1.2 学不会 → 改从 **μ=2.0 或 1.5** 先学 45°（BC v5 在 μ=1.5 可攀到 root z≈2.08、μ=2.0 能到顶），学会后逐档降 μ（2.0→1.7→1.5→1.3→1.2→1.1→1.0，每档 resume + ~200 iter + 手动 gate）；每档同时报 μ=1.2/1.0；排在主线空档，不抢 8/8 主线 GPU
 - [ ] **gate 工具实现（本地，不占 GPU）**：`eval_blackw_part2.py` 加 `--jitter-x/--jitter-yaw/--joint-offset/--joint-vel/--command-set`（3 档速度指令 + 关节随机化）；新增 `gate_stage.py`（阶段表 → 每关×每指令档通过矩阵 + verdict）；自检后对 comp_bc_v5 跑 placement
 - [ ] **comp_bc_v5 placement（本地）**：20 关 × 3 指令档 × 8/16 次 → 输出 `prep.d/results/blackw_official/stage_gates/`，得到"最低未通过 stage"清单
 - [ ] **M0 逐档 gate 训练**：按 placement 结果只训未过档（mixed official 固定 r，每档 300 iter ≈10–12 min）；目标 platform40/wall40/slope35/stairs20/trench20 + stairs30 全部 8/8
+- [x] **核实 10:45 交叉审计中 PPO 相关条目**（结论与证据见历史归档 §15）：配置/指标/guarded base/ blend 方向/早停缺口属实；"PREVDIR glob 匹配 s100b" 不属实；gate 工具欠账属实。**并确认 HIM 的 play=True 假测量 bug 在 PPO gate 链路上不存在**（tiercheck 用 play=False、输出 part2_terms；judge 是独立判据），但同构风险需加断言防复发
+- [ ] **修文档/代码里的 blend 方向**（本行上面已改计划；`guarded_ppo.py` docstring 已有正确语义，但所有新脚本注释/汇总必须写"blend 越大越塑性"）
+- [ ] **GuardedPPO 增补（审后改）**：新增 `BLACKW_GUARD_BASE_CKPT`（显式指定以哪个 checkpoint 的 actor 为锚，默认仍用加载权重）；每次 run 打印 base 来源与 sha；所有 guarded run 开 `BLACKW_GUARD_LOG=1`
+- [ ] **评测脚本 fail-closed 断言**：`check_tier_success.py`（已 play=False）加 `assert "part2_success" in active_terms`；任何新 eval 脚本禁止用 `play=True` 读训练终止项（HIM 的假测量事故反例，只记录不改其仓）
+- [ ] **job 提交前检查清单进 §6**：指标是否权威（judge/tiercheck 用途）、是否有 eval-gated 选点、anchor 是否显式、早停条件是否定义、是否走 common.sh、summary 是否写 gate verdict
+- [ ] **早停规则（写进后续 job）**：每 100 iter 导出 checkpoint；连续 2 个 100-iter judge 评估无提升（或训练 success 与 judge 同时不涨）→ `ts -k` 停当日该线，从最近 checkpoint 人工导出后再决定
 - [ ] **深度 D0-a**：把 `black/camera_depth.py` 的 `CameraSensorCfg` + camera obs group + `CNNModel` 接到 blackw exact/mixed 任务（只读参考 HIM 文件，不改其文件）；训练端 depth smoke（约 10 min GPU）
 - [ ] **深度 D0-b**：本地 rl_sar 侧 MuJoCo 深度渲染 + TorchScript CNN 前向最小链路 + 与训练端深度统计对拍（不占 GPU）
 - [ ] **今晚 00:00 前收工检查**：所有 job 结束/checkpoint 落盘、flag=0、summary 齐全；夜间关机 00:00–09:00（最晚等 00:30）
@@ -52,9 +58,10 @@
 
 | 队列 job | 内容 | 状态 |
 |---|---|---|
-| job 12 | HIM 线 `him_row0_mixed_gate.sh` | running（FIFO 让给 HIM） |
-| job 13 | `ppo_st30_s100b`（stairs30 从 m650 续训 800 iter） | queued |
+| job 13 | `ppo_st30_s100b`（stairs30 从 m650 续训 800 iter） | running（约 11:10 完成） |
+| job 12 | HIM 线 `him_row0_mixed_gate.sh` | ✅ finished 10:39，但 **gate 结果无效**（HIM 侧 play=True 缺 part2 项；属 HIM 区，见历史归档 §15） |
 | job 11 | slope μ=1.2 诊断 | ✅ finished（负结果，§14.5） |
+| — | job 13 后队列空；下一步先做 s100b judge 选点，再决定是否排 stairs30 塑性变体（不盲目续训） | — |
 
 ## 1. 实测状态（2026-10-26 08:30–10:00）
 
