@@ -124,6 +124,17 @@ class Part2OfficialJudge:
         self.level = level
         self.j = level["judge"]
         self.kind = self.j["kind"]
+        # Fail closed (audit P1-5): judge knobs must be explicit.  The old silent
+        # defaults (lane 0.7 / hold 0.2 s) could hide a missing rule, and
+        # np.all([])==True let a missing wheel body pass the four-wheel checks.
+        name = level.get("key", "?")
+        for key in ("lane_half_width", "hold_s"):
+            if key not in self.j:
+                raise KeyError(f"judge level {name!r}: missing required key {key!r}")
+        if self.kind == "stairs" and "descend_end_x" not in self.j:
+            raise KeyError(
+                f"judge level {name!r}: stairs needs 'descend_end_x' (a fallback to "
+                f"goal_x_min would silently score a non-descended robot as success)")
         self.t = 0.0
         self.last_t = None
         self.held = 0.0
@@ -139,7 +150,7 @@ class Part2OfficialJudge:
         self.prev = None
 
     def _lateral_ok(self, y: float) -> bool:
-        return abs(y) <= float(self.j.get("lane_half_width", 0.7))
+        return abs(y) <= float(self.j["lane_half_width"])
 
     def update(self, t: float, base: np.ndarray, tilt_deg: float,
                wheel_x: np.ndarray | None = None,
@@ -171,7 +182,7 @@ class Part2OfficialJudge:
                                & (wheel_z <= top + 0.20)))
         elif kind == "stairs":
             top = float(self.j["top_z"])
-            end_x = float(self.j.get("descend_end_x", self.j["goal_x_min"]))
+            end_x = float(self.j["descend_end_x"])
             # Climb evidence: all four wheels on the top landing at some point.
             if (wheel_z is not None and np.all(wheel_z >= top - WHEEL_ON_SURFACE_TOL_M)
                     and x >= float(self.j["goal_x_min"])):
@@ -245,7 +256,7 @@ class Part2OfficialJudge:
         self.prev = x
         if cond:
             self.held += dt
-            if self.held >= float(self.j.get("hold_s", 0.2)) + TERMINAL_HOLD_EXTRA_S:
+            if self.held >= float(self.j["hold_s"]) + TERMINAL_HOLD_EXTRA_S:
                 self.status = "success"
         else:
             self.held = 0.0
@@ -313,6 +324,11 @@ class PolicyRunner:
             bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"{leg}_foot")
             if bid >= 0:
                 self.wheel_bodies.append(bid)
+        if len(self.wheel_bodies) != 4:
+            raise RuntimeError(
+                f"judge: expected 4 '<LEG>_foot' wheel bodies, found "
+                f"{len(self.wheel_bodies)}; wheel-surface predicates would be "
+                f"vacuous because np.all([]) == True (audit P1-5)")
         self.wheel_radius = float(cfg.get("wheel_radius", 0.103))
         self.reset_pose()
 

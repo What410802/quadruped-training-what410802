@@ -97,7 +97,29 @@ def main() -> int:
     # quick shape check
     with torch.no_grad():
         out = scripted(torch.zeros(1, FRAME_DIM * HISTORY))
-    print(f"exported -> {out_dir/'policy.pt'} forward={tuple(out.shape)} config={out_dir/'config.yaml'}")
+    # Self-contained drop-in (audit F3): manifest binds policy.pt to config.yaml.
+    import hashlib, json
+    def _sha(path: Path) -> str:
+        h = hashlib.sha256()
+        with path.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    manifest = {
+        "policy_name": args.name,
+        "source_bc": str(args.bc),
+        "policy_sha256": _sha(out_dir / "policy.pt"),
+        "config_sha256": _sha(out_dir / "config.yaml"),
+        "model_name": "policy.pt",
+        "layout": "frame-major newest->oldest",
+        "history_length": HISTORY,
+        "action_scale": [0.25, 0.25, 0.25, 10.0, 0.25, 0.25, 0.25, -10.0,
+                         0.25, 0.25, 0.25, 10.0, 0.25, 0.25, 0.25, -10.0],
+        "deployment_note": "check with @20261024_blackw/scripts/import_blackw_policy.py --check",
+    }
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    print(f"exported -> {out_dir/'policy.pt'} forward={tuple(out.shape)} "
+          f"config={out_dir/'config.yaml'} manifest={out_dir/'manifest.json'}")
     return 0
 
 

@@ -21,6 +21,13 @@ from .black_config import BLACK_CONFIG
 def black_ppo_algorithm_kwargs() -> dict:
     """PPO 算法超参数映射（普通 PPO 与 HIMPPO 唯一来源：BLACK_CONFIG.algorithm）。"""
     algorithm = BLACK_CONFIG.algorithm
+    class_name = os.environ.get("BLACKW_ALGORITHM", "PPO")
+    guard_vars = sorted(k for k in os.environ if k.startswith("BLACKW_GUARD_"))
+    if guard_vars and not class_name.endswith("GuardedPPO"):
+        raise ValueError(
+            f"{guard_vars} set but BLACKW_ALGORITHM={class_name!r} is not GuardedPPO: "
+            "the guard settings would be silently ignored (audit P1-7). Set "
+            "BLACKW_ALGORITHM=alldog_mjlab.tasks.velocity.blackw.guarded_ppo:GuardedPPO.")
     return {
         "value_loss_coef": algorithm.value_loss_coef,
         "use_clipped_value_loss": algorithm.use_clipped_value_loss,
@@ -37,7 +44,7 @@ def black_ppo_algorithm_kwargs() -> dict:
         "normalize_advantage_per_mini_batch": (
             algorithm.normalize_advantage_per_mini_batch),
         # Guarded fine-tuning registers a PPO subclass (weight-space trust region).
-        "class_name": os.environ.get("BLACKW_ALGORITHM", "PPO"),
+        "class_name": class_name,
     }
 
 

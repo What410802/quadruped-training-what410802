@@ -127,7 +127,7 @@ blackW/__NAME__:
   - 10
   - 11
   lin_vel_scale: 2.0
-  model_name: __NAME__
+  model_name: policy.pt
   model_path: policy/blackW/__NAME__/policy.pt
   num_observations: 57
   num_of_dofs: 16

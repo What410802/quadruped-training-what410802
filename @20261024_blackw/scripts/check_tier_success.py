@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import asdict, replace
 
 import torch
@@ -98,7 +99,10 @@ def main() -> int:
     episodes = torch.zeros(args.envs, dtype=torch.long)
     term_counts: dict[str, int] = {name: 0 for name in tm.active_terms}
     total_steps = 0
-    max_steps = int(400 / (args.episodes or 1)) * args.episodes + 2000
+    # Derive the cap from the env instead of guessing (audit P1-3): the old
+    # int(400/episodes)*episodes+2000 formula stopped before the requested
+    # number of episodes.  +200 steps of slack for resets.
+    max_steps = args.episodes * int(unwrapped.max_episode_length) + 200
     while int(episodes.min().item()) < args.episodes and total_steps < max_steps:
         with torch.no_grad():
             actions = policy(obs, stochastic_output=args.stochastic)
@@ -112,8 +116,15 @@ def main() -> int:
                 term = tm.get_term(name).cpu()
                 term_counts[name] += int(term[done_mask].sum().item())
         total_steps += 1
-    episodes_f = episodes.clamp(min=1).float()
-    rate = (success.float() / episodes_f)
+    # Only envs that completed at least one episode contribute to per-env rates;
+    # a 0/0 env must not show up as a 0% (audit P1-3).
+    done_envs = episodes > 0
+    rate = torch.where(
+        done_envs,
+        success.float() / episodes.clamp(min=1).float(),
+        torch.full_like(success, float("nan")).float(),
+    )
+    truncated = int(episodes.min().item()) < args.episodes
     out = {
         "task": args.task,
         "difficulty": args.difficulty,
@@ -125,14 +136,22 @@ def main() -> int:
         "episodes": int(episodes.sum().item()),
         "successes": int(success.sum().item()),
         "success_rate": round(float(success.sum().item() / max(1, episodes.sum().item())), 4),
-        "worst_env_rate": round(float(rate.min().item()), 4),
-        "best_env_rate": round(float(rate.max().item()), 4),
+        "worst_env_rate": (round(float(rate[done_envs].min().item()), 4)
+                            if bool(done_envs.any()) else None),
+        "best_env_rate": (round(float(rate[done_envs].max().item()), 4)
+                           if bool(done_envs.any()) else None),
         "episodes_per_env_min": int(episodes.min().item()),
+        "truncated": truncated,
         "term_counts": term_counts,
         "part2_terms": reset_terms,
     }
     print(json.dumps(out, ensure_ascii=False))
     env.close()
+    if truncated:
+        print(f"[error] check_tier_success truncated: per-env min episodes "
+              f"{int(episodes.min().item())} < requested {args.episodes} "
+              f"(max_steps={max_steps})", file=sys.stderr)
+        return 1
     return 0
 
 

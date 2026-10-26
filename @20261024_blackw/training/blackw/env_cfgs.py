@@ -213,6 +213,15 @@ def _override_events(cfg: ManagerBasedRlEnvCfg) -> None:
                            "yaw": (-spawn_yaw, spawn_yaw)})
         params["pose_range"] = pose_range
         reset_base = replace(reset_base, params=params)
+    # Judge spawns the robot with zero root velocity.  Match that by default;
+    # override with BLACKW_RESET_ROOT_VEL for explicit DR experiments (audit P1-12).
+    root_vel = float(os.environ.get("BLACKW_RESET_ROOT_VEL", "0.0"))
+    if reset_base.params.get("velocity_range"):
+        rv_params = dict(reset_base.params)
+        rv_params["velocity_range"] = {
+            k: (-root_vel, root_vel) for k in reset_base.params["velocity_range"]
+        }
+        reset_base = replace(reset_base, params=rv_params)
     events = {
         "reset_base": reset_base,
         "reset_robot_joints": EventTermCfg(
@@ -667,16 +676,32 @@ def _trench_wheel_drop_penalty(
     return penalty * mask
 
 
-def _platform_height_reward(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
-    """Small dense signal for lifting the root toward a platform top."""
+def _platform_top_z(env):
+    """Per-env platform top height from the terrain row (official 10..40 cm range)."""
+    import torch
+
+    terrain = env.scene.terrain
+    gen = terrain.cfg.terrain_generator
+    sub = (gen.sub_terrains or {}).get("platform")
+    lo, hi = getattr(sub, "platform_height_range", (0.10, 0.40))
+    levels = torch.as_tensor(terrain.terrain_levels, device=env.device).float()
+    num_rows = max(1, int(gen.num_rows))
+    frac = (levels / max(1.0, float(num_rows - 1))).clamp(0.0, 1.0)
+    return lo + (hi - lo) * frac
+
+
+def _platform_height_reward(env, clearance: float = 0.42,
+                            asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+    """Dense signal for lifting the root above the platform top (row-relative)."""
     import torch
 
     asset = env.scene[asset_cfg.name]
     root_z = asset.data.root_link_pos_w[:, 2]
-    return torch.clamp(root_z - 0.70, min=0.0, max=0.5)
+    return torch.clamp(root_z - _platform_top_z(env) - clearance, min=0.0, max=0.2)
 
 
-def _lane_deviation(env, max_abs_y: float = 0.9, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+def _lane_deviation(env, max_abs_y: float = PART2_LANE_HALF_WIDTH,
+                    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
     """Terminate lateral bypass: the Part2 judge scores only inside the lane."""
     import torch
 
@@ -688,16 +713,15 @@ def _lane_deviation(env, max_abs_y: float = 0.9, asset_cfg: SceneEntityCfg = Sce
 
 def _platform_top_success(
     env,
-    min_root_z: float = 0.72,
+    min_clearance: float = 0.44,
     goal_x_min: float = 1.9,
-    goal_x_max: float = 3.1,
+    goal_x_max: float = 3.2,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ):
-    """Official-platform success proxy: root over the platform AND raised onto it.
+    """Official-platform success proxy: base over the platform AND raised onto it.
 
-    The previous goal-x-only reward let a CCD-disabled/penetrating robot reach x
-    without climbing (false 70% success).  Require the base to be raised to the
-    10 cm platform height as well.
+    Height is row-relative: the old absolute 0.72 threshold was unreachable on the
+    10 cm pilot (root z ~0.58), so the term never fired (audit P1-2, 2026-10-26).
     """
     import torch
 
@@ -705,7 +729,8 @@ def _platform_top_success(
     origins = env.scene.terrain.env_origins
     x = asset.data.root_link_pos_w[:, 0] - origins[:, 0]
     z = asset.data.root_link_pos_w[:, 2]
-    return (x >= goal_x_min) & (x <= goal_x_max) & (z >= min_root_z)
+    top = _platform_top_z(env)
+    return (x >= goal_x_min) & (x <= goal_x_max) & ((z - top) >= min_clearance)
 
 
 def _climb_height_reward(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
@@ -769,7 +794,7 @@ def blackw_competition_env_cfg(
         # several metres on real Part2 scenes). The judges score inside a narrow lane;
         # terminate lateral bypass so the policy must interact with the obstacle.
         cfg.terminations["lane_deviation"] = TerminationTermCfg(
-            func=_lane_deviation, params={"max_abs_y": 0.9}
+            func=_lane_deviation, params={"max_abs_y": PART2_LANE_HALF_WIDTH}
         )
     return cfg
 
@@ -829,7 +854,7 @@ def _apply_deployment_sim_options(cfg) -> None:
     sim.ls_iterations = 50
     sim.ls_tolerance = 0.01
     sim.impratio = 100.0
-    sim.ccd_iterations = 35
+    sim.ccd_iterations = int(os.environ.get("BLACKW_CCD_ITERS", "35"))
     # The deployment scenes spawn the robot at the judge spawn height (0.5 m base),
     # not at the training init height (0.69 m).
     robot = cfg.scene.entities.get("robot")
@@ -863,9 +888,10 @@ def _exact_env_cfg(terrain_cfg, play: bool) -> ManagerBasedRlEnvCfg:
     # (e.g. BLACKW_NCONMAX=256, BLACKW_NJMAX=1024) to fit a half-GPU memory budget.
     cfg.sim.nconmax = int(os.environ.get("BLACKW_NCONMAX", "1024"))
     cfg.sim.njmax = int(os.environ.get("BLACKW_NJMAX", "4096"))
-    # Wheel cylinders vs platform box hit a Mujoco-Warp CCD assert in HIM
-    # exploration; these tasks are low-speed, so disable CCD.
-    cfg.sim.ccd_iterations = 0
+    # CCD iterations come from _apply_deployment_sim_options() (judge value 35).
+    # The old `cfg.sim.ccd_iterations = 0` here wrote a non-existent field, i.e. it
+    # never disabled anything (audit P1-1, 2026-10-26).  Use BLACKW_CCD_ITERS to
+    # change it if a mujoco-warp CCD assert reappears.
     if not play:
         dmin = float(os.environ.get("BLACKW_DIFF_MIN", "0.0"))
         # Command profile for specialist runs (obstacle traversal is straight-lane).
@@ -891,7 +917,7 @@ def _exact_env_cfg(terrain_cfg, play: bool) -> ManagerBasedRlEnvCfg:
             cfg.scene.terrain.max_init_terrain_level = (
                 0 if dmin > 0.0 else 1)
         cfg.terminations["lane_deviation"] = TerminationTermCfg(
-            func=_lane_deviation, params={"max_abs_y": 0.9}
+            func=_lane_deviation, params={"max_abs_y": PART2_LANE_HALF_WIDTH}
         )
         cfg.terminations.pop("competition_goal_reached", None)
         # The base competition cfg ships competition_goal (weight 5.0, pays every
@@ -956,13 +982,13 @@ def blackw_platform_exact_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         cfg.rewards.pop("competition_goal", None)
         cfg.terminations.pop("competition_goal_reached", None)
         cfg.terminations["official_platform_success"] = TerminationTermCfg(
-            func=_platform_top_success, params={"min_root_z": 0.72}
+            func=_platform_top_success
         )
-        # Pilot only 10 cm elevated platform first; increase later with the
-        # success-gated curriculum.
+        # Pilot row 0 (10 cm) only.  Row promotion is a separate experiment and is
+        # not implemented here; thresholds above are row-relative (audit P1-2).
         if cfg.scene.terrain is not None:
             cfg.scene.terrain.max_init_terrain_level = 0
-        cfg.terminations["lane_deviation"].params["max_abs_y"] = 0.80
+        cfg.terminations["lane_deviation"].params["max_abs_y"] = PART2_LANE_HALF_WIDTH
     return cfg
 
 
@@ -1012,8 +1038,8 @@ def blackw_official_mixed_env_cfg(
     cfg.scene.terrain.terrain_generator.sub_terrains = terrains
     cfg.sim.nconmax = int(os.environ.get("BLACKW_NCONMAX", "256"))
     cfg.sim.njmax = int(os.environ.get("BLACKW_NJMAX", "1024"))
-    # Wheel cylinders vs box edges triggered a Mujoco-Warp CCD assert in HIM runs.
-    cfg.sim.ccd_iterations = 0
+    # CCD comes from _apply_deployment_sim_options() (judge value 35); the old
+    # `cfg.sim.ccd_iterations = 0` was a dead write (audit P1-1, 2026-10-26).
     if not play:
         num_rows = cfg.scene.terrain.terrain_generator.num_rows
         cfg.scene.terrain.max_init_terrain_level = int(
@@ -1029,7 +1055,7 @@ def blackw_official_mixed_env_cfg(
             cfg.scene.terrain.max_init_terrain_level = 0
         cfg.terminations["lane_deviation"] = TerminationTermCfg(
             func=_lane_deviation,
-            params={"max_abs_y": float(os.environ.get("BLACKW_LANE", "0.90"))},
+            params={"max_abs_y": float(os.environ.get("BLACKW_LANE", str(PART2_LANE_HALF_WIDTH)))},
         )
         command = cfg.commands["twist"]
         command.ranges.lin_vel_x = (
@@ -1124,13 +1150,14 @@ def blackw_plum_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     cfg.scene.terrain.terrain_generator.sub_terrains = {"plum": terrain}
     cfg.sim.nconmax = int(os.environ.get("BLACKW_NCONMAX", "512"))
     cfg.sim.njmax = int(os.environ.get("BLACKW_NJMAX", "2048"))
-    cfg.sim.ccd_iterations = 0
+    # CCD comes from _apply_deployment_sim_options() (judge value 35); no local
+    # override here (audit P1-1, 2026-10-26).
     if not play:
         cfg.scene.terrain.max_init_terrain_level = 0
         cfg.terminations.pop("competition_goal_reached", None)
         cfg.terminations["lane_deviation"] = TerminationTermCfg(
             func=_lane_deviation,
-            params={"max_abs_y": float(os.environ.get("BLACKW_LANE", "0.90"))},
+            params={"max_abs_y": float(os.environ.get("BLACKW_LANE", str(PART2_LANE_HALF_WIDTH)))},
         )
         cfg.terminations["part2_success"] = TerminationTermCfg(
             func=_part2_success, params={"asset_cfg": SceneEntityCfg("robot")})
@@ -1202,9 +1229,9 @@ def blackw_platform_easy_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
         cfg.rewards.pop("competition_goal", None)
         cfg.terminations.pop("competition_goal_reached", None)
         cfg.terminations["official_platform_success"] = TerminationTermCfg(
-            func=_platform_top_success, params={"min_root_z": 0.71}
+            func=_platform_top_success
         )
         if cfg.scene.terrain is not None:
             cfg.scene.terrain.max_init_terrain_level = 0
-        cfg.terminations["lane_deviation"].params["max_abs_y"] = 0.80
+        cfg.terminations["lane_deviation"].params["max_abs_y"] = PART2_LANE_HALF_WIDTH
     return cfg
