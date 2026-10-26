@@ -1,0 +1,461 @@
+{
+  "schema_version": 1,
+  "skill": "comp-eval-audit",
+  "backend": "zhipu",
+  "backend_kind": "openai-compatible",
+  "config": "comp/reviewer.json",
+  "prompt_file": "comp/audit-prompts/judge_audit_rfr.md",
+  "prompt_sha256": "cdc2a6a9fd68e480c060daf29fae08db2519b93824dc31bc5c7b1a8b0a98eb8e",
+  "payload_bytes": 302007,
+  "files": [
+    {
+      "path": "comp/CONTRACT.md",
+      "exists": true,
+      "bytes": 6604,
+      "sha256": "5cc410f3da8684eed12eae3ab1036ebeec30af1926fd23ecfe2ba0bb0eb031a9",
+      "included": true
+    },
+    {
+      "path": "comp/CONTRACT.json",
+      "exists": true,
+      "bytes": 12412,
+      "sha256": "627d61356fc8ec96b39cfbdf66d0261f65b9282d6e5fe8ab432c6082bef7e054",
+      "included": true
+    },
+    {
+      "path": "comp/eval/_protocol.md",
+      "exists": true,
+      "bytes": 9067,
+      "sha256": "c9644ef2c3f3bf672e7aaa03ed020ce1edbaea9ed291500d09975ea3a4786fa1",
+      "included": true
+    },
+    {
+      "path": "docs/00-competition/rules-team-race-2026.md",
+      "exists": true,
+      "bytes": 8030,
+      "sha256": "c0ce785be18b37009cd1901639ac54a427be5dc04dbe2855d3e82304de16bdfc",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/scripts/eval_blackw_part2.py",
+      "exists": true,
+      "bytes": 34939,
+      "sha256": "7dd367df59ed65e8d2bc77d5fafa7f61c13a909cf0c955a8b436af949e99db2c",
+      "included": true
+    },
+    {
+      "path": "scripts/agent_scripts/comp_part2_judge.py",
+      "exists": true,
+      "bytes": 17010,
+      "sha256": "85a8eb629ec8856da4f36c128747383ad7cd60a63663993d42c20976304c51c7",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_official_levels.json",
+      "exists": true,
+      "bytes": 16243,
+      "sha256": "b76f519768e2d74ff34e77c8818b9b8db816f2dc9312a9e9fba6983787606534",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_levels.json",
+      "exists": true,
+      "bytes": 6965,
+      "sha256": "c0b7f808098f832b9150a0fcb936708cb0f0d8c703f16793fdf87de24bbf9d08",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/blackW_description.xml",
+      "exists": true,
+      "bytes": 18647,
+      "sha256": "b9a53ae6fdeacbe3ff52fe574ac1fba2d752dbf7491b06c4d950c77cdfd16e57",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
+      "exists": true,
+      "bytes": 8032,
+      "sha256": "b012de9e2dd206106c88b51e32f904da8ceb124e1a5eb1eb516b3916ba03b8b0",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/summary.json",
+      "exists": true,
+      "bytes": 2233,
+      "sha256": "e2b277169aee2b975ef61fed3b52655bcf9a554471d5e8dcc1e2f1bf958e1e0a",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
+      "exists": true,
+      "bytes": 12518,
+      "sha256": "fa7661ad241292267aaad67dcc75805ccadbc34188bbc7f6b221ac6babed0abb",
+      "included": true
+    },
+    {
+      "path": "comp/eval/_calibration/records.jsonl",
+      "exists": true,
+      "bytes": 76092,
+      "sha256": "436147e2c8a4d92d573fab7ad8fb55df57d574416e70d7d124e542a6c0519f45",
+      "included": true
+    },
+    {
+      "path": "comp/eval/_calibration/LABELS_PROVENANCE.md",
+      "exists": true,
+      "bytes": 2304,
+      "sha256": "9174b2f0ca01cacb250625cfc357b7c6301b836a3cc79254b9701582c5b38f02",
+      "included": true
+    },
+    {
+      "path": "comp/eval/_calibration/README_C1.md",
+      "exists": true,
+      "bytes": 8298,
+      "sha256": "37c348df631e338e6e40f6a9fdb4500ef25f035201b1d026bc3f28b1eb4f5071",
+      "included": true
+    },
+    {
+      "path": "docs/20-part2-shared/acceptance-eval-protocol.md",
+      "exists": true,
+      "bytes": 4943,
+      "sha256": "f169bbeceb533b4ca3cec7be0fd904365c9e724718981a3aff7db2cab7cdb490",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_high_platform_10cm.xml",
+      "exists": true,
+      "bytes": 480,
+      "sha256": "39a223c966a76ee4241abc95e1478508b1c6277d658b8fe82c206aadf36024da",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_high_platform_20cm.xml",
+      "exists": true,
+      "bytes": 480,
+      "sha256": "6e181e33bbbc0b2c40b3fa1bbb67d75cf5e31c70242de0544402d56664fa813e",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_high_platform_30cm.xml",
+      "exists": true,
+      "bytes": 480,
+      "sha256": "85377168323ef436b38febdfb023bae9733c0b304d3ff87d4fa79e821d8495a0",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_high_platform_40cm.xml",
+      "exists": true,
+      "bytes": 480,
+      "sha256": "6412df1cffc82004479d191dd6a17559e3f3e9a7b645ea8d3d49806741e98902",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_high_wall_10cm.xml",
+      "exists": true,
+      "bytes": 474,
+      "sha256": "0c233ffd1c70e40ffcc82fb7aa9c82028e0214eb9c562b8ff583be2d0ada6f2c",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_high_wall_20cm.xml",
+      "exists": true,
+      "bytes": 474,
+      "sha256": "09d0241869c6351a00c57686b07335505ab2a76327eae625887e3bf30209b3b8",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_high_wall_30cm.xml",
+      "exists": true,
+      "bytes": 474,
+      "sha256": "4a3925de4a7d45468ab8c95e06466febeafca5aa6cc65a4741cf9edf6625739e",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_high_wall_40cm.xml",
+      "exists": true,
+      "bytes": 474,
+      "sha256": "e31ca9252180885f31f4ecd7d85709cf927d126f8c5ee5b4fb1c17bb0d7964c9",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_high_platform_10cm.xml",
+      "exists": true,
+      "bytes": 587,
+      "sha256": "1f2817514a94263b136d34186f66d09edea4dd5b1821e65c88a1531c10eeaad5",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_high_platform_20cm.xml",
+      "exists": true,
+      "bytes": 587,
+      "sha256": "9ef8e22769880f26966bde3bda2cd2f75d6d94f6a76c94bec12abaf5ab2d0aad",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_high_platform_30cm.xml",
+      "exists": true,
+      "bytes": 589,
+      "sha256": "059bdab9603bd14e152e8670d665696209d8ece0bfa0788fcff9e8cca5f1b85b",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_high_platform_40cm.xml",
+      "exists": true,
+      "bytes": 587,
+      "sha256": "b68d93562928969e09d0767b42a4fd16a45e4848c0c45477a36af75ca2cb3979",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_high_wall_10cm.xml",
+      "exists": true,
+      "bytes": 596,
+      "sha256": "4f540f5614aedffda61b4178747dbe80af6aac18a69b343a471d8417de8a55a5",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_high_wall_20cm.xml",
+      "exists": true,
+      "bytes": 584,
+      "sha256": "9d3ea6aa8b4e003dc511391e4b0f3cd19abc5cb4b887464a855afdde6cd22abe",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_high_wall_30cm.xml",
+      "exists": true,
+      "bytes": 584,
+      "sha256": "db7c6d7a8bb4b668810e4f5cbbfa1a901223e5c255386fbbc46dd7337cb2c9b1",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_high_wall_40cm.xml",
+      "exists": true,
+      "bytes": 585,
+      "sha256": "922ed45ffc7c52cd48e592ba2337ab8bef0767c7fcce654011868cb466d2ac53",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_plum_1.xml",
+      "exists": true,
+      "bytes": 4642,
+      "sha256": "cfec8074d390822a3ef86e517b8bccc3b1183c01a23e5781be1ce380398fdf74",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_slope_20deg.xml",
+      "exists": true,
+      "bytes": 1281,
+      "sha256": "b07795965a8a12a3d0b781cac7b64e74e8e0ea4b7966b6cbec37e68ea86868d7",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_slope_30deg.xml",
+      "exists": true,
+      "bytes": 1277,
+      "sha256": "fa8f9f30027f5af2aa0dc50b18761090b98db889a34069f1da6a0c7dd17da231",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_slope_35deg.xml",
+      "exists": true,
+      "bytes": 1277,
+      "sha256": "f99d7694f72498604be2b7d50bfaf2b6c009ab914d949c68c358b4887fed5e47",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_slope_45deg.xml",
+      "exists": true,
+      "bytes": 1227,
+      "sha256": "a48b53a5442b2047b8052deecf1913f627a4a9414c3ce3ac22c23f10b89a186d",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_stairs_10cm.xml",
+      "exists": true,
+      "bytes": 2330,
+      "sha256": "4af5d2d94aa517fc935e7b6fc5e41e70c7e84086860964ac274f4a6a43b75163",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_stairs_15cm.xml",
+      "exists": true,
+      "bytes": 2352,
+      "sha256": "3d6c1595f0f84ab2f4055589ac4dbd47292a4aeb5e62b7faaffaef822a4421bd",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_stairs_20cm.xml",
+      "exists": true,
+      "bytes": 2318,
+      "sha256": "3ee18d3de94c3a506b02f73fce4f76f0091c58088fcd9508bf2b937bc6ebab82",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_stairs_30cm.xml",
+      "exists": true,
+      "bytes": 2330,
+      "sha256": "45e64c6b5811b0df73c5e163e3964a3c04b87be2a2dc6e36858417c903aec6ef",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_trench_10cm.xml",
+      "exists": true,
+      "bytes": 1384,
+      "sha256": "b0df48f2064eded0b0708aa8f04223a982ff4d500682c0ffbbf9d701123021d5",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_trench_20cm.xml",
+      "exists": true,
+      "bytes": 1387,
+      "sha256": "8c48006296eed64b15f63161aff704bb2233b1e8118a20525e1b22f9373ebfc9",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_off_trench_30cm.xml",
+      "exists": true,
+      "bytes": 1389,
+      "sha256": "9d10eb971eb04fd6f11685fde72d7ac8a2c82764acf5ecbc80e669e1f6320597",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_part2_plum_eval_scene.xml",
+      "exists": true,
+      "bytes": 1351,
+      "sha256": "240a9bc1dca839626164b47dfe8324a8eb2725e7436230f9bc05273e6f1e9caf",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_plum_eval_scene.xml",
+      "exists": true,
+      "bytes": 1351,
+      "sha256": "240a9bc1dca839626164b47dfe8324a8eb2725e7436230f9bc05273e6f1e9caf",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_slope_20deg.xml",
+      "exists": true,
+      "bytes": 610,
+      "sha256": "62c2898b2b82e1df65824018d17b520dbc441196ad1b91cb23b0c9c0c53535d0",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_slope_30deg.xml",
+      "exists": true,
+      "bytes": 610,
+      "sha256": "7ce19f7edb8734ba2cf632da262edc812f6d728088a5280198cc9a8a4d3cfc08",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_slope_35deg.xml",
+      "exists": true,
+      "bytes": 610,
+      "sha256": "d9190e12ac6ec9bc5d36ae25970ca39f5f4c0f83f5cc48a6371a08c075f2393e",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_slope_45deg.xml",
+      "exists": true,
+      "bytes": 610,
+      "sha256": "30d964ae600698ceedcac787b8b8f381ddfdb472eb624e6608db32384904bf2f",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_stairs_10cm.xml",
+      "exists": true,
+      "bytes": 1115,
+      "sha256": "3b33fc901e22841de02439a091e5815dddd03b772ec3eb85669efe0f70071f92",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_stairs_15cm.xml",
+      "exists": true,
+      "bytes": 1115,
+      "sha256": "73efa2bfcd4be259a46eecb7a26fe34275c94971573299cef154d2eba3182a64",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_stairs_20cm.xml",
+      "exists": true,
+      "bytes": 1115,
+      "sha256": "c7c2ab5e88c6f4d40cb94c2e300cf2c2bb2b24f52de575917dc18585f993ae47",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_stairs_30cm.xml",
+      "exists": true,
+      "bytes": 1115,
+      "sha256": "c1e7b46ea45b1797b4f8c52a87cfc9eeb90ae6245d2f907dfc733f44df2974dc",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_trench_10cm.xml",
+      "exists": true,
+      "bytes": 607,
+      "sha256": "0ad586b46f57e2efc034ac3ebbeb0fe1b14eac0b3d0c656985ef2fffbfd180ae",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_trench_20cm.xml",
+      "exists": true,
+      "bytes": 607,
+      "sha256": "05b652a329b4f723021a09fe8b2416e984409a8e031a3d60cb900d198d43a1d5",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/part2_trench_30cm.xml",
+      "exists": true,
+      "bytes": 607,
+      "sha256": "76a4527c492dab33bffd265fe336c2cea2fa8d6ddc80067e19ad18af5d610056",
+      "included": true
+    }
+  ],
+  "executor": "deepseek-v4.1-flash",
+  "reviewer_model": "glm-5.3",
+  "independence": {
+    "executor_model": "deepseek-v4.1-flash",
+    "reviewer_model": "glm-5.3",
+    "executor_family": "deepseek",
+    "reviewer_family": "glm",
+    "status": "different-family",
+    "reason": "executor=deepseek vs reviewer=glm"
+  },
+  "started_at": "2026-10-26T18:29:41+08:00",
+  "status": "ok",
+  "endpoint_host": "open.bigmodel.cn",
+  "key_source": "file:/home/bis/.config/robocon-review/zhipu_api_key",
+  "attempts": [
+    {
+      "max_tokens": 128000,
+      "status": "ok",
+      "latency_s": 356.4,
+      "usage": {
+        "prompt_tokens": 110503,
+        "completion_tokens": 22735,
+        "total_tokens": 133238,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 18105
+        }
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 110503,
+    "completion_tokens": 22735,
+    "total_tokens": 133238,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 18105
+    }
+  },
+  "latency_s": 356.4,
+  "model_reported": "glm-5.3",
+  "finish_reason": "stop",
+  "overall_hint": null,
+  "response_sha256": "7ccb500ecf1fe264df6d8ba715df83aefbdb47350c23ebdb82357a7547e3bc5c",
+  "finished_at": "2026-10-26T18:35:38+08:00"
+}

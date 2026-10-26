@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "skill": "comp-score-audit",
+  "backend": "zhipu-flash",
+  "backend_kind": "openai-compatible",
+  "config": "comp/reviewer.json",
+  "prompt_file": "comp/audit-prompts/score_evidence_rfr.md",
+  "prompt_sha256": "48f293d0c4dc1f931874d3ece312243702f7702ce763afaadead5dc111fa18e3",
+  "payload_bytes": 132856,
+  "files": [
+    {
+      "path": "comp/SCOREBOARD.md",
+      "exists": true,
+      "bytes": 1245,
+      "sha256": "01cab8fcb95b305f5f0d52e80218017b1ae9e68db434a868096a087de8753c50",
+      "included": true
+    },
+    {
+      "path": "comp/SCOREBOARD.json",
+      "exists": true,
+      "bytes": 3259,
+      "sha256": "0366df9a7ee4571b69f5197a6d76dcba23a29dc1b9ace7f5cae596c56c1b6711",
+      "included": true
+    },
+    {
+      "path": "comp/RUN_LEDGER.md",
+      "exists": true,
+      "bytes": 12802,
+      "sha256": "96de84743abefa4d20eb0ffef8dc184108496a3b0720805f6c4e1fb6bf991971",
+      "included": true
+    },
+    {
+      "path": "comp/CONTRACT.md",
+      "exists": true,
+      "bytes": 6604,
+      "sha256": "5cc410f3da8684eed12eae3ab1036ebeec30af1926fd23ecfe2ba0bb0eb031a9",
+      "included": true
+    },
+    {
+      "path": "comp/CONTRACT.json",
+      "exists": true,
+      "bytes": 12412,
+      "sha256": "627d61356fc8ec96b39cfbdf66d0261f65b9282d6e5fe8ab432c6082bef7e054",
+      "included": true
+    },
+    {
+      "path": "comp/eval/_protocol.md",
+      "exists": true,
+      "bytes": 9067,
+      "sha256": "c9644ef2c3f3bf672e7aaa03ed020ce1edbaea9ed291500d09975ea3a4786fa1",
+      "included": true
+    },
+    {
+      "path": "docs/00-competition/rules-team-race-2026.md",
+      "exists": true,
+      "bytes": 8030,
+      "sha256": "c0ce785be18b37009cd1901639ac54a427be5dc04dbe2855d3e82304de16bdfc",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/manifest.json",
+      "exists": true,
+      "bytes": 8032,
+      "sha256": "b012de9e2dd206106c88b51e32f904da8ceb124e1a5eb1eb516b3916ba03b8b0",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/summary.json",
+      "exists": true,
+      "bytes": 2233,
+      "sha256": "e2b277169aee2b975ef61fed3b52655bcf9a554471d5e8dcc1e2f1bf958e1e0a",
+      "included": true
+    },
+    {
+      "path": "comp/eval/flat-ft-2500-part2-official-diag/trials.jsonl",
+      "exists": true,
+      "bytes": 12518,
+      "sha256": "fa7661ad241292267aaad67dcc75805ccadbc34188bbc7f6b221ac6babed0abb",
+      "included": true
+    },
+    {
+      "path": "comp/STATUS.md",
+      "exists": true,
+      "bytes": 8386,
+      "sha256": "25df71f0c6c1d67ab4d79e0770f42b6876df04c98013403253d7eebe06dae875",
+      "included": true
+    },
+    {
+      "path": "docs/21-part2-ppo/bc-policy-report.md",
+      "exists": true,
+      "bytes": 21260,
+      "sha256": "8c7b5867f80e90b332259799a221d61405ca5472c6f7d215fcf92876d1f75e3f",
+      "included": true
+    },
+    {
+      "path": "docs/20-part2-shared/acceptance-eval-protocol.md",
+      "exists": true,
+      "bytes": 4943,
+      "sha256": "f169bbeceb533b4ca3cec7be0fd904365c9e724718981a3aff7db2cab7cdb490",
+      "included": true
+    },
+    {
+      "path": "../@20261024_blackw/models/comp_bc_v5/manifest.json",
+      "exists": true,
+      "bytes": 2792,
+      "sha256": "37b7befb602ff4d082f503e6b6aacfc43c7163c166e13091c9c250da92ce47b4",
+      "included": true
+    },
+    {
+      "path": "../prep.d/results/ppo_st30/deploy_smoke/comp_bc_v5.json",
+      "exists": true,
+      "bytes": 13932,
+      "sha256": "dc5c6fb5adc9e50b74935867da4a5ef6bc55ec31a3602ecb44d72a7b4742a0d3",
+      "included": true
+    }
+  ],
+  "executor": "deepseek-v4.1-flash",
+  "reviewer_model": "glm-5.3-flash",
+  "independence": {
+    "executor_model": "deepseek-v4.1-flash",
+    "reviewer_model": "glm-5.3-flash",
+    "executor_family": "deepseek",
+    "reviewer_family": "glm",
+    "status": "different-family",
+    "reason": "executor=deepseek vs reviewer=glm"
+  },
+  "started_at": "2026-10-26T18:29:41+08:00",
+  "status": "ok",
+  "endpoint_host": "open.bigmodel.cn",
+  "key_source": "file:/home/bis/.config/robocon-review/zhipu_api_key",
+  "attempts": [
+    {
+      "max_tokens": 64000,
+      "status": "ok",
+      "latency_s": 144.4,
+      "usage": {
+        "prompt_tokens": 44919,
+        "completion_tokens": 8445,
+        "total_tokens": 53364,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 3821
+        }
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 44919,
+    "completion_tokens": 8445,
+    "total_tokens": 53364,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 3821
+    }
+  },
+  "latency_s": 144.4,
+  "model_reported": "glm-5.3-flash",
+  "finish_reason": "stop",
+  "overall_hint": null,
+  "response_sha256": "01468354b0a17536d25fcdb207fe0c61efaa9ef025542cf6a9066d3faaf4e180",
+  "finished_at": "2026-10-26T18:32:06+08:00"
+}

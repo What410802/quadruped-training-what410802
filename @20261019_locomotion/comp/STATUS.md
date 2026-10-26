@@ -22,10 +22,10 @@
 | 门禁 | 状态 | 说明 |
 |---|---|---|
 | G0 规则契约 | **PASS** | Q1–Q6 已由用户确认并写入 `CONTRACT.*`（Q1 恢复不消耗、Q2 ×2/3、Q4 砂砾短边/斜坡合计 1 m） |
-| G1 评测器可信 | **IN PROGRESS（BYOK）** | judge V2.1 + 场景 v2 + course/Part2 evaluator；C1 人工标定 PASS；BYOK flash/pro/GLM 复验进行中，Codex 待用户批准 |
+| G1 评测器可信 | **FAIL（2026-10-26 BYOK RFR）** | judge v5 独立评审（GLM-5.3 + RFR）：REJECT，2 FATAL（无标定/对照、与 V2 语义漂移）；建议阈值/谓词语义待规则确认后修复并复验；见 `audits/2026-10-26-judge-v5-G1-BYOK-GLM.md` |
 | G2 基线可复现 | pending | 待正式协议评测（当前只有 diagnostic 产物） |
 | G3 单轮评测有效 | pending | 诊断行为 `diagnostic`，不计正式分 |
-| G4 里程碑审计 | pending | — |
+| G4 里程碑审计 | **FAIL（2026-10-26 BYOK RFR）** | 分数/证据链评审（GLM-5.3-Flash + RFR）：REJECT；comp_bc_v5 无 comp/eval 三件套、750 与部署证据矛盾、报告数字自相矛盾；见 `audits/2026-10-26-score-evidence-G4-BYOK-GLMFLASH.md` |
 | G5 冻结 | pending | G1 PASS 后冻结 |
 
 ## 2. 当前评测产物
@@ -39,6 +39,14 @@
 | V1 旧产物（`-diag-v1`） | diagnostic | 0 | 仅存档，已被 v2 取代 |
 
 `SCOREBOARD.md` 由 `comp_score.py` 生成；诊断行不得用于选型或对外引用。
+
+## 3b. 2026-10-26 竞赛向独立评审（BYOK + RFR，无 Codex）
+
+- aHIL `competition` 分支已 merge `main` 的 RFR 评审链（commit `2c74019`，6 个 RFR 单测通过）；本项目按 RFR S1/S2 与 G1/G4 口径适配 prompt 后，用 BYOK（GLM-5.3 / GLM-5.3-Flash，均 different-family）评审。
+- **G1 judge v5：FAIL/REJECT**（2 FATAL + 高度带谓词/自拟阈值/三件套缺失）→ `audits/2026-10-26-judge-v5-G1-BYOK-GLM.md`
+- **G4 分数/证据链：FAIL/REJECT**（comp_bc_v5 无 comp/eval 三件套；750 vs 部署 5/20；报告数字矛盾）→ `audits/2026-10-26-score-evidence-G4-BYOK-GLMFLASH.md`
+- 汇总与 executor 跟进：`audits/2026-10-26-BYOK-RFR-SUMMARY.md`。
+- 额外发现：部署 `part2_levels.json` 长期引用旧 proxy 场景而非 judge 官方 `part2_off_*`（20/20 不一致），已修正；官方 `obstacle` 权重同一部署 smoke 也是 5/20（同样数值爆炸）→ 旧 5/20 不能归因策略。
 
 ## 3. 最近审计
 

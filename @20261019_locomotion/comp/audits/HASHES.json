@@ -1,6 +1,6 @@
 {
   "audited": false,
-  "note": "G1 重审对象（judge V2）；verdict=pending；hash 变化即门禁失效",
+  "note": "2026-10-26 BYOK RFR 评审已做（G1/G4 均 FAIL）；judge v5 未通过，门禁未通过前不得引用分数",
   "generated_at": "2026-10-23T22:41:30+08:00",
   "objects": {
     "contract_json": {
@@ -322,6 +322,11 @@
     "evidence_part1_course_pause_timeout_drill": {
       "path": "comp/audits/evidence/part1_course_pause_timeout_drill.json",
       "sha256": "ecabf901af94b8f6d277f3af225960fd6209bc6f90368a671a4736b858248d5a"
+    },
+    "judge_part2_v5": {
+      "path": "@20261024_blackw/scripts/eval_blackw_part2.py",
+      "sha256": "7dd367df59ed65e8d2bc77d5fafa7f61c13a909cf0c955a8b436af949e99db2c",
+      "note": "authoritative Part2 judge v5 (eval_blackw_part2.py); audited 2026-10-26 by BYOK GLM-5.3 RFR -> FAIL/REJECT"
     }
   },
   "superseded": {
@@ -353,5 +358,25 @@
     "date": "",
     "verdict": "pending",
     "report": "comp/audits/JUDGE_AUDIT.md"
+  },
+  "audits_2026_10_26": {
+    "judge_v5_g1_byok_glm": {
+      "reviewer": "glm-5.3",
+      "family": "glm",
+      "executor": "deepseek-v4.1-flash",
+      "independence": "different-family",
+      "verdict": "FAIL/REJECT",
+      "report": "comp/audits/2026-10-26-judge-v5-G1-BYOK-GLM.md",
+      "unresolved_fatals": 2
+    },
+    "score_evidence_g4_byok_glmflash": {
+      "reviewer": "glm-5.3-flash",
+      "family": "glm",
+      "executor": "deepseek-v4.1-flash",
+      "independence": "different-family",
+      "verdict": "FAIL/REJECT",
+      "report": "comp/audits/2026-10-26-score-evidence-G4-BYOK-GLMFLASH.md",
+      "unresolved_fatals": 2
+    }
   }
 }

@@ -21,7 +21,7 @@
 | P1-12 | **FIXED** | blackW reset root velocity 默认 0（`BLACKW_RESET_ROOT_VEL` 可覆盖），与 judge 静止出生一致 |
 | P0-2r | **FIXED** | 所有续训 `ppo_*.sh` 已接线 `BLACKW_RESUME_LOAD_CFG=actor` + `BLACKW_RESUME_LR`，summary 记录 resume/load_cfg/lr |
 | F1 | **FIXED（代码，smoke 通过）** | 逐关节 `tau_max`（23.7/23.7/59.25/20）已在部署栈实现；F2 smoke 能正常加载策略并取得 5 档成功 → 部署栈力矩路径可用。**仍缺** judge-vs-sim 同一 checkpoint 的逐 case 数值对拍（smoke 只给 pass/fail） |
-| F2 | **FIXED（已跑通 20 档）** | `@20261024_blackw/scripts/smoke_deploy_part2.py`：无头起 sim_node+rl_sim、GetUp/Enter-RL（用 rl_sim stdout 的 `Entered RL_Locomotion` 标记定尝试起点）、摇杆给档位官方命令、解析 status 行（base x/y/z/tilt + 4 轮 wx/wz）喂 judge v5；`comp_bc_v5` 首轮 **5/20**（两次跑总数一致，逐档受边沿策略影响 ±1；见下方验证记录）。命令：`pixi run python @20261024_blackw/scripts/smoke_deploy_part2.py --policy comp_bc_v5 --realtime false --json prep.d/results/ppo_st30/deploy_smoke/comp_bc_v5.json` |
+| F2 | **PARTIAL（工具已实现，但 5/20 结果无效）** | `smoke_deploy_part2.py` 已能逐档跑（tag 前 5/20），但 2026-10-26 独立评审发现：① deploy `part2_levels.json` 用旧 proxy `part2_*.xml`，judge 用官方 `part2_off_*.xml`（20/20 不一致，已修 levels）；② 官方 `obstacle` 权重同一 smoke 也 5/20 且数值爆炸 → smoke/栈有效性未验证。修复并重跑前，5/20 不得作为策略部署证据。见 `comp/audits/2026-10-26-BYOK-RFR-SUMMARY.md` |
 | F3 | **FIXED** | 远程 exporter 写 `config.yaml`+`manifest.json`、`action_scale` 带右腿负号（模板已上传）；本地 BC exporter 也写 manifest；模板 `model_name: policy.pt` 修正 |
 | F6 | **FIXED（结论修正）** | 新增自测：控制周期每 5 ms 都做一次 slew、每策略周期 4 次 → 有效 slew = 配置值（20 自测 / 60 部署），审计"15 rad/s"的推导不成立；自测待 build 后跑 |
 | F7 | **FIXED** | `base.yaml`+模板加 `control_hz/policy_hz`；`rl_sdk.cpp` 读 base/策略 config 并在 `InitRL` 对账（偏差 >2% 抛异常）；main 捕获后安全退出 |
@@ -37,7 +37,7 @@
 | C++ 自测 | `command_limit_selftest` / `input_map_selftest` | **all PASS**（含 F6 的"每策略周期 4 次 slew → 有效=配置值"用例、F15 不影响） |
 | 训练栈 smoke（GPU） | `submit.sh audit_round2_smoke ppo_audit_smoke3.sh` | `train rc=0`；`[resume] BLACKW_RESUME_LOAD_CFG=actor`、`lr=4e-05`；DR=`[base_com payload_mass push_robot]`；summary 成功 done |
 | platform-easy 环境构造 | `check_tier_success --task blackw-platform-easy` | `rc=0`、`truncated=false`、`official_platform_success` 4/4 → 行相对阈值生效 |
-| 部署 20 档 smoke | `smoke_deploy_part2.py --policy comp_bc_v5` | **5/20 通过**（platform10/20cm、wall10/30/40cm 一类；stairs/slope/trench/plum 失败；两次跑总数一致、逐档 ±1）→ **judge 750 ≠ 部署栈能力，部署侧仍是明显缺口** |
+| 部署 20 档 smoke | `smoke_deploy_part2.py --policy comp_bc_v5` | **5/20（结果作废，见 F2）**：官方权重对照同样 5/20 + 数值爆炸 → 栈/场景有效性未验证；deploy levels 场景已修为官方 `part2_off_*`，待重跑 |
 | 谓词-judge 对拍 | `check_predicate_judge_parity.py` | `PARITY OK`（lane 0.7、hold 0.2+0.1=15 steps、stairs key、fail-closed 守卫齐全） |
 
 验证中又发现并修掉 2 个工具 bug：`check_tier_success` 的 `torch.full_like(int64, nan)` 溢出；platform-exact 任务的 success 实际由 `official_platform_success` 触发而 tiercheck 只统计 `part2_success`。

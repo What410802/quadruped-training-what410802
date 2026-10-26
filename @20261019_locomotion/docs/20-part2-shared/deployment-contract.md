@@ -39,7 +39,7 @@ pixi run ros2 launch rl_sar_blackw rl_sim_blackw.launch.py policy_name:=comp_bc_
 
 ## 5. 已知缺口（2026-10-26）
 
-1. **Part2 逐档部署 smoke**：已实现并跑通 `scripts/smoke_deploy_part2.py`（无头 sim_node+rl_sim、GetUp/Enter-RL 标记定起点、摇杆给档位官方命令、status 行喂 judge v5、逐档 PASS/FAIL+JSON）。`comp_bc_v5` 实测 **5/20**（两次跑总数一致，逐档 ±1 属边沿策略；通过档集中在 platform/wall）。**deploy 通过能力 ≠ judge 750 分**，差距来自控制/时序/物理细节，解决它属于"部署对齐"后续工作（judge-vs-sim 逐 case 数值对拍仍未做）。
+1. **Part2 逐档部署 smoke**：工具已实现（`scripts/smoke_deploy_part2.py`），但 **5/20 结果作废**：deploy levels 曾用旧 proxy 场景 `part2_*.xml` 而 judge 用官方 `part2_off_*.xml`（20/20 不一致，2026-10-26 已修 `part2_levels.json`）；官方 `obstacle` 权重同一 smoke 也 5/20 且数值爆炸（trench z≈-1118）→ 栈有效性未验证。以官方权重对照 + 官方场景重跑后，才能谈"judge 750 vs 部署能力"。另：项目文档中的 750/743 已被独立评审判为未审计 executor 证据。
 2. 官方 mesh 资产 `scenes/blackW/assets/` 未入库（gitignore，约 42 MB）；演示前需从官方 ReadOnly 源复制（README 有来源说明）。
 3. 转向能力：`comp_bc_v5` 在 sim 里 1.0 rad/s 转向实测不达标（训练指令 yaw 覆盖有限）；验收口径要求覆盖手柄全范围，需训练侧补。
 4. 实机路径：无硬件驱动节点、`rl_sim` 时钟依赖 `/motor_state.sim_time`、无逐关节限幅/标定/急停——实机演示不可用。

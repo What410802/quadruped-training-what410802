@@ -28,6 +28,9 @@
 | `BYOK_JUDGE_V12_PRO_ACCEPT.md/.json` | G1 预审 12 | DeepSeek **pro** 最终复核（待用户批准 Codex 前最后一轮） | 进行中/见文件 |
 | `evidence/part1_course_*_drill.json` | 协议演练证据 | 3 次 pause/resume 与 pause→resume→abort 的 runner 证据（纳入 HASHES） | — |
 | `BYOK_JUDGE_V2_FIXES.md` | — | 预审→修复/残余风险逐条映射 | — |
+| `2026-10-26-judge-v5-G1-BYOK-GLM.md/.json` | G1 | BYOK GLM-5.3 + RFR 对 judge v5 的独立评审：**FAIL/REJECT**（2 FATAL：无标定/对照、与 V2 语义漂移；加上自拟阈值/高度带谓词/三件套缺失） | 待修复后复验 |
+| `2026-10-26-score-evidence-G4-BYOK-GLMFLASH.md/.json` | G4 | BYOK GLM-5.3-Flash + RFR 对分数/证据链：**FAIL/REJECT**（comp_bc_v5 无 comp/eval 三件套；750 与部署 5/20 矛盾；报告数字互相矛盾） | 待修复后复验 |
+| `2026-10-26-BYOK-RFR-SUMMARY.md` | G1+G4 | 两份 BYOK RFR 评审的元信息、结论与 executor 跟进汇总 | 现行 |
 
 ## HASHES.json
 

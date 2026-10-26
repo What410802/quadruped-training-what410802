@@ -4,7 +4,7 @@
     "category": "high_platform",
     "level": 10,
     "unit": "cm",
-    "scene": "part2_high_platform_10cm.xml",
+    "scene": "part2_off_high_platform_10cm.xml",
     "start": [
       0.0,
       0.0,
@@ -29,7 +29,7 @@
     "category": "high_platform",
     "level": 20,
     "unit": "cm",
-    "scene": "part2_high_platform_20cm.xml",
+    "scene": "part2_off_high_platform_20cm.xml",
     "start": [
       0.0,
       0.0,
@@ -54,7 +54,7 @@
     "category": "high_platform",
     "level": 30,
     "unit": "cm",
-    "scene": "part2_high_platform_30cm.xml",
+    "scene": "part2_off_high_platform_30cm.xml",
     "start": [
       0.0,
       0.0,
@@ -79,7 +79,7 @@
     "category": "high_platform",
     "level": 40,
     "unit": "cm",
-    "scene": "part2_high_platform_40cm.xml",
+    "scene": "part2_off_high_platform_40cm.xml",
     "start": [
       0.0,
       0.0,
@@ -104,7 +104,7 @@
     "category": "stairs",
     "level": 10,
     "unit": "cm",
-    "scene": "part2_stairs_10cm.xml",
+    "scene": "part2_off_stairs_10cm.xml",
     "start": [
       0.0,
       0.0,
@@ -129,7 +129,7 @@
     "category": "stairs",
     "level": 15,
     "unit": "cm",
-    "scene": "part2_stairs_15cm.xml",
+    "scene": "part2_off_stairs_15cm.xml",
     "start": [
       0.0,
       0.0,
@@ -154,7 +154,7 @@
     "category": "stairs",
     "level": 20,
     "unit": "cm",
-    "scene": "part2_stairs_20cm.xml",
+    "scene": "part2_off_stairs_20cm.xml",
     "start": [
       0.0,
       0.0,
@@ -179,7 +179,7 @@
     "category": "stairs",
     "level": 30,
     "unit": "cm",
-    "scene": "part2_stairs_30cm.xml",
+    "scene": "part2_off_stairs_30cm.xml",
     "start": [
       0.0,
       0.0,
@@ -204,7 +204,7 @@
     "category": "slope",
     "level": 20,
     "unit": "deg",
-    "scene": "part2_slope_20deg.xml",
+    "scene": "part2_off_slope_20deg.xml",
     "start": [
       0.0,
       0.0,
@@ -229,7 +229,7 @@
     "category": "slope",
     "level": 30,
     "unit": "deg",
-    "scene": "part2_slope_30deg.xml",
+    "scene": "part2_off_slope_30deg.xml",
     "start": [
       0.0,
       0.0,
@@ -254,7 +254,7 @@
     "category": "slope",
     "level": 35,
     "unit": "deg",
-    "scene": "part2_slope_35deg.xml",
+    "scene": "part2_off_slope_35deg.xml",
     "start": [
       0.0,
       0.0,
@@ -279,7 +279,7 @@
     "category": "slope",
     "level": 45,
     "unit": "deg",
-    "scene": "part2_slope_45deg.xml",
+    "scene": "part2_off_slope_45deg.xml",
     "start": [
       0.0,
       0.0,
@@ -304,7 +304,7 @@
     "category": "high_wall",
     "level": 10,
     "unit": "cm",
-    "scene": "part2_high_wall_10cm.xml",
+    "scene": "part2_off_high_wall_10cm.xml",
     "start": [
       0.0,
       0.0,
@@ -329,7 +329,7 @@
     "category": "high_wall",
     "level": 20,
     "unit": "cm",
-    "scene": "part2_high_wall_20cm.xml",
+    "scene": "part2_off_high_wall_20cm.xml",
     "start": [
       0.0,
       0.0,
@@ -354,7 +354,7 @@
     "category": "high_wall",
     "level": 30,
     "unit": "cm",
-    "scene": "part2_high_wall_30cm.xml",
+    "scene": "part2_off_high_wall_30cm.xml",
     "start": [
       0.0,
       0.0,
@@ -379,7 +379,7 @@
     "category": "high_wall",
     "level": 40,
     "unit": "cm",
-    "scene": "part2_high_wall_40cm.xml",
+    "scene": "part2_off_high_wall_40cm.xml",
     "start": [
       0.0,
       0.0,
@@ -404,7 +404,7 @@
     "category": "trench",
     "level": 10,
     "unit": "cm",
-    "scene": "part2_trench_10cm.xml",
+    "scene": "part2_off_trench_10cm.xml",
     "start": [
       0.0,
       0.0,
@@ -429,7 +429,7 @@
     "category": "trench",
     "level": 20,
     "unit": "cm",
-    "scene": "part2_trench_20cm.xml",
+    "scene": "part2_off_trench_20cm.xml",
     "start": [
       0.0,
       0.0,
@@ -454,7 +454,7 @@
     "category": "trench",
     "level": 30,
     "unit": "cm",
-    "scene": "part2_trench_30cm.xml",
+    "scene": "part2_off_trench_30cm.xml",
     "start": [
       0.0,
       0.0,
@@ -479,7 +479,7 @@
     "category": "plum",
     "level": 1,
     "unit": "bool",
-    "scene": "part2_plum_eval_scene.xml",
+    "scene": "part2_off_plum_1.xml",
     "start": [
       0.4,
       0.4,
