@@ -309,3 +309,25 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 - `env_cfgs.py` 新增（复用已有 subterrains 入口）：`BLACKW_SUBTERRAINS`（官方混合任务只训练指定类别，如 `platform,high_wall,stairs`）、`BLACKW_DIFF_MIN/MAX`（官方混合任务固定难度）、`BLACKW_SPAWN_X/Y/YAW`（把 gate 的 spawn 随机化装进训练 reset；joint ±0.03 rad / ±1.0 rad/s 本来已匹配）。
 - 已排队 `ppo_m0_hardmask`（job 16）：blackw-official 子集 `platform,high_wall,stairs` 固定难度 1.0（= 40 cm 台 / 40 cm 墙 / 30 cm 台阶），从 s100 m650 继续、guard blend 0.97（比 0.95 更塑性）+ guard 漂移日志 + gate 随机化，400 iter；结束时导出全部 checkpoint。目标：先把三个硬类的 gate 稳定性拉起来，同时用全档回归确认没把 slope35/trench20 等带坏。
 
+## 18. 2026-10-26 job16 hardmask 结果（负结果）与续训继承核查
+
+### 18.1 job16（平台/墙/台阶固定 1.0 难度、400 iter、blend 0.97）judge 评测
+
+- 导出 9 个 checkpoint（m650–m1049），本地判据两种协议各 8 attempt：
+  - canonical（无 spawn 抖动、名义命令+两段速度）：8 attempt 是**同一条确定性轨迹重复**，只能读作"该单条轨迹是否成功"，不是通过率；
+  - gate（3 档命令 + spawn/joint 随机化 + vy/wz±0.1）：更接近稳健性口径。
+- canonical 单轨迹：s100 m650 = platform40 ✅、slope35 ✅、stairs30 ✅、trench20 ✅，wall40 ❌、stairs20 ❌；hardmask 各 checkpoint：stairs30 **全部 ❌**；wall40 在 hm650/hm800/hm850 单轨迹 ✅，其余 ❌；platform40/slope35/trench20 多数 ❌。
+- gate 通过率（x/8）：s100 m650 = platform40 7、wall40 1、slope35 6、stairs20 2、stairs30 0、trench20 5；hardmask 最好点（hm950）= platform40 2、wall40 4、slope35 3、stairs20 2、stairs30 0、trench20 5。
+- 结论：**hardmask 配方是负结果**——除 wall40 略有改善外，platform40/slope35/stairs30 都退化；而且 canonical 单轨迹对权重极小变化极敏感（hm650 与 m650 权重只差几步，stairs30 从 ✅ 翻到 ❌）。说明"固定 1.0 难度 + blend 0.97 + 全量 resume"不是稳健化方向。
+- 注意：canonical 的 8/8 是重复同一条轨迹，不能当 8/8 成功率写进结论（实验设计错误，后续 rate 一律用带随机化的 16/8 attempt）。
+
+### 18.2 续训继承核查（交叉审计 PPO 条目的核实）
+
+- 交叉审计指出"job16–18 从 stairs specialist 跨任务 resume，会继承 critic/optimizer/iter（历史 §11.6）"——**核实为真**：`mjlab/scripts/train.py:173` 调用 `runner.load(resume_path)` 不传 `load_cfg`，`PPO.load` 默认加载 actor+critic+optimizer+iteration；`learn()` 的循环是 `start_it + num_learning_iterations`，所以 job16 的 400 iter / job17-18 的 300 iter 是"从 650 起新增"，迭代数本身没问题，但 critic/Adam 状态确实跨任务继承。
+- 修复：在自有 runner `BlackVelocityOnPolicyRunner`（远程 `src/alldog_mjlab/tasks/velocity/black/curriculum_checkpoint.py`）增加 `load()` 覆盖，支持 `BLACKW_RESUME_LOAD_CFG=actor`（只继承 actor；critic/optimizer/iter 重置，lr 用 CLI 的 4e-5）；语法校验通过。下一轮训练前做 A/B（全量 resume vs actor-only），再决定默认。
+- 审计其余 PPO 条目的核实结果：
+  - job15 smoke1/smoke2 rc=1：**属实但原因是 smoke 脚本漏 `--agent.logger tensorboard`**（默认 wandb logger 与当前 wandb 版本不兼容），不是 GuardedPPO 代码 bug；job19 复测中，`BLACKW_GUARD_BASE_CKPT` 在 job19 通过前不能算已验证。
+  - job13 训练 success≈0 / tiercheck 0/278：**早已记录为负结果**（§17.1），未作为任何 base 使用；本轮 base 是 s100 m650（job13 的 anchor，不是 job13 产物）。
+  - job17/18 脚本注释复制粘贴错误（trench20 写成 slope robustness）：**属实，纯注释**，修脚本注释即可，不影响行为。
+  - HIM 侧（gate rc=1、job14 无 JSON、5ms/4dec 等）按要求不在本文范围，仅记录现象一致。
+
