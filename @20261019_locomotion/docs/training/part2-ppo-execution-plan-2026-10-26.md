@@ -19,6 +19,43 @@
 - **slope45 诊断（2026-10-26 第二轮补充）**：不直接判死——先把**训练环境**地形摩擦调到 μ=1.2 做课程训练，看训练侧成功率能否起来（judge 物理保持 μ=1.0 不变；该实验只用于判定瓶颈归属，不作为交付）。实现 `BLACKW_WORLD_FRICTION`（默认不生效）+ 自检脚本，见 §2.3。**评测时 μ=1.2 与 μ=1.0 都要报**（正式赛物理口径由用户告知培训方）。
 - **冲坡缺口（用户 2026-10-26 第二轮要求核算）**：μ=1.0 时“平地加速冲坡”能否上顶、是否导致关节速度超限——核算见 §2.4；结论：纯惯性不可行（需 6.26 m/s，对应轮速 60.8 rad/s，超过部署 dq_des 上限 20 rad/s），但冲坡提供的 6–11% 摩擦余量是真实可用的，且 ≤2 m/s 入坡不会触发关节速度限幅 → 若 μ=1.2 训练有效，**后期可尝试 μ 递减课程 + 冲坡（手动 gate）**。
 
+## 0.2 待办清单（Living TODO，2026-10-26 10:15 建立；每次 session 结束前更新）
+
+> 规则：本清单是这条线**唯一的"说到就要做"记录处**——对话里新增的未完成事项先落到这里再执行；完成后打 `[x]` 并写证据路径/commit；每个工作时段结束复盘一次，长期项按日期推进。短期 = 今天/24 h；长期 = 到 11-04 赛前。
+
+### 短期（今天 10-26 余下时间）
+
+- [x] task-spooler 队列落地 + 3 类 job 实测（SIGTERM 清理 / 3 iter 训练 smoke / 15 个 checkpoint 批量导出）→ [`remote-training-workflow.md`](remote-training-workflow.md) §5
+- [x] guard4 三个 800-iter run 复核：无可捞档位 → [`part2-ppo-training-history.md`](part2-ppo-training-history.md) §14.1
+- [x] stairs30 专项 v0（r=0.75→1.0）首轮：judge 首次 stairs30 1/4（m350/m650）→ 历史归档 §14.4
+- [x] slope45 μ=1.2 课程诊断（job 11）：BC 基线 40°=95.7%、45°=0%；stage A 40°→100%；**stage B（45°，再 350 iter）训练 0%，judge 双测 μ=1.2/1.0 均 fail** → 历史归档 §14.5
+- [ ] **stairs30 续训 job 13**（排队，HIM job 12 之后）：跑完 scp 导出 + judge stairs30/20 选点；仍 <2/8 则换配方（blend 0.90 / lr 8e-5）或插入 r=0.9 中间档（单变量）
+- [ ] **slope45 下一步（μ 递减课程起点）**：μ=1.2 学不会 → 改从 **μ=2.0 或 1.5** 先学 45°（BC v5 在 μ=1.5 可攀到 root z≈2.08、μ=2.0 能到顶），学会后逐档降 μ（2.0→1.7→1.5→1.3→1.2→1.1→1.0，每档 resume + ~200 iter + 手动 gate）；每档同时报 μ=1.2/1.0；排在主线空档，不抢 8/8 主线 GPU
+- [ ] **gate 工具实现（本地，不占 GPU）**：`eval_blackw_part2.py` 加 `--jitter-x/--jitter-yaw/--joint-offset/--joint-vel/--command-set`（3 档速度指令 + 关节随机化）；新增 `gate_stage.py`（阶段表 → 每关×每指令档通过矩阵 + verdict）；自检后对 comp_bc_v5 跑 placement
+- [ ] **comp_bc_v5 placement（本地）**：20 关 × 3 指令档 × 8/16 次 → 输出 `prep.d/results/blackw_official/stage_gates/`，得到"最低未通过 stage"清单
+- [ ] **M0 逐档 gate 训练**：按 placement 结果只训未过档（mixed official 固定 r，每档 300 iter ≈10–12 min）；目标 platform40/wall40/slope35/stairs20/trench20 + stairs30 全部 8/8
+- [ ] **深度 D0-a**：把 `black/camera_depth.py` 的 `CameraSensorCfg` + camera obs group + `CNNModel` 接到 blackw exact/mixed 任务（只读参考 HIM 文件，不改其文件）；训练端 depth smoke（约 10 min GPU）
+- [ ] **深度 D0-b**：本地 rl_sar 侧 MuJoCo 深度渲染 + TorchScript CNN 前向最小链路 + 与训练端深度统计对拍（不占 GPU）
+- [ ] **今晚 00:00 前收工检查**：所有 job 结束/checkpoint 落盘、flag=0、summary 齐全；夜间关机 00:00–09:00（最晚等 00:30）
+
+### 长期（到 11-04）
+
+- [ ] **盲侧 8/8 拿满 850**：platform40 / wall40 / slope35 / stairs20 / trench20 / stairs30 全部 8/8（简单档 S0–S2 按 16/16）
+- [ ] **3 份策略交付形态**（§3.1）：`M0(+St30 DAgger 合并)` + 深度 T30 + 深度 P；若深度只成一个则退化 2 份；始终保留单份盲 fallback
+- [ ] **深度 T30（+150）**：D1 训练在 **10-28 前**看训练侧 trench success 是否从 0 起来；不过则 10-28 EOD 止损并记录负结果
+- [ ] **深度 P 梅花桩（+200）**：仅在 T30 成功后启动；10-29 决策
+- [ ] **slope45（+100，可争）**：μ 递减课程 + 冲坡（见 §2.4 与短期项）；正式赛物理口径由用户与培训方确认；过 8/8 gate 才把盲侧目标由 850 提到 950
+- [ ] **10-30 冻结候选、11-01 冻结**（AGENTS：D-3 起不开新训练线）；11-02–11-04 复跑/视频/答辩
+- [ ] **文档同步**：每次 gate/训练结论 → 历史归档 + 本文件 §1/§2 更新；不入库产物放 `prep.d/` 并写路径
+
+### 当前在跑/排队（每次更新）
+
+| 队列 job | 内容 | 状态 |
+|---|---|---|
+| job 12 | HIM 线 `him_row0_mixed_gate.sh` | running（FIFO 让给 HIM） |
+| job 13 | `ppo_st30_s100b`（stairs30 从 m650 续训 800 iter） | queued |
+| job 11 | slope μ=1.2 诊断 | ✅ finished（负结果，§14.5） |
+
 ## 1. 实测状态（2026-10-26 08:30–10:00）
 
 | 项 | 实测结果 |
@@ -59,6 +96,7 @@
 - 实现：`blackw/exact_terrain.py` 的 `_box()` 在环境变量存在时给每个地形 geom 写 `friction`（默认不写，官方/交付训练行为不变）；自检 `@20261019_locomotion/scripts/agent_scripts/check_world_friction.py`（远程 `scripts/agent_scripts/`）实测三种模式：unset→compiled 1.0、=1.2→compiled 1.2、=0.8→geom 0.8（接触仍取 max=1.0），slope 3 geoms / stairs 13 geoms 全部一致，SELFTEST PASS。
 - 2026-10-26 实测基线（job 11，BC v5，训练环境 check_tier_success，128 env × 2 ep）：μ=1.2 时 r=0.8（40°）**95.7% 成功率（245/256）**；μ=1.2 时 r=1.0（45°）**0%**；μ=1.0 时 r=1.0 **0%**。→ BC 的步态在 μ=1.2 下也爬不上 45°，μ=1.2 的 20% 静态余量不足以覆盖它的动态需求；job 11 的 stage A（r=0.8 250 iter）→ stage B（r=1.0 350 iter）正在跑，用于判断"训练能否在 μ=1.2 学会 45°"。
 - 判读（2026-10-26 第二轮修正）：① μ=1.2 学会、judge(μ=1.0) 不过 → 记录为"静态零余量下的物理限制"，**但不判死**：按 §2.4 的冲坡机制继续做 μ 递减课程；② μ=1.2 也学不会 → 提升训练摩擦到 1.5 先学技能，再逐档降 μ（1.5→1.3→1.2→1.1→1.0）；③ 每个阶段都同时报 μ=1.2 与 μ=1.0 的评测（judge 官方场景为 μ=1.0，μ=1.2 用改 friction 的同场景 `probe_slope_friction.py --mu 1.2` 测）。
+- **job 11 结果（2026-10-26 10:00 完成）**：stage A（r=0.8，250 iter）把 40° 从 95.7% 提到 **100%**；**stage B（r=1.0，再 350 iter）训练侧 `part2_success` 全程 0**，结束时训练环境 r=1.0 在 μ=1.2 与 μ=1.0 下都是 **0/256**；把 B 的 4 个 checkpoint 导出后在 judge 场景双测（μ=1.2 与 μ=1.0）也全部 fail（max root z 0.69–0.96 m）。→ **μ=1.2 的 20% 静态余量不足以让该谱系学会 45°**；按用户指示不判死，下一步改从 μ=1.5/2.0 起学（短期待办已记）。
 
 复现命令（本地，CPU）：
 

@@ -227,7 +227,7 @@ nohup env BLACKW_DEPLOY_SIM=1 BLACKW_DIFF_MIN=<STAGE_R> BLACKW_DIFF_MAX=<STAGE_R
 
 | 文档 | 用途 |
 |---|---|
-| [`part2-ppo-execution-plan-2026-10-26.md`](part2-ppo-execution-plan-2026-10-26.md) | **当前执行计划（2026-10-26 起）**：修正后的目标与分数账、分阶段排期、GPU 队列使用协议、待确认项；本文件 §4 以其为准 |
+| [`part2-ppo-execution-plan-2026-10-26.md`](part2-ppo-execution-plan-2026-10-26.md) | **当前执行计划（2026-10-26 起）**：修正后的目标与分数账、分阶段排期、GPU 队列使用协议、待确认项；**§0.2 Living TODO = 短期/长期待办唯一记录处（新会话先看这里）**；本文件 §4 以其为准 |
 | 本文件 | 交接：课程规则（§3）、原"明天清单"（§4，已被执行计划取代）、远程状态、边界、开放问题 |
 | [`part2-bc-policy-report.md`](part2-bc-policy-report.md) | 主报告：judge v5、BC/DAgger、评测结果、参考文献、局限 |
 | [`part2-ppo-training-history.md`](part2-ppo-training-history.md) | 归档：bug 审计/修复证据、最低档/档位结构验证、显存实测、早期 specialist 记录 |

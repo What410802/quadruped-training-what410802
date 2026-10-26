@@ -165,3 +165,20 @@ platform 99.7%、wall 100%、slope 99.7%、trench 100%（失败各 1 例为 `bad
 - **judge（官方隔离场景、±0.1 m 抖动、4 次、指令 0.75→0.45@x=1.1）**：阶段 A 各 checkpoint stairs30 **0/4**、stairs20 与基线持平（2/4）；阶段 B **m350 与 m650 各 1/4 通过 stairs30**（基线 comp_bc_v5 0/4），stairs20 在 0–3/4 间波动。→ 首次在 judge 上出现 30 cm 台阶成功（25% 单次通过率），方向正确但距 8/8 仍远；已排队 `ppo_st30_s100b`（从 m650 续训 800 iter，单变量）继续。
 - 产物：`prep.d/results/ppo_st30/{exports,judge}/`（不入库；JSON 含每关 4 次 attempt 明细）。
 
+### 14.5 slope45 μ=1.2 课程诊断（job 11，2026-10-26 上午；负结果）
+
+- 目的：用户 2026-10-26 第二轮要求——把**训练环境**地形摩擦调到 μ=1.2（`BLACKW_WORLD_FRICTION`，judge 保持 μ=1.0）做课程训练，看训练侧 45° 成功率能否起来；评测必须同时报 μ=1.2 与 μ=1.0。
+- 实现与自检：`blackw/exact_terrain.py` 的 `_box()` 按环境变量写地形 geom `friction`（默认不写、行为不变；MuJoCo 接触摩擦取两侧 max，机器人轮子仍 1.0）；自检 `scripts/agent_scripts/check_world_friction.py` 三模式 PASS（unset→1.0、=1.2→1.2、=0.8→geom 0.8）。代码快照 `@20261024_blackw/training/blackw/exact_terrain.py`。
+- 配置：`blackw-slope-exact`，512 env、GuardedPPO blend 0.95 / lr 4e-5 / 冻结 σ / entropy 0，从 `bc_v5_guarded_s01` 热启动；stage A r=0.8（40°）250 iter，stage B r=1.0（45°）再 350 iter；save 50。
+- 结果（训练环境 check_tier_success，128 env × 2 ep；judge 用 `probe_slope_friction.py`）：
+
+| 评测 | μ=1.2 | μ=1.0 |
+|---|---|---|
+| BC v5 基线，r=0.8（40°） | **95.7%**（245/256） | — |
+| BC v5 基线，r=1.0（45°） | **0%** | **0%** |
+| stage A 结束，r=0.8 | **100%**（256/256） | — |
+| stage B 结束，r=1.0 | **0%**（0/256），训练日志 `part2_success` 全程 0 | **0%** |
+| stage B m250/m400/m550/m598 导出 → judge 场景双测 | 全部 fail（max root z 0.69–0.96 m） | 全部 fail |
+
+- 结论：**μ=1.2 的 20% 静态余量不足以让当前 BC 谱系学会 45°**（GuardedPPO 小步长 350 iter 也没找到）；并不意味着 μ 课程无效——下一步按用户指示从更高摩擦起学（μ=1.5/2.0，BC v5 在 μ=1.5 可攀到 root z≈2.08、μ=2.0 能到顶），学会后逐档降 μ（2.0→1.7→1.5→1.3→1.2→1.1→1.0），每档手动 gate 并双报 μ=1.2/1.0。整体计划与待办见 [`part2-ppo-execution-plan-2026-10-26.md`](part2-ppo-execution-plan-2026-10-26.md) §0.2/§2.3。
+- 产物：远程 `~/rc_work/models/ppo_slope{A,B}_mu12_*`；本地 `prep.d/results/slope_mu12/`（不入库）。
