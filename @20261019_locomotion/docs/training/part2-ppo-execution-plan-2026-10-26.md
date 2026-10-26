@@ -18,7 +18,7 @@
 | GPU 队列 | task-spooler v1.0.3，`TS_SOCKET=/tmp/gpu_queue.socket`，单槽；开工时队列空 |
 | guard4 | 3 个 run 均完成 800 iter；每 50 iter 存档；已用 `ts_export_guard4` 导出 5 checkpoint/run（单次导出 5–6 s） |
 | 本地 judge | 20 个官方隔离场景链路正常；4 attempt/关约 2–4 s（platform）/ 5–10 s（stairs），本地 6 并发可用 |
-| 迭代耗时（实测） | 精确地形 512 env（部署对齐物理）≈5.9 s/iter（800 iter=79.6 min，guard4）；mixed official 1024 env ≈1.9–2.4 s/iter（300 iter≈10–12 min） |
+| 迭代耗时（实测） | 精确地形 512 env（部署对齐物理）：mixed-row guard4 约 5.9 s/iter（800 iter=79.6 min），定档 stairs-exact r=0.75 约 **2.25 s/iter**（300 iter≈11–12 min）；mixed official 1024 env ≈1.9–2.4 s/iter（300 iter≈10–12 min） |
 | 深度链路 | 训练仓已有 `black/camera_depth.py`（48×64 深度、CNN latent 64）但 **part2 任务未接**；rl_sar 控制栈**没有**深度相机/CNN 推理（D0 的主要工作量） |
 
 ## 2. 关键证据（可复现）
@@ -59,7 +59,7 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 
 | 轨道 | 内容 | 价值 | 风险 | GPU 预算 | 决策点 |
 |---|---|---|---|---|---|
-| **P1** | stairs30 盲专项（exact r=1.0） | +100（750→850） | 中 | 今日 80–120 min，明日 40–80 min | 今日 A/B 首 100 iter 是否有训练侧 success 信号 |
+| **P1** | stairs30 盲专项（exact r=0.75→1.0） | +100（750→850） | 中 | 今日约 30 min（含导出/诊断），明日 30–60 min | 今日 A/B 首 100 iter 是否有训练侧 success 信号 |
 | **P2** | M0 逐档 gate（mixed official 失败档微调） | 鲁棒性/兜底（期望分 743→接近 750） | 低 | 合计 60–90 min | placement 结果出来即定（今天） |
 | **P3** | 深度 D0（part2 接相机 + rl_sar 渲染/CNN 最小链路） | 深度专项前置，必须做 | 中 | ~20 min smoke | 今日 EOD 是否有 demo |
 | **P4** | trench30 深度专项（D1/D2/D3） | +150 | **高** | 明日起 2–3 h/日 | 10-28 EOD 训练侧 success 是否从 0 起来 |
@@ -73,7 +73,7 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 ### 4.1 今天 10-26（剩余约 11 h）
 
 1. **09:45–10:30 本地**：扩展 gate 工具（`eval_blackw_part2.py` 加 `--jitter-x/--jitter-yaw/--joint-offset` 随机化与 `--command-set` 三档指令；新增 `gate_stage.py` 输出每关×每指令档通过矩阵到 `prep.d/results/blackw_official/stage_gates/<stage>.json`）。不占 GPU。
-2. **08:51 GPU 队列（已提交，job 7 → 8 依赖链）**：stairs30 盲专项按课程分两步，而不是直接跳 r=1.0：`ppo_st30_s075`（r=0.75 = 25 cm/step，300 iter，≈30 min）跑完自动导出 m100/200/300 并做训练侧 tiercheck；随后 `ppo_st30_s100`（r=1.0 = 30 cm/step，400 iter，≈40 min，`ts -d` 依赖前一 job 成功才启动）从 s075 的 model_300 热启动。两个 job 都是 GuardedPPO blend 0.95 / lr 4e-5 / 冻结 σ。收工后 scp 导出结果回本地 judge 选点；若两步都不出信号，再试 §3 的"更多塑性"配方（blend 0.85 / lr 8e-5）。
+2. **08:51 GPU 队列（已提交，job 7 → 8 依赖链）**：stairs30 盲专项按课程分两步，而不是直接跳 r=1.0：`ppo_st30_s075`（r=0.75 = 25 cm/step，300 iter，实测 ≈2.25 s/iter → 约 11–12 min）跑完自动导出 m100/200/300 并做训练侧 tiercheck；随后 `ppo_st30_s100`（r=1.0 = 30 cm/step，400 iter，≈15 min，`ts -d` 依赖前一 job 成功才启动）从 s075 的 model_300 热启动。两个 job 都是 GuardedPPO blend 0.95 / lr 4e-5 / 冻结 σ。收工后 scp 导出结果回本地 judge 选点；若两步都不出信号，再试 §3 的"更多塑性"配方（blend 0.85 / lr 8e-5）。
 3. **10:30–11:30 本地**：comp_bc_v5 全 20 关 placement（3 指令档 × 16/8 次尝试，本地 6 并发，约 15–30 min）→ 得"最低未通过 stage"清单；同时把 S0–S6 各自的目标档名单固化进 gate JSON。
 4. **11:30–12:00**：深度 D0-a —— 把 `black/camera_depth.py` 的 `CameraSensorCfg` + camera obs group + `CNNModel` 接到 blackw exact/mixed 任务（只读参考 HIM 线文件，不改其文件）；排一个 10 min 的 depth smoke（512 env × 3 iter）验证能渲染、无 OOM。
 5. **下午**：stairs30 首轮结果判读（训练侧 `check_tier_success --difficulty 1.0` + 中途 checkpoint judge）；据此选配方并提交 400–800 iter 续训；M0 失败档微调（mixed official，固定 r，每档 300 iter ≈10–12 min）；D0-b（rl_sar 侧 MuJoCo 渲染 + CNN 前向最小链路 + 与训练端深度统计对拍，本地）。
@@ -121,7 +121,7 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 - **本线规则**：只用 `ts` 提交（不绕开队列 `nohup train`）；标签 `ppo_*`；提交前 `ts -l` + `nvidia-smi`；本线队列内最多 2 个 job；单 job ≤2 h（夜间关机），`--agent.save-interval 50` 续训；被 SIGKILL 中断后手工 `printf 0 > ~/5060ti_machine_use_flag.txt`。
 - **与 HIM 线共享单槽**：FIFO，先提交先跑；每天开工时两条线各报当日 job 清单（用户协调顺序）；GPU 空转时谁有就绪 job 谁跑，不预占。
 - **产物回收**：远程 `~/rc_work/models/<name>/` → `scp` 到本地 `prep.d/results/<topic>/`；export→judge 在本地做（CPU，不占 GPU）；gate JSON 落 `prep.d/results/blackw_official/stage_gates/`。
-- **今日队列状态（2026-10-26 08:51）**：已提交 `ppo_st30_s075`（job 7，running）→ `ppo_st30_s100`（job 8，`ts -d` 依赖 job 7 成功）；预计 10:05 前后跑完。手动中断/抢占：`ts -k 7`（需手动把 flag 置 0），随后可直接跑 HIM 线任务；PPO 线要续跑时从 `~/rc_work/models/ppo_st30_s075_m300` 对应 checkpoint 重新提交。
+- **今日队列状态（2026-10-26 08:51）**：已提交 `ppo_st30_s075`（job 7，running）→ `ppo_st30_s100`（job 8，`ts -d` 依赖 job 7 成功）；预计 09:25 前后跑完（job 7 实测 ≈2.25 s/iter）。手动中断/抢占：`ts -k 7`（需手动把 flag 置 0），随后可直接跑 HIM 线任务；PPO 线要续跑时从 `~/rc_work/models/ppo_st30_s075_m300` 对应 checkpoint 重新提交。
 
 ## 7. 快速命令（可直接提交的第一批 job）
 
