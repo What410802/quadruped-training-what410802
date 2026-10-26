@@ -171,5 +171,5 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 - **评审结论**：G1（judge v5）与 G4（分数/证据链）均 FAIL/REJECT，见 [`../../comp/audits/2026-10-26-BYOK-RFR-SUMMARY.md`](../../comp/audits/2026-10-26-BYOK-RFR-SUMMARY.md)。
 - **750/743 的降级**：本文所有 judge v5 分数改为"未审计 executor 证据"；不得用于选型、对外引用或冻结。要恢复为可引用数字，至少需要：① judge v5 通过 G1 复验；② comp_bc_v5 的 judge v5 逐 attempt 原始 JSON 导入 comp/eval 三件套并由 `comp_score.py` 重算；③ 4 次尝试/命令 profile 的统计口径统一。
 - **数字矛盾修正**：§6.2 的 743 与 §6.3 的 706 是不同命令面统计，后续只保留一份计算式；高墙 3/4 与 1/4 分别是 `vx 0.65→0.35` 与 `0.8→0.3` 两个 profile，不得混引（见评审证据）。
-- **部署证据撤回**：旧部署 smoke 的 5/20 不可用——① deploy levels 用的场景是旧 proxy `part2_*.xml` 而 judge 用官方 `part2_off_*.xml`（20/20 不一致，已修 `part2_levels.json`）；② 官方 `obstacle` 权重同一 smoke 也是 5/20 且出现数值爆炸（trench z≈-1118）→ smoke/栈有效性未验证。修复后需重跑并以官方权重对照解释失败。
+- **部署证据更新**：旧部署 smoke 的 5/20 已作废（deploy levels 误用旧 proxy `part2_*.xml`，judge 用官方 `part2_off_*.xml`；20/20 不一致，已修 `part2_levels.json`）。官方场景重跑：`comp_bc_v5` **10/20 档（折算 best-case ≈400/1300）**，官方 `obstacle` 权重对照 **10/20（≈400）**，无数值爆炸。**judge 750 与部署 400 的差距待逐 case 解释；不得用 750 宣称"可部署能力"。**
 - **合规**：轮腿构型/力矩表是否覆盖轮关节、4 次尝试的官方语义、judge 自拟阈值（hold 0.3 s、gap 下沉 0.103 m、wall climb_z_min 等）均需主办方书面确认后方可冻结。

@@ -5,7 +5,7 @@
 ## 进展（事实）
 
 - **比赛**：2026-11-04 队内赛；两赛项（障碍赛 900 + 越障能力 1300）占 70%，答辩 30%；D-3（11-01）起不再开新训练线。
-- **Part2 交付现状**：`comp_bc_v5` 的 judge v5 750/743 为**未审计 executor 证据**；2026-10-26 两份 BYOK+RFR 独立评审（GLM different-family）G1/G4 均 **FAIL/REJECT**：judge v5 无标定/与 V2 漂移/高度带谓词、comp_bc_v5 无 comp/eval 三件套、部署 smoke 5/20 与分数矛盾且 smoke 本身无效（旧 proxy 场景 + 官方权重对照也 5/20 + 数值爆炸；场景已修为官方 `part2_off_*`，待重跑）。详见 [`../../comp/audits/2026-10-26-BYOK-RFR-SUMMARY.md`](../../comp/audits/2026-10-26-BYOK-RFR-SUMMARY.md)。能力上限约 850（s100 m650，同样未审计）；trench30/plum 属深度项。
+- **Part2 交付现状**：`comp_bc_v5` 的 judge v5 750/743 为**未审计 executor 证据**；2026-10-26 两份 BYOK+RFR 独立评审（GLM different-family）G1/G4 均 **FAIL/REJECT**：judge v5 无标定/与 V2 漂移/高度带谓词、comp_bc_v5 无 comp/eval 三件套、部署 smoke 旧 5/20 因 proxy 场景无效；场景已修为官方 `part2_off_*`，重跑后 comp_bc_v5 **10/20（best-case ≈400）**、官方 obstacle 对照 **10/20（≈400）** → judge 750 与部署 400 的差距待逐 case 解释。详见 [`../../comp/audits/2026-10-26-BYOK-RFR-SUMMARY.md`](../../comp/audits/2026-10-26-BYOK-RFR-SUMMARY.md)。能力上限约 850（s100 m650，同样未审计）；trench30/plum 属深度项。
 - **验收口径**：2026-10-26 已改为覆盖集协议（零摔倒 + 可行穿越子集全过 + held-out），旧的 8/8、16/16、<1% 指标全部作废；协议见 [`../20-part2-shared/acceptance-eval-protocol.md`](../20-part2-shared/acceptance-eval-protocol.md)。
 - **代码审计闭环**：round-1 两份独立审计（PPO 核心、部署/作业）均 BLOCKED；已修第一批（sim 逐关节力矩、部署策略导入/校验工具、DR 恢复、resume lr/继承控制、plum 奖励、README 键位等）；round-2 未 PASS，剩余阻塞逐项见 [`../21-part2-ppo/audit-blockers.md`](../21-part2-ppo/audit-blockers.md)。
 - **HIM 线**：HIM agent 已停止；其本地/远程改动已原样分批提交（nwwolf 仓 `pre-reorg-him-2026-10-26` tag）；HIM gate 假测量与发散问题记录在其文档（22 目录），当前不作为交付主线。

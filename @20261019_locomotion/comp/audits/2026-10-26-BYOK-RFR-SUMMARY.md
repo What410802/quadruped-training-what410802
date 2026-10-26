@@ -29,3 +29,12 @@
 - 待做：comp_bc_v5 的 judge v5 结果导入 comp/eval 三件套（manifest 带 v5 hash + 训练仓 commit），`comp_score.py` 重算；报告 750/743 降级为"未审计 executor 证据"；judge v5 阈值取得规则依据/主办方确认；4 次尝试语义在 runner 层实现；接触式成功谓词改造（冻结前）；覆盖集验收工具实现。
 
 > 评审纪律：两份 verdict 都是 different-family；按本仓库 `comp/reviewer.json` 规则，GLM 可作为 Type-B 独立评审（不再依赖 Codex）。执行者不得自行把 FAIL 改写成 PASS；修复后需重跑 reviewer 复验。
+
+## 评审后跟进结果（2026-10-26 18:40，官方场景重跑）
+
+- **场景修复生效**：deploy `part2_levels.json` 全部改为官方 judge 场景 `part2_off_*`（20/20）。重跑无 Part2 仿真数值爆炸（旧 proxy 场景下 trench z≈-1118 的异常消失）。
+- **部署 smoke（官方场景 + 官方命令档，单次尝试）**：
+  - `comp_bc_v5`：**10/20 档通过**（platform 10/30cm、stairs 10/15cm、slope 20/30°、wall 10/20/40cm、trench 10cm）；按契约分曲线折算**最好情况 ≈400/1300**。
+  - 官方 `obstacle` 权重对照：**同为 10/20 档、折算 ≈400/1300**（互相通过档位不同）→ 部署栈与官方基线可比，旧 5/20 的"数值爆炸"归因于旧场景；**judge v5 750 vs 部署 400 的差距真实存在**，需要逐 case 解释后才有资格谈"可部署能力"。
+  - 证据：`prep.d/results/ppo_st30/deploy_smoke/comp_bc_v5_official_scenes.json`、`obstacle_official_scenes.json`（未入库）。smoke 仍是"官方档位命令单次尝试"，不是 acceptance 覆盖集（初态分布/指令包络/held-out 未做）。
+- **两份评审 verdict 不因上述修复而改判**：G1/G4 仍 FAIL/REJECT；上表 FATAL 全部未关闭。修复后需重跑 G1/G4 复验。
