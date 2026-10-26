@@ -36,6 +36,23 @@
 - [ ] **A4 奖励/终止优化（按需、单开关）**：只有当某一档在课程中"奖励涨、judge 不涨"或明显学不动时才改一项（reward 项/终止/课程档），并配 judge 回归；目的就是让下一档能过 gate，不做无目标的奖励工程
 - [ ] **A5 深度（后期）**：盲侧 8/8 稳定后再开 D0/D1；trench30/plum 视深度结果加入，不影响盲侧交付
 
+### A6. 下一批实验（job16-19 结论后，2026-10-26 下午）
+
+> 背景：job16 hardmask（固定 1.0 难度、blend 0.97、全量 resume、无低档回放）judge 退化（历史 §18.1）；job19 已证明 `BLACKW_GUARD_BASE_CKPT` 可用。再跑同配方无意义，下一批只做归因对照（每项都导出全部 checkpoint，按 gate 协议 16/8 attempt + 全档 judge 评估）：
+
+- [ ] **A6a 续训契约 A/B**：同 job16 任务/难度，`BLACKW_RESUME_LOAD_CFG=actor`（actor-only，critic/optimizer/iter 重置）vs 全量 resume；400 iter，其余同 job16。判读：actor-only 是否显著减轻退化。
+- [ ] **A6b guard 锚点 A/B**：`BLACKW_GUARD_BASE_CKPT=bc_v5` vs 默认 m650（均 actor-only resume）；判读：BC 锚能否保住低档（platform/slope/trench）而不牺牲 wall40 提升。
+- [ ] **A6c 低档回放/正则**：mixed 全类别（rows 0..5，含低档）替代固定 1.0 hardmask；判读：保留低档后 wall40 是否仍提升、platform40/slope35 是否不退化。
+- [ ] **A6d 课程**：0.5/0.6/0.8→1.0 逐档（每档 150–200 iter、gate 通过才升），对比固定 1.0；判读：课程能否让 stairs30/wall40 离开 0–1/8。
+- [ ] **A6e（零训练成本）model soup**：对 s100/s100b 现有 checkpoint 的 actor 权重做平均/加权平均，judge 选点（只需 GPU 导出槽位）；若有效可快速得到更稳的 blind 候选。
+- [ ] **A6f 评测口径统一**：所有 rate 一律 gate 协议（spawn/joint 随机化 + 3 档命令）**≥16 attempt**；canonical 单轨迹只用于调试、不得作为通过率（历史 §18.1 已记录该陷阱）。
+
+### A7. 部署侧质量核对（用户 2026-10-26 问：最终 .pt 按契约放进去能否直接演示）
+
+- 现状（已核对）：`ws/src/rl_sar_blackw/policy/blackW/<name>/policy.pt + config.yaml`，`launch/rl_sim_blackw.launch.py` 支持 `policy_name:=<name>`、`part:=2 part2_level:=<key>`；`scripts/check_walk_blackw.py` 是无头自检（起身→RL→前进→转向→趴下，退出码 0/1）。
+- **未闭环的 5 点**：① **部署 dt/decimation = 0.005/4（PD 200 Hz）vs 训练/judge 0.002/10（PD 500 Hz）**，同一 20 ms 策略周期但控制频率不同（base.yaml 与交接文档"2ms/10dec 部署契约"不一致，属文档-代码对齐问题）；② 自检只覆盖前进/转向，未覆盖 Part2 20 关逐档 smoke；③ 多策略切换（≤3 份）没有 runbook（launch 一次一份，切换=重启+改参数）；④ 导出脚本只产 `policy.pt`，`config.yaml`/manifest 需复制/校验，缺自动化；⑤ 实机路径未验证（安全/限幅/标定）。
+- [ ] 计划：先做 ①③④（改 base.yaml 或写明兼容性 + 生成 config 的脚本 + 3 策略切换 runbook），再做 ②（Part2 逐档 headless smoke，产出 x/z/tilt 与 judge 对比），实机等用户安排。
+
 ### B. 防错修复（≤2 h，本地；防"再次用错测量/用反参数"）
 
 - [x] 文档修正 `BLACKW_GUARD_BLEND` 方向（越大越塑性；原"换 0.90"说法已改）
