@@ -9,6 +9,7 @@ keeping a dense difficulty sweep for PPO.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 import mujoco
@@ -24,10 +25,30 @@ _TRENCH_RGBA = (0.3, 0.1, 0.1, 1.0)
 _FLOOR_T = 0.05
 
 
+def _world_friction() -> tuple[float, float, float] | None:
+    """Optional training-only terrain friction override (diagnostic).
+
+    MuJoCo combines contact friction as the element-wise max of both geoms'
+    friction, so a value above the robot's 1.0 raises the effective contact
+    friction without touching the robot model.  Unset (or 0) keeps the official
+    judge value, i.e. MuJoCo's default 1.0 on the terrain geoms.
+
+    Only used to probe physical limits (e.g. ``BLACKW_WORLD_FRICTION=1.2`` for
+    the 45 deg slope); never set for deliverable training.
+    """
+    mu = float(os.environ.get("BLACKW_WORLD_FRICTION", "0"))
+    if mu <= 0.0:
+        return None
+    return (mu, 0.005, 0.0001)
+
+
 def _box(body, size, pos, rgba, quat=None):
     kwargs = dict(type=mujoco.mjtGeom.mjGEOM_BOX, size=size, pos=pos)
     if quat is not None:
         kwargs["quat"] = quat
+    friction = _world_friction()
+    if friction is not None:
+        kwargs["friction"] = friction
     geom = body.add_geom(**kwargs)
     return TerrainGeometry(geom=geom, color=rgba)
 

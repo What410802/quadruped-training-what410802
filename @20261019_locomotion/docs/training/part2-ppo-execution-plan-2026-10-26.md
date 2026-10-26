@@ -2,6 +2,14 @@
 
 > 本文件是 [`part2-ppo-handoff-2026-10-26.md`](part2-ppo-handoff-2026-10-26.md) §4「明天执行清单」的落地版：把交接里"上机先核对"的假设换成 2026-10-26 08:30–10:00 实测状态，修正目标分数，给出到 11-04 的分阶段计划、远程机（task-spooler 单卡队列）使用协议与待用户确认项。规则与课程口径仍以交接 §3 为准，模型分工见 [`part2-blind-depth-curriculum-plan.md`](part2-blind-depth-curriculum-plan.md)；本文件只回答"今天起按什么顺序、花多少算力、到什么算成功"。
 
+## 0.1 用户第二轮确认（2026-10-26 09:20，覆盖此前假设）
+
+- **GPU 分配**：先到先得（与 HIM 线共享单槽队列），不预留静态时段；但**不许浪费算力**——只跑"课程逐档位 + 代码逐行审查过"的任务，跑前先自检/小 smoke。
+- **夜间关机**：一般 **00:00–09:00** 关机；若 00:00 时仍有训练在跑可等到 **00:30**，所以单 job 应控制在 ~2 h 内、`save-interval 50` 保证被打断后可续。
+- **交付形态**：允许按障碍切换策略，但**目标最多 3 份策略**（分析见 §3.1）。
+- **成功率为王**：按对应分数优先级提升成功率；**当前阶段目标 = 除 30 cm 沟壑（trench30）与梅花桩（plum）外，Part 2 其余全部关卡 8/8 成功拿满分**（即盲侧 850 全拿满；trench30/plum 属深度项，另行争取）。
+- **slope45 诊断**：不直接判死——先把**训练环境**地形摩擦调到 μ=1.2 做课程训练，看训练侧成功率能否起来（judge 物理保持 μ=1.0 不变；该实验只用于判定瓶颈归属，不作为交付）。实现 `BLACKW_WORLD_FRICTION`（默认不生效）+ 自检脚本，见 §2.3。
+
 ## 0. 结论（先读）
 
 - **guard4 长跑已完成但无可捞档位**：`guard4_{slope,stairs,plum}` 三个 800-iter run 全部跑完（`model_799.pt` 落盘）；导出 5 个 checkpoint/run 做 judge 复核（15 个 checkpoint × 4 次；无抖动时 4 次等价确定性重复），**slope 45° 0/60、stairs 30cm 4/60（只有 1 个 checkpoint 的确定性轨迹过，±0.1 m 抖动重测 3 次全挂）、plum 0/60**，slope35°/stairs20cm 只在 9/15 与 3/15 个 checkpoint 保持。结论与交接 §3.3 一致：**混合难度行（row 0..5 随机）的 guarded 微调不会凭空长出 45°/30cm**；guard4 只作历史证据，不续训。
@@ -44,6 +52,12 @@
 
 → 结论：45° 的瓶颈是摩擦余量（tan45°=μ=1.0），不是策略；**除非正式赛物理口径不同，slope45 不列入训练目标**。
 
+### 2.3 slope45 训练环境 μ=1.2 诊断（用户 2026-10-26 要求）
+
+- 目的：区分"策略学不会"与"judge 物理不允许"。做法 = **训练环境**地形摩擦由默认 1.0 调到 1.2（`BLACKW_WORLD_FRICTION=1.2`，MuJoCo 接触摩擦取两侧 geom 的最大值，机器人轮子仍 1.0 → 接触 μ=1.2），judge 物理保持 1.0；按课程 r=0.8（40°）→ r=1.0（45°）训练，看训练环境 `part2_success` 是否从 0 起来。
+- 实现：`blackw/exact_terrain.py` 的 `_box()` 在环境变量存在时给每个地形 geom 写 `friction`（默认不写，官方/交付训练行为不变）；自检 `@20261019_locomotion/scripts/agent_scripts/check_world_friction.py`（远程 `scripts/agent_scripts/`）实测三种模式：unset→compiled 1.0、=1.2→compiled 1.2、=0.8→geom 0.8（接触仍取 max=1.0），slope 3 geoms / stairs 13 geoms 全部一致，SELFTEST PASS。
+- 判读：① 若 μ=1.2 训练成功率起来且 policy 在 judge(μ=1.0) 45° 仍失败 → 物理判定成立，slope45 正式放弃；② 若 μ=1.2 训练成功率仍 0 → 策略/课程问题，需重新评估（此时再考虑塑性更高的配方）；③ 若 μ=1.2 训练出的策略在 judge μ=1.0 也能过 → 意外之喜，按 8/8 gate 验收。
+
 复现命令（本地，CPU）：
 
 ```bash
@@ -55,6 +69,24 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
   --slow-from-x 1.1 --cmd-slow 0.45
 ```
 
+### 3.1 交付策略数量：3 份够不够（2026-10-26 分析）
+
+候选能力项与所需策略：
+
+| 能力项 | 归属 | 说明 |
+|---|---|---|
+| 普通行走 + 平台/高墙/斜坡 35°/楼梯 20cm/沟壑 20cm | 盲策略 M0 | 现有 comp_bc_v5 谱系，已 4 次挑战口径 750 分 |
+| 楼梯 30cm | 盲专项 St30 | 盲可训练；可与 M0 合并（DAgger）或单独切换 |
+| 沟壑 30cm（+150 相对 20cm） | 深度专项 T30 | 盲不可达，需深度 |
+| 梅花桩（+200） | 深度专项 P | 盲不可达，需落足感知 |
+
+结论：候选是 4 份（M0、St30、T30、P），要压到 **≤3** 必须合并/取舍，推荐按以下优先级：
+
+1. **首选（3 份）**：`M0(+St30 合并)` + `T30` + `P`——两份盲策略用 DAgger 合成一份（同一观测/动作契约，St30 只在楼梯场景提供专家标签，M0 在其余关卡提供标签），输出仍是单份盲 MLP，不增加切换成本。
+2. **降级（2 份）**：若深度只能做出一个专项，取分数更高者（P +200 > T30 +150）或更容易者（T30 视觉信号更直接），另一项放弃；或者把 T30+P 合并成一份"深度通用" CNN 策略（两地形联合训练）也能压到 2 份。
+3. **兜底（2 份）**：深度整体不达预期时 = `M0` + `St30` 两份盲策略，盲侧 850 拿满。
+4. 不建议做成 4 份以上：每多一份都要单独的渲染/推理/切换验证预算，且不增加分数。
+
 ## 3. 优先级与算力分配（修正后）
 
 | 轨道 | 内容 | 价值 | 风险 | GPU 预算 | 决策点 |
@@ -64,7 +96,7 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 | **P3** | 深度 D0（part2 接相机 + rl_sar 渲染/CNN 最小链路） | 深度专项前置，必须做 | 中 | ~20 min smoke | 今日 EOD 是否有 demo |
 | **P4** | trench30 深度专项（D1/D2/D3） | +150 | **高** | 明日起 2–3 h/日 | 10-28 EOD 训练侧 success 是否从 0 起来 |
 | **P5** | 梅花桩深度专项 | +200 | **最高** | 仅在 P4 达成后 | 10-29 再定 |
-| ~~slope45~~ | 盲专项 | +100 | **物理不可达** | 0 | 已用摩擦探针判死（§2） |
+| **D0-diag** | slope45 训练环境 μ=1.2 课程（诊断，非交付） | 判断瓶颈归属（+100 是否可能） | — | 约 40 min（job 10） | 训练侧 success 是否从 0 起来（§2.3） |
 
 原则：**盲侧 850 优先保稳，深度侧按 P3→P4→P5 顺序只做加分的**；任何一天 GPU 时间不足时，先保 P1/P3，P2 可顺延，P4/P5 降级。
 
@@ -73,7 +105,7 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 ### 4.1 今天 10-26（剩余约 11 h）
 
 1. **09:45–10:30 本地**：扩展 gate 工具（`eval_blackw_part2.py` 加 `--jitter-x/--jitter-yaw/--joint-offset` 随机化与 `--command-set` 三档指令；新增 `gate_stage.py` 输出每关×每指令档通过矩阵到 `prep.d/results/blackw_official/stage_gates/<stage>.json`）。不占 GPU。
-2. **08:51 GPU 队列（已提交，job 7 → 8 依赖链）**：stairs30 盲专项按课程分两步，而不是直接跳 r=1.0：`ppo_st30_s075`（r=0.75 = 25 cm/step，300 iter，实测 ≈2.25 s/iter → 约 11–12 min）跑完自动导出 m100/200/300 并做训练侧 tiercheck；随后 `ppo_st30_s100`（r=1.0 = 30 cm/step，400 iter，≈15 min，`ts -d` 依赖前一 job 成功才启动）从 s075 的 model_300 热启动。两个 job 都是 GuardedPPO blend 0.95 / lr 4e-5 / 冻结 σ。收工后 scp 导出结果回本地 judge 选点；若两步都不出信号，再试 §3 的"更多塑性"配方（blend 0.85 / lr 8e-5）。
+2. **GPU 队列（2026-10-26 上午进度）**：stairs30 盲专项按课程分两步：`ppo_st30_s075`（r=0.75 = 25 cm/step，300 iter）已完成（训练环境 part2_success 计数 0.40–0.58，≈12 min）；首个 `ppo_st30_s100` 因 checkpoint 名写死 `model_300.pt`（实际最终存档是 `model_299.pt`）启动失败，已修正为"自动取最新 checkpoint + 补齐导出"并重新排队（job 9，r=1.0，400 次额外 iter）。其后排队 `ppo_slope_mu12`（job 10，诊断：训练环境 μ=1.2 的 40°→45° 课程）。所有 job 都是 GuardedPPO blend 0.95 / lr 4e-5 / 冻结 σ。收工后 scp 导出回本地 judge 选点。
 3. **10:30–11:30 本地**：comp_bc_v5 全 20 关 placement（3 指令档 × 16/8 次尝试，本地 6 并发，约 15–30 min）→ 得"最低未通过 stage"清单；同时把 S0–S6 各自的目标档名单固化进 gate JSON。
 4. **11:30–12:00**：深度 D0-a —— 把 `black/camera_depth.py` 的 `CameraSensorCfg` + camera obs group + `CNNModel` 接到 blackw exact/mixed 任务（只读参考 HIM 线文件，不改其文件）；排一个 10 min 的 depth smoke（512 env × 3 iter）验证能渲染、无 OOM。
 5. **下午**：stairs30 首轮结果判读（训练侧 `check_tier_success --difficulty 1.0` + 中途 checkpoint judge）；据此选配方并提交 400–800 iter 续训；M0 失败档微调（mixed official，固定 r，每档 300 iter ≈10–12 min）；D0-b（rl_sar 侧 MuJoCo 渲染 + CNN 前向最小链路 + 与训练端深度统计对拍，本地）。
@@ -118,10 +150,10 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 ## 6. 远程机与 GPU 队列使用协议
 
 - 队列机制与实测见 [`remote-training-workflow.md`](remote-training-workflow.md) §5：单槽 task-spooler，`~/rc_work/gpu_jobs/{common.sh,on_finish.sh,<job>.sh}`，`ts -L ppo_xxx ~/rc_work/gpu_jobs/<job>.sh` 提交；`ts -l/-s/-c/-i/-k/-C` 查看与控制。
-- **本线规则**：只用 `ts` 提交（不绕开队列 `nohup train`）；标签 `ppo_*`；提交前 `ts -l` + `nvidia-smi`；本线队列内最多 2 个 job；单 job ≤2 h（夜间关机），`--agent.save-interval 50` 续训；被 SIGKILL 中断后手工 `printf 0 > ~/5060ti_machine_use_flag.txt`。
+- **本线规则**：只用 `ts` 提交（不绕开队列 `nohup train`）；标签 `ppo_*`；提交前 `ts -l` + `nvidia-smi`；本线队列内最多 2 个 job；单 job ≤2 h（**00:00 关机，最晚可等到 00:30**），`--agent.save-interval 50` 续训；被 SIGKILL 中断后手工 `printf 0 > ~/5060ti_machine_use_flag.txt`。
 - **与 HIM 线共享单槽**：FIFO，先提交先跑；每天开工时两条线各报当日 job 清单（用户协调顺序）；GPU 空转时谁有就绪 job 谁跑，不预占。
 - **产物回收**：远程 `~/rc_work/models/<name>/` → `scp` 到本地 `prep.d/results/<topic>/`；export→judge 在本地做（CPU，不占 GPU）；gate JSON 落 `prep.d/results/blackw_official/stage_gates/`。
-- **今日队列状态（2026-10-26 08:51）**：已提交 `ppo_st30_s075`（job 7，running）→ `ppo_st30_s100`（job 8，`ts -d` 依赖 job 7 成功）；预计 09:25 前后跑完（job 7 实测 ≈2.25 s/iter）。手动中断/抢占：`ts -k 7`（需手动把 flag 置 0），随后可直接跑 HIM 线任务；PPO 线要续跑时从 `~/rc_work/models/ppo_st30_s075_m300` 对应 checkpoint 重新提交。
+- **今日队列状态（2026-10-26 09:30）**：`ppo_st30_s075`（job 7）✅ 完成；`ppo_st30_s100`（job 9，r=1.0 续训）running；`ppo_slope_mu12`（job 10，μ=1.2 诊断）queued。GPU 先到先得，HIM 线可直接排在后面提交；中断用 `ts -k <id>`（随后手动 `printf 0 > ~/5060ti_machine_use_flag.txt`）。
 
 ## 7. 快速命令（可直接提交的第一批 job）
 
