@@ -1,6 +1,6 @@
-# HIM gate 与官方 judge 契约差异（2026-10-26）
+# HIM gate 与本地 judge proxy 契约差异（2026-10-26）
 
-> 结论：当前 HIM gate 只是 **training-predicate screen**，不是官方验收 judge。job20/21 的 `screen_pass` 不能作为 Part2 得分/通过证据。
+> 结论：当前 HIM gate 只是 **training-predicate screen**；本地 judge proxy 的 scene 也不是官方 ability_field 几何，不能当官方验收。job20/21 的 `screen_pass` 不能作为 Part2 得分/通过证据。
 
 ## 1. 为什么最初没用 judge
 
@@ -11,7 +11,7 @@
 
 ## 2. Predicate 差异
 
-| 类别 | HIM training predicate `_part2_terrain_state` | 官方 judge |
+| 类别 | HIM training predicate `_part2_terrain_state` | 本地 judge proxy |
 |---|---|---|
 | 所有类别 | 单步 bool；termination 命中即成功 | 需要 `hold_s` 连续保持（0.05–0.2 s） |
 | high_wall | `wx_min>=2.02 & wz.max<=0.08 & rx>=2.27` | 还要求跨墙平面/爬升证据 `max_z_near >= wall_h+0.10` |
@@ -64,4 +64,4 @@ job20 在 kill 前只完成 seed0 部分类别；结果为 training-predicate sc
 | high_wall | 20/20 | 20/20 |
 | trench | 13/20 | 13/20 |
 
-这组数据只说明 warm-start model_0 在 screen 下并不 row0 全过；不能写进验收，也不能证明官方 judge 分数。job21 已从队列移除，未执行。
+这组数据只说明 warm-start model_0 在 screen 下并不 row0 全过；不能写进验收，也不能证明本地 judge proxy 分数。job21 已从队列移除，未执行。

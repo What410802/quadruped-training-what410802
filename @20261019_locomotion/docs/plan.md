@@ -16,7 +16,7 @@
 
 - `him_part2_gate.py` 旧版用 `load_env_cfg(task, play=True)`；`blackw-official-him` 的 `play=True` 只有 `time_out/stuck/nonfinite_state`，没有 `part2_success/failure`。
 - 旧 gate 的 `success/failure` 恒 0，job12 五类 0 不能作为 HIM 能力证据；high_wall `attempts_done=0` 还因为 play `episode_length_s=1e9` 不超时。
-- 已修复：改用 `play=False`、`assert part2_success`、关闭 obs corruption、timeout 计 attempt、记录 `out_of_course`；修复后 smoke 2/2 success（platform row0）。
+- 已修复：改用 `play=False`、`assert part2_success`、关闭 obs corruption、timeout 计 attempt、记录 `out_of_course`；但 12:00 前版本的 JSON 输出仍有 `wheel_drop` NameError，旧“2/2”、job20/21 均不作为验收证据。
 
 ### job12 训练发散：属实
 
@@ -46,9 +46,9 @@
 
 - [x] P0-1 修复 `him_part2_gate.py`：`play=False`、assert strict term、clean obs、timeout 计 attempt、记录 out_of_course、spawn jitter、command scale、deploy physics。
 - [x] P0-2 gate 配置层 smoke 通过；**2026-10-26 12:00 之前版本在 JSON 输出处有 `wheel_drop` NameError，旧“2/2”不可作为当前脚本证据**。修复后 1 attempt platform = 1/1 success。
-- [ ] P0-3 旧 job14 **无效**：155/155 rc=1，无 JSON；不采用其结果。已提交 job20（model_0 ×5 类 ×20 attempts ×2 seed ×2 physics）替代。
-- [ ] P0-4 等 job20 结束读 `~/rc_work/logs/him_model0_gate20_*`：model_0 的 per-category 20/20 基线；之后才决定是否 gate 早/中期 checkpoint。
-- [ ] P0-5 对 job20 中未过的 category 选最佳 checkpoint 做第二组 seed/加严 gate；结论写入本文件 §4。
+- [ ] P0-3 旧 job14 **无效**：155/155 rc=1，无 JSON；job20（model_0 screen）也已撤回，不采用其结果。
+- [ ] P0-4 job20 已撤回，不再等 screen 结果；本地 judge proxy 已作为后续验收路径。
+- [ ] P0-5 等 judge/训练 predicate 对齐后再选 checkpoint；不再用 screen gate。
 - [ ] P0-6 job13 已结束且训练 success 全程 0、tiercheck 0/278；记录为负结果，不再作为 HIM/PPO 有效 base。
 - [x] P0-7 把“gate 假测量/job12 发散”的结论同步到 `training/him-part2-gate-curriculum-plan.md` 和 `training/nan-video-diagnosis.md`。
 
@@ -87,14 +87,14 @@
 
 ## 3. 短期待办（P1，HIM 下一轮）
 
-- [ ] P1-1（已入队 job21）不再直接升 row1/扩命令；先用 warm-start teacher 做 300–500 iter 微调：
+- [ ] P1-1（job21 已撤回，未执行）不再直接升 row1/扩命令；先用 warm-start teacher 做 300–500 iter 微调：
   - `lr≈1e-4`（先降 5x）、`entropy=0`、冻结/衰减 `std`；
   - 加显式 BC/teacher anchor（KL 或权重锚），base 必须固定为 warm-start 官方 actor，不是“当前 actor 的第一次快照”；
   - 每 50–100 iter gate + judge 选点；退化就回滚/best-of-N。
 - [ ] P1-2 先 gate `model_0` warm-start，只训练失败类别；row0 达到 gate 标准前不升 row。
 - [ ] P1-3 row0 用真实任务命令范围（vx/vy/wz），加 spawn/initial-state 抖动；每类 20/20，重复 2–3 组 seed。
 - [ ] P1-4 同 checkpoint 在 5 ms/4 dec 与 2 ms/10 dec 各评一次；任何“通过”必须给出部署物理参数下的数字。
-- [ ] P1-5 导出 HIM TorchScript，跑一次官方 judge 场景；训练谓词通过不等于官方 judge 通过。
+- [ ] P1-5 导出 HIM TorchScript，跑一次本地 judge proxy 场景；训练谓词通过不等于本地 judge proxy 通过。
 - [ ] P1-6 是否继续 full PPO 长训：只有 P1-1 的 eval-gated 微调仍不涨时才考虑；备选是官方策略 + 少量残差/DAgger。
 
 ## 4. 中长期待办（P2/P3）
@@ -190,10 +190,40 @@
 
 - 本地：`d963ddc fix(him): repair gate output and add fail-loud model0/microfine jobs`、`67fb139 docs(him): record invalid job14 and corrected gate jobs`，已推送。
 - 远端：`362c238 fix(him): make strict gate output fail-safe and add deploy physics/jitter`、`d9c74cd test(him): add model0 20/20 and controlled microfine gate jobs`，已推送。
-- 队列：job20（model0 20/20×2seed×train/deploy）、job21（300 iter microfine）已入队；HIM 结果尚未产生，不能提前标记 P0-4/P1-1 完成。
+- 队列：job20/21 已撤回；HIM 当前不在 GPU 队列。
 
 ## 11. HIM GPU 使用红线（2026-10-26）
 
 - 在 HIM 训练逻辑（路径语义、judge/screen 区分、anchor/freeze、rollout/update）确认修好前，HIM 任何单次 GPU 占用 ≤5 分钟，只允许 smoke；不做连续长训。
 - job20/21 已撤回；当前 HIM 不在 GPU 队列。
 - 静态轮次目标 2h 内完成：路径推演/契约 diff/lint/preflight/文档一致性；judge adapter/export 是后续实现。
+
+## 12. HIM / PPO 训练与部署路径地图（2026-10-26）
+
+### HIM 训练
+
+- 远端主仓：`~/rc_work/nwwolf_mjlab_training_release`（GitHub `What410802/nwwolf_mjlab_training_release`，branch `main`）。
+- HIM 代码：
+  - `src/alldog_mjlab/tasks/velocity/blackw/`（env_cfgs / him / him_rl_cfg / him_runner / exact_terrain / actions）
+  - `src/alldog_mjlab/algorithms/him/`（policy / ppo / estimator / storage / spec / warm_start）
+  - `src/alldog_mjlab/tasks/velocity/black/him.py` + `him_rl_cfg.py`
+  - `src/alldog_mjlab/utils/reward_safety.py`
+- 本地镜像（gitignored，只作审查）：`/home/bis/BiS.d/Code.d/RoboCon/prep.d/training_repo_local/src/alldog_mjlab`。
+- 本地 HIM 任务工具/文档：`@20261019_locomotion/scripts/agent_scripts/him_*`、`@20261019_locomotion/docs/training/him-*`。
+- 训练输出：远端 `logs/rsl_rl/blackw_velocity_him/<timestamp>_<run>/model_*.pt`；job12 为 `2026-10-26_09-59-54_him_row0_mixed_gate_1026_0959`。
+
+### PPO 训练（另一 Agent，out of scope）
+
+- 远端：`~/rc_work/part2_team_race`（独立工作区，不是 HIM 仓）。
+- PPO/BC 脚本与 log 在该仓；不由 HIM owner 修改。
+
+### HIM 部署
+
+- 当前只有本地验证链路：`prep.d/blackw_validation/run_blackw_part2_judge.py` + `BlackWRunner`（CPU MuJoCo、官方 scene XML、`hold_s`）。
+- HIM TorchScript 导出：`@20261019_locomotion/scripts/agent_scripts/export_him_policy.py`；已导出 `prep.d/blackw_validation/him_model0_policy.pt`。
+- **尚未进入正式部署工作区** `@20261024_blackw/ws/src/rl_sar_blackw`；该目录当前是 PPO/official policy 的部署区（`policy/blackW/...`、`policy/black/himloco`）。
+- 所以 HIM 部署质量**还不能保证**：没有 rl_sar C++/ROS `/joy` 接入、没有正式 action-scale/config 核对、没有 Part2 场景全量 judge 回归。
+
+### PPO 部署
+
+- 在 `@20261024_blackw/ws/src/rl_sar_blackw` 及其 `policy/blackW/` 策略目录；属于另一 Agent 的部署线，HIM owner 不修改。

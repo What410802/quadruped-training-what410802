@@ -1,4 +1,4 @@
-# HIM 导出与官方 judge 基线（2026-10-26）
+# HIM 导出与本地 judge proxy 基线（2026-10-26）
 
 ## 1. 导出链路
 
@@ -13,7 +13,7 @@
 
 ## 2. 本地官方 judge 基线
 
-使用 `prep.d/blackw_validation/run_blackw_part2_judge.py`（CPU MuJoCo、官方 scene/判据、`hold_s`）测导出的 HIM policy：
+使用 `prep.d/blackw_validation/run_blackw_part2_judge.py`（CPU MuJoCo、团队自定义 scene/判据、`hold_s`）测导出的 HIM policy。**这些 scene 不是官方 ability_field/map.xml 的几何复刻；total_score 只能当本地 proxy，不能当官方得分。**
 
 - `model_0`（warm-start）：**total_score=410**
   - platform 10/20/30 success，40 fail；
@@ -23,9 +23,9 @@
   - trench 10/20 success，30 fail；
   - plum fail。
 
-- `model_1499`（job12 末 checkpoint）：judge 输出 total560，但多个“success”出现 `base_z=-84` 等非物理状态（trench），必须视为 judge/runner 缺 invalid-state 守卫，不能当真实分数。
+- `model_1499`（job12 末 checkpoint）：未加 invalid-state guard 前 proxy 输出 total560，但多个“success”出现 `base_z=-84` 等非物理状态（trench），invalid-state guard 已加入 judge runner 后重测为 total260；此前 560 作废，不能当真实分数。
 
-结论：**官方 judge 路径已经能跑 HIM policy**，但 job12 末模型明显发散；gate screen 与 judge 不可互换。
+结论：**本地 proxy judge 路径已经能跑 HIM policy**，但 scene 几何与官方 ability_field 仍有已知差异（stairs/slope/trench），不能作为官方通过证据；job12 末模型明显发散；gate screen 与 judge 不可互换。
 
 ## 3. 与 screen gate 对照
 
@@ -39,7 +39,7 @@ job20 的不完整 screen（model_0）与 judge 对比：
 | high_wall | 20/20 | 10/20 成功 |
 | trench | 13/20 | 10/20 成功 |
 
-**关键发现：stairs screen 0/20 是 false negative**。训练 predicate 的 stairs 逻辑要求穿越下台阶到 far end（旧硬编码 down_end 6.20，且要求 root height），而官方 judge 的 stairs 只要求到达 top/landing；这不是“模型不会 stairs”的证据。
+**关键发现：stairs screen 0/20 是 false negative**。训练 predicate 的 stairs 逻辑要求穿越下台阶到 far end（旧硬编码 down_end 6.20，且要求 root height），而本地 proxy judge 的 stairs 只要求到达 top/landing；这不是“模型不会 stairs”的证据。
 
 ## 4. 当前判断
 
