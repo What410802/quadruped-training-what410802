@@ -62,14 +62,14 @@
 - reward A/B：新增 `BLACKW_PROGRESS_W` / `BLACKW_CLIMB_W` / `BLACKW_CLEAR_W`，默认值不变。
 - 未改：5ms/4dec 默认物理、绝对 shaping reward 默认权重、judge/export；这些需要 GPU/实验验证，不能盲改。
 
-## 2c. 2026-10-26 12:05 回归修复与队列
+## 2c. 2026-10-26 12:5x gate 回归修复与 job20/21 撤回
 
 - 修复 gate JSON 输出：`wheel_drop` NameError → `out_of_course` 已定义，`wheel_drop` 显式 0（任务没有独立 wheel-drop 输出，strict `part2_failure` 已覆盖落沟），并加 `gate_pass/success_rate/physics/jitter`。
 - 新增 `--jitter-x/y/yaw` 与 `--physics deploy`（2 ms/10 dec 评测）；单 attempt 修复 smoke：platform model_0 1/1 success，JSON 正常。
 - 旧 job14 的 155 个 gate 全部无效，已弃用；不把 job12 的旧 0 当能力证据。
-- 队列新增：
-  - job20 `him_model0_gate20_2seed`：model_0 × 5 类 × 20 attempts × 2 seeds × {train,deploy}，fail-loud；
-  - job21 `him_microfine_row0`：`BLACKW_HIM_INIT_STD=0.1`、`FREEZE_STD=1`、`ANCHOR_ALPHA=0.01`、lr=1e-4、entropy=0、300 iter、save25、每 checkpoint 10-attempt gate，fail-loud。
+- 2026-10-26 12:5x：复核发现 gate 仍只是 training-predicate screen，`--physics deploy` 当时也只改 dt/dec；job20/21 已撤回（job20 运行中被 kill，产物不完整；job21 queued 被移除）。不再用 screen 结果做验收。job20 不完整 screen：platform17/20、slope13–14/20、stairs0/20、wall20/20、trench13/20（train≈deploy），仅作诊断。
+- 已新增 [HIM gate vs judge 契约差异](training/him-gate-vs-judge-contract.md)，gate 输出改为 `screen_pass` + `acceptance_eligible=false`；deploy physics 已补 solver/ccd/init z。
+- 已新增 `him_static_preflight.sh`：pyflakes/py_compile/bash -n + 可选 HIM code tree；本地通过。
 
 ## 3. 短期待办（P1，HIM 下一轮）
 
@@ -104,8 +104,8 @@
 | 17 | PPO m0 slope35 | running |
 | 18 | PPO m0 trench20 | queued |
 | 19 | PPO audit smoke2 | queued |
-| 20 | HIM model0 gate 20×2seed×train/deploy | queued |
-| 21 | HIM row0 microfine 300iter + per-checkpoint gate | queued |
+| 20 | HIM model0 screen 20×2seed×train/deploy | **withdrawn/killed**；仅 seed0 部分，screen 不验收 |
+| 21 | HIM row0 microfine 300iter + per-checkpoint screen | **withdrawn**；未执行 |
 
 ## 6. 关联文档
 

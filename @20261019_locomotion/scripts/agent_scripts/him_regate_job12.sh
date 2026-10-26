@@ -43,7 +43,7 @@ for ck in "$RUN_DIR"/model_*.pt; do
       --max-steps 1000 --out "$out" >/dev/null 2>&1
     rc=$?
     printf "gate %s %s rc=%s " "$name" "$cat" "$rc" | tee -a "$SUM"
-    [ -f "$out" ] && grep -oE '"success": [0-9]+|"failure": [0-9]+|"attempts_done": [0-9]+|"gate_pass": (true|false)' "$out" | tr '\n' ' ' | tee -a "$SUM"
+    [ -f "$out" ] && grep -oE '"success": [0-9]+|"failure": [0-9]+|"attempts_done": [0-9]+|"screen_pass": (true|false)' "$out" | tr '\n' ' ' | tee -a "$SUM"
     echo | tee -a "$SUM"
   done
 done
