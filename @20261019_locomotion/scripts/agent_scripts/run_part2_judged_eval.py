@@ -87,6 +87,8 @@ class LevelRunner:
                 name = self.geom_names.get(other, "")
                 if other in self.floor_geoms or name in {"ground_left", "ground_right", "trench_bottom"}:
                     ground_feet.add(leg)
+                if name == "trench_bottom":
+                    foot_tags[leg].add("trench_bottom")
                 elif name.startswith("platform"):
                     foot_tags[leg].add("platform")
                 elif name.startswith("stair"):

@@ -92,6 +92,8 @@ class Part2JudgeV2:
         self.wall_contact = False
         self.gap_crossed = False
         self.gap_entered = False
+        self.gap_entered_lane = False
+        self.trench_contact = False
         self.last_x: float | None = None
         self.last_t: float | None = None
         self.lane_y = float((self.j.get("start") or [0.0, 0.0])[1])
@@ -133,8 +135,10 @@ class Part2JudgeV2:
         ground_feet = ground_feet or set()
         tags = {tag for values in (foot_tags or {}).values() for tag in values}
         x, y, z = map(float, base_xyz)
-        self.max_z = max(self.max_z, z)
         kind = self.j.get("kind")
+        if kind == "gap" and "trench_bottom" in tags:
+            self.trench_contact = True
+        self.max_z = max(self.max_z, z)
         if kind == "wall":
             if self.last_x is not None:
                 wx = float(self.j["wall_x"])
@@ -151,14 +155,17 @@ class Part2JudgeV2:
             if self.last_x is not None and abs(x - self.last_x) < 1.0:
                 near = (self.last_x - (gx - half)) * (x - (gx - half)) <= 0
                 far = (self.last_x - (gx + half)) * (x - (gx + half)) <= 0
-                if near and not far:
+                if near:
                     self.gap_entered = True
-                elif far and self.gap_entered and self._lateral_ok(y):
+                    self.gap_entered_lane = self._lateral_ok(y)
+                if far and self.gap_entered and self._lateral_ok(y):
                     self.gap_crossed = True
-                elif near and far:  # single jump over the whole gap
+                # A single jump over the whole gap also counts as entered + crossed, but only
+                # when the crossing point stays inside the scoring lane.
+                if near and far and self._lateral_ok(y):
                     self.gap_entered = True
-                    if self._lateral_ok(y):
-                        self.gap_crossed = True
+                    self.gap_entered_lane = True
+                    self.gap_crossed = True
             self.last_x = x
         self.result.detail = {"x": round(x, 3), "z": round(z, 3),
                               "max_z": round(self.max_z, 3), "tilt_deg": round(tilt_deg, 2)}
@@ -169,6 +176,14 @@ class Part2JudgeV2:
         if z < FALL_Z_M:
             self.result.status = "fail"
             self.result.reason = f"fell:base_z={z:.2f}"
+            return self.result.to_dict()
+        if kind == "gap" and self.trench_contact:
+            self.result.status = "fail"
+            self.result.reason = "trench_bottom_contact"
+            return self.result.to_dict()
+        if kind == "gap" and self.gap_entered and not self.gap_entered_lane:
+            self.result.status = "fail"
+            self.result.reason = "gap_bypass_outside_lane"
             return self.result.to_dict()
         cond = self._cond(x, y, z, ground_feet, tags)
         hold_s = float(self.j.get("hold_s", 0.2))
@@ -259,6 +274,17 @@ def run_self_test() -> None:
     assert rep["status"] == "success", rep
     rep = _feed(Part2JudgeV2(e), [((2.0, 0, 0.5), 5), ((2.5, 0, 0.1), 70)])
     assert rep["status"] == "fail", rep
+
+    # gap: touching the trench bottom invalidates an otherwise complete crossing
+    bottom = _feed(Part2JudgeV2(e), [((2.0, 0, 0.5), 5), ((2.6, 0, 0.5), 5),
+                                     ((3.2, 0, 0.5), 5), ((3.2, 0, 0.5), 5)],
+                   tags=("trench_bottom",))
+    assert bottom["status"] == "fail" and bottom["reason"] == "trench_bottom_contact", bottom
+    # gap: crossing the near edge outside the scoring lane is a bypass, even if the robot
+    # returns to the lane before the far edge.
+    bypass_lane = _feed(Part2JudgeV2(e), [((2.0, 1.0, 0.5), 5), ((2.6, 1.0, 0.5), 5),
+                                           ((3.2, 0.0, 0.5), 5), ((3.2, 0.0, 0.5), 5)])
+    assert bypass_lane["status"] == "fail", bypass_lane
 
     # plum
     e = _entry("plum", 1, {"kind": "plum", "goal_x_min": 2.7, "goal_z_min": 0.5, "hold_s": 0.05}, unit="bool")
