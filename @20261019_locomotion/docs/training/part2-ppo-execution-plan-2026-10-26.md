@@ -25,10 +25,13 @@
 
 ### A. 主线（按用户 2026-10-26 第三轮定的路线：row0 跑通 → 手动 gate 逐档提难度；除 trench30/plum 外先拿 8/8）
 
-- [ ] **A1 stairs30 选点**：job 13（s100b）已完成（17 个 checkpoint 已导出）；**judge 全档回归正在跑**（19 个 policy × 17 关 × 4/8 attempt，`prep.d/results/ppo_st30/regression/`），完成后据此选 anchor、判断是否把低档带偏；不盲目再训 800 iter
+- [x] **A1 stairs30 选点（已完成）**：judge 全档回归跑完（19 policy × 17 关，`prep.d/results/ppo_st30/regression/`）——job13 同配方 800 iter **无收益且末段漂移**（最好 750 < 锚 850），判为无效实验；**当前能力上限 = s100 m650 = 850**（stairs30 1/8、wall40 3/4、platform40 3/4、stairs20 1/4，slope35/trench20 4/4），稳健性远不足 8/8（详见历史 §17）
+- [x] **A2b placement 首测（已完成）**：s100 m650 在 gate 协议（3 档 + spawn/joint 随机化）下 **S0 都不通过**（slope20 10/16、stairs10 9/16、trench10 11/16）；硬档 platform40 7/8、wall40 1/8、stairs20 2/8、stairs30 0/8、slope35 6/8、trench20 5/8（详见历史 §17.3）。因子拆解显示是"普遍稳健不足"，不是单一旋钮
+- [ ] **A2c 稳健化训练（已排队 job 16）**：`ppo_m0_hardmask` = 官方混合子集 `platform,high_wall,stairs` 固定难度 1.0 + gate 随机化 + guard blend 0.97（从 s100 m650 续训 400 iter）；结束后跑 judge 全档回归 + 该子集 gate，确认三硬类是否提升、slope35/trench20 是否被带坏
 - [x] **A2a gate 工具已实现**：`eval_blackw_part2.py` 已加 `--jitter-x/--jitter-yaw/--joint-offset/--joint-vel/--command-set/--cmd-jitter-*`；新增 `@20261024_blackw/scripts/gate_stage.py`（stage 表 + 累积 gate + placement，本地冒烟通过）
 - [ ] **A2b placement**：对 comp_bc_v5 跑 placement（pending A1 CPU；strict gate 下已发现 ±0.2/±0.3 侧向指令抖动对当前策略过严，需与用户确认"当前阶段 gate 用 realistic 抖动（±0.1）还是 strict"）
-- [ ] **A2c 修完谓词后重新校准**：`env_cfgs` hold 谓词修复后，下一次训练前先跑 audit smoke（job 15 已排队）；旧 run 的 success 曲线只作诊断
+- [ ] **A2d 谓词修复后校准**：`env_cfgs` hold 谓词修复后，audit smoke（job 15）先验证环境/guard；job 16 的训练用修复后的 hold 谓词（训练 success 会比旧曲线严格，不能与旧曲线直接比）
+- [ ] **A2e 训练侧新增开关**（已实现）：`BLACKW_SUBTERRAINS` / `BLACKW_DIFF_MIN/MAX` / `BLACKW_SPAWN_X/Y/YAW`；后续 slope35 与 trench20 各用固定难度专项补齐
 - [ ] **A3 M0 逐档课程**：按 placement 只训未过档（mixed official 固定 r，每档 300 iter ≈10–12 min，逐档 gate 通过再升 r）；**注意 mixed 任务的 r 是所有类别同一个难度**，r 到 1.0 会同时引入 blind 不可达的 trench30 与摩擦零余量的 slope45 → mixed 课程封顶 S6（r≈2/3），stairs30 走 exact 专项，trench30/plum 留深度（与交接 §3 一致）
 - [ ] **A4 奖励/终止优化（按需、单开关）**：只有当某一档在课程中"奖励涨、judge 不涨"或明显学不动时才改一项（reward 项/终止/课程档），并配 judge 回归；目的就是让下一档能过 gate，不做无目标的奖励工程
 - [ ] **A5 深度（后期）**：盲侧 8/8 稳定后再开 D0/D1；trench30/plum 视深度结果加入，不影响盲侧交付
@@ -56,8 +59,10 @@
 
 | 队列 job | 内容 | 状态 |
 |---|---|---|
-| job 13 | `ppo_st30_s100b`（stairs30 从 m650 续训 800 iter） | running（约 11:10 完成） |
-| job 14 | HIM 线 `him_regate_job12.sh` | queued（HIM 用它修正 gate 重测，先到先得，让给 HIM） |
+| job 14 | HIM 线 `him_regate_job12.sh` | running（HIM 修正 gate 重测，先到先得） |
+| job 15 | `ppo_audit_smoke`（hold 谓词 + GuardedPPO 显式锚点/日志验证） | queued（HIM 之后） |
+| job 16 | `ppo_m0_hardmask`（平台/墙/台阶 固定 40/40/30 cm 稳健化，400 iter） | queued（约 15–18 min GPU） |
+| job 13 | `ppo_st30_s100b` | ✅ finished，**判无效**（无收益+漂移，历史 §17.1） |
 | job 12 | HIM `him_row0_mixed_gate.sh` | ✅ finished（其 gate 结果无效；HIM 区问题，仅记录） |
 | job 11 | slope μ=1.2 诊断 | ✅ finished（负结果，历史 §14.5） |
 

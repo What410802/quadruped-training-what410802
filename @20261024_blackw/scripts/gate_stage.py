@@ -124,7 +124,7 @@ def run_level(level: dict, policy: Path, attempts: int, protocol: dict,
               out_dir: Path) -> dict:
     """Run one level with all its attempts through eval_blackw_part2.py."""
     profile = CATEGORY_PROFILE[level["category"]]
-    scale_spec = ",".join(str(scale) for scale in TIER_SCALES)
+    scale_spec = ",".join(str(scale) for scale in protocol["tier_scales"])
     out_json = out_dir / f"level_{level['key']}.json"
     cmd = [
         str(PY), str(EVAL),
@@ -194,6 +194,8 @@ def main() -> int:
     ap.add_argument("--jitter-yaw", type=float, default=0.05)
     ap.add_argument("--joint-offset", type=float, default=0.03)
     ap.add_argument("--joint-vel", type=float, default=1.0)
+    ap.add_argument("--tier-scales", type=str, default="0.6,1.0,1.3",
+                    help="comma-separated vx scales of the nominal per-category command")
     ap.add_argument("--cmd-jitter-y", type=float, default=0.2)
     ap.add_argument("--cmd-jitter-wz", type=float, default=0.3)
     args = ap.parse_args()
@@ -205,7 +207,8 @@ def main() -> int:
     protocol = {"jitter_x": args.jitter_x, "jitter_y": args.jitter_y,
                 "jitter_yaw": args.jitter_yaw, "joint_offset": args.joint_offset,
                 "joint_vel": args.joint_vel, "cmd_jitter_y": args.cmd_jitter_y,
-                "cmd_jitter_wz": args.cmd_jitter_wz, "tier_scales": list(TIER_SCALES),
+                "cmd_jitter_wz": args.cmd_jitter_wz,
+                "tier_scales": [float(x) for x in args.tier_scales.split(",")],
                 "vx_bounds": list(VX_BOUNDS)}
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -225,7 +228,7 @@ def main() -> int:
           f"stage={args.stage} levels={len(jobs)} workers={args.workers}")
     print(f"protocol: spawn +-({args.jitter_x},{args.jitter_y}) m yaw +-{args.jitter_yaw} rad, "
           f"joint +-{args.joint_offset} rad / +-{args.joint_vel} rad/s, "
-          f"tiers {TIER_SCALES} vx clamp {VX_BOUNDS}, "
+          f"tiers {protocol['tier_scales']} vx clamp {VX_BOUNDS}, "
           f"cmd jitter vy+-{args.cmd_jitter_y} wz+-{args.cmd_jitter_wz}")
     results: dict[str, dict] = {}
     with cf.ThreadPoolExecutor(max_workers=args.workers) as pool:

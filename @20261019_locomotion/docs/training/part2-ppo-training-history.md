@@ -253,3 +253,46 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 - **`export_blackw_policy.py`**：`play=True` 只用于建 env/取 actor 形状，不读取训练终止项，不受 play 配置影响；导出仍会做 history 列置换与 dummy forward 形状检查。
 - **`exact_terrain.py` / 动作观测契约**：此前已审（几何 raycast 对拍、部署 config 对齐），本次复读无新问题。
 
+## 17. 2026-10-26 judge 全档回归选点 + gate placement 首测（job13 结论）
+
+### 17.1 job13（stairs30 续训 800 iter）判死：同配方无收益
+
+- 17 个 checkpoint（m650–m1449）全部导出，本地 judge 全档回归（17 关 × 4 attempt；stairs30 8 attempt；y 抖动 ±0.1 m、按障碍名义命令+两段速度）。
+- 结果：**没有任何 checkpoint 超过 s100 m650（850）**；多数 400–750，末段 m1350/m1449 = 600（平台/墙退化明显）。即"同配方再训 800 iter"不仅没把 stairs30 拉起来，还漂移掉了已有能力——与交叉审计的预判一致。s100b 里 m950 回到 750、m1000 650，均低于锚点。
+- 结论：**job13 判为无效实验**；以后续训必须先定 eval-gated 早停（连续 2 个 100-iter judge 无提升即停），且不再用"训练 success 计数"判断。
+- 附带发现：s100b 的 model_650 导出（md5 与 s100 m650 不同）实际是"恢复后已更新一步"的权重，其 judge 分数 750 vs s100 m650 850 → 同一 checkpoint 编号在续训 run 里不可直接复用（job 脚本要显式从 PREVDIR 导入，不能假设 s100b_650 = s100_650）。
+
+### 17.2 当前最强盲侧 checkpoint：`s100 m650` = 850 能力
+
+- 17 关回归（名义命令 + y±0.1）：platform40 3/4、wall40 3/4、slope35 4/4、stairs20 1/4、trench20 4/4、stairs30 1/8 → 分数 850（按最高通过关算）。
+- 对比 comp_bc_v5（750）：platform40 4/4、wall40 3/4、slope35 4/4、stairs20 2/4、trench20 4/4、stairs30 0/8。
+- 结论：m650 是"能力上限 850"的最佳点，但**稳健性远不够 8/8**；下一步不是继续刷同配方，而是按 gate 协议做稳健化（spawn/joint 随机化 + 3 档指令 + 宽命令分布）。
+
+### 17.3 gate placement 首测（s100 m650，3 档指令 + spawn/joint 随机化）
+
+协议：spawn x±0.10 / y±0.15 / yaw±0.05，joint ±0.03 rad / ±1.0 rad/s，3 档 vx = 0.6/1.0/1.3×名义命令（clamp 0.2–1.1），vy±0.1/wz±0.1 小随机；简单档 16 attempt、难档 8。
+
+| 关卡 | 结果 | 关卡 | 结果 |
+|---|---|---|---|
+| platform10 | 16/16 ✅ | wall10 | 16/16 ✅ |
+| platform20 | 15/16 | wall20 | 13/16 |
+| platform30 | 6/8 | wall30 | 4/8 |
+| platform40 | 7/8 | wall40 | 1/8 |
+| slope20 | 10/16 | stairs10 | 9/16 |
+| slope30 | 7/8 | stairs15 | 7/16 |
+| slope35 | 6/8 | stairs20 | 2/8 |
+| slope45 | 0/8 | stairs30 | 0/8 |
+| trench10 | 11/16 | trench20 | 5/8 |
+| trench30 | 0/8 | plum1 | 0/8 |
+
+- 结论：**按当前 gate 协议，S0 都不通过**（slope20/stairs10/trench10 均未到 16/16），更别说 8/8 的硬档。说明"BC 能过 canonical 关"与"gate 协议下稳定过"之间差距很大；直接原因：现有策略对初始位姿偏移 + 3 档速度指令都敏感。
+- 因子拆解（7 个硬关 × 8 attempt）：
+  - A 只 3 档、无随机化；B spawn+joint、单档名义命令；C spawn+joint+3 档、无 vy/wz 随机；D 全协议。
+  - 结果无单一主因：wall40 A 0/8 vs B 3/8、stairs30 A 3/8 vs B 1/8、platform40 4–7/8 波动；**整体是普遍性稳健不足**（样本 8 偏小，差异多为波动），不是某一个旋钮坏了。
+- 结论：稳健化训练必须同时覆盖"初始状态随机 + 指令档位分布"，单改一项不会把 8/8 做出来。
+
+### 17.4 因此新增的训练能力与已排队 job
+
+- `env_cfgs.py` 新增（复用已有 subterrains 入口）：`BLACKW_SUBTERRAINS`（官方混合任务只训练指定类别，如 `platform,high_wall,stairs`）、`BLACKW_DIFF_MIN/MAX`（官方混合任务固定难度）、`BLACKW_SPAWN_X/Y/YAW`（把 gate 的 spawn 随机化装进训练 reset；joint ±0.03 rad / ±1.0 rad/s 本来已匹配）。
+- 已排队 `ppo_m0_hardmask`（job 16）：blackw-official 子集 `platform,high_wall,stairs` 固定难度 1.0（= 40 cm 台 / 40 cm 墙 / 30 cm 台阶），从 s100 m650 继续、guard blend 0.97（比 0.95 更塑性）+ guard 漂移日志 + gate 随机化，400 iter；结束时导出全部 checkpoint。目标：先把三个硬类的 gate 稳定性拉起来，同时用全档回归确认没把 slope35/trench20 等带坏。
+

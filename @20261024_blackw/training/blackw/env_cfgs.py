@@ -197,7 +197,21 @@ def _override_observations(cfg: ManagerBasedRlEnvCfg) -> None:
 
 
 def _override_events(cfg: ManagerBasedRlEnvCfg) -> None:
+    import os
+
     reset_base = cfg.events["reset_base"]
+    # Gate-matched spawn randomization (docs gate protocol: x +-0.10 m, y +-0.15 m,
+    # yaw +-0.05 rad).  Disabled by default; set the env vars to enable.
+    spawn_x = float(os.environ.get("BLACKW_SPAWN_X", "0"))
+    spawn_y = float(os.environ.get("BLACKW_SPAWN_Y", "0"))
+    spawn_yaw = float(os.environ.get("BLACKW_SPAWN_YAW", "0"))
+    if max(spawn_x, spawn_y, spawn_yaw) > 0.0:
+        params = dict(reset_base.params)
+        pose_range = dict(params.get("pose_range") or {})
+        pose_range.update({"x": (-spawn_x, spawn_x), "y": (-spawn_y, spawn_y),
+                           "yaw": (-spawn_yaw, spawn_yaw)})
+        params["pose_range"] = pose_range
+        reset_base = replace(reset_base, params=params)
     cfg.events = {
         "reset_base": reset_base,
         "reset_robot_joints": EventTermCfg(
@@ -952,6 +966,11 @@ def blackw_official_mixed_env_cfg(
         "stairs": ExactStairsTerrainCfg(flat_patch_sampling=sampling),
         "trench": ExactTrenchTerrainCfg(flat_patch_sampling=sampling),
     }
+    if subterrains is None:
+        env_sub = os.environ.get("BLACKW_SUBTERRAINS", "").strip()
+        if env_sub:
+            subterrains = tuple(part.strip() for part in env_sub.split(",")
+                                if part.strip())
     if subterrains:
         terrains = {k: v for k, v in terrains.items() if k in subterrains}
     # The official trench (ramp + plateau + gap + ramp) is ~5.8 m long from the
@@ -969,6 +988,14 @@ def blackw_official_mixed_env_cfg(
         cfg.scene.terrain.max_init_terrain_level = int(
             os.environ.get("BLACKW_MAX_ROW", str(max(0, num_rows - 1)))
         )
+        # Fix the difficulty (e.g. train the hardest tiers only) when both bounds
+        # are given; the part2 predicates read difficulty from the same range.
+        diff_min = os.environ.get("BLACKW_DIFF_MIN", "").strip()
+        diff_max = os.environ.get("BLACKW_DIFF_MAX", "").strip()
+        if diff_min and diff_max:
+            cfg.scene.terrain.terrain_generator.difficulty_range = (
+                float(diff_min), float(diff_max))
+            cfg.scene.terrain.max_init_terrain_level = 0
         cfg.terminations["lane_deviation"] = TerminationTermCfg(
             func=_lane_deviation,
             params={"max_abs_y": float(os.environ.get("BLACKW_LANE", "0.90"))},
