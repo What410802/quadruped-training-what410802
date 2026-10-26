@@ -62,6 +62,12 @@
 - reward A/B：新增 `BLACKW_PROGRESS_W` / `BLACKW_CLIMB_W` / `BLACKW_CLEAR_W`，默认值不变。
 - 未改：5ms/4dec 默认物理、绝对 shaping reward 默认权重、judge/export；这些需要 GPU/实验验证，不能盲改。
 
+## 2d. 2026-10-26 2h 静态路径推演
+
+- 新增 [HIM 路径推演](training/him-path-trace-2026-10-26.md)：按训练/rollout/storage/update/checkpoint/gate 实际调用路径核对语义；确认 process_env_step 使用 next_obs、terminal extras 覆盖、PPO.load(actor=True) 覆盖 estimator 等路径正确。
+- 已确认剩余语义风险：gate 不是 judge；anchor 未覆盖 estimator；absolute shaping；gate 10 attempts 不足；5ms→2ms 迁移。
+- 已撤回 job20/21；HIM 不再占 GPU。静态轮次可在 2h 内完成，无需 GPU。
+
 ## 2c. 2026-10-26 12:5x gate 回归修复与 job20/21 撤回
 
 - 修复 gate JSON 输出：`wheel_drop` NameError → `out_of_course` 已定义，`wheel_drop` 显式 0（任务没有独立 wheel-drop 输出，strict `part2_failure` 已覆盖落沟），并加 `gate_pass/success_rate/physics/jitter`。
@@ -177,3 +183,9 @@
 - 本地：`d963ddc fix(him): repair gate output and add fail-loud model0/microfine jobs`、`67fb139 docs(him): record invalid job14 and corrected gate jobs`，已推送。
 - 远端：`362c238 fix(him): make strict gate output fail-safe and add deploy physics/jitter`、`d9c74cd test(him): add model0 20/20 and controlled microfine gate jobs`，已推送。
 - 队列：job20（model0 20/20×2seed×train/deploy）、job21（300 iter microfine）已入队；HIM 结果尚未产生，不能提前标记 P0-4/P1-1 完成。
+
+## 11. HIM GPU 使用红线（2026-10-26）
+
+- 在 HIM 训练逻辑（路径语义、judge/screen 区分、anchor/freeze、rollout/update）确认修好前，HIM 任何单次 GPU 占用 ≤5 分钟，只允许 smoke；不做连续长训。
+- job20/21 已撤回；当前 HIM 不在 GPU 队列。
+- 静态轮次目标 2h 内完成：路径推演/契约 diff/lint/preflight/文档一致性；judge adapter/export 是后续实现。
