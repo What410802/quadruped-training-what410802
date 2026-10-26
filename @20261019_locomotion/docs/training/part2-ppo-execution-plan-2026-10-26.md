@@ -25,8 +25,10 @@
 
 ### A. 主线（按用户 2026-10-26 第三轮定的路线：row0 跑通 → 手动 gate 逐档提难度；除 trench30/plum 外先拿 8/8）
 
-- [ ] **A1 stairs30 选点**：job 13（s100b）约 11:10 结束后先导出全部 checkpoint，本地跑 **judge 全档回归**：stairs30/20 + platform40/wall40/slope35/trench20（每个 4 attempt，jitter ±0.1 m，按障碍选命令 profile）→ 选 anchor、判断是否把低档带偏；不盲目再训 800 iter
-- [ ] **A2 gate 工具 + placement（今天核心欠账，约 2–3 h 本地，不占 GPU）**：`eval_blackw_part2.py` 加 `--jitter-x/--jitter-yaw/--joint-offset/--joint-vel/--command-set`；新增 `gate_stage.py`（row/stage 表 → 每关×每指令档通过矩阵）；先对 comp_bc_v5 跑 placement，得到"哪一档的 8/8 不达标"
+- [ ] **A1 stairs30 选点**：job 13（s100b）已完成（17 个 checkpoint 已导出）；**judge 全档回归正在跑**（19 个 policy × 17 关 × 4/8 attempt，`prep.d/results/ppo_st30/regression/`），完成后据此选 anchor、判断是否把低档带偏；不盲目再训 800 iter
+- [x] **A2a gate 工具已实现**：`eval_blackw_part2.py` 已加 `--jitter-x/--jitter-yaw/--joint-offset/--joint-vel/--command-set/--cmd-jitter-*`；新增 `@20261024_blackw/scripts/gate_stage.py`（stage 表 + 累积 gate + placement，本地冒烟通过）
+- [ ] **A2b placement**：对 comp_bc_v5 跑 placement（pending A1 CPU；strict gate 下已发现 ±0.2/±0.3 侧向指令抖动对当前策略过严，需与用户确认"当前阶段 gate 用 realistic 抖动（±0.1）还是 strict"）
+- [ ] **A2c 修完谓词后重新校准**：`env_cfgs` hold 谓词修复后，下一次训练前先跑 audit smoke（job 15 已排队）；旧 run 的 success 曲线只作诊断
 - [ ] **A3 M0 逐档课程**：按 placement 只训未过档（mixed official 固定 r，每档 300 iter ≈10–12 min，逐档 gate 通过再升 r）；**注意 mixed 任务的 r 是所有类别同一个难度**，r 到 1.0 会同时引入 blind 不可达的 trench30 与摩擦零余量的 slope45 → mixed 课程封顶 S6（r≈2/3），stairs30 走 exact 专项，trench30/plum 留深度（与交接 §3 一致）
 - [ ] **A4 奖励/终止优化（按需、单开关）**：只有当某一档在课程中"奖励涨、judge 不涨"或明显学不动时才改一项（reward 项/终止/课程档），并配 judge 回归；目的就是让下一档能过 gate，不做无目标的奖励工程
 - [ ] **A5 深度（后期）**：盲侧 8/8 稳定后再开 D0/D1；trench30/plum 视深度结果加入，不影响盲侧交付
@@ -223,7 +225,8 @@ pixi run python @20261024_blackw/scripts/eval_blackw_part2.py \
 
 总预计 **2–3 h**，可与 GPU 训练并行；先做 P0。产出写入本节下方：每个文件一行"契约/断言/已知坑"+ 新增自检命令。
 
-> 审查记录（2026-10-26 起逐步填）：待填。
+> 审查记录（2026-10-26 起逐步填）：
+> - 2026-10-26：**发现并修复 `env_cfgs.py` 重复定义**——旧的"无 hold" part2 谓词覆盖了 hold 版本，训练 success 比 judge 宽松；已删重复定义、远程同步（详见历史归档 §16）。judge/eval 与 `check_tier_success` 已复读并加 fail-closed 断言。
 
 
 ## 6. 远程机与 GPU 队列使用协议

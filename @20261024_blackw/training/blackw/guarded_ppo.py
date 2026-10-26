@@ -13,18 +13,32 @@ policy (similar in spirit to KL-anchored fine-tuning, but in weight space, so it
 needs no extra forward pass / reference network).
 
 Environment variables:
-    BLACKW_GUARD_BLEND       lam, 0 = frozen at base, 1 = no anchoring (default 0.9)
+    BLACKW_GUARD_BLEND       lam, 0 = frozen at base, 1 = no anchoring (default 0.9).
+                             NOTE: larger lam means MORE plasticity (it keeps a larger
+                             fraction of the accumulated drift per optimizer step).
     BLACKW_GUARD_MAX_DRIFT   per-parameter L2 trust radius (default 0.0 = off)
     BLACKW_GUARD_FREEZE      comma-separated parameter-name substrings to freeze
     BLACKW_GUARD_LOG         "1" prints actor drift each iteration
+    BLACKW_GUARD_BASE_CKPT   optional .pt checkpoint whose actor_state_dict becomes the
+                             trust-region centre (e.g. the BC v5 checkpoint).  Unset =
+                             the weights loaded with this run are the centre.
 """
 
 from __future__ import annotations
 
+import hashlib
 import os
 
 import torch
 from rsl_rl.algorithms import PPO
+
+
+def _sha256(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _env_float(name: str, default: float) -> float:
@@ -52,17 +66,7 @@ class GuardedPPO(PPO):
     # -- rollout vs update -------------------------------------------------
     def update(self):  # type: ignore[override]
         if self._guard_base is None:
-            # First update() happens after the checkpoint has been loaded, so the
-            # current actor weights ARE the base policy.
-            self._guard_base = {
-                name: param.detach().clone()
-                for name, param in self._raw_actor.named_parameters()
-                if param.requires_grad
-            }
-            if self._guard_freeze:
-                for name, param in self._raw_actor.named_parameters():
-                    if any(token in name for token in self._guard_freeze):
-                        param.requires_grad_(False)
+            self._capture_guard_base()
         out = super().update()
         if self._guard_log:
             print(f"[guarded-ppo] actor_drift={self._guard_drift:.3e} "
@@ -70,8 +74,54 @@ class GuardedPPO(PPO):
         return out
 
     def set_base_actor(self) -> None:
-        """Snapshot the current actor as the trust-region centre (optional hook)."""
+        """Re-snapshot the guard centre: current actor, or BLACKW_GUARD_BASE_CKPT."""
         self._guard_base = None
+
+    def _capture_guard_base(self) -> None:
+        base_ckpt = os.environ.get("BLACKW_GUARD_BASE_CKPT", "").strip()
+        if base_ckpt:
+            self._guard_base = self._load_base_checkpoint(base_ckpt)
+            print(f"[guarded-ppo] guard base = checkpoint {base_ckpt} "
+                  f"sha256={_sha256(base_ckpt)[:16]}", flush=True)
+        else:
+            # First update() happens after the checkpoint has been loaded, so the
+            # current actor weights ARE the base policy.
+            self._guard_base = {
+                name: param.detach().clone()
+                for name, param in self._raw_actor.named_parameters()
+                if param.requires_grad
+            }
+            print("[guarded-ppo] guard base = weights loaded with this run (self)",
+                  flush=True)
+        if self._guard_freeze:
+            for name, param in self._raw_actor.named_parameters():
+                if any(token in name for token in self._guard_freeze):
+                    param.requires_grad_(False)
+
+    def _load_base_checkpoint(self, path: str) -> dict[str, torch.Tensor]:
+        """Load ``actor_state_dict`` from a checkpoint and map it onto the actor."""
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        state = payload.get("actor_state_dict", payload)
+        base: dict[str, torch.Tensor] = {}
+        missing: list[str] = []
+        for name, param in self._raw_actor.named_parameters():
+            if not param.requires_grad:
+                continue
+            value = state.get(name)
+            if value is None:
+                value = state.get(f"actor.{name}")
+            if value is None:
+                missing.append(name)
+                continue
+            if tuple(value.shape) != tuple(param.shape):
+                raise ValueError(
+                    f"guarded base checkpoint {path}: shape mismatch for {name}: "
+                    f"{tuple(value.shape)} vs actor {tuple(param.shape)}")
+            base[name] = value.detach().clone().to(param.device)
+        if missing:
+            raise KeyError(
+                f"guarded base checkpoint {path}: missing actor parameters {missing}")
+        return base
 
     # -- weight-space anchoring -------------------------------------------
     @torch.no_grad()

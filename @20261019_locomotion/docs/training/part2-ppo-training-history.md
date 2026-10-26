@@ -232,3 +232,24 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 - GuardedPPO 增补 `BLACKW_GUARD_BASE_CKPT`（显式锚点）与 base sha/漂移日志；`check_tier_success.py` 加 `assert "part2_success" in active_terms` 的 fail-closed 断言。
 - gate 工具 + comp_bc_v5 placement 今天补齐（欠账）；把"提交前检查清单 + 早停规则"写进计划 §6。
 - HIM 侧（play=True gate、发散、5ms/4dec）只记录并提醒用户转达，不改其仓/脚本。
+
+## 16. 2026-10-26 P0 代码风险面审查（发现并修复训练谓词被覆盖）
+
+> 对应执行计划 §5.1。原则：不全量通读上游，只逐行审"会静默改变成功/失败/可学性判断"的自有代码。
+
+### 16.1 已确认的 bug：`env_cfgs.py` 里 part2 谓词被旧的"无 hold"版本覆盖
+
+- 文件 `@20261024_blackw/training/blackw/env_cfgs.py` 在 `_part2_success_streak` 之后存在**两套同名定义**：先定义 hold 版本（`_part2_clear_reward` 用 `streak == PART2_HOLD_STEPS`、`_part2_success` 用 `streak >= PART2_HOLD_STEPS`），紧接着又定义了旧的"直接 success"版本（不要求 hold）。Python 后定义覆盖前者 → 实际训练一直用的是**无 hold**谓词。
+- 影响：judge v5 要求终态保持 `hold_s + 0.1 s`（slope/stairs 共 0.3 s，50 Hz = 15 步），而训练 success 在谓词第一次为真时立即终止/给 clear 奖励 → 训练成功比 judge 宽松（擦边/瞬时接触就可能被记成成功），训练侧 success 计数不能与 judge 直接对比。**judge/历史评测分数不受影响**（judge 是独立实现），但 2026-10-25/26 所有训练 run（guard3/guard4、spec_*、ppo_st30_s100、s100b）的训练 success 是在这个宽松谓词下记录的。
+- 修复（2026-10-26）：删除后一套重复定义，只保留 hold 版本，并加注释禁止再出现第二份定义；`PART2_HOLD_STEPS=15`（0.3 s）与 judge 对齐。远程训练仓与本地快照 md5 一致。新增 smoke job（`ppo_audit_smoke`）验证：环境能建、GuardedPPO 显式锚点/漂移日志可用、`check_tier_success` 正常。
+- 为什么引入：谓词在 10-25/26 演进过 3 版（死代码→对齐 judge→hold），每次用"在文件里补一段新函数"而不是替换旧实现，最后一次补丁留下了旧版本且位置更靠后。→ 教训：**同名谓词只允许一份定义；改训练判据必须配 judge 对拍**（本次 review 即为此）。
+- 待办关联：修复后下一次 PPO 训练才是"hold 对齐"的；之前 run 的 success 曲线只能作诊断（计划 §0.2 里已注明）。
+
+### 16.2 其他 P0 审查结论
+
+- **权威 judge**（`@20261024_blackw/scripts/eval_blackw_part2.py` 的 `Part2OfficialJudge`）逐条复读：终态谓词 + hold 0.3 s + 失败即终止 + trench 轮沉/plum 触地判负，与 `CONTRACT` 与规则一致；未发现会误判成功的逻辑（platform/slope 允许"越过后停住"但必须四轮在目标支撑面带内且 hold，判断合理）。
+- **`check_tier_success.py`**：确认用 `play=False`（因此没有 HIM 的 play 配置缺 term 问题）；已加 fail-closed 断言 `part2_success` 必须存在，缺项直接报错退出，不再可能静默输出 0。
+- **`GuardedPPO`**：确认 `base` 在首次 `update()` 时才快照（默认=加载权重）；已新增 `BLACKW_GUARD_BASE_CKPT` 显式锚点（可指向 BC v5 的 `actor_state_dict`）并打印 base 来源/sha256；`BLEND` 越大越塑性（0.95→0.98 = 有效步长 20×→50×）。
+- **`export_blackw_policy.py`**：`play=True` 只用于建 env/取 actor 形状，不读取训练终止项，不受 play 配置影响；导出仍会做 history 列置换与 dummy forward 形状检查。
+- **`exact_terrain.py` / 动作观测契约**：此前已审（几何 raycast 对拍、部署 config 对齐），本次复读无新问题。
+

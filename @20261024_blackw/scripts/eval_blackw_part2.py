@@ -316,15 +316,21 @@ class PolicyRunner:
         self.wheel_radius = float(cfg.get("wheel_radius", 0.103))
         self.reset_pose()
 
-    def reset_pose(self, spawn: np.ndarray | None = None, yaw: float = 0.0) -> None:
+    def reset_pose(self, spawn: np.ndarray | None = None, yaw: float = 0.0,
+                   joint_offset: np.ndarray | None = None,
+                   joint_vel: np.ndarray | None = None) -> None:
         if spawn is None:
             spawn = np.array([0.0, 0.0, 0.5, 0.0])
         self.data.qpos[:] = self.model.qpos0
         for adr, val in zip(self.qadr, self.default_pos):
             self.data.qpos[adr] = val
+        if joint_offset is not None:
+            self.data.qpos[self.qadr] += np.asarray(joint_offset, dtype=np.float64)
         self.data.qpos[0:3] = spawn[:3]
         self.data.qpos[3:7] = [np.cos(yaw / 2.0), 0.0, 0.0, np.sin(yaw / 2.0)]
         self.data.qvel[:] = 0.0
+        if joint_vel is not None:
+            self.data.qvel[self.vadr] = np.asarray(joint_vel, dtype=np.float64)
         mujoco.mj_forward(self.model, self.data)
         self.action[:] = 0.0
         self.hist = []
@@ -444,15 +450,27 @@ def _command_at(schedule: dict | None, x: float, base_command: np.ndarray) -> np
 
 def run_attempt(scene: Path, level: dict, policy_pt: Path, cfg: dict,
                 command: np.ndarray, seconds: float, physics_dt: float,
-                policy_dt: float, jitter_y: float, seed: int, record: bool,
-                runway_extra: float, schedule: dict | None,
-                video: Path | None, video_every: int) -> dict:
+                policy_dt: float, spawn_jitter: tuple[float, float, float], seed: int,
+                record: bool, runway_extra: float, schedule: dict | None,
+                video: Path | None, video_every: int,
+                joint_offset_range: float = 0.0, joint_vel_range: float = 0.0,
+                tier: int | None = None) -> dict:
     runner = PolicyRunner(scene, policy_pt, cfg, physics_dt=physics_dt,
                           policy_dt=policy_dt)
+    rng = np.random.default_rng(seed + 7919)
     spawn = np.asarray(level["spawn"], dtype=np.float64).copy()
     spawn[0] -= runway_extra
-    spawn[1] += float(jitter_y)
-    runner.reset_pose(spawn=spawn[:3], yaw=float(spawn[3]))
+    spawn[0] += float(spawn_jitter[0])
+    spawn[1] += float(spawn_jitter[1])
+    yaw = float(spawn[3]) + float(spawn_jitter[2])
+    joint_offset = (rng.uniform(-joint_offset_range, joint_offset_range,
+                                size=len(cfg["joint_names"]))
+                    if joint_offset_range > 0 else None)
+    joint_vel = (rng.uniform(-joint_vel_range, joint_vel_range,
+                             size=len(cfg["joint_names"]))
+                 if joint_vel_range > 0 else None)
+    runner.reset_pose(spawn=spawn[:3], yaw=yaw, joint_offset=joint_offset,
+                      joint_vel=joint_vel)
     judge = Part2OfficialJudge(level)
     runner.warmup(command, seconds=0.4)
     n = int(round(seconds / policy_dt))
@@ -482,7 +500,45 @@ def run_attempt(scene: Path, level: dict, policy_pt: Path, cfg: dict,
     report = judge.finalize("timeout")
     pos, tilt = runner.base()
     return {"judge": report, "base": [round(float(v), 3) for v in pos],
-            "tilt_deg": round(tilt, 2), "sim_time": round(sim_t, 2), "traj": traj}
+            "tilt_deg": round(tilt, 2), "sim_time": round(sim_t, 2), "traj": traj,
+            "command": [round(float(v), 4) for v in command], "tier": tier,
+            "spawn_jitter": [round(float(v), 4) for v in spawn_jitter],
+            "joint_offset_range": joint_offset_range,
+            "joint_vel_range": joint_vel_range}
+
+
+def _build_command_tiers(spec: str, base_command: np.ndarray,
+                         schedule: dict | None) -> list[tuple[np.ndarray, dict | None]]:
+    """Parse --command-set into per-tier (command, schedule) pairs.
+
+    Two accepted forms: scale factors from the nominal command ("0.6,1.0,1.3") or
+    explicit triples ("0.3,0,0;0.5,0,0;0.65,0,0").  For a two-stage command
+    schedule the slow segment is scaled with the same vx ratio so the whole speed
+    profile moves together (gate protocol, handoff section 3.4).
+    """
+    parts = [part for part in spec.split(";") if part.strip()]
+    if ";" in spec:
+        commands = [np.asarray([float(x) for x in part.split(",")], dtype=np.float64)
+                    for part in parts]
+        scales: list[float | None] = [None] * len(commands)
+    else:
+        scales = [float(part) for part in spec.split(",")]
+        commands = []
+        for scale in scales:
+            command = np.asarray(base_command, dtype=np.float64) * scale
+            command[0] = min(1.1, max(0.2, float(command[0])))  # gate vx clamp
+            commands.append(command)
+    tiers: list[tuple[np.ndarray, dict | None]] = []
+    for command, scale in zip(commands, scales):
+        tier_schedule = None
+        if schedule is not None:
+            tier_schedule = dict(schedule)
+            ref = float(base_command[0])
+            if scale is not None and abs(ref) > 1e-6:
+                tier_schedule["cmd_slow"] = float(schedule["cmd_slow"]) * (
+                    float(command[0]) / ref)
+        tiers.append((command, tier_schedule))
+    return tiers
 
 
 def main() -> None:
@@ -501,6 +557,18 @@ def main() -> None:
     ap.add_argument("--runway-extra", type=float, default=0.0,
                     help="move the spawn further back (longer approach)")
     ap.add_argument("--jitter-y", type=float, default=0.0)
+    ap.add_argument("--jitter-x", type=float, default=0.0)
+    ap.add_argument("--jitter-yaw", type=float, default=0.0)
+    ap.add_argument("--joint-offset", type=float, default=0.0,
+                    help="uniform +/- rad reset offset on all joints (gate protocol: 0.03)")
+    ap.add_argument("--joint-vel", type=float, default=0.0,
+                    help="uniform +/- rad/s reset velocity on all joints (gate protocol: 1.0)")
+    ap.add_argument("--command-set", type=str, default=None,
+                    help="command tiers: scales of the nominal command ('0.6,1.0,1.3') or "
+                         "explicit triples ('0.3,0,0;0.5,0,0;0.65,0,0'). "
+                         "Attempt k uses tier k %% n_tiers.")
+    ap.add_argument("--cmd-jitter-y", type=float, default=0.0)
+    ap.add_argument("--cmd-jitter-wz", type=float, default=0.0)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--physics-dt", type=float, default=0.002)
     ap.add_argument("--policy-dt", type=float, default=0.02)
@@ -536,25 +604,51 @@ def main() -> None:
     results = []
     for entry in selected:
         scene = SCENE_DIR / entry["scene"]
-        command = np.asarray(args.command if args.command is not None
-                             else entry["command"], dtype=np.float64)
+        base_command = np.asarray(args.command if args.command is not None
+                                  else entry["command"], dtype=np.float64)
+        command_tiers = (_build_command_tiers(args.command_set, base_command, schedule)
+                         if args.command_set else None)
         seconds = args.seconds if args.seconds is not None else float(entry["seconds"])
         attempts = []
         for k in range(max(1, args.attempts)):
             seed = args.seed + 1000 * k + len(results)
-            jitter = float(np.random.default_rng(seed).uniform(-args.jitter_y, args.jitter_y)) \
-                if args.jitter_y > 0 else 0.0
+            rng = np.random.default_rng(seed)
+            spawn_jitter = (
+                float(rng.uniform(-args.jitter_x, args.jitter_x)) if args.jitter_x > 0 else 0.0,
+                float(rng.uniform(-args.jitter_y, args.jitter_y)) if args.jitter_y > 0 else 0.0,
+                float(rng.uniform(-args.jitter_yaw, args.jitter_yaw)) if args.jitter_yaw > 0 else 0.0,
+            )
+            if command_tiers:
+                tier = k % len(command_tiers)
+                command, attempt_schedule = command_tiers[tier]
+                command = np.asarray(command, dtype=np.float64).copy()
+                if args.cmd_jitter_y > 0:
+                    command[1] += float(rng.uniform(-args.cmd_jitter_y, args.cmd_jitter_y))
+                if args.cmd_jitter_wz > 0:
+                    command[2] += float(rng.uniform(-args.cmd_jitter_wz, args.cmd_jitter_wz))
+            else:
+                tier, command, attempt_schedule = None, base_command, schedule
             video = (args.video_dir / f"{entry['key']}_a{k}.mp4") \
                 if args.video_dir is not None else None
             attempts.append(run_attempt(scene, entry, policy_pt, cfg, command, seconds,
-                                       args.physics_dt, args.policy_dt, jitter, seed,
-                                       args.record, args.runway_extra, schedule,
-                                       video, args.video_every))
+                                       args.physics_dt, args.policy_dt, spawn_jitter, seed,
+                                       args.record, args.runway_extra, attempt_schedule,
+                                       video, args.video_every,
+                                       joint_offset_range=args.joint_offset,
+                                       joint_vel_range=args.joint_vel, tier=tier))
         successes = sum(1 for a in attempts if a["judge"]["status"] == "success")
+        tier_stats: dict[int, dict[str, int]] = {}
+        for attempt in attempts:
+            if attempt["tier"] is None:
+                continue
+            stat = tier_stats.setdefault(attempt["tier"], {"success": 0, "attempts": 0})
+            stat["attempts"] += 1
+            stat["success"] += int(attempt["judge"]["status"] == "success")
         record = {"key": entry["key"], "category": entry["category"],
                   "level": entry["level"], "unit": entry["unit"],
                   "success_count": successes, "attempt_count": len(attempts),
-                  "best_success": successes > 0, "attempts": attempts}
+                  "best_success": successes > 0, "tiers": tier_stats,
+                  "attempts": attempts}
         results.append(record)
         a = attempts[-1]
         print(f"{entry['key']:22s} {'SUCCESS' if record['best_success'] else 'fail':7s} "
@@ -589,6 +683,13 @@ def main() -> None:
         "terminal_hold_extra_s": TERMINAL_HOLD_EXTRA_S,
         "attempts": max(1, args.attempts),
         "jitter_y": args.jitter_y,
+        "jitter_x": args.jitter_x,
+        "jitter_yaw": args.jitter_yaw,
+        "joint_offset_range": args.joint_offset,
+        "joint_vel_range": args.joint_vel,
+        "command_set": args.command_set,
+        "cmd_jitter_y": args.cmd_jitter_y,
+        "cmd_jitter_wz": args.cmd_jitter_wz,
         "runway_extra": args.runway_extra,
         "command": args.command,
         "command_schedule": schedule,

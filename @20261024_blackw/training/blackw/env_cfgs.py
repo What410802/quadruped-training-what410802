@@ -562,30 +562,14 @@ def _part2_failure(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
     return violation
 
 
+# NOTE: keep exactly one definition per predicate.  Training success MUST match the
+# judge terminal-state hold (PART2_HOLD_STEPS = 0.3 s at 50 Hz); a second, hold-free
+# definition here once shadowed these and silently made training success easier than
+# the judge (P0 audit 2026-10-26).
 def _part2_success(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
     """Termination: four wheels held the target support terminal state."""
     streak = _part2_success_streak(env, asset_cfg)
     return streak >= PART2_HOLD_STEPS
-
-
-def _part2_clear_reward(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
-    """One-step success bonus for the official Part2 success predicate."""
-    import torch
-
-    success, _ = _part2_terrain_state(env, asset_cfg)
-    return success.to(torch.float32)
-
-
-def _part2_failure(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
-    """Termination: attempt became invalid per the strict Part2 judge."""
-    _, violation = _part2_terrain_state(env, asset_cfg)
-    return violation
-
-
-def _part2_success(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
-    """Termination: all four wheels reached the target support surface."""
-    success, _ = _part2_terrain_state(env, asset_cfg)
-    return success
 
 
 def _trench_wheel_drop_penalty(

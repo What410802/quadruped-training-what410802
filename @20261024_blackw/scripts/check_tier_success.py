@@ -85,6 +85,15 @@ def main() -> int:
     tm = unwrapped.termination_manager
     obs = env.get_observations()
     reset_terms = [t for t in tm.active_terms if "part2" in t]
+    # Fail closed: a missing part2 term silently reports 0 success (the HIM line
+    # hit exactly this with a play=True gate config).  Never publish a rate without it.
+    if "part2_success" not in reset_terms:
+        raise SystemExit(
+            f"check_tier_success: task {args.task!r} has no part2_success termination "
+            f"(active={sorted(tm.active_terms)}); refusing to report a silent 0")
+    if "part2_failure" not in reset_terms:
+        print(f"[warn] task {args.task!r} has no part2_failure term; "
+              f"failure counts are not measurable")
     success = torch.zeros(args.envs, dtype=torch.long)
     episodes = torch.zeros(args.envs, dtype=torch.long)
     term_counts: dict[str, int] = {name: 0 for name in tm.active_terms}
