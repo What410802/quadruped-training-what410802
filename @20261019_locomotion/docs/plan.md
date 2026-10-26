@@ -140,3 +140,19 @@
 - 每批提交一行英文：`type(him): ...` 或 `chore(common): ...`；提交后 `git status --short` 复核，再 `git push`。
 - 本地仓推 `origin master`；远端训练仓推 `origin main`（`upstream` 是 N-W-wolf，不动）。
 - 远端只需提交代码与 HIM gate 脚本；训练日志、checkpoint、视频留在机器上，不进 Git。
+
+## 10. 2026-10-26 Git 分批提交记录
+
+本地主仓 `master` 已推送 `origin`：
+
+- `1f16dec` `docs(him): add HIM gate, audit, NaN diagnosis and Part2 plan`
+- `7314a61` `test(him): add strict Part2 gate and checkpoint re-gate tooling`
+- `1051047` `docs(him): add NaN diagnostic replay videos`
+
+远端训练仓 `main` 已推送 `origin`：
+
+- `5b029e4` `feat(him): add HIM algorithm guards and strict Part2 gate tooling`
+- `4427703` `feat(him): add blackW HIM task, exact Part2 terrain and runner`
+- `d637859` `chore(common): add shared competition env dependencies required by HIM tasks`
+
+说明：远端机 HTTPS 无凭据，推送通过本机 SSH 把远端 `git bundle` 拉回后推到 GitHub；远端工作区仍保留未提交的 PPO 改动，按“PPO无需”要求不提交。
