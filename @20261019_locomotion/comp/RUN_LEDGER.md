@@ -49,13 +49,10 @@
 | `cmp_*_1500_cont` | 从各自 500 checkpoint 各 +1000 iter（不换地形/奖励/seed） | 看 depth 优势是否随训练保持 | 领先缩小到 +3%~+16%，成本 ×1.56；blind 算力效率更高（§7.1/§10） |
 | `eval-only:him-best-videos` | 只加录像（不改评测口径/起点/时间尺度） | 让用户能二次检查 zero-shot 评测过程 | 28 段视频 + `index.html`；分数与无录像时一致（Part1 0/8、Part2 ext 300/1300） |
 | `deploy-him-best` | 控制仓库只加 1 个策略循环配置 + 窗口 geom group 可见性 | 能在演示 GUI 手动试操作 best.pt | 契约核对通过、GUI GetUp→Running→行走验证，见 `docs/training/deploy-him-best.md` |
-
 | `blackw_comp_blind_v0` | 新增 blackW 16 关节机器人/混合轮腿 action/57×6 actor observation，任务换为 blackW competition | 首次验证训练链路+学习信号 | 训练到 ~700 iter；外部严格 judge 出现零散成功，后期出现绕障退化 |
-| `blackw_comp_lane_v0` | 只加 lateral lane termination（|y|>0.9 终止），从 `blackw_comp_blind_v0/model_200` resume | 阻止绕过障碍、提升真实 Part2 | model_300 strict 300 分、model_500 strict 200 分 |
+| `blackw_comp_lane_v0` | 只加 lateral lane termination（横向越界 abs(y)>0.9 终止），从 `blackw_comp_blind_v0/model_200` resume | 阻止绕过障碍、提升真实 Part2 | model_300 strict 300 分、model_500 strict 200 分 |
 | `blackw_comp_high_v0` | 只把 `max_init_terrain_level` 提到 5（高台/高坡/深沟行），从 lane model_500 resume | 攻高价值高档位 | model_600 strict 350 分；组合最优约 750/1300，40cm/45°/30cm/plum 仍缺 |
-
 | `terrain_audit_20261025` | 对照官方 `terrain.zip/map.xml` 与训练 proxy/本地 level XML | 决定是否继续训练 | **暂停**：proxy 与官方地形不一致（platform 尺寸/台阶、wall 40cm、slope 长度、stairs 总高、trench 深度、height_bar 杆底）；详见 `docs/training/part2-terrain-audit.md` |
-
 | `blackw_official_platform_pilot_v0` | 官方 `map.xml` 高台几何（1.5×1.6，无辅助台阶），从自训 high model_600 warm-start | 验证官方真实几何可直接训练 | 300 iter 后 goal=0，未爬上 10–16cm；rollout 视频已录；需低档 success-gated/更长训练，视频 `prep.d/videos/blackw_official_pilot/official_platform_pilot.mp4` |
 
 ## 失败 run

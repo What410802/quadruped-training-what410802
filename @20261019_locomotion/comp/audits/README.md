@@ -33,3 +33,5 @@
 
 记录被审对象的哈希（judge 源码、场景 XML、protocol、CONTRACT.json、manifest）。
 由 `/comp-eval-audit` 在审计完成后写入；当前含 2026-10-22 G1 审计元信息（verdict=FAIL）。
+
+> 2026-10-26 重组：历史轮次与 prompt 原文已移入 [`archive/`](archive/README.md)；本目录只保留终态结论/索引文件。

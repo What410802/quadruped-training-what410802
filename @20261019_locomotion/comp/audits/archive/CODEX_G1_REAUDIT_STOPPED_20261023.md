@@ -188,14 +188,14 @@ Part 2 评测器：
 ## 6. 关键指针
 
 - 任务入口：[`../README.md`](../README.md)
-- 比赛真值：[`reference/team-race-2026.md`](reference/team-race-2026.md)
-- judge 设计：[`training/competition-judge.md`](training/competition-judge.md)
-- 手动状态机：[`training/manual-fallback-state-machine.md`](training/manual-fallback-state-machine.md)
-- 地形资产：[`terrain/competition-assets.md`](terrain/competition-assets.md)
-- 演示指南：[`demo/acceptance-demo-guide.md`](demo/acceptance-demo-guide.md)
-- AI 方向自检：[`reference/agent-visual-checklist.md`](reference/agent-visual-checklist.md)
-- 控制仓库研读：[`reference/quadruped-control-study.md`](reference/quadruped-control-study.md)
-- 训练计划/评测：[`training/training-plan.md`](training/training-plan.md)、[`training/eval-protocol.md`](training/eval-protocol.md)
+- 比赛真值：[`reference/team-race-2026.md`](../../../docs/00-competition/rules-team-race-2026.md)
+- judge 设计：[`training/competition-judge.md`](../../../docs/00-competition/judge-design.md)
+- 手动状态机：[`training/manual-fallback-state-machine.md`](../../../docs/00-competition/fallback-state-machine.md)
+- 地形资产：[`terrain/competition-assets.md`](../../../docs/10-part1/terrain-assets.md)
+- 演示指南：[`demo/acceptance-demo-guide.md`](../../../docs/00-competition/demo-guide.md)
+- AI 方向自检：[`reference/agent-visual-checklist.md`](../../../docs/40-reference/agent-visual-checklist.md)
+- 控制仓库研读：[`reference/quadruped-control-study.md`](../../../docs/40-reference/quadruped-control-study.md)
+- 训练计划/评测：[`training/training-plan.md`](../../../docs/10-part1/plan.md)、[`training/eval-protocol.md`](../../../docs/10-part1/eval-protocol.md)
 ```
 
 - 🧠 **23:31:59** 推理摘要：**Planning file audit and hash verification**；**Planning hash verification using jq**
@@ -2723,7 +2723,7 @@ Total output lines: 275
 -- instructions --
 # 项目约定
 
-本文是本仓库的**全量约定**，读者是在这里写代码、写文档的人，以及 AI 助手。AI 助手另有一份简版 [`AGENTS.md`](../AGENTS.md)：动手前必须知道的要点，加上只对助手成立的规则（开始时读什么、不代为提交、署名、改写历史）。两份互不重复：细则只写在本文，`AGENTS.md` 只放一句话加指向本文的指针。
+本文是本仓库的**全量约定**，读者是在这里写代码、写文档的人，以及 AI 助手。AI 助手另有一份简版 [`AGENTS.md`](../../../AGENTS.md)：动手前必须知道的要点，加上只对助手成立的规则（开始时读什么、不代为提交、署名、改写历史）。两份互不重复：细则只写在本文，`AGENTS.md` 只放一句话加指向本文的指针。
 
 ## 读法与适用范围
 
@@ -2734,7 +2734,7 @@ Total output lines: 275
 - **层级约定**：仓库级约定是**父级默认**；任务目录的 `AGENTS.md` / `README.md` / `docs/` 可以针对该任务写更具体或不同的约定，**子级约定覆盖父级**。子级偏离父级时，必须在该任务的 `docs/status.md` 或相邻文档写清授权/理由和生效范围，避免把一次任务的例外误当成全仓规则。
   - 例：仓库级默认“AI 助手不代为提交”，任务 `docs/status.md` 明确记录“用户允许本任务由 AI 提交”时，以任务级授权为准；任务结束或用户撤销后回到父级默认。
   - 理由：那些文件与已记录的实测、复现步骤绑在一起，回改会让"复现"和"当时的文件"对不上。
-- **来源**：验收规范（`四足组培训任务提交与验收规范.md`，本机只读材料，下文写作"验收规范 §N"）、对提交方式的明确要求、以及踩坑后写进 [`pitfalls/environment.md`](pitfalls/environment.md) 的经验。
+- **来源**：验收规范（`四足组培训任务提交与验收规范.md`，本机只读材料，下文写作"验收规范 §N"）、对提交方式的明确要求、以及踩坑后写进 [`pitfalls/environment.md`](../../../docs/30-ops/environment.md) 的经验。
 - **维护**：改约定时改本文；`AGENTS.md` 里有对应那句话的，一并改掉。
 - 开新任务从 [§8 起步清单](#8-新任务起步清单) 开始。
 
@@ -2746,7 +2746,7 @@ Total output lines: 275
   - 历史：更早的提交用过 `work:` 前缀（如 `work: training02 task 2 done`），新提交不再用。
 - **1.3 分阶段提交，不攒到最后一次**（验收规范 §3.1）：搭环境 / 加载模型 / 加控制 / 整理结构 / 补文档分别提交。
 
-AI 助手专属的提交规则（不代为提交、不写署名、改写已推送历史的做法）见 [`AGENTS.md`](../AGENTS.md)「提交」。
+AI 助手专属的提交规则（不代为提交、不写署名、改写已推送历史的做法）见 [`AGENTS.md`](../../../AGENTS.md)「提交」。
 
 ## 2. 文档
 
