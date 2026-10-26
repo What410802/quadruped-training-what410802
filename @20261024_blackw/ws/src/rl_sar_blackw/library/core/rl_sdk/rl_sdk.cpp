@@ -5,6 +5,10 @@
 
 #include "rl_sdk.hpp"
 
+#include <cmath>
+#include <stdexcept>
+#include <string>
+
 void RL::StateController(const RobotState<double>* state, RobotCommand<double>* command)
 {
     auto updateState = [&](std::shared_ptr<FSMState> statePtr)
@@ -135,6 +139,26 @@ void RL::InitControl()
 void RL::InitRL(std::string robot_path)
 {
     this->ReadYamlRL(robot_path);
+    // Per-policy frequency must match the loaded base.yaml dt/decimation (audit
+    // F7); otherwise the policy silently runs at a different period than trained.
+    if (this->params.control_hz > 0.0 || this->params.policy_hz > 0.0)
+    {
+        const double want_control = 1.0 / this->params.dt;
+        const double want_policy = want_control / static_cast<double>(this->params.decimation);
+        const bool bad_control = this->params.control_hz > 0.0
+            && std::abs(this->params.control_hz - want_control) > 0.02 * want_control;
+        const bool bad_policy = this->params.policy_hz > 0.0
+            && std::abs(this->params.policy_hz - want_policy) > 0.02 * want_policy;
+        if (bad_control || bad_policy)
+        {
+            throw std::runtime_error(
+                robot_path + ": config.yaml frequency (control_hz="
+                + std::to_string(this->params.control_hz) + " policy_hz="
+                + std::to_string(this->params.policy_hz) + ") != base.yaml dt="
+                + std::to_string(this->params.dt) + " decimation="
+                + std::to_string(this->params.decimation));
+        }
+    }
     for (std::string &observation : this->params.observations)
     {
         if (observation == "ang_vel")
@@ -375,6 +399,26 @@ void RL::ReadYamlBase(std::string robot_path)
 
     this->params.dt = config["dt"].as<double>();
     this->params.decimation = config["decimation"].as<int>();
+    // Frequency contract (audit F7): if base.yaml declares control_hz/policy_hz,
+    // they must agree with dt/decimation.  A silent mismatch changes the policy
+    // period without any operator-visible signal.
+    if (config["control_hz"] && config["policy_hz"] && this->params.dt > 0.0
+        && this->params.decimation > 0)
+    {
+        const double control_hz = config["control_hz"].as<double>();
+        const double policy_hz = config["policy_hz"].as<double>();
+        const double want_control = 1.0 / this->params.dt;
+        const double want_policy = want_control / static_cast<double>(this->params.decimation);
+        if (std::abs(control_hz - want_control) > 0.02 * want_control
+            || std::abs(policy_hz - want_policy) > 0.02 * want_policy)
+        {
+            throw std::runtime_error(
+                "base.yaml frequency mismatch: control_hz=" + std::to_string(control_hz)
+                + " policy_hz=" + std::to_string(policy_hz) + " but dt="
+                + std::to_string(this->params.dt) + " decimation="
+                + std::to_string(this->params.decimation));
+        }
+    }
     this->params.wheel_indices = ReadVectorFromYaml<int>(config["wheel_indices"]);
     this->params.num_of_dofs = config["num_of_dofs"].as<int>();
     this->params.fixed_kp = torch::tensor(ReadVectorFromYaml<double>(config["fixed_kp"])).view({1, -1});
@@ -402,6 +446,10 @@ void RL::ReadYamlRL(std::string robot_path)
     }
 
     this->params.model_name = config["model_name"].as<std::string>();
+    // Optional per-policy frequency declaration (written by the exporter/config
+    // template).  Validated against base.yaml in InitRL.
+    this->params.control_hz = config["control_hz"] ? config["control_hz"].as<double>() : -1.0;
+    this->params.policy_hz = config["policy_hz"] ? config["policy_hz"].as<double>() : -1.0;
     this->params.num_observations = config["num_observations"].as<int>();
     this->params.observations = ReadVectorFromYaml<std::string>(config["observations"]);
     if (config["observations_history"].IsNull())

@@ -3,6 +3,34 @@
 > 本页汇总 round-1 两份独立审计（[`audits/ppo-core-audit-round1.md`](audits/ppo-core-audit-round1.md)、[`audits/ppo-deploy-audit-round1.md`](audits/ppo-deploy-audit-round1.md)）里**仍未关闭**的代码项，以及已修项的验证状态。目的是：开 round-2 审计前逐项清零；不把"看起来跑通"当通过。
 > 状态码：**OPEN**=未修；**FIXED**=代码已修（注明验证）；**PARTIAL**=修了一半/缺验证或接线。
 
+## 0. 本轮修复状态（2026-10-26 17:00，第二轮）
+
+> 本节记录 §1 清单的实际修复与验证；§1 表格保留 round-1 原始描述。状态：**FIXED**=代码已改且有自测/命令证据；**PARTIAL**=代码已改但缺目标场景验证；**OPEN**=未动。
+
+| ID | 状态 | 修复位置 / 证据 |
+|---|---|---|
+| P1-1 | **FIXED** | 远程 `blackw/env_cfgs.py` 删除 3 处 `cfg.sim.ccd_iterations` 死写；`_apply_deployment_sim_options` 改 `BLACKW_CCD_ITERS`（默认 35=judge）；`py_compile` 通过 |
+| P1-2 | **FIXED（静态）** | platform 阈值改行相对：`_platform_top_z()` + `min_clearance`/`clearance`；`blackw-platform-easy` 已注册；10 cm 档不再用绝对 0.72；「success-gated 升档」伪注释已删（行晋升未实现，属实验） |
+| P1-3 | **FIXED** | `check_tier_success.py`（本地+远程）：`max_steps` 从 env `max_episode_length` 推导；`truncated` 字段 + 非零退出；worst/best 只统计完成过 episode 的 env |
+| P1-4 | **FIXED** | 训练 lane 统一 `PART2_LANE_HALF_WIDTH=0.7`；`BLACKW_LANE` 默认 0.7；termination/success/judge 单源 |
+| P1-5 | **FIXED** | `eval_blackw_part2.py`：缺 `lane_half_width`/`hold_s`/stairs `descend_end_x` → KeyError；`wheel_bodies != 4` → RuntimeError；judge smoke 通过 |
+| P1-6 | **FIXED** | 远程 `eval_blackw_official.py` → `_deprecated_eval_blackw_official.py`（文件头标注不可与 judge v5 比较），commit `xxxx` |
+| P1-7 | **FIXED** | `black/rl_cfg.py`：出现 `BLACKW_GUARD_*` 但 `BLACKW_ALGORITHM` 非 GuardedPPO → `ValueError` |
+| P1-10 | **FIXED** | 远程 `gpu_jobs`：`common.sh` record 钩子（失败不写 done）、信号码 143/130、flag 竞争修复；新增 `submit.sh`（导出 TS_ONFINISH/TS_SOCKET）；9 个 `ppo_*.sh` 接 `BLACKW_RESUME_LOAD_CFG/LR`、动态 resume、导出/tiercheck rc 传播、`bash -n` 全过；SIGTERM 实测 exit=143 + 日志 rc=143 |
+| P1-11 | **FIXED** | 新增 `@20261024_blackw/scripts/check_predicate_judge_parity.py`（lane/hold(0.2+0.1)/stairs key/judge fail-closed 守卫静态对拍），当前 `PARITY OK` |
+| P1-12 | **FIXED** | blackW reset root velocity 默认 0（`BLACKW_RESET_ROOT_VEL` 可覆盖），与 judge 静止出生一致 |
+| P0-2r | **FIXED** | 所有续训 `ppo_*.sh` 已接线 `BLACKW_RESUME_LOAD_CFG=actor` + `BLACKW_RESUME_LR`，summary 记录 resume/load_cfg/lr |
+| F1 | **FIXED（代码）** | 逐关节 `tau_max` 已在本地部署栈实现（motor.hpp/sim_node/template）；验证依赖 F2 smoke 结果 |
+| F2 | **FIXED（新工具，待首跑）** | 新增 `@20261024_blackw/scripts/smoke_deploy_part2.py`：20 档逐关无头部署 smoke（sim_node+rl_sim，nav 模式给档位官方命令，解析 status 行喂 judge v5，逐档 PASS/FAIL+JSON） |
+| F3 | **FIXED** | 远程 exporter 写 `config.yaml`+`manifest.json`、`action_scale` 带右腿负号（模板已上传）；本地 BC exporter 也写 manifest；模板 `model_name: policy.pt` 修正 |
+| F6 | **FIXED（结论修正）** | 新增自测：控制周期每 5 ms 都做一次 slew、每策略周期 4 次 → 有效 slew = 配置值（20 自测 / 60 部署），审计"15 rad/s"的推导不成立；自测待 build 后跑 |
+| F7 | **FIXED** | `base.yaml`+模板加 `control_hz/policy_hz`；`rl_sdk.cpp` 读 base/策略 config 并在 `InitRL` 对账（偏差 >2% 抛异常）；main 捕获后安全退出 |
+| F14 | **FIXED（工具）** | 新增 `read_rl_obs_debug.py` 解析 `/tmp/rl_obs_debug.csv`（obs/action 分段统计 + 首帧 + JSON） |
+| F15 | **FIXED** | `rl_sim.cpp` main 包 try/catch（含 catch(...)），异常打印并返回 1 |
+| P2 清单 | 未动 | 见 §3；不阻塞 round-2 |
+
+**仍未关闭**：F1/F2 的目标场景验证需要在 build 完成后跑 `smoke_deploy_part2.py`（含 `comp_bc_v5` 与 judge 对拍）；P0-1/P0-3 的最终验证仍是"下一次正式训练+judge"；真实硬件链路未实现（不在本轮范围）。
+
 ## 1. 阻塞 round-2 PASS 的代码项（按建议修复顺序）
 
 | # | 项 | 位置 | 现状 | 要做什么 |

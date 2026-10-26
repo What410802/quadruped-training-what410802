@@ -127,6 +127,9 @@ struct ModelParams
     std::string model_name;
     double dt;
     int decimation;
+    // Optional per-config frequency contract (audit F7); -1 = not declared.
+    double control_hz = -1.0;
+    double policy_hz = -1.0;
     int num_observations;
     std::vector<std::string> observations;
     std::vector<int> observations_history;

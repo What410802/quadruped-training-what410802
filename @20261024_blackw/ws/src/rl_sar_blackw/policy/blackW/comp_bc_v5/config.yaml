@@ -1,4 +1,6 @@
 blackW/comp_bc_v5:
+  control_hz: 200
+  policy_hz: 50
   action_scale:
   - 0.25
   - 0.25

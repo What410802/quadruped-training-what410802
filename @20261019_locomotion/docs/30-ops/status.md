@@ -13,7 +13,7 @@
 
 ## 下一步（按优先级）
 
-1. 按 [`../21-part2-ppo/audit-blockers.md`](../21-part2-ppo/audit-blockers.md) §5 顺序关闭剩余项（核心 P1 → F3/F1/F2 → job 契约），开 round-2 独立审计至 PASS。
+1. 第二轮修复已完成（P1 语义项、F3/F6/F7/F14/F15、job 契约、F2 smoke 工具；见 [`../21-part2-ppo/audit-blockers.md`](../21-part2-ppo/audit-blockers.md) §0）；下一步：build 后跑 F2 smoke（逐档 PASS/FAIL + F1 验证）、补 P2 清单、开 round-2 独立审计至 PASS。
 2. 按新验收协议实现覆盖集评测（judge 侧 + 部署侧 smoke 对拍），替换旧 gate/固定次数工具。
 3. Part2 归因实验（A6：resume 契约、guard 锚点、低档回放、课程、model soup），每个实验按覆盖集评估。
 4. BC 数据/教师能力审计 → 大范围鲁棒转向的 BC/DAgger 计划。

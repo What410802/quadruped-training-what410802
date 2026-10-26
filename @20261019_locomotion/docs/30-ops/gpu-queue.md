@@ -5,8 +5,8 @@
 ## 约定
 
 - 单卡队列：task-spooler，`TS_SOCKET=/tmp/gpu_queue.socket`；`ts -l` 看队列（`run=1/1` 表示正在跑）。
-- 提交：`TS_ONFINISH=$HOME/rc_work/gpu_jobs/on_finish.sh ts -L <label> <job.sh>`；label 与 run 名一致（见 INDEX 命名规范）。
-- 作业脚本契约：`source ~/rc_work/gpu_jobs/common.sh`（日志/summary/GPU lock/flag/trap）；summary 最后一行 `<job> done <time>` 只在成功时写；失败/中断要非零退出并把 verdict 写 summary。
+- 提交：`~/rc_work/gpu_jobs/submit.sh <label> <job.sh>`（2026-10-26 起；wrapper 负责导出 `TS_ONFINISH`/`TS_SOCKET`，因为这两个变量不在任何 shell rc 里，见审计 F9）。label 与 run 名一致（见 INDEX 命名规范）。
+- 作业脚本契约：`source ~/rc_work/gpu_jobs/common.sh`（日志/summary/GPU lock/flag/trap）；`record` 钩子保证失败作业不会写 `<job> done`（写 `<job> failed rc=N`）；信号退出码映射 TERM=143/INT=130；导出与 tiercheck 的 rc 必须并入最终 RC；summary 记录 resume 点/`load_cfg`/lr/tiercheck rc。
 - 单 job ≤ 2 h；夜间关机约 00:00–09:00（可等到 00:30）；关机/重启会丢队列，长任务必须 checkpoint（save-interval ≤ 50）。
 - 清理：`ts -k <id>` 只是请求取消；标志位以 `ts -l` + `nvidia-smi` 为准，必要时手工 `printf 0 > ~/5060ti_machine_use_flag.txt`。
 - 不绕过队列直接起训练；调试用 2-iter × 16-env 的小 job。日志：`~/rc_work/logs/<job>_summary.txt`、`~/rc_work/logs/<job>.log`。

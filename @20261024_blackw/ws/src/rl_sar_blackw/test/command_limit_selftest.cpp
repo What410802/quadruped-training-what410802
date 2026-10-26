@@ -180,6 +180,24 @@ int main()
         Expect("counted as window", c.window == 1);
     }
 
+    std::printf("8b. repeated control cycles keep the configured slew rate (audit F6)\n");
+    {
+        Rig r;                     // slew 20 rad/s, dt 5 ms, 4 control cycles per inference
+        r.q_des = {10.0};
+        r.kp = {0.0};
+        for (int i = 0; i < 4; ++i)
+        {
+            r.q_des = {10.0};      // the node re-copies the policy target every cycle
+            r.Apply();
+            // ... and keeps the *limited* target as the next cycle's prev
+            // (rl_sim SetCommand: limited_q_des_prev = q_des).
+            r.state.q_des_prev = r.q_des;
+        }
+        // 4 cycles * 20 rad/s * 0.005 s = 0.4 rad per 20 ms policy period -> 20 rad/s,
+        // i.e. the configured limit is the effective limit (not slew/decimation).
+        ExpectNear("allowed change over one policy period", r.q_des[0], 0.4);
+    }
+
     std::printf("8. the whole chain on one joint\n");
     {
         Rig r;                     // worst case: huge target, big tau_ff, big dq_des, big gains

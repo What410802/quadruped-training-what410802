@@ -8,6 +8,8 @@
 
 #include "rl_sim.hpp"
 #include <fstream>
+#include <iostream>
+#include <exception>
 #include <cstdlib>
 
 #include "command_limit.hpp"
@@ -538,7 +540,23 @@ torch::Tensor RL_Sim::Forward()
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<RL_Sim>());
+    int rc = 0;
+    try
+    {
+        rclcpp::spin(std::make_shared<RL_Sim>());
+    }
+    catch (const std::exception &e)
+    {
+        // F15: a policy/config error must not abort the whole process; log it once
+        // and exit non-zero so a supervisor can restart with a corrected config.
+        std::cerr << "[rl_sim] fatal exception: " << e.what() << std::endl;
+        rc = 1;
+    }
+    catch (...)
+    {
+        std::cerr << "[rl_sim] fatal unknown exception" << std::endl;
+        rc = 1;
+    }
     rclcpp::shutdown();
-    return 0;
+    return rc;
 }

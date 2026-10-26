@@ -1,4 +1,6 @@
 blackW/stair:
+  control_hz: 200
+  policy_hz: 50
   model_name: "policy.pt"
   model_path: "policy/blackW/stair/policy.pt"
   num_observations: 57

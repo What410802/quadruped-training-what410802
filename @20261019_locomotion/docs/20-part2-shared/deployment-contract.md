@@ -9,13 +9,14 @@
 - 观测：57 × 6 历史（frame-major，新→旧）= 342；动作 16（`FL,FR,RL,RR × hip,thigh,calf,wheel`）。
 - `action_scale`：腿 ±0.25，轮 **FL+10 / FR−10 / RL+10 / RR−10**（右腿负号，训练同约定）。
 - 力矩上限（逐关节）：`[23.7, 23.7, 59.25, 20] × 4`；sim_node 默认从 MJCF `<motor ctrlrange>` 读取，`tau_max_array` 参数可覆盖。
-- 验证命令：`pixi run python @20261024_blackw/scripts/import_blackw_policy.py --check policy/blackW/<name>`；批量：`check_policy_dirs.py`。
+- 频率字段：`base.yaml` 与每份 `config.yaml` 都必须声明 `control_hz: 200` / `policy_hz: 50`；`rl_sdk.cpp` 在 `InitRL` 与 `dt/decimation` 对账（偏差 >2% 抛异常，rl_sim 捕获后安全退出）。
+- 验证命令：`pixi run python @20261024_blackw/scripts/import_blackw_policy.py --check policy/blackW/<name>`；批量：`check_policy_dirs.py`；谓词-judge 对拍：`check_predicate_judge_parity.py`。
 
 ## 2. 控制栈事实
 
 - 场景物理：MJCF `<option timestep="0.002" ... cone="elliptic" impratio="100">`；PD/力矩在 `sim_node` 每物理步（500 Hz）计算。
 - `policy/blackW/base.yaml`：`dt: 0.005`、`decimation: 4` → **策略 50 Hz**、命令刷新 200 Hz；策略输入输出节拍与训练一致（训练 0.002 s × 10 dec、50 Hz）。
-- 已知耦合：`command_limit.hpp` 的 slew 时基是控制周期（5 ms）→ 有效 slew ≈ `60 × 0.005 = 0.3 rad/20 ms = 15 rad/s`（不是 60）；改 0.002/10 会变成 6 rad/s。部署前需按实际 `dt` 复核。
+- `command_limit.hpp` 的 slew 每个控制周期（5 ms）执行一次、每策略周期（4 个控制周期）共 4 次 → 有效 slew = 配置值（60 rad/s）。审计 F6 曾按"每策略周期只夹一次"推成 15 rad/s，但 `Command_limit_selftest.cpp` 的重复周期用例（build 后跑）会证明是 60；改 dt/decimation 时仍需跑该自测。
 - `src/rl_sim.cpp` 在每次进 RL 前对 history buffer 做 backfill（与训练一致），否则 6 帧历史首帧全 0。
 
 ## 3. 运行（sim）
@@ -38,8 +39,9 @@ pixi run ros2 launch rl_sar_blackw rl_sim_blackw.launch.py policy_name:=comp_bc_
 
 ## 5. 已知缺口（2026-10-26）
 
-1. **无 Part2 逐档部署 smoke**：`check_walk_blackw.py` 只验证平地起身/前进/转向/趴下；20 档部署覆盖 0/20。待实现 `scripts/smoke_deploy_part2.py`（状态行已含四轮 wx/wz）。
+1. **Part2 逐档部署 smoke**：已实现 `scripts/smoke_deploy_part2.py`（无头起 sim_node+rl_sim、按档位官方命令走 nav 模式、解析状态行喂 judge v5，逐档 PASS/FAIL + JSON；`pixi run python @20261024_blackw/scripts/smoke_deploy_part2.py --policy comp_bc_v5 --only <level> --realtime false`）。首跑结果待补。
 2. 官方 mesh 资产 `scenes/blackW/assets/` 未入库（gitignore，约 42 MB）；演示前需从官方 ReadOnly 源复制（README 有来源说明）。
 3. 转向能力：`comp_bc_v5` 在 sim 里 1.0 rad/s 转向实测不达标（训练指令 yaw 覆盖有限）；验收口径要求覆盖手柄全范围，需训练侧补。
 4. 实机路径：无硬件驱动节点、`rl_sim` 时钟依赖 `/motor_state.sim_time`、无逐关节限幅/标定/急停——实机演示不可用。
+5. `RL_DEBUG_OBS=1` 的 obs/action dump 已接读取工具：`scripts/read_rl_obs_debug.py --csv /tmp/rl_obs_debug.csv`（obs 57 分段/首帧 JSON），用于与 judge 侧 replay 对拍。
 5. 生成策略目录（约 128 个 `policy/blackW/*`）不入库，只保留 curated/official；恢复用 `import_blackw_policy.py`。
