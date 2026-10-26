@@ -253,6 +253,12 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
 - **`export_blackw_policy.py`**：`play=True` 只用于建 env/取 actor 形状，不读取训练终止项，不受 play 配置影响；导出仍会做 history 列置换与 dummy forward 形状检查。
 - **`exact_terrain.py` / 动作观测契约**：此前已审（几何 raycast 对拍、部署 config 对齐），本次复读无新问题。
 
+### 16.3 修复后的 smoke 验证（2026-10-26 11:43）
+
+- `ppo_audit_smoke` job 15：smoke3（`check_tier_success`，hold 谓词修复后）rc=0，r=1.0 stairs 上 BC 初始化 success_rate=0.0299，`part2` 三项 term 都在；环境/术语链正常。
+- smoke1/smoke2（GuardedPPO 显式锚点）**crash，但不是代码 bug**：smoke 脚本漏了 `--agent.logger tensorboard`，默认 wandb logger 与当前 wandb 版本不兼容（`Settings(start_method=...)` 被 pydantic 拒绝）。→ 记录：**任何非训练 smoke 也必须显式 `--agent.logger tensorboard`**；已重排 `ppo_audit_smoke2`（job 19）复测。
+- 另：`ppo_m0_hardmask`（job 16）的 env-build smoke rc=0，`BLACKW_SUBTERRAINS` / `BLACKW_DIFF_MIN/MAX` / `BLACKW_SPAWN_*` / hold 谓词组合可用；训练侧 warp 的 `part2_success` 在 691 iter 时约 0.59（=warp 下 40cm 台/40cm 墙/30cm 台阶混合成功率，judge 是 PGS，不能直接当 judge 分数）。
+
 ## 17. 2026-10-26 judge 全档回归选点 + gate placement 首测（job13 结论）
 
 ### 17.1 job13（stairs30 续训 800 iter）判死：同配方无收益
