@@ -73,7 +73,7 @@
 
 ## 3. 短期待办（P1，HIM 下一轮）
 
-- [ ] P1-1 不再直接升 row1/扩命令；先用 warm-start teacher 做 300–500 iter 微调：
+- [ ] P1-1（已入队 job21）不再直接升 row1/扩命令；先用 warm-start teacher 做 300–500 iter 微调：
   - `lr≈1e-4`（先降 5x）、`entropy=0`、冻结/衰减 `std`；
   - 加显式 BC/teacher anchor（KL 或权重锚），base 必须固定为 warm-start 官方 actor，不是“当前 actor 的第一次快照”；
   - 每 50–100 iter gate + judge 选点；退化就回滚/best-of-N。
@@ -98,8 +98,14 @@
 |---|---|---|
 | 11 | PPO slope μ=1.2 诊断 | finished；非交付负结果 |
 | 12 | HIM row0 1500 iter + 坏 gate | finished；gate 无效，训练发散 |
-| 13 | PPO stairs30 续训 | running；需早停/judge 复核 |
-| 14 | HIM job12 全 checkpoint 修正 gate | queued |
+| 13 | PPO stairs30 续训 | finished；success≈0、tiercheck 0/278，负结果 |
+| 14 | HIM job12 重测 | **invalid**；155/155 rc=1，无 JSON |
+| 16 | PPO m0 hardmask | finished |
+| 17 | PPO m0 slope35 | running |
+| 18 | PPO m0 trench20 | queued |
+| 19 | PPO audit smoke2 | queued |
+| 20 | HIM model0 gate 20×2seed×train/deploy | queued |
+| 21 | HIM row0 microfine 300iter + per-checkpoint gate | queued |
 
 ## 6. 关联文档
 
