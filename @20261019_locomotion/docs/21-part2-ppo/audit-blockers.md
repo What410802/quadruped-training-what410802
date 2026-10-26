@@ -20,8 +20,8 @@
 | P1-11 | **FIXED** | 新增 `@20261024_blackw/scripts/check_predicate_judge_parity.py`（lane/hold(0.2+0.1)/stairs key/judge fail-closed 守卫静态对拍），当前 `PARITY OK` |
 | P1-12 | **FIXED** | blackW reset root velocity 默认 0（`BLACKW_RESET_ROOT_VEL` 可覆盖），与 judge 静止出生一致 |
 | P0-2r | **FIXED** | 所有续训 `ppo_*.sh` 已接线 `BLACKW_RESUME_LOAD_CFG=actor` + `BLACKW_RESUME_LR`，summary 记录 resume/load_cfg/lr |
-| F1 | **FIXED（代码）** | 逐关节 `tau_max` 已在本地部署栈实现（motor.hpp/sim_node/template）；验证依赖 F2 smoke 结果 |
-| F2 | **FIXED（新工具，待首跑）** | 新增 `@20261024_blackw/scripts/smoke_deploy_part2.py`：20 档逐关无头部署 smoke（sim_node+rl_sim，nav 模式给档位官方命令，解析 status 行喂 judge v5，逐档 PASS/FAIL+JSON） |
+| F1 | **FIXED（代码，smoke 通过）** | 逐关节 `tau_max`（23.7/23.7/59.25/20）已在部署栈实现；F2 smoke 能正常加载策略并取得 5 档成功 → 部署栈力矩路径可用。**仍缺** judge-vs-sim 同一 checkpoint 的逐 case 数值对拍（smoke 只给 pass/fail） |
+| F2 | **FIXED（已跑通 20 档）** | `@20261024_blackw/scripts/smoke_deploy_part2.py`：无头起 sim_node+rl_sim、GetUp/Enter-RL（用 rl_sim stdout 的 `Entered RL_Locomotion` 标记定尝试起点）、摇杆给档位官方命令、解析 status 行（base x/y/z/tilt + 4 轮 wx/wz）喂 judge v5；`comp_bc_v5` 首轮 **5/20**（两次跑总数一致，逐档受边沿策略影响 ±1；见下方验证记录）。命令：`pixi run python @20261024_blackw/scripts/smoke_deploy_part2.py --policy comp_bc_v5 --realtime false --json prep.d/results/ppo_st30/deploy_smoke/comp_bc_v5.json` |
 | F3 | **FIXED** | 远程 exporter 写 `config.yaml`+`manifest.json`、`action_scale` 带右腿负号（模板已上传）；本地 BC exporter 也写 manifest；模板 `model_name: policy.pt` 修正 |
 | F6 | **FIXED（结论修正）** | 新增自测：控制周期每 5 ms 都做一次 slew、每策略周期 4 次 → 有效 slew = 配置值（20 自测 / 60 部署），审计"15 rad/s"的推导不成立；自测待 build 后跑 |
 | F7 | **FIXED** | `base.yaml`+模板加 `control_hz/policy_hz`；`rl_sdk.cpp` 读 base/策略 config 并在 `InitRL` 对账（偏差 >2% 抛异常）；main 捕获后安全退出 |
@@ -29,7 +29,20 @@
 | F15 | **FIXED** | `rl_sim.cpp` main 包 try/catch（含 catch(...)），异常打印并返回 1 |
 | P2 清单 | 未动 | 见 §3；不阻塞 round-2 |
 
-**仍未关闭**：F1/F2 的目标场景验证需要在 build 完成后跑 `smoke_deploy_part2.py`（含 `comp_bc_v5` 与 judge 对拍）；P0-1/P0-3 的最终验证仍是"下一次正式训练+judge"；真实硬件链路未实现（不在本轮范围）。
+### 0.1 本轮验证记录（2026-10-26 17:20）
+
+| 验证 | 命令 | 结果 |
+|---|---|---|
+| C++ 编译 | `pixi run ros2-build`（blackw ws） | 2 packages OK（rl_sar_blackw 75 s） |
+| C++ 自测 | `command_limit_selftest` / `input_map_selftest` | **all PASS**（含 F6 的"每策略周期 4 次 slew → 有效=配置值"用例、F15 不影响） |
+| 训练栈 smoke（GPU） | `submit.sh audit_round2_smoke ppo_audit_smoke3.sh` | `train rc=0`；`[resume] BLACKW_RESUME_LOAD_CFG=actor`、`lr=4e-05`；DR=`[base_com payload_mass push_robot]`；summary 成功 done |
+| platform-easy 环境构造 | `check_tier_success --task blackw-platform-easy` | `rc=0`、`truncated=false`、`official_platform_success` 4/4 → 行相对阈值生效 |
+| 部署 20 档 smoke | `smoke_deploy_part2.py --policy comp_bc_v5` | **5/20 通过**（platform10/20cm、wall10/30/40cm 一类；stairs/slope/trench/plum 失败；两次跑总数一致、逐档 ±1）→ **judge 750 ≠ 部署栈能力，部署侧仍是明显缺口** |
+| 谓词-judge 对拍 | `check_predicate_judge_parity.py` | `PARITY OK`（lane 0.7、hold 0.2+0.1=15 steps、stairs key、fail-closed 守卫齐全） |
+
+验证中又发现并修掉 2 个工具 bug：`check_tier_success` 的 `torch.full_like(int64, nan)` 溢出；platform-exact 任务的 success 实际由 `official_platform_success` 触发而 tiercheck 只统计 `part2_success`。
+
+**仍未关闭**：F1 的 judge-vs-sim 逐 case 数值对拍（只有 pass/fail）；P0-1/P0-3 的最终验证仍是"下一次正式训练+judge"；P2 清单未动；真实硬件链路未实现（不在本轮范围）。
 
 ## 1. 阻塞 round-2 PASS 的代码项（按建议修复顺序）
 

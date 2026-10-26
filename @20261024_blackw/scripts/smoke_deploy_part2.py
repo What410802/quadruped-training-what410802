@@ -173,7 +173,7 @@ def run_level(level: dict, judge_level: dict, policy: str, realtime: bool) -> di
         cmd_end: float | None = None
         rl_entered_at: float | None = None
         next_rl_probe = 0.0
-        wall_deadline = time.monotonic() + 300.0
+        wall_deadline = time.monotonic() + 90.0
         while True:
             if time.monotonic() > wall_deadline:
                 result["reason"] = "wall-clock guard hit"
@@ -183,6 +183,9 @@ def run_level(level: dict, judge_level: dict, policy: str, realtime: bool) -> di
             # RL entry is detected from rl_sim's own stdout marker (the FSM prints
             # "[FSM] ... Entered RL_Locomotion"; /mit_command is published before RL
             # too, so it cannot be used as the signal).
+            if rl_entered_at is None and now >= 15.0:
+                result["reason"] = "no RL entry within 15 s sim (GetUp/Enter-RL failed)"
+                break
             if rl_entered_at is None and time.monotonic() >= next_rl_probe:
                 next_rl_probe = time.monotonic() + 0.2
                 try:
