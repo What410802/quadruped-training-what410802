@@ -73,15 +73,16 @@ training/
 5. `plum.gap_before_exit` 按官方几何由 0.4 修正为 0.1；
 6. HIMPPO 算法类不再被 `black_ppo_algorithm_kwargs()` 的默认 `class_name="PPO"` 覆盖（旧 PPO 分支引入的回归，HIM 路径此前无法通过 CLI 启动）。
 
-## 6. 未完成项（Phase 1 收尾待做）
+## 6. P1-17 结构解耦（已完成）
 
-### Phase 1 收尾后更新（本轮补充）
+目标结构 `common/`（训练/部署契约、PPO runner 配置、课程持久化、HIM runner 基类、通用 velocity 装配、course 机制） + `profiles/part1|part2`（赛项地形/判据/奖励） + `black/` `blackw/`（机器人契约与 task 注册）。
 
-- **P1-12 已完成**：`scripts/export/export_history_policy.py --robot black|blackW` 合并两套导出脚本；同一旧 checkpoint（`~/rc_work/models/model_0_bc_v5_guarded.pt`，blackW 342 维）用旧脚本（legacy/ppo）与新脚本各导出一次：**TorchScript state_dict 8 个张量逐个 sha256 完全一致**；新脚本 contract/manifest 增加 robot、频率三字段、checkpoint sha256。HIM 导出（canonical 6×57→16）与 depth 导出保留。
-- **P1-13 已完成**：`scripts/` 按用途迁入 `export/ checks/ diagnostics/ render/ bc/ tools/`（含 `dump_env_cfgs.py`、`gen_official_terrain_spec.py`、tier success/geometry、predicate parity、world friction、BC/DAgger 工具），删除旧 proxy/一次性脚本；全部 `compileall` 通过，`scripts/README.md` 说明各目录。
-- **P1-17 部分完成**：`profiles/{part1,part2}` 已拆出；`common/` 新增，`config.py`（原 `black/black_config.py`）与 `rl_cfg.py`（原 `black/rl_cfg.py`）已移入并全仓改 import，37 任务 cfg dump 与移动前一致（仅 dump 工具 property 表示差异）。**剩余**：`curriculum_checkpoint.py`/`him_runner.py`/`him_rl_cfg.py` 仍留在 `black/`（被 blackW 复用），以及 blackW 对 `black.env_cfgs`（`_build_black_env_cfg`/`black_competition_env_cfg`）的依赖；消除它们需要拆分通用 velocity 装配与 Part1 course 机制，行为等价验证已就绪，结构移动留待 Phase 2 前完成。
+- 通用装配 `black/env_cfgs.py::_build_black_env_cfg` → `common/velocity_env.py::build_velocity_env_cfg`；`black_competition_env_cfg` 拆为 `profiles/part1/course.py`（地形）+ `common/course.py::apply_traversal_base`（命令/终止/奖励机制，Part2 任务复用）；
+- `black_config.py`/`rl_cfg.py`/`curriculums.py`/`curriculum_checkpoint.py`/`him_runner.py`/`him_rl_cfg.py` → `common/`，全仓 import 重写；`symmetry.py` 仅在 mirror loss 开启时惰性导入（Black 专属契约）；
+- blackW 任务基座由「import black 的 Part1 competition builder」改为「`common.velocity_env` + `common.course.apply_traversal_base` + Part2 6 行 × 0..1 难度 sweep」；`blackw-competition/platform/slope/trench` 等旧 proxy builder 不再注册；
+- **直接依赖验收**：`blackw/` 对 `black/` 的 import 只剩 `black.him`（HIM observation/history/terminal 契约），满足审批卡 P1-17 的验收条件；`common/` 仍引用 black 的原生几何装配模块（`terrain/rewards/terminations/free_gravel`），彻底 robot-neutral 化留作 Phase 2 结构升级（不影响两机型×两赛项的接线）。
 
-- **P1-15 验收补充**：L2 smoke 三条路径 rc=0；`dump_env_cfgs` 37 个任务可构造（12 black + 13 blackW + 12 MjLab 自带）；checkpoint 导出等价性如上。
+**P1-17 等价性证据**：解耦前后 37 个任务（12 black + 13 blackW + 12 mjlab 自带）`dump_env_cfgs` **逐字节一致**（唯一差异为 `blackw-flat` 的 Part1 代理地形按计划替换为通用 rough 地形，属结构解耦的有意变更，已在 golden 对比中单独确认）；runner 文件下移后再 dump 仍 `new == prev`；三条 smoke（`black-flat-him`、`blackw-official`、`blackw-official-him`）各 1 iter rc=0。
 
 ## 7. 新仓提交记录（migrate/phase1）
 
@@ -90,5 +91,8 @@ training/
 8f9742c feat(train): migrate black velocity/HIM stack with knobs registry and frequency contract (P1-03..P1-08)
 4594479 feat(train): migrate blackW Part2 stack with official terrain spec and HIM guards (P1-09..P1-11)
 ccaf3d8 fix(train): keep HIMPPO class for HIM runner cfg and repair split-module imports
-<下一提交> feat(train): import round-0 deployable weights and official policies with manifests (P1-16)
+21882ec feat(train): import round-0 deployable weights and official policies with manifests (P1-16)
+1071403 feat(train): migrate training scripts and unify history exporter with deployment contract (P1-12, P1-13)
+b812076 refactor(train): move shared config and PPO rl_cfg into tasks/velocity/common (P1-17 partial)
+e9a8188 refactor(train): decouple robot contracts from event profiles; shared runner/config in common (P1-17)
 ```
