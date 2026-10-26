@@ -199,7 +199,8 @@ def _override_observations(cfg: ManagerBasedRlEnvCfg) -> None:
 def _override_events(cfg: ManagerBasedRlEnvCfg) -> None:
     import os
 
-    reset_base = cfg.events["reset_base"]
+    base_events = dict(cfg.events)
+    reset_base = base_events.pop("reset_base")
     # Gate-matched spawn randomization (docs gate protocol: x +-0.10 m, y +-0.15 m,
     # yaw +-0.05 rad).  Disabled by default; set the env vars to enable.
     spawn_x = float(os.environ.get("BLACKW_SPAWN_X", "0"))
@@ -212,7 +213,7 @@ def _override_events(cfg: ManagerBasedRlEnvCfg) -> None:
                            "yaw": (-spawn_yaw, spawn_yaw)})
         params["pose_range"] = pose_range
         reset_base = replace(reset_base, params=params)
-    cfg.events = {
+    events = {
         "reset_base": reset_base,
         "reset_robot_joints": EventTermCfg(
             func=reset_joints_by_offset,
@@ -224,6 +225,29 @@ def _override_events(cfg: ManagerBasedRlEnvCfg) -> None:
             },
         ),
     }
+    # Keep the black competition task's domain-randomization terms.  The old code
+    # replaced the whole dict and silently dropped them (audit P0-1, 2026-10-26).
+    # Reset terms are superseded by the two above; the rest are DR.  Not every black
+    # DR term is valid on blackW (foot collision geoms are named differently and the
+    # action path is JointPosition rather than IdealPd), so keep a curated allowlist
+    # and make it explicit instead of silently dropping anything.
+    allowed = {
+        name.strip() for name in os.environ.get(
+            "BLACKW_DR_EVENTS", "payload_mass,base_com,push_robot").split(",")
+        if name.strip()
+    }
+    dropped = []
+    for name, term in base_events.items():
+        if name.startswith("reset_"):
+            continue
+        if name in allowed:
+            events[name] = term
+        else:
+            dropped.append(name)
+    cfg.events = events
+    if dropped:
+        print(f"[blackw] DR events dropped (unsupported on blackW): {sorted(dropped)}", flush=True)
+    print(f"[blackw] DR events enabled: {sorted(allowed)}", flush=True)
 
 
 
@@ -323,7 +347,14 @@ def _plum_foothold_reward(
     in_field = (wx >= cube_x_lo) & (wx <= cube_x_hi)
     on_pile = in_field & (wz >= 0.14) & (wz <= 0.34)
     frac = on_pile.to(torch.float32).mean(dim=1)
-    return frac * in_field.any(dim=1).to(torch.float32)
+    # Potential (delta) form: only pay for NEW wheels landing on piles, so standing
+    # still on a pile cannot farm the term (audit P0-3, 2026-10-26).
+    prev = getattr(env, "_plum_prev_foothold", None)
+    if prev is None or prev.shape[0] != env.num_envs:
+        prev = torch.zeros_like(frac)
+    delta = torch.clamp(frac - prev, min=0.0)
+    env._plum_prev_foothold = frac.detach()
+    return delta * in_field.any(dim=1).to(torch.float32)
 
 
 
@@ -1123,7 +1154,7 @@ def blackw_plum_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
             weight=float(os.environ.get("BLACKW_PROGRESS_W", "8.0")),
             params={"goal_name": "goal", "asset_cfg": SceneEntityCfg("robot")},
         )
-        foot_w = float(os.environ.get("BLACKW_PLUM_FOOT_W", "3.0"))
+        foot_w = float(os.environ.get("BLACKW_PLUM_FOOT_W", "0.0"))
         if foot_w > 0.0:
             cfg.rewards["plum_foothold"] = RewardTermCfg(
                 func=_plum_foothold_reward,

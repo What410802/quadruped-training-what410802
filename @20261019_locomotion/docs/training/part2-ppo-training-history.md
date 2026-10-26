@@ -331,3 +331,48 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
   - job17/18 脚本注释复制粘贴错误（trench20 写成 slope robustness）：**属实，纯注释**，修脚本注释即可，不影响行为。
   - HIM 侧（gate rc=1、job14 无 JSON、5ms/4dec 等）按要求不在本文范围，仅记录现象一致。
 
+## 19. 2026-10-26 审计闭环 round-1（两个独立审计 + 首轮修复）
+
+> 用户要求：PPO 线先解决低层代码/契约/数值问题，再继续 Part 2 高层优化；做法是"修改 → subagent 独立审计 → 再修改"，直到审计 PASS。以下为第一轮结果与修复。
+
+### 19.1 审计结果（两份只读报告，见 `prep.d/audits/`）
+
+- `ppo-core-audit-round1.md`（训练/评测核心，48 KB）：**BLOCKED**，P0 三项：
+  - **P0-1** `blackw/env_cfgs.py` 的 `_override_events` 用新 dict 整体替换 `cfg.events`，把 black 基线的 domain randomization（foot_friction / payload_mass / base_com / pd_gains / encoder_bias / push_robot）**全部静默丢弃** → "已有 DR 保持"的文档声称是错的。
+  - **P0-2** 全量 resume 时 checkpoint 的 optimizer lr 覆盖 `agent.yaml` 的 lr：实测 m650 checkpoint 的 optimizer lr = **1.5e-5**（BC v5 是 5e-5）。因此 job13/16/17/18 **实际不是按 4e-5 训练**，A6a 的 actor-only vs 全量对比也不是单变量。
+  - **P0-3** `blackw-plum` 的 `plum_foothold` 是状态式奖励（站在桩顶可刷），违反"不要状态式 shaping"规则（plum 不在当前关键路径）。
+  - P1 重点：CCD 关闭是死写（字段在 `sim.mujoco`）；platform-exact 的 success/height 奖励在 10 cm 起点永不触发且无 success-gated 升档；`check_tier_success --episodes 3` 实际只跑 2 个 episode（`max_steps` 上限）；lane 0.9/0.8 vs judge 0.7；judge 3 处 fail-open；远程并存第二个口径不同的 judge；job 出口契约；`BLACKW_GUARD_*` 漏设算法时静默退化。
+- `ppo-deploy-audit-round1.md`（部署 + job 契约，52 KB）：**BLOCKED**，P0 三项：F1 部署 sim 标量 tau_max=20 N·m（训练/judge 逐关节 23.7/59.25/20）；F2 无 Part2 逐档部署 smoke（20 关覆盖 0/20）；F3 导出 drop-in 契约不自足（无 config.yaml 生成、contract.json 右腿轮 action_scale 符号错、model_path 死字段）。P1：83/129 策略目录 config 顶层 key 与目录名不符（judge 能评、C++ 部署打不开）；README 手柄键位错；slew 有效上限 15 rad/s；频率契约无校验；job 脚本 done 行无条件写、导出 rc 不进最终 rc、SIGTERM 退出码 2。
+  - Q2 澄清：策略周期两端都是 50 Hz，**PD/物理两端都是 0.002 s / 500 Hz**（PD 在 sim_node 里按 MJCF 步长算）——所以 0.005/4 不改变策略输入输出节拍，只影响命令刷新率与 slew 时基；两种频率从未端到端验证。
+
+### 19.2 本轮已修（含验证）
+
+| 项 | 修复 | 验证 |
+|---|---|---|
+| 部署 F1 | `motor.hpp` 支持逐关节 tau_max；`sim_node` 默认从模型中力矩执行器 `<motor ctrlrange>` 读取（23.7/23.7/59.25/20），`tau_max_array` 参数优先、标量 `tau_max` 次之；启动打印逐关节限值；状态行追加四轮世界坐标 `wx=.. wz=..`（供 F2 smoke 用） | 重新 `pixi run ros2-build` 通过；本地 headless 自检打印 `电机：逐关节力矩上限 [23.70,23.70,59.25,20.00 ...]（来源：model ctrlrange）` |
+| 部署 F3/F4 | 新增 `scripts/import_blackw_policy.py`（安装 policy.pt→ 生成 config.yaml + manifest + 校验 key/model_name/342/action_scale/jit forward，`--check` 只校验）与 `scripts/check_policy_dirs.py`（CI 断言，`--fix` 可重写 key）；`scripts/templates/blackw_deploy_config.yaml` 作为 canonical 模板 | `--check comp_bc_v5` 通过（policy sha256 fa68c0df…）；工具已能发现 83 个历史 key 不符目录 |
+| 部署 F5 | README 手柄/键盘键位按 `input_map.hpp` 修正（`RB+D-pad 上` 进 RL、`RB+Y` 复位、`X` 导航、`LB+X` 阻尼；运行中切不到自训权重） | 人工核对 kBindings |
+| 部署 F11 | `check_walk_blackw.py` 的基准 config 改为随 `--policy` 选择并断言 key 与目录名一致 | 本地 headless 自检 7 项 6 过（见下） |
+| 核心 P0-1 | `_override_events` 改为保留 baseline 事件，并按 `BLACKW_DR_EVENTS` 白名单启用（默认 `payload_mass,base_com,push_robot`）；foot_friction/pd_gains/encoder_bias 因 blackW 的 geom 命名/执行器类型不同暂不启用，启动打印 dropped/enabled | 远程 smoke（job 22/23）：训练 rc=0，run `params/env.yaml` 里出现 `base_com payload_mass push_robot` |
+| 核心 P0-2 | `BlackVelocityOnPolicyRunner.load` 增加 `BLACKW_RESUME_LR` 显式覆盖 + 默认打印 checkpoint lr；`BLACKW_RESUME_LOAD_CFG=actor` 只继承 actor | smoke 打印 `[resume] BLACKW_RESUME_LOAD_CFG=actor -> load_cfg={'actor': True}`、`[resume] learning_rate -> 4e-05` |
+| 核心 P0-3 | `plum_foothold` 改为 potential-delta（只付"新轮踏上桩"），默认权重 3→0（opt-in） | 语法/评审；plum 不在关键路径 |
+
+### 19.3 本轮新增的关键证据：续训 lr 一直是 1.5e-5
+
+- `model_650.pt`（s100）的 optimizer 里 lr = **1.5e-5**；`bc_v5_guarded_s01` 是 5e-5。
+- 因此 job13（800 iter）、job16/17/18（300–400 iter）实际都在 **1.5e-5**、且 blend 0.95/0.97 权重投影下训练——有效塑性比计划低约 2.7 倍，这比"配方方向"更能解释"几乎学不动/只漂移"。后续 A6 实验必须用 `BLACKW_RESUME_LR` 固定到 4e-5 并开 `BLACKW_RESUME_LOAD_CFG=actor`（或明确记录继承）。
+- 结合 P0-1（DR 之前全丢）与 canonical 单轨迹陷阱，job16 的负结果**不能**再归因为"PPO 不能微调"；归因实验要在这三处修正后重做。
+
+### 19.4 本轮新结果（slope35/trench20 specialist，job17/18 judge）
+
+- 从 m650 跨任务 + 全量 resume + 1.5e-5 lr 训练 300 iter，judge 仍呈"canonical 单轨迹随机翻面、gate 通过率低"：如 slope 系列 canonical platform40/slope35/stairs20 在 0/8 与 8/8 之间跳变（单轨迹），gate 通过率多为 0–8/8 的低值；trench 系列同理。**结论：这批 specialist 结果同样受"低 lr + 跨任务继承 + 无 DR + warp/judge 差异"污染，不能作为"specialist 方法失败"的证据**，A6 修正后重做。
+- 本地部署 headless 自检（comp_bc_v5，F1 修复后）：起身/站住/前进/周期/趴下 6 项 PASS，**转向项 FAIL**（wz=1.0 rad/s 指令下陀螺 z 均值 -0.004）——与 README 里"转向指令尚未覆盖"一致；gate 协议里 wz±0.1 抖动是否可过尚未单独测。
+
+### 19.5 未完成（下一轮）
+
+- 部署 **F2**（Part2 逐档 smoke，B2 阻塞）：状态行已具备轮坐标，脚本与对拍协议待写。
+- 部署 **F3 剩余**：远程导出器仍未产 config.yaml / contract.json 符号未修（本地 import 工具可兜底，但导出端要修）。
+- 部署 F8/F9/F10/F12：job 出口契约（done 行、导出 rc、SIGTERM 143、硬编码续训点）、gate 结果写 summary 并作失败条件。
+- 核心 P1：CCD 死写、platform-exact 死项/假课程、tiercheck episode 上限、judge fail-open 三处、lane 0.9/0.8 vs 0.7、远程第二 judge、`BLACKW_GUARD_*` 漏设算法兜底。
+- 完成上述后开 round-2 审计；只有两个审计都 PASS 后再恢复 A6 归因实验与高层优化。
+

@@ -42,7 +42,8 @@ from sensor_msgs.msg import Imu, Joy
 
 TASK = Path(__file__).resolve().parents[1]  # @20261024_blackw/
 LOG_DIR = TASK / "output" / "log"
-CONFIG = TASK / "ws/src/rl_sar_blackw/policy/blackW/flat/config.yaml"
+POLICY_ROOT = TASK / "ws/src/rl_sar_blackw/policy/blackW"
+CONFIG = POLICY_ROOT / "flat/config.yaml"  # 实际在 main() 里按 --policy 覆盖
 
 STATUS_RE = re.compile(r"^t=(?P<t>[\d.]+)(?: x=(?P<x>[\d.-]+) y=(?P<y>[\d.-]+))? z=(?P<z>[\d.-]+) tilt=(?P<tilt>[\d.-]+) ncon=(?P<ncon>\d+)")
 RATE_RE = re.compile(r"= (?P<rate>[\d.]+)x 实时")
@@ -151,6 +152,17 @@ def main() -> int:
     ap.add_argument("--sim-param", action="append", default=[], metavar="name:=value",
                     help="额外透传给仿真节点的 ROS 参数，可重复（例：--sim-param motor_deadzone:=0.02）")
     args = ap.parse_args()
+    global CONFIG
+    CONFIG = POLICY_ROOT / args.policy / "config.yaml"
+    if not CONFIG.is_file():
+        print(f"[FAIL] 策略目录不存在或缺少 config.yaml：{CONFIG}")
+        return 1
+    _cfg = yaml.safe_load(CONFIG.read_text())
+    expected_key = f"blackW/{args.policy}"
+    if list(_cfg) != [expected_key]:
+        print(f"[FAIL] {CONFIG} 顶层 key {list(_cfg)} != [{expected_key!r}]"
+              "（C++ rl_sim 会拒绝加载）")
+        return 1
     busy = running_nodes()
     if busy:
         print(f"[FAIL] 已经有节点在跑：{'、'.join(busy)}——先停掉那个 launch 再自检")
@@ -249,7 +261,7 @@ def main() -> int:
         skipped.append(f"{name}（{why}）")
 
     # 站姿：进 RL 之前、起身走完时，下发的 q 应该正好是 default_dof_pos（经 joint_mapping 换到仿真顺序）
-    cfg = yaml.safe_load(CONFIG.read_text())["blackW/flat"]
+    cfg = yaml.safe_load(CONFIG.read_text())[f"blackW/{args.policy}"]
     expect = [0.0] * int(cfg["num_of_dofs"])
     for i, sim_index in enumerate(cfg["joint_mapping"]):
         expect[sim_index] = cfg["default_dof_pos"][i]

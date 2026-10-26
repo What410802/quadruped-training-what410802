@@ -158,8 +158,10 @@ pixi run python @20261024_blackw/scripts/check_walk_blackw.py --realtime false -
 
 ## 按键（与 assignment 的 black 相同；没有改键位）
 
-键盘：`0` 起身、`1` 进 RL、`W/S` 前后、`A/D` 左右、`Q/E` 转向、空格停止、`9` 趴下、`P` 阻尼、`R` 复位、`N` 导航模式。
-手柄：`A` 起身、`B` 趴下、`X` 复位、`LB+上` 进 RL、`RB+方向` 策略/行为切换（与 assignment 文档一致）。
+键盘：`0` 起身、`1` 进 RL、`W/S` 前后、`A/D` 左右、`Q/E` 转向、空格停止、`9` 趴下、`P` 阻尼、`R` 复位、`N` 导航模式（`/cmd_vel`），策略切换 `2/3/4`（flat/stair/obstacle）。
+手柄：`A` 起身、`B` 趴下、`RB+Y` 复位、`RB+D-pad 上` 进 RL、`X` 导航模式、`LB+X` 阻尼、`Start+D-pad 左/上/右` 切官方 flat/stair/obstacle（**运行中切不到自训权重**，换自训策略需重开 launch 并改 `policy_name:=<name>`）。
+
+> 2026-10-26 审计修正：原本文档把"进 RL"写成 `LB+上`、把"复位"写成 `X`，与 `include/input_map.hpp` 不符，照原文按会卡在 GetUp。权威映射见 `ws/src/rl_sar_blackw/include/input_map.hpp` 的 `kBindings`。
 
 > 如果 `pixi run ros2 launch ...` 启动时提示找不到包，确认已执行 `pixi run ros2-build`；本目录 `ws/` 会被仓库根
 > `scripts/activate_ros2_workspaces.sh` 自动 source。
