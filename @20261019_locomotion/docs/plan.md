@@ -99,6 +99,14 @@
 - **job24 结果：提前终止（约 iter105）**。mean reward 从 -315 到 -200，`bad_sim_state` 每批 4–17，`part2_success=0`，action std 保持0.10；不是可接受的训练信号。已 kill，未做后续 gate。
 - 结论：HIM 算法/路径 READY，但当前 reward/termination/物理组合仍会让 microfine 掉进 bad_sim_state；恢复长训前先做 5–20 iter 的 reward/physics 诊断和 A/B，不盲目续训。
 
+## 2i. 2026-10-26 14:0x CCD 根因修复 + job25 短验证
+
+- job24 负 reward/bad_sim 根因：`2952f3b` 的 CCD 路径修复把 CCD 真正设为 0，mujoco_warp 丢失 wheel-cylinder/terrain 支撑接触，机器人穿过地面。
+- 修复：`BLACKW_CCD_ITERS` 默认 50；wheel-aware `bad_sim_state`（max wheel 400）；`max_abs_action` save 清零。
+- job25（40 iter，`timeout 280`）：mean reward +15.8..+17.1，episode 231–249，success 1.94–2.34，bad_sim=0，bad_orientation=0，max|a|=6.411。**短验证通过**。
+- 负 reward 绝对 offset 不是问题；job24 是 off-terrain relative signal 崩坏。
+- 下一步：在 5 分钟限制内继续 60 iter + gate；通过后才考虑长训。
+
 ## 3. 短期待办（P1，HIM 下一轮）
 
 - [ ] P1-1（job21 已撤回，未执行）不再直接升 row1/扩命令；先用 warm-start teacher 做 300–500 iter 微调：

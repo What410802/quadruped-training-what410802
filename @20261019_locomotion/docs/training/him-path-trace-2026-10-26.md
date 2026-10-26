@@ -97,3 +97,29 @@ load_env_cfg(task, play=False)
 - deploy physics 下 positive 通过、故意大 jitter negative 也通过；
 - train physics 相同 checkpoint platform 0/2，说明 screen 对训练/评测物理敏感，不能把 train screen 当 judge；仍保持 screen/acceptance 区分。
 - 这不是正式判据，只是 contract smoke；未宣称 row0 通过。
+
+## 8. 2026-10-26 14:0x job24 根因与修复：CCD=0 丢失轮地接触
+
+- `2952f3b` 把错误的 `cfg.sim.ccd_iterations` 改成正确的 `cfg.sim.mujoco.ccd_iterations=0`，结果 **CCD 真正关掉**。mujoco_warp 对 cylinder-vs-terrain 凸对使用 GJK/EPA 的 `ccd_iterations`；0 次迭代等于没有支撑接触，机器人从出生点直接穿过 patch floor。
+- 单变量 A/B（256 env，同 warmstart/seed/lr/std/anchor，2 iter）：
+
+| metric iter1 | ccd=0 (job24) | ccd=50 (fix) |
+|---|---:|---:|
+| mean reward | -273.9 | +8.55 |
+| episode length | 76.8 | 146.3 |
+| bad_sim_state /step | 1.02 | 0.0000 |
+| bad_orientation /step | 3.18 | 0.0000 |
+| base_height | -3.83 | -0.0156 |
+| lin_vel_z | -7.90 | -0.0244 |
+| part2_success /step | 0.0 | 1.17 |
+| max abs action | 44.90 | 5.08 |
+
+- 修复：`BLACKW_CCD_ITERS` 默认 50；wheel-aware `bad_sim_state`（`max_wheel_vel=400`，`BLACKW_MAX_WHEEL_VEL=0` 可回退）；`max_abs_action` 每次 save 清零。
+- job25（40 iter，512 env×96，`timeout 280`，同一 warmstart/std/anchor）验证：mean reward +15.8..+17.1，episode length 231–249，`part2_success` 1.94–2.34，`bad_sim_state=0`，`bad_orientation=0`，`max|a|=6.411`。
+
+### 负 reward 是否有问题？
+
+- **绝对 offset 本身不是问题**：GAE/优势会减 baseline，per-step 常数在理论上被 critic 吸收；scale、相对差异和 termination 才重要。
+- job24 的问题不是“reward 是负的”，而是 CCD=0 让机器人掉出地形，`base_height_l2_terrain`（射线打空）≈-12/step、`lin_vel_z`（vz≈13）≈-23/step 吞掉 ~97% return；`part2_success=0` 没有正梯度，只能学“减少 |vz|”。
+- `bad_sim_state` 是 terminal（无 bootstrap）；高 bad_sim 比例会强化“尽快结束”的坏局部解。
+- ±50 reward clamp / return clamp 在 job24 没有触发，不能归因于 clamp。
