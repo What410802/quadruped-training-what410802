@@ -26,7 +26,7 @@
 ### A. 主线（按用户 2026-10-26 第三轮定的路线：row0 跑通 → 手动 gate 逐档提难度；除 trench30/plum 外先拿 8/8）
 
 - [x] **A1 stairs30 选点（已完成）**：judge 全档回归跑完（19 policy × 17 关，`prep.d/results/ppo_st30/regression/`）——job13 同配方 800 iter **无收益且末段漂移**（最好 750 < 锚 850），判为无效实验；**当前能力上限 = s100 m650 = 850**（stairs30 1/8、wall40 3/4、platform40 3/4、stairs20 1/4，slope35/trench20 4/4），稳健性远不足 8/8（详见历史 §17）
-- [x] **A2b placement 首测（已完成）**：s100 m650 在 gate 协议（3 档 + spawn/joint 随机化）下 **S0 都不通过**（slope20 10/16、stairs10 9/16、trench10 11/16）；硬档 platform40 7/8、wall40 1/8、stairs20 2/8、stairs30 0/8、slope35 6/8、trench20 5/8（详见历史 §17.3）。因子拆解显示是"普遍稳健不足"，不是单一旋钮
+- [x] **A2b placement 首测（已完成）**：s100 m650 在 gate 协议（3 档 + spawn/joint 随机化）下 **S0 都不通过**（slope20 10/16、stairs10 9/16、trench10 11/16）；硬档 platform40 7/8、wall40 1/8、stairs20 2/8、stairs30 0/8、slope35 6/8、trench20 5/8（详见历史 §17.3）。补充：**只保留 1.0× 名义命令、仅初始状态随机化**时，s100 m650 仍有 platform40 7/8、wall40 1/8、slope35 4/8、stairs20 3/8、stairs30 0/8（trench20 8/8）→ 8/8 的瓶颈主要是初始状态/接触相位鲁棒性，速度档位是第二因素（历史 §17.5）
 - [ ] **A2c 稳健化训练（已排队 job 16）**：`ppo_m0_hardmask` = 官方混合子集 `platform,high_wall,stairs` 固定难度 1.0 + gate 随机化 + guard blend 0.97（从 s100 m650 续训 400 iter）；结束后跑 judge 全档回归 + 该子集 gate，确认三硬类是否提升、slope35/trench20 是否被带坏
 - [x] **A2a gate 工具已实现**：`eval_blackw_part2.py` 已加 `--jitter-x/--jitter-yaw/--joint-offset/--joint-vel/--command-set/--cmd-jitter-*`；新增 `@20261024_blackw/scripts/gate_stage.py`（stage 表 + 累积 gate + placement，本地冒烟通过）
 - [ ] **A2b placement**：对 comp_bc_v5 跑 placement（pending A1 CPU；strict gate 下已发现 ±0.2/±0.3 侧向指令抖动对当前策略过严，需与用户确认"当前阶段 gate 用 realistic 抖动（±0.1）还是 strict"）

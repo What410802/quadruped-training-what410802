@@ -291,6 +291,13 @@ HIM 侧条目抽检（只读，不改其仓）：`him_part2_gate.py:47` 用 `loa
   - 结果无单一主因：wall40 A 0/8 vs B 3/8、stairs30 A 3/8 vs B 1/8、platform40 4–7/8 波动；**整体是普遍性稳健不足**（样本 8 偏小，差异多为波动），不是某一个旋钮坏了。
 - 结论：稳健化训练必须同时覆盖"初始状态随机 + 指令档位分布"，单改一项不会把 8/8 做出来。
 
+### 17.5 补充：单档（名义命令）+ 初始状态随机化 placement（用户/比赛更接近的操作方式）
+
+- 协议：只 1.0× 名义命令（按障碍命令 profile），spawn x±0.10 / y±0.15 / yaw±0.05、joint ±0.03 rad / ±1.0 rad/s，vy±0.1/wz±0.1；简单档 16 attempt、难档 8。
+- s100 m650：platform10/20、wall10、slope20、trench10 全过 16/16，trench20 8/8；**platform30 3/8、platform40 7/8、wall20 14/16、wall30 3/8、wall40 1/8、slope30 7/8、slope35 4/8、stairs10 10/16、stairs15 5/16、stairs20 3/8、stairs30 0/8**。S0 仍因 stairs10 不过。
+- comp_bc_v5：更差（stairs10 3/16、stairs20 0/8、wall40 1/8、trench20 7/8）→ 进一步证明 m650 是当前最佳起点。
+- 解读：即使固定名义速度，**仅初始位姿随机化**就让 stairs/wall40/platform30-40/slope35 大幅掉点；stairs 对初始状态最敏感。说明 8/8 的瓶颈主要是"初始状态/接触相位鲁棒性"，速度档位是第二因素。稳健化训练必须把 spawn 随机化装进训练 reset（已实现 `BLACKW_SPAWN_X/Y/YAW` 并用于 job 16）。
+
 ### 17.4 因此新增的训练能力与已排队 job
 
 - `env_cfgs.py` 新增（复用已有 subterrains 入口）：`BLACKW_SUBTERRAINS`（官方混合任务只训练指定类别，如 `platform,high_wall,stairs`）、`BLACKW_DIFF_MIN/MAX`（官方混合任务固定难度）、`BLACKW_SPAWN_X/Y/YAW`（把 gate 的 spawn 随机化装进训练 reset；joint ±0.03 rad / ±1.0 rad/s 本来已匹配）。
