@@ -14,7 +14,7 @@
 | 类别 | HIM training predicate `_part2_terrain_state` | 本地 judge proxy |
 |---|---|---|
 | 所有类别 | 单步 bool；termination 命中即成功 | 需要 `hold_s` 连续保持（0.05–0.2 s） |
-| high_wall | `wx_min>=2.02 & wz.max<=0.08 & rx>=2.27` | 还要求跨墙平面/爬升证据 `max_z_near >= wall_h+0.10` |
+| high_wall | wall-relative `wx_min>=2.44 & rx>=3.0 & root_z>=clamp(wall_h+0.10,0.55)` | 还要求跨墙平面/爬升证据 `max_z_near >= wall_h+0.10` |
 | stairs | 终点 wheel ground + root height | 还要求 `top_seen`（先到顶部平台） |
 | trench | far-side plateau + root height | 还要求 near/far crossing + gap_entered/lane 证据 |
 | plum | 平台 wheel band/root height | judge 走独立 plum 逻辑 |
@@ -41,8 +41,8 @@ mujoco_warp 不支持 PGS，因此仍是 newton 近似；这本身也不能等�
 
 1. gate 输出字段改为 `screen_pass`，并显式写 `acceptance_eligible=false`、`predicate=training_part2_v5_single_step`；
 2. job20/21 已撤回，不再用 screen 结果当验收；
-3. 下一步必须补 HIM TorchScript export + 本地 judge adapter，按 judge 同一套 `hold_s`/wall/stairs/trench 谓词跑官方场景；
-4. 在 judge adapter 完成前，gate 只用于低档粗筛，不写“通过”。
+3. HIM TorchScript export + 本地 judge proxy adapter 已跑通；proxy 场景仍是团队参数化场景，不是官方 ability_field 几何；
+4. gate 只用于低档粗筛，不写“通过”；官方分数仍需用官方 ability_field 场景重测。
 
 ## 5. job20/21 处置（2026-10-26 12:5x）
 

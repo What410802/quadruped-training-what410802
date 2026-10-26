@@ -13,7 +13,7 @@
 
 ## 2. 本地官方 judge 基线
 
-使用 `prep.d/blackw_validation/run_blackw_part2_judge.py`（CPU MuJoCo、团队自定义 scene/判据、`hold_s`）测导出的 HIM policy。**这些 scene 不是官方 ability_field/map.xml 的几何复刻；total_score 只能当本地 proxy，不能当官方得分。**
+使用 `prep.d/blackw_validation/run_blackw_part2_judge.py`（CPU MuJoCo、团队自定义 proxy scene、`hold_s`）测导出的 HIM policy。**这些 scene 不是官方 ability_field/map.xml 的几何复刻；total_score 只能当本地 proxy，不能当官方得分。**
 
 - `model_0`（warm-start）：**total_score=410**
   - platform 10/20/30 success，40 fail；

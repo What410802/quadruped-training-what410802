@@ -72,7 +72,7 @@ load_env_cfg(task, play=False)
 
 ## 5. 2026-10-26 12:3x 新发现并修复的路径 bug
 
-- **stairs training predicate 假阴性**：旧 predicate 要求跨完整上+下台阶到 `down_end≈6.30`，但官方 judge 的 stairs 只要求到 top/landing（goal_x_min=3.3, top_z=step height）。因此 screen 报 0/20，但官方 judge 对同一 `model_0` 的 stairs 10/15/20 cm 成功。
+- **stairs training predicate 假阴性**：旧 predicate 要求跨完整上+下台阶到 `down_end≈6.30`，但本地 judge proxy 的 stairs 只要求到 top/landing（goal_x_min=3.3, top_z=step height）。因此 screen 报 0/20，但本地 judge proxy 对同一 `model_0` 的 stairs 10/15/20 cm 成功。
 - 已改为 judge-aligned：从 exact stairs CFG 读取总高/步数，要求 `rx>=3.30`、wheel support 在 step 高度带、root height 合理；screen stairs smoke 从 0/20 变为 3/5（5 attempts 中 4 个 episode 结束）。
 - 修复过程中发现 `float(difficulty)` 对标量 tensor 报错；改为 per-env tensor 广播，已 py_compile/pyflakes 通过。
 - 这属于“路径语义 bug”，lint 抓不到，只有对照 judge 和实际 code path 才能发现。
@@ -80,5 +80,20 @@ load_env_cfg(task, play=False)
 ## 6. 导出/judge 路径结果
 
 - `export_him_policy.py` 已导出 model_0，TorchScript contract 通过；
-- 本地官方 judge 对 model_0 total_score=410（stairs 10/15/20 成功等）；
+- 本地本地 judge proxy 对 model_0 total_score=410（stairs 10/15/20 成功等）；
 - job12 末 checkpoint judge total560，但出现 base_z=-84 等非法状态，说明 judge runner 需要 invalid-state 守卫，不能把 560 当真实提升。
+
+## 7. 2026-10-26 13:0x 重写后 contract smoke
+
+重写 geometry predicate 后，用 model_0 跑 gate 2 attempts：
+
+| case | physics | attempts | success | negative? |
+|---|---|---:|---:|---|
+| platform, normal jitter | train | 2 | 0 | — |
+| platform, normal jitter | deploy | 2 | **2** | — |
+| platform, huge jitter (x2/y5/yaw1) | train | 2 | 0 | negative 成立 |
+
+结论：
+- deploy physics 下 positive 通过、故意大 jitter negative 也通过；
+- train physics 相同 checkpoint platform 0/2，说明 screen 对训练/评测物理敏感，不能把 train screen 当 judge；仍保持 screen/acceptance 区分。
+- 这不是正式判据，只是 contract smoke；未宣称 row0 通过。

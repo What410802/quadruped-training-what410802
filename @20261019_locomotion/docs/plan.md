@@ -65,7 +65,7 @@
 ## 2e. 2026-10-26 HIM 导出/judge 基线
 
 - 新增 [HIM judge/export 基线](training/him-judge-export-baseline.md)。
-- `model_0` 导出 TorchScript 后跑官方本地 judge：total_score=410；stairs 10/15/20 成功、platform 10/20/30 成功等。
+- `model_0` 导出 TorchScript 后跑本地 judge proxy：total_score=410；stairs 10/15/20 成功、platform 10/20/30 成功等。
 - job20 不完整 screen 的 stairs=0/20 与 judge 成功矛盾，确认训练 predicate 的 stairs 是 false negative（旧 down_end/descend 语义过严）。
 - job12 末 checkpoint judge total560，但 trench 出现 base_z=-84 等非法状态，judge runner 需要 invalid-state 守卫；不采用该分数。
 - 训练 predicate 对齐 judge 之前，HIM 不恢复长训。
@@ -84,6 +84,14 @@
 - 2026-10-26 12:5x：复核发现 gate 仍只是 training-predicate screen，`--physics deploy` 当时也只改 dt/dec；job20/21 已撤回（job20 运行中被 kill，产物不完整；job21 queued 被移除）。不再用 screen 结果做验收。job20 不完整 screen：platform17/20、slope13–14/20、stairs0/20、wall20/20、trench13/20（train≈deploy），仅作诊断。
 - 已新增 [HIM gate vs judge 契约差异](training/him-gate-vs-judge-contract.md)，gate 输出改为 `screen_pass` + `acceptance_eligible=false`；deploy physics 已补 solver/ccd/init z。
 - 已新增 `him_static_preflight.sh`：pyflakes/py_compile/bash -n + 可选 HIM code tree；本地通过。
+
+## 2f. 2026-10-26 13:0x 独立审计 READY + 收尾
+
+- 独立审计（第二次）verdict=`READY_FOR_HIGHER_PART2`，前提是补 post-rewrite contract smoke 和 doc sync。
+- contract smoke：model_0 platform deploy 2/2 success；大 jitter negative 0/2；train physics 0/2（说明 screen 对物理敏感）。
+- 已修：scalar `std_param` guard/freeze、warm-start missing MLP fail/resume guard、`cfg.sim.mujoco.ccd_iterations`、lane0.70、high_wall/stairs/trench geometry predicates、gate nan_to_num/clip/metric availability、estimator LR decouple、HIM deployment artifact。
+- 文档已降级为本地 judge proxy，不冒充官方 ability_field。
+- 剩余 accepted risks：proxy judge scene 与官方 map 不一致、训练 5ms/4dec vs judge 2ms/10dec、部署未 ROS/FSM 测试；不阻塞 row0→row1 代码工作，但不能当官方分数。
 
 ## 3. 短期待办（P1，HIM 下一轮）
 
@@ -115,9 +123,7 @@
 | 13 | PPO stairs30 续训 | finished；success≈0、tiercheck 0/278，负结果 |
 | 14 | HIM job12 重测 | **invalid**；155/155 rc=1，无 JSON |
 | 16 | PPO m0 hardmask | finished |
-| 17 | PPO m0 slope35 | running |
-| 18 | PPO m0 trench20 | queued |
-| 19 | PPO audit smoke2 | queued |
+| 17-19 | PPO jobs | finished |
 | 20 | HIM model0 screen 20×2seed×train/deploy | **withdrawn/killed**；仅 seed0 部分，screen 不验收 |
 | 21 | HIM row0 microfine 300iter + per-checkpoint screen | **withdrawn**；未执行 |
 

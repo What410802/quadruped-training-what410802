@@ -80,7 +80,7 @@ python @20261019_locomotion/scripts/agent_scripts/him_part2_gate.py \
   --out gate_platform_r0.json
 ```
 
-gate 的配置层 smoke（play=False + strict term）通过；**2026-10-26 12:00 前的版本在 JSON 输出处引用了未定义 `wheel_drop`，造成 job14 的 155 次 gate 全部 rc=1，旧“2/2”不能作为当前脚本证据**。修复后 model_0 platform 单 attempt = 1/1 success，JSON 正常；新 job20 重新做 20/20 ×2 seed。
+gate 的配置层 smoke（play=False + strict term）通过；**2026-10-26 12:00 前的版本在 JSON 输出处引用了未定义 `wheel_drop`，造成 job14 的 155 次 gate 全部 rc=1，旧“2/2”不能作为当前脚本证据**。修复后 model_0 platform 单 attempt = 1/1 success，JSON 正常；但 job20/21 已撤回，screen 不再作为验收。
 
 ## 7. 已落地的数值防护
 
