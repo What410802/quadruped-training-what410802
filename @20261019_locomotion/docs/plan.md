@@ -171,3 +171,9 @@
 - `d637859` `chore(common): add shared competition env dependencies required by HIM tasks`
 
 说明：远端机 HTTPS 无凭据，推送通过本机 SSH 把远端 `git bundle` 拉回后推到 GitHub；远端工作区仍保留未提交的 PPO 改动，按“PPO无需”要求不提交。
+
+### 2026-10-26 12:05 追加
+
+- 本地：`d963ddc fix(him): repair gate output and add fail-loud model0/microfine jobs`、`67fb139 docs(him): record invalid job14 and corrected gate jobs`，已推送。
+- 远端：`362c238 fix(him): make strict gate output fail-safe and add deploy physics/jitter`、`d9c74cd test(him): add model0 20/20 and controlled microfine gate jobs`，已推送。
+- 队列：job20（model0 20/20×2seed×train/deploy）、job21（300 iter microfine）已入队；HIM 结果尚未产生，不能提前标记 P0-4/P1-1 完成。
