@@ -1,0 +1,10 @@
+# Curated deliverables and official policies are tracked; all other candidate dirs are
+# generated locally by export scripts (use scripts/import_blackw_policy.py to install).
+*/
+!base.yaml
+!behaviors/
+!comp_bc_v5/
+!him_row0/
+!flat/
+!stair/
+!obstacle/

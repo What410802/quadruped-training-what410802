@@ -26,3 +26,6 @@ local_paths.cmake
 
 # Local diagnostic outputs (videos/results); curated artifacts go outside the repo or in docs
 prep.d/
+# blackW deployment workspace: generated candidate policies, official mesh assets and runtime output
+@20261024_blackw/output/
+@20261024_blackw/ws/src/rl_sar_blackw/scenes/blackW/assets/
