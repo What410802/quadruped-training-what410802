@@ -15,7 +15,7 @@
 - P3-01：`eval/CONTRACT-DECISIONS.md`、`eval/artifacts/HASHES.json`/`FREEZE.json`；
 - P3-10 基础：`robocon-eval audit-hashes`/`freeze`；P3-12：`robocon-eval matrix` 4 组合；
 - P3-13 部分：`robocon-eval consistency` 跨仓判据审计 11 项全 PASS（contract ↔ judges ↔ training ↔ levels）。
-- P3-14：训练侧高墙 parity `PARITY OK`，wall crossing helper 单测 3/3（training `5ecc329`）。
+- P3-14：训练侧高墙 parity `PARITY OK`，wall crossing helper 单测 3/3，env-level `wall_env_probe.py` PASS（training `7aae13b`）；完整 trained-policy rollout 作为可选（task-specific spawn/command 未配）。
 
 ## 未完成
 
@@ -37,3 +37,5 @@
 - 规范/决策已冻结：`docs/contracts/evaluation-spec.md` 标 `frozen-v1.0`，`eval/CONTRACT-DECISIONS.md` 标 `frozen-v2`；`eval/artifacts/FREEZE.json`（schema 2）含 spec/docs sha256、git heads、QA 指针。
 - 最终预检：`robocon-eval qa` → 9 项 PASS（contract/consistency 15/15/hash gate/calibration 92/92/matrix 4/golden part1+part2v5/self-test 29）；umbrella head `5f22151`（FREEZE 记录）、部署 `e17cf57`、训练 `5ecc329`，dirty=false。
 - 仍属已知限制/可选：旧 diagnostics 无轨迹故旧/新完整 golden replay 不做；blackW 轮式 runner 为可选；正式 policy trial campaign 未跑（SCOREBOARD 标 not_run）；black×Part2 B4 延后。
+
+- 最终 QA/FREEZE 刷新：training head `7aae13b`、umbrella head 见 `eval/artifacts/FREEZE.json`；`robocon-eval qa` 仍全 PASS。
