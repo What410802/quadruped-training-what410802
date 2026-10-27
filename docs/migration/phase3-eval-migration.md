@@ -22,7 +22,7 @@
 - P3-05/06/07 真实轨迹 golden replay（旧 diagnostics 无 `traj`，需新录制）；
 - P3-09 确定性 MuJoCo runner、P3-10 trials/summary/SCOREBOARD、P3-11 calibration；
 - P3-13 冻结/QA、旧仓最终验收证据；
-- P2-11 L1 已定位为运行时非确定性（same-binary 两次已不同），tolerance/语义验收与旧/新超差归因仍待完成。
+- P2-11 L1 旧/新 trace 比较已按范围纠正：它是 P3-13 旧/新迁移证据，不是 Phase 2 deployment 验收 gate；same-binary 两次已不同，逐元素 bitwise 不可达，Phase 3 文档记录该局限即可（不阻塞 deployment 验收）。
 
 ## 新仓指针
 

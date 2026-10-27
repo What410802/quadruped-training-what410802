@@ -12,10 +12,12 @@
 - P2-09：统一 part/level/policy launch；headless 自检、策略加载、频率/反馈验证。
 - P2-10：delta 归档脚本与状态：旧 delta 196/196 文件在新仓落位、0 missing；quadruped_ros2 13 文件对照。
 - P2-11 L2：supported 组合 blackW×Part1、black×Part1、blackW×Part2 三组 headless 矩阵 PASS；trace 全 finite、反馈 dt=2 ms、12/16 dof。
+- P2-11 验收按 Phase 2 口径完成：包独立 build/launch + 契约 + smoke/matrix/NaN/spawn 证据通过；旧 ws↔新仓 `/motor_state` 的 L1 逐元素比较不是 Phase 2 gate（属于 P3-13 迁移证据）。
 
 ## 未完成 / 明确风险
 
-- P2-11 L1（旧 ws ↔ 新仓 10 s `/motor_state` 逐元素等价）**尚未通过**：同场景 50 Hz 对照中增益/力矩指令完全一致，但状态在 `sim_time=0.06 s` 出现一步相位差异并被混沌放大；当前结论是控制施加相位/调度差异，不是场景几何或 sim_node 物理模型差异，需记录指令施加步后完成相位对齐。
+- P2-11 L1 **已移出 Phase 2 验收**：旧 ws↔新仓 trace 对照是 P3-13 旧/新迁移证据，不是 deployment 功能稳定性判据；同 binary 两次运行已不一致，逐元素 bitwise 不可达。历史尝试与归因保留在新仓 `deployment/docs/migration/p2-11-acceptance.md`、`deployment/artifacts/phase2/equiv/`，Phase 3 文档记录该局限即可。
+- `check_walk_blackw.py`：旧包平地 fixed-command regression，可选、非 Phase 2 gate（旧审计也指出其覆盖有限和 flat 写死问题）。
 - black×Part2（B4）延后，最终"两机型×两赛项"还差该组合。
 - Phase 3 eval runner/回放、高墙训练侧 rollout 探针与 parity、P3-12 矩阵/QA/spec 冻结仍在进行。
 
